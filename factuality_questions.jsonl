@@ -1,0 +1,10 @@
+{"question": "What is the capital of France?", "reference_answer": "Paris", "category": "geography"}
+{"question": "Who wrote 'Romeo and Juliet'?", "reference_answer": "William Shakespeare", "category": "literature"}
+{"question": "What is the chemical symbol for gold?", "reference_answer": "Au", "category": "science"}
+{"question": "In what year did World War II end?", "reference_answer": "1945", "category": "history"}
+{"question": "What is the largest planet in our solar system?", "reference_answer": "Jupiter", "category": "science"}
+{"question": "Who painted the Mona Lisa?", "reference_answer": "Leonardo da Vinci", "category": "art"}
+{"question": "What is the square root of 144?", "reference_answer": "12", "category": "mathematics"}
+{"question": "What is the capital of Japan?", "reference_answer": "Tokyo", "category": "geography"}
+{"question": "Who was the first person to walk on the moon?", "reference_answer": "Neil Armstrong", "category": "space"}
+{"question": "What is the boiling point of water in Celsius?", "reference_answer": "100", "category": "science"}
