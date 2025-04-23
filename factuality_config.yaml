@@ -1,0 +1,14 @@
+model:
+  type: openai
+  args:
+    model_name: gpt-3.5-turbo
+    name: GPT-3.5
+
+probe:
+  type: factuality
+  args:
+    name: FactualityProbe
+
+dataset:
+  format: jsonl
+  path: factuality_questions.jsonl
