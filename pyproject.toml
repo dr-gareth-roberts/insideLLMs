@@ -1,0 +1,44 @@
+[project]
+name = "insideLLMs"
+version = "0.1.0"
+description = "Python library for probing the inner workings of large language models."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+# Add classifiers if desired, e.g.:
+# classifiers = [
+#     "Programming Language :: Python :: 3",
+#     "License :: OSI Approved :: MIT License",
+#     "Operating System :: OS Independent",
+#     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+# ]
+
+dependencies = [
+    "openai>=0.27.0",      # Check for actual min versions if possible
+    "anthropic>=0.3.0",    # Check for actual min versions if possible
+    "transformers>=4.0.0", # For HuggingFaceModel
+    "huggingface-hub>=0.10.0" # Often used with transformers
+]
+
+[project.optional-dependencies]
+nlp = [
+    "nltk>=3.6.0",
+    "spacy>=3.0.0",
+    "scikit-learn>=1.0.0",
+    "gensim>=4.0.0"
+]
+visualization = [
+    "matplotlib>=3.4.0",
+    "pandas>=1.3.0",
+    "seaborn>=0.11.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/example/insideLLMs" # Replace with actual URL if known
+Repository = "https://github.com/example/insideLLMs" # Replace with actual URL if known
+
+# Consider adding build-system requirements if not using default setuptools
+# [build-system]
+# requires = ["setuptools>=42", "wheel"]
+# build-backend = "setuptools.build_meta"
+# backend-path = "."
