@@ -4,7 +4,7 @@ import json
 from insideLLMs.models import DummyModel, OpenAIModel, HuggingFaceModel, AnthropicModel
 from insideLLMs.probes import LogicProbe, BiasProbe, AttackProbe, FactualityProbe
 from insideLLMs.runner import run_probe
-from insideLLMs.utils import load_csv_dataset, load_jsonl_dataset, load_hf_dataset
+from insideLLMs.dataset_utils import load_csv_dataset, load_jsonl_dataset, load_hf_dataset
 from insideLLMs.models import Model
 from insideLLMs.probes import Probe
 from typing import List, Dict, Any
