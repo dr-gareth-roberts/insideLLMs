@@ -4,36 +4,15 @@ from insideLLMs.probes import FactualityProbe
 from insideLLMs.visualization import plot_factuality_results, create_html_report
 from insideLLMs.benchmark import ModelBenchmark
 import os
+import json
 
 def main():
-    # Sample factual questions
-    factual_questions = [
-        {
-            'question': 'What is the capital of France?',
-            'reference_answer': 'Paris',
-            'category': 'geography'
-        },
-        {
-            'question': 'Who wrote "Romeo and Juliet"?',
-            'reference_answer': 'William Shakespeare',
-            'category': 'literature'
-        },
-        {
-            'question': 'What is the chemical symbol for gold?',
-            'reference_answer': 'Au',
-            'category': 'science'
-        },
-        {
-            'question': 'In what year did World War II end?',
-            'reference_answer': '1945',
-            'category': 'history'
-        },
-        {
-            'question': 'What is the largest planet in our solar system?',
-            'reference_answer': 'Jupiter',
-            'category': 'science'
-        }
-    ]
+    # Load factual questions from JSONL file
+    questions_path = "../data/factuality_questions.jsonl"
+    factual_questions = []
+    with open(questions_path, 'r') as f:
+        for line in f:
+            factual_questions.append(json.loads(line))
     
     # Create probe
     factuality_probe = FactualityProbe()

@@ -13,9 +13,22 @@ Python library for probing the inner workings of large language models. Systemat
 
 ## Installation
 
+To install `insideLLMs` from a local clone of this repository, navigate to the root directory of the clone and run:
+
 ```bash
-pip install insideLLMs
+# Install the base package
+pip install .
+
+# To include NLP utilities (requires NLTK, spaCy, scikit-learn, gensim):
+pip install .[nlp]
+
+# To include visualization tools (requires matplotlib, pandas, seaborn):
+pip install .[visualization]
+
+# To include all optional dependencies:
+pip install .[nlp,visualization]
 ```
+See `pyproject.toml` for the list of dependencies. For development, see the "Development" section below.
 
 ## Quick Start
 
@@ -137,4 +150,22 @@ similarity = cosine_similarity_texts(text1, text2)  # Requires scikit-learn
 similarity = jaccard_similarity(text1, text2)  # No dependencies
 ```
 
-See `example_nlp.py` for a complete demonstration of all NLP utilities.
+See `examples/example_nlp.py` for a complete demonstration of all NLP utilities.
+
+## Development
+
+To set up a development environment, clone the repository and install the development dependencies. Replace the URL with the actual repository URL.
+
+```bash
+git clone https://github.com/example/insideLLMs
+cd insideLLMs
+pip install -r requirements-dev.txt
+```
+
+### Running Tests
+
+Tests are located in the `tests/` directory and can be run using pytest:
+
+```bash
+pytest
+```
