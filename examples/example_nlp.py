@@ -1,5 +1,5 @@
 """Example script to demonstrate usage of NLP utilities."""
-from insideLLMs.nlp_utils import (
+from insideLLMs.nlp import (
     # Text cleaning and normalization
     clean_text, remove_html_tags, remove_urls, remove_punctuation,
     remove_emojis, remove_numbers, normalize_contractions, replace_repeated_chars,
