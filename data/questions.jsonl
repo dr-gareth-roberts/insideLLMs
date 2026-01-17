@@ -1,0 +1,5 @@
+{"question": "What is 2+2?", "reference_answer": "4"}
+{"question": "What is the capital of France?", "reference_answer": "Paris"}
+{"question": "Who wrote Romeo and Juliet?", "reference_answer": "William Shakespeare"}
+{"question": "If all cats are mammals, and all mammals are animals, are all cats animals?", "reference_answer": "Yes"}
+{"question": "What is the chemical symbol for water?", "reference_answer": "H2O"}

@@ -1,44 +1,166 @@
 [project]
 name = "insideLLMs"
 version = "0.1.0"
-description = "Python library for probing the inner workings of large language models."
+description = "A world-class Python library for probing the inner workings of large language models."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
-# Add classifiers if desired, e.g.:
-# classifiers = [
-#     "Programming Language :: Python :: 3",
-#     "License :: OSI Approved :: MIT License",
-#     "Operating System :: OS Independent",
-#     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-# ]
+authors = [
+    { name = "insideLLMs Contributors" }
+]
+keywords = [
+    "llm",
+    "language-models",
+    "nlp",
+    "machine-learning",
+    "ai",
+    "evaluation",
+    "benchmarking",
+    "testing",
+    "probing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
 
 dependencies = [
-    "openai>=0.27.0",      # Check for actual min versions if possible
-    "anthropic>=0.3.0",    # Check for actual min versions if possible
-    "transformers>=4.0.0", # For HuggingFaceModel
-    "huggingface-hub>=0.10.0" # Often used with transformers
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "transformers>=4.30.0",
+    "huggingface-hub>=0.16.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 nlp = [
-    "nltk>=3.6.0",
-    "spacy>=3.0.0",
-    "scikit-learn>=1.0.0",
-    "gensim>=4.0.0"
+    "nltk>=3.8.0",
+    "spacy>=3.5.0",
+    "scikit-learn>=1.2.0",
+    "gensim>=4.3.0",
 ]
 visualization = [
-    "matplotlib>=3.4.0",
-    "pandas>=1.3.0",
-    "seaborn>=0.11.0"
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+    "seaborn>=0.12.0",
+]
+dev = [
+    "pytest>=7.3.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.3.0",
+]
+all = [
+    "insideLLMs[nlp,visualization,dev]",
 ]
 
-[project.urls]
-Homepage = "https://github.com/example/insideLLMs" # Replace with actual URL if known
-Repository = "https://github.com/example/insideLLMs" # Replace with actual URL if known
+[project.scripts]
+insidellms = "insideLLMs.cli:main"
 
-# Consider adding build-system requirements if not using default setuptools
-# [build-system]
-# requires = ["setuptools>=42", "wheel"]
-# build-backend = "setuptools.build_meta"
-# backend-path = "."
+[project.urls]
+Homepage = "https://github.com/dr-gareth-roberts/insideLLMs"
+Repository = "https://github.com/dr-gareth-roberts/insideLLMs"
+Documentation = "https://github.com/dr-gareth-roberts/insideLLMs#readme"
+"Bug Tracker" = "https://github.com/dr-gareth-roberts/insideLLMs/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["insideLLMs*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function calls in default arguments
+    "ARG001", # unused function argument
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["insideLLMs"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["insideLLMs"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
