@@ -117,22 +117,17 @@ from .keyword_extraction import (
     extract_keywords_textrank
 )
 
-# For misc_utils, users would typically import these directly if needed for checking
-# e.g. from insideLLMs.nlp.misc_utils import is_nltk_available
-# However, we can expose the main check functions if desired.
-# For now, keeping them for direct import from misc_utils.
-# from .misc_utils import (
-#     is_nltk_available,
-#     is_spacy_available,
-#     is_sklearn_available,
-#     is_gensim_available,
-#     get_nltk_resource,
-#     get_spacy_model,
-#     ensure_nltk,
-#     ensure_spacy,
-#     ensure_sklearn,
-#     ensure_gensim
-# )
+from .text_analysis import (
+    ContentAnalysis,
+    ReadabilityMetrics,
+    ResponseQualityScore,
+    TextAnalyzer,
+    TextProfile,
+    ToneAnalysis,
+    analyze_text,
+    compare_responses,
+    score_response,
+)
 
 
 # Define __all__ for `from insideLLMs.nlp import *`
@@ -171,5 +166,8 @@ __all__ = [
     # encoding
     "encode_base64", "decode_base64", "url_encode", "url_decode", "html_encode", "html_decode",
     # keyword_extraction
-    "extract_keywords_tfidf", "extract_keywords_textrank"
+    "extract_keywords_tfidf", "extract_keywords_textrank",
+    # text_analysis
+    "ContentAnalysis", "ReadabilityMetrics", "ResponseQualityScore", "TextAnalyzer",
+    "TextProfile", "ToneAnalysis", "analyze_text", "compare_responses", "score_response"
 ]

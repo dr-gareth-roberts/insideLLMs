@@ -1,4 +1,5 @@
 """Benchmarking tools for comparing models."""
+from dataclasses import asdict, is_dataclass
 from typing import List, Dict, Any, Optional, Union
 import time
 import json
@@ -6,6 +7,13 @@ import os
 from insideLLMs.models import Model
 from insideLLMs.probes import Probe
 from insideLLMs.runner import run_probe
+
+
+def _to_serializable(obj: Any) -> Any:
+    """Convert an object to a JSON-serializable form."""
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return asdict(obj)
+    return obj
 
 class ModelBenchmark:
     """Benchmark multiple models on the same probe and dataset."""
@@ -34,20 +42,30 @@ class ModelBenchmark:
         
         for model in self.models:
             model_info = model.info()
-            print(f"Benchmarking {model_info['name']}...")
-            
+            print(f"Benchmarking {model_info.name}...")
+
             start_time = time.time()
             results = run_probe(model, self.probe, prompt_set, **probe_kwargs)
             end_time = time.time()
-            
+
+            # Calculate metrics from the results
+            success_count = sum(1 for r in results if r.get("status") == "success")
+            error_count = len(results) - success_count
+            success_rate = success_count / len(results) if results else 0.0
+            error_rate = error_count / len(results) if results else 0.0
+            latencies = [r.get("latency_ms", 0) for r in results]
+            mean_latency = sum(latencies) / len(latencies) if latencies else 0.0
+
             model_result = {
-                "model": model_info,
+                "model": _to_serializable(model_info),
                 "results": results,
                 "metrics": {
                     "total_time": end_time - start_time,
                     "avg_time_per_item": (end_time - start_time) / len(prompt_set) if prompt_set else 0,
                     "total_items": len(prompt_set),
-                    "success_rate": sum(1 for r in results if 'error' not in r) / len(results) if results else 0
+                    "success_rate": success_rate,
+                    "error_rate": error_rate,
+                    "mean_latency_ms": mean_latency
                 }
             }
             
@@ -109,17 +127,17 @@ class ProbeBenchmark:
         
     def run(self, prompt_set: List[Any], **kwargs) -> Dict[str, Any]:
         """Run the benchmark on all probes.
-        
+
         Args:
             prompt_set: The dataset to use for benchmarking
             **kwargs: Additional arguments to pass to the probes
-            
+
         Returns:
             Dictionary with benchmark results
         """
         benchmark_results = {
             "name": self.name,
-            "model": self.model.info(),
+            "model": _to_serializable(self.model.info()),
             "probes": [],
             "timestamp": time.time()
         }
