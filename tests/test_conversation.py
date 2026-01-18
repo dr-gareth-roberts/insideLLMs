@@ -708,7 +708,7 @@ class TestEdgeCases:
         """Test with special characters."""
         conv = Conversation()
         conv.add_user_message("Hello! @#$% How are you? 你好")
-        conv.add_assistant_message("I'm fine, thanks! 😀")
+        conv.add_assistant_message("I'm fine, thanks! \U0001f600")
 
         turns = conv.get_turns()
         assert len(turns) == 1

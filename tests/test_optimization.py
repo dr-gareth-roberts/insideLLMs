@@ -527,10 +527,10 @@ class TestEdgeCases:
     def test_unicode_in_prompt(self):
         """Test with unicode characters."""
         compressor = PromptCompressor()
-        result = compressor.compress("Basically, this is important: 日本語テスト 🎉")
+        result = compressor.compress("Basically, this is important: 日本語テスト \U0001f389")
 
         assert "日本語テスト" in result.compressed
-        assert "🎉" in result.compressed
+        assert "\U0001f389" in result.compressed
 
     def test_very_long_prompt_compression(self):
         """Test compression of very long prompt."""

@@ -534,7 +534,7 @@ class TestEdgeCases:
     def test_unicode_text(self):
         """Test with unicode text."""
         analyzer = TokenAnalyzer()
-        stats = analyzer.analyze("Hello 世界! 🌍")
+        stats = analyzer.analyze("Hello 世界! \U0001f30d")
 
         assert stats.total_tokens > 0
 

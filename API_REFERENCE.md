@@ -184,12 +184,12 @@ response = model.generate(
 ```
 
 **Supported Methods:**
-- ✅ `generate()`
-- ✅ `chat()`
-- ✅ `stream()`
-- ✅ `info()`
+- `generate()`
+- `chat()`
+- `stream()`
+- `info()`
 
-**Note:** ⚠️ Current implementation uses deprecated OpenAI API. Update pending for v1.0+ compatibility.
+**Note:** Uses OpenAI Chat Completions via `openai>=1.0.0`.
 
 ---
 
@@ -230,10 +230,10 @@ response = model.generate(
 ```
 
 **Supported Methods:**
-- ✅ `generate()`
-- ✅ `chat()`
-- ✅ `stream()`
-- ✅ `info()`
+- `generate()`
+- `chat()`
+- `stream()`
+- `info()`
 
 ---
 
@@ -272,10 +272,10 @@ response = model.generate(
 ```
 
 **Supported Methods:**
-- ✅ `generate()`
-- ✅ `chat()` (basic concatenation)
-- ⚠️ `stream()` (returns full output, not true streaming)
-- ✅ `info()`
+- `generate()`
+- `chat()` (basic concatenation)
+- `stream()` (returns full output, not true streaming)
+- `info()`
 
 **Note:** Downloads model weights on first use. Ensure sufficient disk space and network connectivity.
 
@@ -323,10 +323,10 @@ print(model.generate("Anything"))  # "I am a test model"
 - Prototyping probe logic
 
 **Supported Methods:**
-- ✅ `generate()`
-- ✅ `chat()`
-- ✅ `stream()`
-- ✅ `info()`
+- `generate()`
+- `chat()`
+- `stream()`
+- `info()`
 
 ---
 
@@ -401,9 +401,9 @@ results = probe.run_batch(model, problems, max_workers=3)
 
 for result in results:
     if result.status == ResultStatus.SUCCESS:
-        print(f"✓ {result.output}")
+        print(f"OK: {result.output}")
     else:
-        print(f"✗ Error: {result.error}")
+        print(f"ERROR: {result.error}")
 ```
 
 ##### `score(results: List[ProbeResult[T]]) -> ProbeScore`
@@ -1063,37 +1063,20 @@ Run a complete experiment from a YAML or JSON configuration file.
 - `config_path` (Union[str, Path]): Path to configuration file (.yaml, .yml, or .json)
 
 **Returns:**
-- `Dict[str, Any]`: Experiment results
+- `List[Dict[str, Any]]`: Experiment results
 
 **Configuration Format:**
 ```yaml
-experiment:
-  name: "My Experiment"
-  output_dir: "results/my_experiment"
-
-models:
-  - type: "OpenAIModel"
-    name: "GPT-3.5"
-    model_name: "gpt-3.5-turbo"
-
-  - type: "AnthropicModel"
-    name: "Claude"
-    model_name: "claude-3-sonnet-20240229"
-
-probes:
-  - type: "LogicProbe"
-    name: "Logic Test"
-    dataset: "data/logic_problems.jsonl"
-
-  - type: "BiasProbe"
-    name: "Gender Bias"
-    bias_dimension: "gender"
-    dataset: "data/bias_pairs.jsonl"
-
-settings:
-  verbose: true
-  save_results: true
-  max_workers: 5
+model:
+  type: openai
+  args:
+    model_name: gpt-4o
+probe:
+  type: logic
+  args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
 ```
 
 **Example:**
@@ -1102,9 +1085,50 @@ from insideLLMs.runner import run_experiment_from_config
 
 results = run_experiment_from_config("experiments/config.yaml")
 
-print(f"Experiment: {results['experiment_name']}")
-print(f"Models tested: {len(results['models'])}")
-print(f"Probes run: {len(results['probes'])}")
+print(f"Results: {len(results)}")
+```
+
+##### `run_harness_from_config(config_path: Union[str, Path]) -> Dict[str, Any]`
+
+Run a cross-model probe harness from a YAML or JSON configuration file.
+
+**Module:** `insideLLMs.runner`
+
+**Parameters:**
+- `config_path` (Union[str, Path]): Path to configuration file (.yaml, .yml, or .json)
+
+**Returns:**
+- `Dict[str, Any]`: Records, experiments, and summary
+
+**Configuration Format:**
+```yaml
+models:
+  - type: openai
+    args:
+      model_name: gpt-4o
+  - type: anthropic
+    args:
+      model_name: claude-3-opus-20240229
+probes:
+  - type: logic
+    args: {}
+  - type: bias
+    args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+max_examples: 50
+output_dir: results
+```
+
+**Example:**
+```python
+from insideLLMs.runner import run_harness_from_config
+
+result = run_harness_from_config("harness.yaml")
+
+print(len(result["records"]))
+print(result["summary"].keys())
 ```
 
 ##### `load_config(path: Union[str, Path]) -> ConfigDict`
@@ -1421,7 +1445,7 @@ Clean text by applying multiple cleaning operations.
 ```python
 from insideLLMs.nlp import clean_text
 
-text = "<p>Check out https://example.com!!! 😀</p>"
+text = "<p>Check out https://example.com!!! \U0001F600</p>"
 cleaned = clean_text(
     text,
     remove_html=True,
@@ -2785,18 +2809,12 @@ print(f"Passed: {results.passed_count}/{results.total_count}")
 
 ## Additional Resources
 
-- **GitHub Repository:** https://github.com/yourusername/insideLLMs
+- **GitHub Repository:** https://github.com/dr-gareth-roberts/insideLLMs
 - **Examples:** See `examples/` directory for more usage examples
 - **Tests:** See `tests/` directory for test examples
-- **Configuration Examples:** See `configs/` directory for sample configurations
-
-- **GitHub Repository:** https://github.com/yourusername/insideLLMs
-- **Examples:** See `examples/` directory for more usage examples
-- **Tests:** See `tests/` directory for test examples
-- **Configuration Examples:** See `configs/` directory for sample configurations
+- **Configuration Examples:** See `README.md` and `QUICK_REFERENCE.md` for sample configurations
 
 ---
 
 **Last Updated:** January 17, 2026
 **Version:** 0.1.0
-

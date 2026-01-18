@@ -2,7 +2,7 @@ Probes
 ======
 
 Probes are the core evaluation tools in insideLLMs. They test specific
-aspects of LLM behavior.
+aspects of LLM behaviour.
 
 
 Probe Base Class

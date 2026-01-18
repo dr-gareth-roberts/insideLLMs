@@ -475,7 +475,8 @@ class TestEdgeCases:
         """Test with unicode characters."""
         analyzer = ResponseQualityAnalyzer()
         report = analyzer.analyze(
-            "How do you say hello in Japanese?", "In Japanese, hello is こんにちは (konnichiwa). 🇯🇵"
+            "How do you say hello in Japanese?",
+            "In Japanese, hello is こんにちは (konnichiwa). \U0001f1ef\U0001f1f5",
         )
 
         assert report is not None
