@@ -1,18 +1,18 @@
-<p align="center">
+<div align="center">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
-    <strong>LLM evaluation, testing, and production deployment</strong>
+    <strong>A comprehensive Python library for LLM evaluation, testing, and production deployment</strong>
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> &bull;
-    <a href="#why-insidellms">Why insideLLMs</a> &bull;
     <a href="#features">Features</a> &bull;
+    <a href="#cli-usage">CLI</a> &bull;
     <a href="#documentation">Docs</a>
   </p>
-</p>
+</div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+">
+  <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/tests-3098%20passed-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/modules-93-orange.svg" alt="Modules">
   <img src="https://img.shields.io/badge/lines%20of%20code-113k+-purple.svg" alt="Lines of Code">
@@ -21,7 +21,8 @@
 
 ---
 
-**insideLLMs** is a Python library that gives you everything you need to understand, evaluate, and deploy large language models in production.
+**insideLLMs** is a comprehensive Python toolkit that gives you everything you need to understand, evaluate, and deploy large language models in production. With **93 modules**, **113,000+ lines of code**, and **3,098 tests**, it provides deep insights into model behavior, safety, and performance.
+
 ```python
 from insideLLMs import ProbeRunner, LogicProbe
 from insideLLMs.models import OpenAIModel
@@ -48,15 +49,37 @@ results = ProbeRunner(model, LogicProbe()).run([
 
 ---
 
+## Requirements
+
+- **Python**: 3.9 or higher
+- **Operating System**: OS Independent (Tested on Linux, macOS, Windows)
+
+---
+
 ## Quick Start
 
 ### Installation
 
-```bash
-pip install insidellms
+You can install `insideLLMs` using `pip`:
 
-# Or with all optional dependencies
-pip install insidellms[all]
+```bash
+# Base package
+pip install insideLLMs
+
+# With NLP utilities (nltk, spacy, scikit-learn, gensim)
+pip install insideLLMs[nlp]
+
+# With Visualization (matplotlib, pandas, seaborn)
+pip install insideLLMs[visualization]
+
+# All optional dependencies
+pip install insideLLMs[all]
+```
+
+Alternatively, if you use [uv](https://github.com/astral-sh/uv):
+
+```bash
+uv pip install insideLLMs[all]
 ```
 
 ### Your First Evaluation
@@ -95,6 +118,21 @@ claude = AnthropicModel("claude-4.5-opus")
 # Local models
 from insideLLMs.models import OllamaModel, LlamaCppModel
 llama = OllamaModel("llama-3.3-70b")
+```
+
+---
+
+## Architecture
+
+See `ARCHITECTURE.md` for detailed runtime and flow diagrams.
+
+```mermaid
+graph LR
+  U[User Code or CLI] --> R[ProbeRunner]
+  R --> P[Probe]
+  P --> M[Model]
+  M --> Prov[Provider API]
+  R --> Res[Results]
 ```
 
 ---
@@ -235,15 +273,18 @@ with tracker:
 
 ```python
 from insideLLMs.reproducibility import (
-    capture_environment,
-    set_global_seed,
     ExperimentSnapshot,
+    set_global_seed,
+    capture_environment,
 )
 
-# Capture everything needed to reproduce
+# Capture current state as a snapshot
 set_global_seed(42)
-env = capture_environment()
-snapshot = ExperimentSnapshot(config=my_config, environment=env)
+snapshot = ExperimentSnapshot.capture(
+    name="my-experiment",
+    config=my_config,
+    seed=42
+)
 snapshot.save("experiment_v1.json")
 
 # Later: reproduce exactly
@@ -362,6 +403,97 @@ explorer.display()
 
 ---
 
+## CLI Usage
+
+`insideLLMs` comes with a powerful command-line interface to run experiments and manage your project.
+
+```bash
+# General help
+insidellms --help
+
+# Run an experiment from a YAML config
+insidellms run experiment.yaml
+
+# List all available models and probes
+insidellms list models
+insidellms list probes
+
+# Initialize a new project structure
+insidellms init my_project
+
+# Run a quick test on a model
+insidellms quicktest --model openai/gpt-4-turbo
+
+# Benchmark a model against a dataset
+insidellms benchmark --model anthropic/claude-3-opus --dataset reasoning
+
+# Compare two models
+insidellms compare --models gpt-4-turbo,claude-3-opus --probe factuality
+
+# Export results to another format
+insidellms export results.json --format markdown
+```
+
+---
+
+## Environment Variables
+
+The library uses environment variables for API authentication and configuration.
+
+### API Keys
+- `OPENAI_API_KEY`: Required for OpenAI models.
+- `ANTHROPIC_API_KEY`: Required for Anthropic models.
+- `GOOGLE_API_KEY`: Required for Google Gemini models.
+- `CO_API_KEY` or `COHERE_API_KEY`: Required for Cohere models.
+
+### Configuration
+- `NO_COLOR`: If set to any value, disables colored output in the CLI.
+- `FORCE_COLOR`: If set to any value, forces colored output.
+
+---
+
+## Project Structure
+
+```text
+insideLLMs/
+├── data/               # Default directory for datasets and results
+├── examples/           # Example scripts and usage patterns
+├── insideLLMs/         # Core package source code
+│   ├── models/         # Model provider implementations
+│   ├── nlp/            # NLP utility functions
+│   ├── probes/         # Evaluation probe implementations
+│   ├── cli.py          # Command-line interface logic
+│   └── ...             # Other core modules
+├── tests/              # Comprehensive test suite
+├── pyproject.toml      # Build system and dependency configuration
+└── README.md           # This file
+```
+
+---
+
+## Testing
+
+We take quality seriously. The project has over 3,000 tests covering core logic, model integrations, and edge cases.
+
+To run the tests, you'll need the `dev` dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+# OR
+pip install .[dev]
+
+# Run all tests
+pytest
+
+# Run tests for a specific module
+pytest tests/test_models.py
+
+# Run tests with coverage report
+pytest --cov=insideLLMs
+```
+
+---
+
 ## Supported Models
 
 | Provider | Models | Import |
@@ -472,7 +604,20 @@ results = run_experiment_from_config("experiment.yaml")
 
 - **[API Reference](API_REFERENCE.md)** - Complete API documentation
 - **[Quick Reference](QUICK_REFERENCE.md)** - Common patterns and snippets
+- **[Architecture](ARCHITECTURE.md)** - System diagrams and execution flows
 - **[Examples](examples/)** - Working example scripts
+
+---
+
+## Roadmap & TODO
+
+We are constantly working to improve `insideLLMs`. Here are some things on our radar:
+
+- [ ] **Expanded Model Support**: Integration with AWS Bedrock, Azure OpenAI, and more local providers.
+- [ ] **Registry Integration**: Further integrate existing components with the plugin registry system.
+- [ ] **Enhanced Dashboard**: More interactive visualizations and comparative analysis tools in the HTML reports.
+- [ ] **Automated Prompt Optimization**: Tools for automatically refining prompts based on evaluation results.
+- [ ] **Better Documentation**: More examples and tutorials for advanced use cases.
 
 ---
 

@@ -3,6 +3,7 @@
 A condensed reference for the most commonly used APIs in insideLLMs.
 
 For full documentation, see [API_REFERENCE.md](API_REFERENCE.md).
+For system diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -338,3 +339,4 @@ for result in results:
 
 For detailed documentation, see [API_REFERENCE.md](API_REFERENCE.md).
 
+[requirements-dev.txt](requirements-dev.txt)
