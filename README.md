@@ -1,7 +1,7 @@
 <div align="center">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
-    <strong>A comprehensive Python library for LLM evaluation, testing, and production deployment</strong>
+    <strong>Cross-model behavioural probe harness for LLM evaluation and comparison</strong>
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> &bull;
@@ -15,20 +15,19 @@
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml"><img src="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/dr-gareth-roberts/insideLLMs"><img src="https://codecov.io/gh/dr-gareth-roberts/insideLLMs/branch/main/graph/badge.svg" alt="Coverage"></a>
   <a href="https://pypi.org/project/insideLLMs/"><img src="https://img.shields.io/pypi/v/insideLLMs.svg" alt="PyPI"></a>
-  <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
 ---
 
-**insideLLMs** is a comprehensive Python toolkit that gives you everything you need to understand, evaluate, and deploy large language models in production. With **93 modules**, **113,000+ lines of code**, and **3,098 tests**, it provides deep insights into model behavior, safety, and performance.
+**insideLLMs** is a cross-model behavioural probe harness for evaluating and comparing LLMs. It provides a consistent interface for models and probes, plus optional utilities for benchmarking, safety checks, and reporting.
 
 ```python
-from insideLLMs import ProbeRunner, LogicProbe
-from insideLLMs.models import OpenAIModel
+from insideLLMs import DummyModel, LogicProbe, ProbeRunner
 
-# Evaluate any LLM in 3 lines
-model = OpenAIModel("gpt-4o")
+# Evaluate any LLM in a few lines (DummyModel runs without API keys)
+model = DummyModel()
 results = ProbeRunner(model, LogicProbe()).run([
     "If all cats are mammals and all mammals breathe, do all cats breathe?"
 ])
@@ -40,18 +39,17 @@ results = ProbeRunner(model, LogicProbe()).run([
 
 | Challenge | insideLLMs Solution |
 |-----------|---------------------|
-| **"Which model should I use?"** | Side-by-side benchmarking across 9 providers with 13+ built-in datasets |
-| **"Is my model safe?"** | Comprehensive safety probes: bias detection, prompt injection, jailbreak testing, PII detection |
-| **"My LLM app is slow and expensive"** | Production infrastructure: caching, rate limiting, cost tracking, streaming |
-| **"I can't reproduce my results"** | Full experiment tracking with W&B, MLflow, TensorBoard + environment capture |
-| **"My prompts are brittle"** | Sensitivity analysis, A/B testing, template versioning, prompt optimization |
-| **"I need to debug model behavior"** | Attention analysis, reasoning chain extraction, hallucination detection |
+| **"How do I compare models fairly?"** | Run the same probe suite across models with shared datasets |
+| **"How do I spot regressions?"** | JSONL outputs plus summary stats with confidence intervals |
+| **"How do I check safety risks?"** | Bias, injection, factuality, and safety probes |
+| **"How do I keep runs reproducible?"** | Config-driven runs and saved metadata |
+| **"How do I manage cost and latency?"** | Optional caching, rate limiting, and cost tracking |
 
 ---
 
 ## Requirements
 
-- **Python**: 3.9 or higher
+- **Python**: 3.10 or higher
 - **Operating System**: OS Independent (Tested on Linux, macOS, Windows)
 
 ---
@@ -107,18 +105,57 @@ save_results_json(results, "evaluation_results.json")
 ### With Real Models
 
 ```python
-from insideLLMs.models import OpenAIModel, AnthropicModel, HuggingFaceModel
+from insideLLMs.models import AnthropicModel, HuggingFaceModel, OpenAIModel
 
-# OpenAI
-gpt4 = OpenAIModel("gpt-4.1")
+# Ensure relevant API keys are set in the environment
+gpt4 = OpenAIModel(model_name="gpt-4o")
+claude = AnthropicModel(model_name="claude-3-opus-20240229")
 
-# Anthropic
-claude = AnthropicModel("claude-4.5-opus")
+hf = HuggingFaceModel(model_name="gpt2")
 
 # Local models
-from insideLLMs.models import OllamaModel, LlamaCppModel
-llama = OllamaModel("llama-3.3-70b")
+from insideLLMs.models import LlamaCppModel, OllamaModel
+
+llama = OllamaModel(model_name="llama3.2")
 ```
+
+---
+
+## Behavioural Harness
+
+Run a multi-model, multi-probe sweep from a single config. The harness writes:
+
+- `results.jsonl`: one row per example per model per probe
+- `summary.json`: aggregates and confidence intervals
+- `report.html`: human-readable comparison
+
+```yaml
+# harness.yaml
+models:
+  - type: openai
+    args:
+      model_name: gpt-4o
+  - type: anthropic
+    args:
+      model_name: claude-3-opus-20240229
+probes:
+  - type: logic
+    args: {}
+  - type: bias
+    args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+max_examples: 50
+output_dir: results
+```
+
+```bash
+insidellms harness harness.yaml
+```
+
+If `plotly` is installed, the report is interactive; otherwise a basic HTML summary is generated.
+See `examples/harness.yaml` for a ready-to-edit config.
 
 ---
 
@@ -139,9 +176,9 @@ graph LR
 
 ## Features
 
-### 1. Comprehensive Model Evaluation
+### 1. Model Evaluation Probes
 
-**13+ Built-in Benchmark Datasets**
+**Built-in Benchmark Datasets**
 
 ```python
 from insideLLMs.benchmark_datasets import (
@@ -154,15 +191,14 @@ from insideLLMs.benchmark_datasets import (
 for ds in list_builtin_datasets():
     print(f"{ds['name']}: {ds['num_examples']} examples")
 
-# Output:
+# Example output:
 # reasoning: 50 examples
 # math: 100 examples
 # coding: 75 examples
 # safety: 60 examples
-# ... and 9 more
 ```
 
-**15+ Evaluation Probes**
+**Evaluation Probes**
 
 | Category | Probes |
 |----------|--------|
@@ -171,9 +207,9 @@ for ds in list_builtin_datasets():
 | **Code** | `CodeGenerationProbe`, `CodeExplanationProbe`, `CodeDebugProbe` |
 | **Instructions** | `InstructionFollowingProbe`, `ConstraintComplianceProbe` |
 
-### 2. Production Infrastructure
+### 2. Operational Utilities (Optional)
 
-**Intelligent Caching**
+**Caching**
 
 ```python
 from insideLLMs.caching import PromptCache, memoize
@@ -201,7 +237,7 @@ print(f"Cost: ${tracker.total_cost:.4f}")
 print(f"Budget remaining: ${budget.remaining:.2f}")
 ```
 
-**Smart Context Window Management**
+**Context Window Management**
 
 ```python
 from insideLLMs.context_window import ContextWindow, PriorityLevel
@@ -227,7 +263,7 @@ from insideLLMs.safety import (
 pii_report = detect_pii("Contact john@email.com or call 555-1234")
 print(pii_report.found_types)  # ['email', 'phone']
 
-# Comprehensive safety analysis
+# Safety analysis
 analyzer = ContentSafetyAnalyzer()
 report = analyzer.analyze("Your text here")
 print(f"Risk level: {report.risk_level}")
@@ -269,7 +305,7 @@ with tracker:
     tracker.log_metrics({"accuracy": 0.95, "latency_ms": 120})
 ```
 
-**Full Reproducibility**
+**Reproducibility Snapshots**
 
 ```python
 from insideLLMs.reproducibility import (
@@ -291,7 +327,7 @@ snapshot.save("experiment_v1.json")
 loaded = ExperimentSnapshot.load("experiment_v1.json")
 ```
 
-### 5. Advanced Analysis
+### 5. Analysis Tools
 
 **Reasoning Chain Analysis**
 
@@ -405,7 +441,7 @@ explorer.display()
 
 ## CLI Usage
 
-`insideLLMs` comes with a powerful command-line interface to run experiments and manage your project.
+`insideLLMs` includes a command-line interface to run experiments and manage your project.
 
 ```bash
 # General help
@@ -413,6 +449,9 @@ insidellms --help
 
 # Run an experiment from a YAML config
 insidellms run experiment.yaml
+
+# Run a cross-model behavioural harness (writes results.jsonl, summary.json, report.html)
+insidellms harness harness.yaml
 
 # List all available models and probes
 insidellms list models
@@ -422,13 +461,14 @@ insidellms list probes
 insidellms init my_project
 
 # Run a quick test on a model
-insidellms quicktest --model openai/gpt-4-turbo
+insidellms quicktest "What is 2 + 2?" --model dummy
+insidellms quicktest "What is 2 + 2?" --model openai --model-args '{"model_name":"gpt-4o"}'
 
 # Benchmark a model against a dataset
-insidellms benchmark --model anthropic/claude-3-opus --dataset reasoning
+insidellms benchmark --models openai,anthropic --probes logic,bias
 
 # Compare two models
-insidellms compare --models gpt-4-turbo,claude-3-opus --probe factuality
+insidellms compare --models openai,anthropic --input "Explain gradient descent"
 
 # Export results to another format
 insidellms export results.json --format markdown
@@ -445,6 +485,7 @@ The library uses environment variables for API authentication and configuration.
 - `ANTHROPIC_API_KEY`: Required for Anthropic models.
 - `GOOGLE_API_KEY`: Required for Google Gemini models.
 - `CO_API_KEY` or `COHERE_API_KEY`: Required for Cohere models.
+- `HUGGINGFACEHUB_API_TOKEN`: Optional for private Hugging Face models.
 
 ### Configuration
 - `NO_COLOR`: If set to any value, disables colored output in the CLI.
@@ -464,7 +505,7 @@ insideLLMs/
 │   ├── probes/         # Evaluation probe implementations
 │   ├── cli.py          # Command-line interface logic
 │   └── ...             # Other core modules
-├── tests/              # Comprehensive test suite
+├── tests/              # Test suite
 ├── pyproject.toml      # Build system and dependency configuration
 └── README.md           # This file
 ```
@@ -473,7 +514,7 @@ insideLLMs/
 
 ## Testing
 
-We take quality seriously. The project has over 3,000 tests covering core logic, model integrations, and edge cases.
+We maintain a large test suite covering core logic, model integrations, and edge cases.
 
 To run the tests, you'll need the `dev` dependencies:
 
@@ -513,14 +554,14 @@ pytest --cov=insideLLMs
 ## Module Reference
 
 <details>
-<summary><strong>Click to expand full module list (93 modules)</strong></summary>
+<summary><strong>Click to expand full module list</strong></summary>
 
 | Module | Description |
 |--------|-------------|
 | `insideLLMs.models` | Model implementations for all providers |
 | `insideLLMs.probes` | Evaluation probes (logic, bias, safety, code) |
 | `insideLLMs.evaluation` | Metrics: BLEU, ROUGE, exact match, semantic similarity |
-| `insideLLMs.benchmark_datasets` | 13+ built-in benchmark datasets |
+| `insideLLMs.benchmark_datasets` | Built-in benchmark datasets |
 | `insideLLMs.caching` | LRU/LFU/TTL caching with semantic similarity |
 | `insideLLMs.safety` | PII detection, toxicity analysis, content safety |
 | `insideLLMs.injection` | Prompt injection detection and defense |
@@ -531,7 +572,7 @@ pytest --cov=insideLLMs
 | `insideLLMs.introspection` | Attention analysis and token importance |
 | `insideLLMs.fingerprinting` | Model capability profiling |
 | `insideLLMs.calibration` | Confidence calibration and estimation |
-| `insideLLMs.behavior` | Behavioral pattern analysis |
+| `insideLLMs.behavior` | Behavioural pattern analysis |
 | `insideLLMs.quality` | Response quality scoring |
 | `insideLLMs.diversity` | Output diversity and creativity metrics |
 | `insideLLMs.sensitivity` | Prompt sensitivity analysis |
@@ -577,8 +618,7 @@ Run experiments from YAML configuration:
 model:
   type: openai
   args:
-    model_name: gpt-4-turbo
-    temperature: 0.7
+    model_name: gpt-4o
 
 probe:
   type: factuality
@@ -586,10 +626,6 @@ probe:
 dataset:
   path: data/questions.jsonl
   format: jsonl
-
-tracking:
-  backend: wandb
-  project: llm-evaluation
 ```
 
 ```python
@@ -602,9 +638,11 @@ results = run_experiment_from_config("experiment.yaml")
 
 ## Documentation
 
-- **[API Reference](API_REFERENCE.md)** - Complete API documentation
+- **[Documentation Index](DOCUMENTATION_INDEX.md)** - Start here for guided navigation
+- **[API Reference](API_REFERENCE.md)** - API documentation
 - **[Quick Reference](QUICK_REFERENCE.md)** - Common patterns and snippets
 - **[Architecture](ARCHITECTURE.md)** - System diagrams and execution flows
+- **[Sphinx Docs](docs/)** - User guide and API reference
 - **[Examples](examples/)** - Working example scripts
 
 ---

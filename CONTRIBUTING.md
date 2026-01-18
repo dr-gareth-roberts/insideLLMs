@@ -6,7 +6,7 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - pip or uv package manager
 - Git
 
@@ -42,13 +42,11 @@ We use the following tools for code quality:
 
 - **Ruff**: Linting and formatting
 - **MyPy**: Type checking
-- **Black**: Code formatting (via Ruff)
-- **isort**: Import sorting (via Ruff)
 
 Run all checks locally:
 ```bash
 ruff check .
-ruff format .
+ruff format --check .
 mypy insideLLMs
 ```
 
@@ -73,8 +71,8 @@ pytest -m "not slow and not integration"
 
 Build the documentation:
 ```bash
-cd docs
 pip install -e ".[docs]"
+cd docs
 make html
 ```
 

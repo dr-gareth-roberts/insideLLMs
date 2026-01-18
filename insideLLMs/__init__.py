@@ -119,6 +119,7 @@ from insideLLMs.runner import (
     AsyncProbeRunner,
     ProbeRunner,
     create_experiment_result,
+    run_harness_from_config,
     run_probe,
 )
 from insideLLMs.types import (
@@ -167,6 +168,7 @@ __all__ = [
     "AsyncProbeRunner",
     "ProbeRunner",
     "create_experiment_result",
+    "run_harness_from_config",
     "run_probe",
     # Results
     "load_results_json",

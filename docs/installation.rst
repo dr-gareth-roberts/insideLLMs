@@ -4,7 +4,7 @@ Installation
 Requirements
 ------------
 
-* Python 3.9 or higher
+* Python 3.10 or higher
 * pip or uv package manager
 
 
@@ -81,8 +81,8 @@ Set up API keys for the models you want to use:
     # Anthropic
     export ANTHROPIC_API_KEY="your-anthropic-key"
 
-    # HuggingFace (optional, for private models)
-    export HUGGINGFACE_API_KEY="your-hf-key"
+    # HuggingFace Hub (optional, for private models)
+    export HUGGINGFACEHUB_API_TOKEN="your-hf-token"
 
 
 Verifying Installation

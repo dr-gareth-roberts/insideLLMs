@@ -643,7 +643,7 @@ class TraceVisualizer:
                         lines.append(f"              │ {k}: {str(v)[:50]}")
 
             elif event.event_type == TraceEventType.STEP_END:
-                status = "✓" if event.data.get("success", True) else "✗"
+                status = "OK" if event.data.get("success", True) else "FAIL"
                 lines.append(
                     f"[{elapsed:8.1f}ms] {status} END: {event.step_name} ({event.duration_ms:.1f}ms)"
                 )
@@ -660,11 +660,11 @@ class TraceVisualizer:
 
             elif event.event_type == TraceEventType.ERROR_OCCURRED:
                 error = event.data.get("error", "Unknown error")
-                lines.append(f"[{elapsed:8.1f}ms]   ✗ ERROR: {error[:60]}")
+                lines.append(f"[{elapsed:8.1f}ms]   ERROR: {error[:60]}")
 
             elif event.event_type == TraceEventType.WARNING:
                 msg = event.data.get("message", "")
-                lines.append(f"[{elapsed:8.1f}ms]   ⚠ WARNING: {msg[:60]}")
+                lines.append(f"[{elapsed:8.1f}ms]   WARN: {msg[:60]}")
 
             elif event.event_type == TraceEventType.VARIABLE_SET:
                 name = event.data.get("name", "")
@@ -702,12 +702,12 @@ class TraceVisualizer:
                     step_stack.pop()
 
                 indent = "  " * indent_level
-                status = "✓" if event.data.get("success", True) else "✗"
+                status = "OK" if event.data.get("success", True) else "FAIL"
                 lines.append(f"{indent}└─ {status} {event.duration_ms:.1f}ms")
 
             elif event.event_type == TraceEventType.ERROR_OCCURRED:
                 indent = "  " * indent_level
-                lines.append(f"{indent}│  ✗ {event.data.get('error', '')[:40]}")
+                lines.append(f"{indent}│  ERROR {event.data.get('error', '')[:40]}")
 
         return "\n".join(lines)
 

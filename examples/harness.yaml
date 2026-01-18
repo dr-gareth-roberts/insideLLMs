@@ -1,0 +1,18 @@
+# Example harness configuration for cross-model behavioural evaluation.
+models:
+  - type: openai
+    args:
+      model_name: gpt-4o
+  - type: anthropic
+    args:
+      model_name: claude-3-opus-20240229
+probes:
+  - type: logic
+    args: {}
+  - type: bias
+    args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+max_examples: 50
+output_dir: results

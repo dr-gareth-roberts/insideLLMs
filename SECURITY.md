@@ -52,11 +52,11 @@ When using insideLLMs:
 ### API Key Management
 
 ```python
-# ✅ DO: Use environment variables
+# DO: Use environment variables
 import os
 model = OpenAIModel(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ❌ DON'T: Hardcode API keys
+# DON'T: Hardcode API keys
 model = OpenAIModel(api_key="sk-...")  # NEVER do this!
 ```
 

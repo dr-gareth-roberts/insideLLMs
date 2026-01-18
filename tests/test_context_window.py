@@ -929,7 +929,7 @@ class TestEdgeCases:
 
     def test_unicode_content(self):
         window = ContextWindow()
-        block = window.add("こんにちは 世界 🌍", ContentType.USER)
+        block = window.add("こんにちは 世界 \U0001f30d", ContentType.USER)
         assert block.token_count > 0
 
     def test_mixed_priorities_truncation(self):

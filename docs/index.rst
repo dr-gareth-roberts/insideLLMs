@@ -1,9 +1,9 @@
 insideLLMs Documentation
 ========================
 
-**insideLLMs** is a world-class Python library for probing the inner workings
-of large language models. It provides comprehensive tools for evaluating,
-testing, and understanding LLM behavior.
+**insideLLMs** is a cross-model behavioural probe harness and toolkit for
+evaluating and comparing large language models. It provides tools for
+testing, analysis, and reporting.
 
 .. toctree::
    :maxdepth: 2
@@ -39,11 +39,11 @@ Quick Links
 Features
 --------
 
-* **Multiple LLM Providers**: Support for OpenAI, Anthropic, HuggingFace, and more
-* **Comprehensive Probes**: Logic, Bias, Attack, Factuality testing
+* **Cross-model Harness**: Run the same probes across models with shared datasets
+* **Multiple Providers**: OpenAI, Anthropic, HuggingFace, and more
+* **Probes**: Logic, bias, attack, and factuality tests
 * **Registry System**: Extensible plugin architecture
 * **Async Support**: Asynchronous model execution
-* **Streaming**: Real-time response streaming
 * **Caching**: Built-in caching for repeated queries
 
 

@@ -100,18 +100,56 @@ Run experiments from YAML configuration:
 
 .. code-block:: python
 
-    from insideLLMs.runner import run_from_config
+    from insideLLMs.runner import run_experiment_from_config
 
     # config.yaml:
     # model:
     #   type: openai
-    #   model_name: gpt-4
+    #   args:
+    #     model_name: gpt-4o
     # probe:
     #   type: logic
-    # data:
+    #   args: {}
+    # dataset:
+    #   format: jsonl
     #   path: test_data.jsonl
 
-    results = run_from_config("config.yaml")
+    results = run_experiment_from_config("config.yaml")
+
+
+Harness Runs
+------------
+
+Run a cross-model behavioural harness from a single config:
+
+.. code-block:: python
+
+    from insideLLMs.runner import run_harness_from_config
+
+    # harness.yaml:
+    # models:
+    #   - type: openai
+    #     args:
+    #       model_name: gpt-4o
+    # probes:
+    #   - type: logic
+    #     args: {}
+    #   - type: bias
+    #     args: {}
+    # dataset:
+    #   format: jsonl
+    #   path: data/questions.jsonl
+    # max_examples: 50
+
+    result = run_harness_from_config("harness.yaml")
+
+    # result["records"] holds per-example rows
+    # result["summary"] includes aggregates + confidence intervals
+
+.. code-block:: bash
+
+    insidellms harness harness.yaml
+
 
 
 Progress Tracking

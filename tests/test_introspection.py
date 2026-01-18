@@ -456,7 +456,7 @@ class TestEdgeCases:
     def test_unicode_text(self):
         """Test with unicode text."""
         estimator = TokenImportanceEstimator()
-        result = estimator.estimate("日本語テスト text 🎉")
+        result = estimator.estimate("日本語テスト text \U0001f389")
 
         assert len(result) > 0
 

@@ -183,7 +183,7 @@ def pydantic_to_json_schema(model: type["BaseModel"]) -> dict[str, Any]:
         else:
             raise SchemaGenerationError(f"Cannot generate schema for {model}")
     except Exception as e:
-        raise SchemaGenerationError(f"Failed to generate schema for {model}: {e}")
+        raise SchemaGenerationError(f"Failed to generate schema for {model}: {e}") from e
 
 
 def dataclass_to_json_schema(dc: type) -> dict[str, Any]:
@@ -340,14 +340,14 @@ def parse_to_type(data: Any, output_type: type[T]) -> T:
         except ValidationError as e:
             raise ValidationErrorWrapper(
                 f"Validation failed for {output_type.__name__}", e, str(data)
-            )
+            ) from e
 
     elif dataclasses.is_dataclass(output_type):
         # Dataclass
         try:
             return output_type(**data)
         except TypeError as e:
-            raise ParsingError(f"Failed to create {output_type.__name__}: {e}", str(data))
+            raise ParsingError(f"Failed to create {output_type.__name__}: {e}", str(data)) from e
 
     elif output_type in (dict, dict) or output_type in (list, list):
         return data
@@ -360,7 +360,7 @@ def parse_to_type(data: Any, output_type: type[T]) -> T:
         try:
             return output_type(**data) if isinstance(data, dict) else output_type(data)
         except Exception as e:
-            raise ParsingError(f"Failed to create {output_type}: {e}", str(data))
+            raise ParsingError(f"Failed to create {output_type}: {e}", str(data)) from e
 
 
 # =============================================================================
@@ -1049,7 +1049,7 @@ def results_to_dataframe(results: list[StructuredResult]) -> Any:
     except ImportError:
         raise ImportError(
             "pandas is required for DataFrame export. Install with: pip install pandas"
-        )
+        ) from None
 
     rows = []
     for r in results:

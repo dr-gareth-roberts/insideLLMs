@@ -451,10 +451,10 @@ class TestEdgeCases:
             name="test",
             category=TemplateCategory.GENERATION,
             description="Test",
-            template="Hello {name}! 🌍",
+            template="Hello {name}! \U0001f30d",
             variables=["name"],
         )
 
         rendered = template.render(name="世界")
         assert "世界" in rendered
-        assert "🌍" in rendered
+        assert "\U0001f30d" in rendered

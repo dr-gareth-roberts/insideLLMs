@@ -667,11 +667,11 @@ class TestEdgeCases:
     def test_unicode_data(self):
         """Test exporting unicode data."""
         exporter = JSONExporter()
-        data = {"text": "Hello 世界! 🌍"}
+        data = {"text": "Hello 世界! \U0001f30d"}
         result = exporter.export_string(data)
 
         assert "世界" in result
-        assert "🌍" in result
+        assert "\U0001f30d" in result
 
     def test_nested_structures(self):
         """Test exporting nested structures."""
