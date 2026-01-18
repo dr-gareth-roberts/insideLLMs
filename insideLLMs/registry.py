@@ -230,49 +230,65 @@ probe_registry: Registry[Probe] = Registry("probes")
 dataset_registry: Registry[Any] = Registry("datasets")
 
 
+def _lazy_import_factory(module_path: str, class_name: str):
+    """Create a factory that lazily imports a class when called.
+
+    This enables registration without importing heavy dependencies upfront.
+    """
+    def factory(**kwargs):
+        import importlib
+        module = importlib.import_module(module_path)
+        cls = getattr(module, class_name)
+        return cls(**kwargs)
+    factory.__name__ = class_name
+    factory.__doc__ = f"Lazy factory for {class_name}"
+    return factory
+
+
 def register_builtins() -> None:
     """Register all built-in models, probes, and datasets.
 
     This function is called automatically when the library is imported,
     but can be called again to reset the registries to defaults.
+
+    Uses lazy imports for heavy dependencies (like HuggingFace transformers)
+    to keep import times fast.
     """
-    # Import here to avoid circular imports
-    from insideLLMs.models import (
-        AnthropicModel,
-        DummyModel,
-        HuggingFaceModel,
-        OpenAIModel,
-    )
+    # Clear existing registrations
+    model_registry.clear()
+    probe_registry.clear()
+    dataset_registry.clear()
+
+    # Register models - use lazy loading for heavy dependencies
+    # DummyModel is lightweight, can import directly
+    from insideLLMs.models import DummyModel
+    model_registry.register("dummy", DummyModel)
+
+    # API models are relatively lightweight
+    model_registry.register("openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel"))
+    model_registry.register("anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel"))
+
+    # HuggingFace is heavy - use lazy loading
+    model_registry.register("huggingface", _lazy_import_factory("insideLLMs.models.huggingface", "HuggingFaceModel"))
+
+    # Register probes - these are generally lightweight
     from insideLLMs.probes import (
         AttackProbe,
         BiasProbe,
         FactualityProbe,
         LogicProbe,
     )
-    from insideLLMs.dataset_utils import (
-        load_csv_dataset,
-        load_hf_dataset,
-        load_jsonl_dataset,
-    )
-
-    # Clear existing registrations
-    model_registry.clear()
-    probe_registry.clear()
-    dataset_registry.clear()
-
-    # Register models
-    model_registry.register("dummy", DummyModel)
-    model_registry.register("openai", OpenAIModel)
-    model_registry.register("anthropic", AnthropicModel)
-    model_registry.register("huggingface", HuggingFaceModel)
-
-    # Register probes
     probe_registry.register("logic", LogicProbe)
     probe_registry.register("factuality", FactualityProbe)
     probe_registry.register("bias", BiasProbe)
     probe_registry.register("attack", AttackProbe)
 
     # Register dataset loaders
+    from insideLLMs.dataset_utils import (
+        load_csv_dataset,
+        load_hf_dataset,
+        load_jsonl_dataset,
+    )
     dataset_registry.register("csv", load_csv_dataset)
     dataset_registry.register("jsonl", load_jsonl_dataset)
     dataset_registry.register("hf", load_hf_dataset)
