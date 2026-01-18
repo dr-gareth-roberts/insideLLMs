@@ -13,7 +13,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Pattern, Tuple, Type, Union
+from re import Pattern
+from typing import Any, Optional
 
 
 class ExtractionFormat(Enum):
@@ -68,10 +69,10 @@ class FieldSchema:
     max_value: Optional[float] = None
     min_length: Optional[int] = None
     max_length: Optional[int] = None
-    allowed_values: Optional[List[Any]] = None
-    nested_schema: Optional[List["FieldSchema"]] = None
+    allowed_values: Optional[list[Any]] = None
+    nested_schema: Optional[list["FieldSchema"]] = None
 
-    def validate(self, value: Any) -> Tuple[bool, Optional[str]]:
+    def validate(self, value: Any) -> tuple[bool, Optional[str]]:
         """Validate a value against this schema."""
         if value is None:
             if self.required:
@@ -84,9 +85,8 @@ class FieldSchema:
             return False, type_error
 
         # Pattern validation
-        if self.pattern and isinstance(value, str):
-            if not re.match(self.pattern, value):
-                return False, f"Field '{self.name}' does not match pattern '{self.pattern}'"
+        if self.pattern and isinstance(value, str) and not re.match(self.pattern, value):
+            return False, f"Field '{self.name}' does not match pattern '{self.pattern}'"
 
         # Range validation
         if self.min_value is not None and isinstance(value, (int, float)):
@@ -105,13 +105,12 @@ class FieldSchema:
                 return False, f"Field '{self.name}' must have length <= {self.max_length}"
 
         # Allowed values validation
-        if self.allowed_values is not None:
-            if value not in self.allowed_values:
-                return False, f"Field '{self.name}' must be one of {self.allowed_values}"
+        if self.allowed_values is not None and value not in self.allowed_values:
+            return False, f"Field '{self.name}' must be one of {self.allowed_values}"
 
         return True, None
 
-    def _validate_type(self, value: Any) -> Tuple[bool, Optional[str]]:
+    def _validate_type(self, value: Any) -> tuple[bool, Optional[str]]:
         """Validate value type."""
         if self.field_type == FieldType.ANY:
             return True, None
@@ -147,15 +146,15 @@ class ExtractionResult:
     """Result of structured extraction."""
 
     raw_text: str
-    extracted_data: Dict[str, Any]
+    extracted_data: dict[str, Any]
     status: ExtractionStatus
     format_detected: ExtractionFormat
     confidence: float
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "raw_text": self.raw_text[:100] + "..." if len(self.raw_text) > 100 else self.raw_text,
@@ -188,20 +187,20 @@ class EntityMatch:
     end: int
     confidence: float
     normalized_value: Optional[Any] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class ExtractionSchema:
     """Schema for structured extraction."""
 
-    fields: List[FieldSchema]
+    fields: list[FieldSchema]
     strict: bool = True
     allow_extra_fields: bool = False
     name: str = ""
     description: str = ""
 
-    def validate(self, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate(self, data: dict[str, Any]) -> tuple[bool, list[str]]:
         """Validate data against schema."""
         errors = []
 
@@ -281,7 +280,7 @@ class JSONExtractor:
             errors=errors,
         )
 
-    def _find_json_candidates(self, text: str) -> List[Tuple[str, float]]:
+    def _find_json_candidates(self, text: str) -> list[tuple[str, float]]:
         """Find potential JSON strings in text."""
         candidates = []
 
@@ -342,9 +341,7 @@ class JSONExtractor:
         text = text.strip()
         if text.startswith("{") and text.endswith("}"):
             return True
-        if text.startswith("[") and text.endswith("]"):
-            return True
-        return False
+        return bool(text.startswith("[") and text.endswith("]"))
 
 
 class KeyValueExtractor:
@@ -352,14 +349,14 @@ class KeyValueExtractor:
 
     def __init__(
         self,
-        separators: Optional[List[str]] = None,
+        separators: Optional[list[str]] = None,
         case_sensitive: bool = False,
     ):
         """Initialize extractor."""
         self.separators = separators or [":", "=", "->", "-"]
         self.case_sensitive = case_sensitive
 
-    def extract(self, text: str, keys: Optional[List[str]] = None) -> ExtractionResult:
+    def extract(self, text: str, keys: Optional[list[str]] = None) -> ExtractionResult:
         """Extract key-value pairs from text."""
         extracted = {}
         warnings = []
@@ -499,11 +496,11 @@ class EntityExtractor:
 
     def __init__(
         self,
-        patterns: Optional[Dict[str, str]] = None,
+        patterns: Optional[dict[str, str]] = None,
         include_defaults: bool = True,
     ):
         """Initialize extractor."""
-        self.patterns: Dict[str, Pattern] = {}
+        self.patterns: dict[str, Pattern] = {}
 
         if include_defaults:
             for name, pattern in self.DEFAULT_PATTERNS.items():
@@ -513,7 +510,7 @@ class EntityExtractor:
             for name, pattern in patterns.items():
                 self.patterns[name] = re.compile(pattern, re.IGNORECASE)
 
-    def extract(self, text: str) -> List[EntityMatch]:
+    def extract(self, text: str) -> list[EntityMatch]:
         """Extract entities from text."""
         entities = []
 
@@ -727,7 +724,7 @@ class StructuredExtractor:
         best_result = None
         best_confidence = 0.0
 
-        for extractor, format_type in extractors:
+        for extractor, _format_type in extractors:
             try:
                 result = extractor.extract(text)
                 if result.is_success and result.confidence > best_confidence:
@@ -768,8 +765,8 @@ class StructuredExtractor:
     def extract_fields(
         self,
         text: str,
-        field_names: List[str],
-    ) -> Dict[str, Any]:
+        field_names: list[str],
+    ) -> dict[str, Any]:
         """Extract specific fields from text."""
         # Try key-value extraction first
         kv_result = self.kv_extractor.extract(text, keys=field_names)
@@ -779,15 +776,11 @@ class StructuredExtractor:
         # Try JSON extraction
         json_result = self.json_extractor.extract(text)
         if json_result.is_success:
-            return {
-                k: v
-                for k, v in json_result.extracted_data.items()
-                if k in field_names
-            }
+            return {k: v for k, v in json_result.extracted_data.items() if k in field_names}
 
         return {}
 
-    def extract_entities(self, text: str) -> List[EntityMatch]:
+    def extract_entities(self, text: str) -> list[EntityMatch]:
         """Extract entities from text."""
         return self.entity_extractor.extract(text)
 
@@ -795,7 +788,7 @@ class StructuredExtractor:
 class ResponseParser:
     """Parses structured responses with fallback strategies."""
 
-    def __init__(self, extractors: Optional[List[Any]] = None):
+    def __init__(self, extractors: Optional[list[Any]] = None):
         """Initialize parser."""
         self.extractors = extractors or [
             JSONExtractor(),
@@ -806,7 +799,7 @@ class ResponseParser:
     def parse(
         self,
         response: str,
-        expected_fields: Optional[List[str]] = None,
+        expected_fields: Optional[list[str]] = None,
     ) -> ExtractionResult:
         """Parse response using multiple strategies."""
         for extractor in self.extractors:
@@ -839,7 +832,7 @@ class TypeCoercer:
     """Coerces values to expected types."""
 
     @staticmethod
-    def coerce(value: Any, target_type: FieldType) -> Tuple[Any, bool]:
+    def coerce(value: Any, target_type: FieldType) -> tuple[Any, bool]:
         """Coerce value to target type."""
         if value is None:
             return None, True
@@ -896,7 +889,7 @@ def extract_json(text: str) -> ExtractionResult:
 
 def extract_key_values(
     text: str,
-    keys: Optional[List[str]] = None,
+    keys: Optional[list[str]] = None,
 ) -> ExtractionResult:
     """Extract key-value pairs from text.
 
@@ -924,7 +917,7 @@ def extract_list(text: str) -> ExtractionResult:
     return extractor.extract(text)
 
 
-def extract_entities(text: str) -> List[EntityMatch]:
+def extract_entities(text: str) -> list[EntityMatch]:
     """Extract named entities from text.
 
     Args:
@@ -968,9 +961,9 @@ def extract_structured(
 
 
 def validate_extraction(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     schema: ExtractionSchema,
-) -> Tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """Validate extracted data against schema.
 
     Args:
@@ -984,7 +977,7 @@ def validate_extraction(
 
 
 def create_schema(
-    fields: List[Dict[str, Any]],
+    fields: list[dict[str, Any]],
     strict: bool = True,
 ) -> ExtractionSchema:
     """Create extraction schema from field definitions.

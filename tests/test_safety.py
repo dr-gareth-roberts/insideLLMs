@@ -1,14 +1,10 @@
 """Tests for safety and content analysis utilities."""
 
-import pytest
-
 from insideLLMs.safety import (
     BiasDetector,
     ContentSafetyAnalyzer,
     HallucinationDetector,
     PIIDetector,
-    PIIMatch,
-    PIIReport,
     RiskLevel,
     SafetyCategory,
     SafetyFlag,

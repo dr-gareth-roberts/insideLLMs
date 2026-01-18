@@ -1,10 +1,7 @@
 """Tests for structured extraction module."""
 
-import pytest
-
 from insideLLMs.structured_extraction import (
     EntityExtractor,
-    EntityMatch,
     ExtractionFormat,
     ExtractionResult,
     ExtractionSchema,
@@ -314,7 +311,7 @@ class TestJSONExtractor:
     def test_extract_json_array(self):
         """Test JSON array extraction."""
         extractor = JSONExtractor()
-        text = '[1, 2, 3]'
+        text = "[1, 2, 3]"
         result = extractor.extract(text)
         assert result.is_success
         assert "items" in result.extracted_data
@@ -695,18 +692,18 @@ class TestConvenienceFunctions:
 
     def test_validate_extraction(self):
         """Test validate_extraction function."""
-        schema = ExtractionSchema(
-            fields=[FieldSchema(name="name", field_type=FieldType.STRING)]
-        )
+        schema = ExtractionSchema(fields=[FieldSchema(name="name", field_type=FieldType.STRING)])
         is_valid, errors = validate_extraction({"name": "John"}, schema)
         assert is_valid
 
     def test_create_schema(self):
         """Test create_schema function."""
-        schema = create_schema([
-            {"name": "name", "type": "string", "required": True},
-            {"name": "age", "type": "integer", "required": False},
-        ])
+        schema = create_schema(
+            [
+                {"name": "name", "type": "string", "required": True},
+                {"name": "age", "type": "integer", "required": False},
+            ]
+        )
         assert len(schema.fields) == 2
         assert schema.fields[0].name == "name"
 
@@ -763,7 +760,9 @@ class TestEdgeCases:
     def test_special_characters_in_values(self):
         """Test special characters in values."""
         extractor = JSONExtractor()
-        result = extractor.extract('{"path": "C:\\\\Users\\\\name", "url": "http://test.com/path?a=1&b=2"}')
+        result = extractor.extract(
+            '{"path": "C:\\\\Users\\\\name", "url": "http://test.com/path?a=1&b=2"}'
+        )
         assert result.is_success
 
     def test_entity_position(self):

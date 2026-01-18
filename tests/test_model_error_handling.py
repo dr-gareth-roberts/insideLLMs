@@ -1,14 +1,19 @@
 """Tests for model error handling."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from insideLLMs.exceptions import (
-    ModelInitializationError,
-    ModelGenerationError,
-    RateLimitError,
-    TimeoutError as InsideLLMsTimeoutError,
     APIError as InsideLLMsAPIError,
+)
+from insideLLMs.exceptions import (
+    ModelGenerationError,
+    ModelInitializationError,
+    RateLimitError,
+)
+from insideLLMs.exceptions import (
+    TimeoutError as InsideLLMsTimeoutError,
 )
 
 
@@ -19,6 +24,7 @@ class TestOpenAIModelErrorHandling:
         """Test that missing API key raises ModelInitializationError."""
         with patch.dict("os.environ", {}, clear=True):
             from insideLLMs.models.openai import OpenAIModel
+
             with pytest.raises(ModelInitializationError) as exc_info:
                 OpenAIModel()
             assert "OPENAI_API_KEY" in str(exc_info.value)
@@ -27,6 +33,7 @@ class TestOpenAIModelErrorHandling:
     def test_openai_rate_limit_error(self, mock_openai_class):
         """Test that rate limit errors are converted."""
         from openai import RateLimitError as OpenAIRateLimitError
+
         from insideLLMs.models.openai import OpenAIModel
 
         # Setup mock
@@ -46,13 +53,12 @@ class TestOpenAIModelErrorHandling:
     def test_openai_timeout_error(self, mock_openai_class):
         """Test that timeout errors are converted."""
         from openai import APITimeoutError
+
         from insideLLMs.models.openai import OpenAIModel
 
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
-        mock_client.chat.completions.create.side_effect = APITimeoutError(
-            request=MagicMock()
-        )
+        mock_client.chat.completions.create.side_effect = APITimeoutError(request=MagicMock())
 
         model = OpenAIModel(api_key="test-key")
         with pytest.raises(InsideLLMsTimeoutError):
@@ -62,6 +68,7 @@ class TestOpenAIModelErrorHandling:
     def test_openai_api_error(self, mock_openai_class):
         """Test that API errors are converted."""
         from openai import APIError
+
         from insideLLMs.models.openai import OpenAIModel
 
         mock_client = MagicMock()
@@ -98,6 +105,7 @@ class TestAnthropicModelErrorHandling:
         """Test that missing API key raises ModelInitializationError."""
         with patch.dict("os.environ", {}, clear=True):
             from insideLLMs.models.anthropic import AnthropicModel
+
             with pytest.raises(ModelInitializationError) as exc_info:
                 AnthropicModel()
             assert "ANTHROPIC_API_KEY" in str(exc_info.value)
@@ -106,6 +114,7 @@ class TestAnthropicModelErrorHandling:
     def test_anthropic_rate_limit_error(self, mock_anthropic_class):
         """Test that rate limit errors are converted."""
         from anthropic import RateLimitError as AnthropicRateLimitError
+
         from insideLLMs.models.anthropic import AnthropicModel
 
         mock_client = MagicMock()

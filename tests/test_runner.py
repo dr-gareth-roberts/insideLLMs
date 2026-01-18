@@ -12,9 +12,9 @@ class TestProbeRunner:
 
     def test_create_runner(self):
         """Test creating a ProbeRunner."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -26,9 +26,9 @@ class TestProbeRunner:
 
     def test_run_single_item(self):
         """Test running with a single input."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -41,9 +41,9 @@ class TestProbeRunner:
 
     def test_run_multiple(self):
         """Test running multiple probes."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -54,9 +54,9 @@ class TestProbeRunner:
 
     def test_run_result_structure(self):
         """Test that results have the correct structure."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -79,8 +79,9 @@ class TestRunExperimentFromConfig:
 
     def test_run_from_yaml_config(self):
         """Test running from YAML config."""
-        from insideLLMs.runner import run_experiment_from_config
         import yaml
+
+        from insideLLMs.runner import run_experiment_from_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create data file
@@ -139,9 +140,9 @@ class TestCreateExperimentResult:
 
     def test_create_result(self):
         """Test creating an experiment result."""
-        from insideLLMs.runner import create_experiment_result
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import create_experiment_result
 
         model = DummyModel()
         probe = LogicProbe()
@@ -170,9 +171,9 @@ class TestCreateExperimentResult:
 
     def test_create_result_with_errors(self):
         """Test creating an experiment result with errors."""
-        from insideLLMs.runner import create_experiment_result
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import create_experiment_result
         from insideLLMs.types import ResultStatus
 
         model = DummyModel()
@@ -197,8 +198,9 @@ class TestLoadConfig:
 
     def test_load_yaml_config(self):
         """Test loading YAML config."""
-        from insideLLMs.runner import load_config
         import yaml
+
+        from insideLLMs.runner import load_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -236,9 +238,9 @@ class TestProgressCallback:
 
     def test_progress_callback_called(self):
         """Test that progress callback is called."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -249,7 +251,7 @@ class TestProgressCallback:
         def callback(current, total):
             progress_values.append((current, total))
 
-        results = runner.run(
+        runner.run(
             ["Q1?", "Q2?", "Q3?"],
             progress_callback=callback,
         )
@@ -266,9 +268,9 @@ class TestAsyncRunner:
     @pytest.mark.asyncio
     async def test_async_run(self):
         """Test async experiment execution."""
-        from insideLLMs.runner import AsyncProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -283,9 +285,9 @@ class TestRunProbe:
 
     def test_run_probe_basic(self):
         """Test basic run_probe usage."""
-        from insideLLMs.runner import run_probe
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import run_probe
 
         model = DummyModel()
         probe = LogicProbe()
@@ -296,9 +298,9 @@ class TestRunProbe:
 
     def test_run_probe_multiple(self):
         """Test run_probe with multiple inputs."""
-        from insideLLMs.runner import run_probe
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import run_probe
 
         model = DummyModel()
         probe = LogicProbe()
@@ -312,9 +314,9 @@ class TestEdgeCases:
 
     def test_empty_inputs(self):
         """Test running with empty inputs."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -325,9 +327,9 @@ class TestEdgeCases:
 
     def test_unicode_inputs(self):
         """Test running with Unicode inputs."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -338,9 +340,9 @@ class TestEdgeCases:
 
     def test_very_long_input(self):
         """Test running with very long input."""
-        from insideLLMs.runner import ProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -356,9 +358,9 @@ class TestAsyncProbeRunner:
 
     def test_create_async_runner(self):
         """Test creating an AsyncProbeRunner."""
-        from insideLLMs.runner import AsyncProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -371,9 +373,9 @@ class TestAsyncProbeRunner:
     @pytest.mark.asyncio
     async def test_async_runner_results(self):
         """Test async runner returns proper results."""
-        from insideLLMs.runner import AsyncProbeRunner
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()

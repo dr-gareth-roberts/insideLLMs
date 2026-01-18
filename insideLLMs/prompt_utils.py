@@ -19,18 +19,10 @@ from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
-    Generic,
-    List,
     Optional,
-    Protocol,
-    Sequence,
-    Set,
-    Tuple,
     TypeVar,
     Union,
 )
-
 
 # Type variable for generic prompt content
 T = TypeVar("T")
@@ -60,16 +52,16 @@ class PromptMessage:
     role: Union[PromptRole, str]
     content: str
     name: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def role_str(self) -> str:
         """Get role as string."""
         return self.role.value if isinstance(self.role, PromptRole) else self.role
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for API calls."""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "role": self.role_str,
             "content": self.content,
         }
@@ -95,7 +87,7 @@ class PromptVersion:
     version: str = "1.0"
     created_at: datetime = field(default_factory=datetime.now)
     description: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     hash: str = field(default="")
 
     def __post_init__(self):
@@ -136,7 +128,7 @@ class PromptTemplate:
         return f"PromptTemplate({self.template[:50]!r}...)"
 
 
-def chain_prompts(prompts: List[str], separator: str = "\n") -> str:
+def chain_prompts(prompts: list[str], separator: str = "\n") -> str:
     """Chain multiple prompts together into a single prompt.
 
     Args:
@@ -153,7 +145,7 @@ def chain_prompts(prompts: List[str], separator: str = "\n") -> str:
     return separator.join(prompts)
 
 
-def render_prompt(template: str, variables: Dict[str, Any]) -> str:
+def render_prompt(template: str, variables: dict[str, Any]) -> str:
     """Render a template string with variables.
 
     Uses Python's str.format() for simple templates. For more advanced
@@ -173,7 +165,7 @@ def render_prompt(template: str, variables: Dict[str, Any]) -> str:
     return template.format(**variables)
 
 
-def render_jinja_template(template_str: str, variables: Dict[str, Any]) -> str:
+def render_jinja_template(template_str: str, variables: dict[str, Any]) -> str:
     """Render a Jinja2 template string.
 
     Requires jinja2 to be installed. Supports advanced features like
@@ -197,8 +189,7 @@ def render_jinja_template(template_str: str, variables: Dict[str, Any]) -> str:
         from jinja2 import Template
     except ImportError:
         raise ImportError(
-            "jinja2 is required for Jinja template rendering. "
-            "Install it with: pip install jinja2"
+            "jinja2 is required for Jinja template rendering. Install it with: pip install jinja2"
         )
 
     template = Template(template_str)
@@ -206,7 +197,7 @@ def render_jinja_template(template_str: str, variables: Dict[str, Any]) -> str:
 
 
 def format_chat_messages(
-    messages: List[Dict[str, str]],
+    messages: list[dict[str, str]],
     system_prefix: str = "System: ",
     user_prefix: str = "User: ",
     assistant_prefix: str = "Assistant: ",
@@ -248,7 +239,7 @@ def format_chat_messages(
 
 def create_few_shot_prompt(
     instruction: str,
-    examples: List[Dict[str, str]],
+    examples: list[dict[str, str]],
     query: str,
     input_key: str = "input",
     output_key: str = "output",
@@ -301,33 +292,25 @@ class PromptBuilder:
 
     def __init__(self):
         """Initialize an empty prompt builder."""
-        self._messages: List[PromptMessage] = []
-        self._context: Dict[str, Any] = {}
+        self._messages: list[PromptMessage] = []
+        self._context: dict[str, Any] = {}
 
     def system(self, content: str, **kwargs: Any) -> "PromptBuilder":
         """Add a system message."""
-        self._messages.append(
-            PromptMessage(role=PromptRole.SYSTEM, content=content, **kwargs)
-        )
+        self._messages.append(PromptMessage(role=PromptRole.SYSTEM, content=content, **kwargs))
         return self
 
     def user(self, content: str, **kwargs: Any) -> "PromptBuilder":
         """Add a user message."""
-        self._messages.append(
-            PromptMessage(role=PromptRole.USER, content=content, **kwargs)
-        )
+        self._messages.append(PromptMessage(role=PromptRole.USER, content=content, **kwargs))
         return self
 
     def assistant(self, content: str, **kwargs: Any) -> "PromptBuilder":
         """Add an assistant message."""
-        self._messages.append(
-            PromptMessage(role=PromptRole.ASSISTANT, content=content, **kwargs)
-        )
+        self._messages.append(PromptMessage(role=PromptRole.ASSISTANT, content=content, **kwargs))
         return self
 
-    def message(
-        self, role: Union[PromptRole, str], content: str, **kwargs: Any
-    ) -> "PromptBuilder":
+    def message(self, role: Union[PromptRole, str], content: str, **kwargs: Any) -> "PromptBuilder":
         """Add a message with any role."""
         self._messages.append(PromptMessage(role=role, content=content, **kwargs))
         return self
@@ -344,11 +327,11 @@ class PromptBuilder:
                 msg.content = msg.content.format(**self._context)
         return self
 
-    def build(self) -> List[Dict[str, Any]]:
+    def build(self) -> list[dict[str, Any]]:
         """Build the final list of message dicts."""
         return [msg.to_dict() for msg in self._messages]
 
-    def build_messages(self) -> List[PromptMessage]:
+    def build_messages(self) -> list[PromptMessage]:
         """Build the final list of PromptMessage objects."""
         return list(self._messages)
 
@@ -395,8 +378,8 @@ class PromptLibrary:
 
     def __init__(self):
         """Initialize an empty prompt library."""
-        self._prompts: Dict[str, List[PromptVersion]] = {}
-        self._aliases: Dict[str, str] = {}
+        self._prompts: dict[str, list[PromptVersion]] = {}
+        self._aliases: dict[str, str] = {}
 
     def register(
         self,
@@ -404,7 +387,7 @@ class PromptLibrary:
         content: str,
         version: str = "1.0",
         description: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
     ) -> PromptVersion:
         """Register a new prompt template.
 
@@ -431,9 +414,7 @@ class PromptLibrary:
 
         return prompt_version
 
-    def get(
-        self, name: str, version: Optional[str] = None
-    ) -> PromptTemplate:
+    def get(self, name: str, version: Optional[str] = None) -> PromptTemplate:
         """Get a prompt template by name.
 
         Args:
@@ -463,9 +444,7 @@ class PromptLibrary:
         # Return latest version
         return PromptTemplate(versions[-1].content)
 
-    def get_version(
-        self, name: str, version: Optional[str] = None
-    ) -> PromptVersion:
+    def get_version(self, name: str, version: Optional[str] = None) -> PromptVersion:
         """Get a PromptVersion object by name.
 
         Args:
@@ -501,11 +480,11 @@ class PromptLibrary:
             raise KeyError(f"Prompt not found: {prompt_name}")
         self._aliases[alias_name] = prompt_name
 
-    def list_prompts(self) -> List[str]:
+    def list_prompts(self) -> list[str]:
         """List all prompt names."""
         return list(self._prompts.keys())
 
-    def list_versions(self, name: str) -> List[str]:
+    def list_versions(self, name: str) -> list[str]:
         """List all versions for a prompt.
 
         Args:
@@ -518,7 +497,7 @@ class PromptLibrary:
             raise KeyError(f"Prompt not found: {name}")
         return [v.version for v in self._prompts[name]]
 
-    def search_by_tag(self, tag: str) -> List[str]:
+    def search_by_tag(self, tag: str) -> list[str]:
         """Find prompts by tag.
 
         Args:
@@ -535,7 +514,7 @@ class PromptLibrary:
                     break
         return results
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         """Export library to a dictionary."""
         return {
             "prompts": {
@@ -555,7 +534,7 @@ class PromptLibrary:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PromptLibrary":
+    def from_dict(cls, data: dict[str, Any]) -> "PromptLibrary":
         """Create library from exported dictionary."""
         library = cls()
         for name, versions in data.get("prompts", {}).items():
@@ -598,11 +577,11 @@ class PromptComposer:
         Args:
             separator: Default separator between sections.
         """
-        self._sections: Dict[str, str] = {}
+        self._sections: dict[str, str] = {}
         self._separator = separator
 
     def add_section(
-        self, name: str, content: str, variables: Optional[Dict[str, Any]] = None
+        self, name: str, content: str, variables: Optional[dict[str, Any]] = None
     ) -> "PromptComposer":
         """Add a named section.
 
@@ -637,9 +616,9 @@ class PromptComposer:
 
     def compose(
         self,
-        sections: List[str],
+        sections: list[str],
         separator: Optional[str] = None,
-        variables: Optional[Dict[str, Any]] = None,
+        variables: Optional[dict[str, Any]] = None,
     ) -> str:
         """Compose a prompt from named sections.
 
@@ -662,7 +641,7 @@ class PromptComposer:
 
         return sep.join(parts)
 
-    def list_sections(self) -> List[str]:
+    def list_sections(self) -> list[str]:
         """List all section names."""
         return list(self._sections.keys())
 
@@ -682,8 +661,8 @@ class PromptValidator:
 
     def __init__(self):
         """Initialize with default rules."""
-        self._rules: Dict[str, Callable[[str], bool]] = {}
-        self._required_vars: Set[str] = set()
+        self._rules: dict[str, Callable[[str], bool]] = {}
+        self._required_vars: set[str] = set()
 
     def add_rule(
         self, name: str, rule: Callable[[str], bool], error_msg: Optional[str] = None
@@ -713,7 +692,7 @@ class PromptValidator:
         self._required_vars.update(variables)
         return self
 
-    def validate(self, prompt: str) -> Tuple[bool, List[str]]:
+    def validate(self, prompt: str) -> tuple[bool, list[str]]:
         """Validate a prompt against all rules.
 
         Args:
@@ -740,7 +719,7 @@ class PromptValidator:
         return len(errors) == 0, errors
 
 
-def extract_variables(template: str) -> List[str]:
+def extract_variables(template: str) -> list[str]:
     """Extract placeholder variable names from a template.
 
     Args:
@@ -760,9 +739,7 @@ def extract_variables(template: str) -> List[str]:
     return [m.split(":")[0].split("!")[0] for m in matches]
 
 
-def validate_template_variables(
-    template: str, variables: Dict[str, Any]
-) -> Tuple[bool, List[str]]:
+def validate_template_variables(template: str, variables: dict[str, Any]) -> tuple[bool, list[str]]:
     """Check if all template variables are provided.
 
     Args:
@@ -866,7 +843,7 @@ def split_prompt_by_tokens(
     max_tokens: int,
     chars_per_token: float = 4.0,
     overlap: int = 0,
-) -> List[str]:
+) -> list[str]:
     """Split a prompt into chunks by estimated token count.
 
     Args:
@@ -927,7 +904,7 @@ def register_prompt(
     content: str,
     version: str = "1.0",
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[list[str]] = None,
 ) -> PromptVersion:
     """Register a prompt in the default library.
 

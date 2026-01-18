@@ -1,15 +1,16 @@
 """Tests for multi-turn conversation analysis."""
 
 import pytest
+
 from insideLLMs.conversation import (
+    ConsistencyAnalysis,
+    ConsistencyChecker,
     Conversation,
     ConversationAnalyzer,
     ConversationMessage,
     ConversationReport,
     ConversationState,
     ConversationTurn,
-    ConsistencyAnalysis,
-    ConsistencyChecker,
     EngagementAnalyzer,
     EngagementMetrics,
     MemoryReference,
@@ -360,6 +361,7 @@ class TestTurnAnalyzer:
 
     def test_custom_relevance_function(self):
         """Test with custom relevance function."""
+
         def always_high(query: str, response: str) -> float:
             return 0.95
 
@@ -420,16 +422,14 @@ class TestConsistencyChecker:
                 turn_number=1,
                 user_message=ConversationMessage(MessageRole.USER, "What is Python?"),
                 assistant_response=ConversationMessage(
-                    MessageRole.ASSISTANT,
-                    "Python is a programming language."
+                    MessageRole.ASSISTANT, "Python is a programming language."
                 ),
             ),
             ConversationTurn(
                 turn_number=2,
                 user_message=ConversationMessage(MessageRole.USER, "Tell me more about Python."),
                 assistant_response=ConversationMessage(
-                    MessageRole.ASSISTANT,
-                    "Python is used for web development and data science."
+                    MessageRole.ASSISTANT, "Python is used for web development and data science."
                 ),
             ),
         ]
@@ -460,8 +460,7 @@ class TestEngagementAnalyzer:
                 turn_number=1,
                 user_message=ConversationMessage(MessageRole.USER, "Help me with Python?"),
                 assistant_response=ConversationMessage(
-                    MessageRole.ASSISTANT,
-                    "Sure! Python is a great language for beginners."
+                    MessageRole.ASSISTANT, "Sure! Python is a great language for beginners."
                 ),
                 relevance_score=0.8,
                 coherence_score=0.8,
@@ -470,8 +469,7 @@ class TestEngagementAnalyzer:
                 turn_number=2,
                 user_message=ConversationMessage(MessageRole.USER, "Thanks, that's helpful!"),
                 assistant_response=ConversationMessage(
-                    MessageRole.ASSISTANT,
-                    "You're welcome! Let me know if you have more questions."
+                    MessageRole.ASSISTANT, "You're welcome! Let me know if you have more questions."
                 ),
                 relevance_score=0.9,
                 coherence_score=0.9,
@@ -525,9 +523,7 @@ class TestConversationAnalyzer:
         analyzer = ConversationAnalyzer()
         report = analyzer.analyze(conv)
 
-        assert report.quality_level in [
-            "excellent", "good", "acceptable", "poor", "failed"
-        ]
+        assert report.quality_level in ["excellent", "good", "acceptable", "poor", "failed"]
 
     def test_strengths_and_weaknesses(self):
         """Test that strengths and weaknesses are generated."""
@@ -549,10 +545,12 @@ class TestConvenienceFunctions:
 
     def test_create_conversation(self):
         """Test create_conversation function."""
-        conv = create_conversation([
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi!"},
-        ])
+        conv = create_conversation(
+            [
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi!"},
+            ]
+        )
         assert isinstance(conv, Conversation)
         assert conv.n_turns == 1
 

@@ -12,7 +12,7 @@ and can be loaded from files or environment variables.
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 try:
     from pydantic import (
@@ -26,6 +26,7 @@ try:
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
+
     # Provide fallback base class
     class BaseModel:  # type: ignore
         """Fallback BaseModel when Pydantic is not available."""
@@ -34,7 +35,7 @@ except ImportError:
             for key, value in data.items():
                 setattr(self, key, value)
 
-        def model_dump(self) -> Dict[str, Any]:
+        def model_dump(self) -> dict[str, Any]:
             return self.__dict__.copy()
 
     def Field(*args: Any, **kwargs: Any) -> Any:  # type: ignore
@@ -43,11 +44,13 @@ except ImportError:
     def field_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore
         def decorator(func: Any) -> Any:
             return func
+
         return decorator
 
     def model_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore
         def decorator(func: Any) -> Any:
             return func
+
         return decorator
 
     class ConfigDict:  # type: ignore
@@ -101,45 +104,20 @@ if PYDANTIC_AVAILABLE:
         provider: ModelProvider = Field(
             description="Model provider (openai, anthropic, huggingface, dummy)"
         )
-        model_id: str = Field(
-            description="Model identifier (e.g., 'gpt-4', 'claude-3-opus')"
-        )
-        name: Optional[str] = Field(
-            default=None,
-            description="Optional display name for the model"
-        )
+        model_id: str = Field(description="Model identifier (e.g., 'gpt-4', 'claude-3-opus')")
+        name: Optional[str] = Field(default=None, description="Optional display name for the model")
         api_key_env: Optional[str] = Field(
-            default=None,
-            description="Environment variable name containing API key"
+            default=None, description="Environment variable name containing API key"
         )
-        api_base: Optional[str] = Field(
-            default=None,
-            description="Optional custom API base URL"
-        )
-        temperature: float = Field(
-            default=0.7,
-            ge=0.0,
-            le=2.0,
-            description="Sampling temperature"
-        )
+        api_base: Optional[str] = Field(default=None, description="Optional custom API base URL")
+        temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
         max_tokens: Optional[int] = Field(
-            default=None,
-            gt=0,
-            description="Maximum tokens to generate"
+            default=None, gt=0, description="Maximum tokens to generate"
         )
-        timeout: float = Field(
-            default=30.0,
-            gt=0,
-            description="Request timeout in seconds"
-        )
-        max_retries: int = Field(
-            default=3,
-            ge=0,
-            description="Maximum retry attempts"
-        )
-        extra_params: Dict[str, Any] = Field(
-            default_factory=dict,
-            description="Additional provider-specific parameters"
+        timeout: float = Field(default=30.0, gt=0, description="Request timeout in seconds")
+        max_retries: int = Field(default=3, ge=0, description="Maximum retry attempts")
+        extra_params: dict[str, Any] = Field(
+            default_factory=dict, description="Additional provider-specific parameters"
         )
 
         @field_validator("name", mode="before")
@@ -162,30 +140,16 @@ if PYDANTIC_AVAILABLE:
 
         model_config = ConfigDict(extra="allow")
 
-        type: ProbeType = Field(
-            description="Type of probe to use"
-        )
-        name: Optional[str] = Field(
-            default=None,
-            description="Optional display name"
-        )
-        description: Optional[str] = Field(
-            default=None,
-            description="Optional description"
-        )
-        params: Dict[str, Any] = Field(
-            default_factory=dict,
-            description="Probe-specific parameters"
+        type: ProbeType = Field(description="Type of probe to use")
+        name: Optional[str] = Field(default=None, description="Optional display name")
+        description: Optional[str] = Field(default=None, description="Optional description")
+        params: dict[str, Any] = Field(
+            default_factory=dict, description="Probe-specific parameters"
         )
         timeout_per_item: float = Field(
-            default=30.0,
-            gt=0,
-            description="Timeout per probe item in seconds"
+            default=30.0, gt=0, description="Timeout per probe item in seconds"
         )
-        stop_on_error: bool = Field(
-            default=False,
-            description="Stop execution on first error"
-        )
+        stop_on_error: bool = Field(default=False, description="Stop execution on first error")
 
         @field_validator("name", mode="before")
         @classmethod
@@ -206,38 +170,20 @@ if PYDANTIC_AVAILABLE:
 
         model_config = ConfigDict(extra="allow")
 
-        source: Literal["file", "hf", "inline"] = Field(
-            description="Dataset source type"
-        )
+        source: Literal["file", "hf", "inline"] = Field(description="Dataset source type")
         path: Optional[str] = Field(
-            default=None,
-            description="Path to dataset file (for file source)"
+            default=None, description="Path to dataset file (for file source)"
         )
-        name: Optional[str] = Field(
-            default=None,
-            description="Dataset name (for hf source)"
-        )
-        split: str = Field(
-            default="test",
-            description="Dataset split to use"
-        )
-        data: Optional[List[Dict[str, Any]]] = Field(
-            default=None,
-            description="Inline data (for inline source)"
+        name: Optional[str] = Field(default=None, description="Dataset name (for hf source)")
+        split: str = Field(default="test", description="Dataset split to use")
+        data: Optional[list[dict[str, Any]]] = Field(
+            default=None, description="Inline data (for inline source)"
         )
         sample_size: Optional[int] = Field(
-            default=None,
-            gt=0,
-            description="Number of samples to use (None for all)"
+            default=None, gt=0, description="Number of samples to use (None for all)"
         )
-        shuffle: bool = Field(
-            default=False,
-            description="Whether to shuffle data"
-        )
-        seed: Optional[int] = Field(
-            default=None,
-            description="Random seed for shuffling"
-        )
+        shuffle: bool = Field(default=False, description="Whether to shuffle data")
+        seed: Optional[int] = Field(default=None, description="Random seed for shuffling")
 
         @model_validator(mode="after")
         def validate_source_requirements(self) -> "DatasetConfig":
@@ -261,35 +207,15 @@ if PYDANTIC_AVAILABLE:
 
         model_config = ConfigDict(extra="allow")
 
-        concurrency: int = Field(
-            default=1,
-            ge=1,
-            description="Number of concurrent executions"
+        concurrency: int = Field(default=1, ge=1, description="Number of concurrent executions")
+        output_dir: str = Field(default="output", description="Directory for output files")
+        output_formats: list[Literal["json", "markdown", "csv", "html"]] = Field(
+            default=["json", "markdown"], description="Output formats to generate"
         )
-        output_dir: str = Field(
-            default="output",
-            description="Directory for output files"
-        )
-        output_formats: List[Literal["json", "markdown", "csv", "html"]] = Field(
-            default=["json", "markdown"],
-            description="Output formats to generate"
-        )
-        save_intermediate: bool = Field(
-            default=False,
-            description="Save intermediate results"
-        )
-        progress_bar: bool = Field(
-            default=True,
-            description="Show progress bar"
-        )
-        verbose: bool = Field(
-            default=False,
-            description="Verbose logging"
-        )
-        cache_responses: bool = Field(
-            default=False,
-            description="Cache model responses"
-        )
+        save_intermediate: bool = Field(default=False, description="Save intermediate results")
+        progress_bar: bool = Field(default=True, description="Show progress bar")
+        verbose: bool = Field(default=False, description="Verbose logging")
+        cache_responses: bool = Field(default=False, description="Cache model responses")
 
     class ExperimentConfig(BaseModel):
         """Complete experiment configuration.
@@ -305,34 +231,16 @@ if PYDANTIC_AVAILABLE:
 
         model_config = ConfigDict(extra="allow")
 
-        name: str = Field(
-            description="Experiment name"
-        )
-        description: Optional[str] = Field(
-            default=None,
-            description="Experiment description"
-        )
-        model: ModelConfig = Field(
-            description="Model configuration"
-        )
-        probe: ProbeConfig = Field(
-            description="Probe configuration"
-        )
-        dataset: DatasetConfig = Field(
-            description="Dataset configuration"
-        )
+        name: str = Field(description="Experiment name")
+        description: Optional[str] = Field(default=None, description="Experiment description")
+        model: ModelConfig = Field(description="Model configuration")
+        probe: ProbeConfig = Field(description="Probe configuration")
+        dataset: DatasetConfig = Field(description="Dataset configuration")
         runner: RunnerConfig = Field(
-            default_factory=RunnerConfig,
-            description="Runner configuration"
+            default_factory=RunnerConfig, description="Runner configuration"
         )
-        tags: List[str] = Field(
-            default_factory=list,
-            description="Tags for organizing experiments"
-        )
-        metadata: Dict[str, Any] = Field(
-            default_factory=dict,
-            description="Additional metadata"
-        )
+        tags: list[str] = Field(default_factory=list, description="Tags for organizing experiments")
+        metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 else:
     # Fallback implementations without Pydantic validation
@@ -350,7 +258,7 @@ else:
             max_tokens: Optional[int] = None,
             timeout: float = 30.0,
             max_retries: int = 3,
-            extra_params: Optional[Dict[str, Any]] = None,
+            extra_params: Optional[dict[str, Any]] = None,
             **kwargs: Any,
         ) -> None:
             self.provider = provider
@@ -372,7 +280,7 @@ else:
             type: str,
             name: Optional[str] = None,
             description: Optional[str] = None,
-            params: Optional[Dict[str, Any]] = None,
+            params: Optional[dict[str, Any]] = None,
             timeout_per_item: float = 30.0,
             stop_on_error: bool = False,
             **kwargs: Any,
@@ -393,7 +301,7 @@ else:
             path: Optional[str] = None,
             name: Optional[str] = None,
             split: str = "test",
-            data: Optional[List[Dict[str, Any]]] = None,
+            data: Optional[list[dict[str, Any]]] = None,
             sample_size: Optional[int] = None,
             shuffle: bool = False,
             seed: Optional[int] = None,
@@ -415,7 +323,7 @@ else:
             self,
             concurrency: int = 1,
             output_dir: str = "output",
-            output_formats: Optional[List[str]] = None,
+            output_formats: Optional[list[str]] = None,
             save_intermediate: bool = False,
             progress_bar: bool = True,
             verbose: bool = False,
@@ -441,8 +349,8 @@ else:
             dataset: DatasetConfig,
             description: Optional[str] = None,
             runner: Optional[RunnerConfig] = None,
-            tags: Optional[List[str]] = None,
-            metadata: Optional[Dict[str, Any]] = None,
+            tags: Optional[list[str]] = None,
+            metadata: Optional[dict[str, Any]] = None,
             **kwargs: Any,
         ) -> None:
             self.name = name
@@ -476,15 +384,14 @@ def load_config_from_yaml(path: Union[str, Path]) -> ExperimentConfig:
         import yaml
     except ImportError:
         raise ImportError(
-            "PyYAML is required for loading YAML configs. "
-            "Install it with: pip install pyyaml"
+            "PyYAML is required for loading YAML configs. Install it with: pip install pyyaml"
         )
 
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         data = yaml.safe_load(f)
 
     return _parse_config_dict(data)
@@ -509,7 +416,7 @@ def load_config_from_json(path: Union[str, Path]) -> ExperimentConfig:
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         data = json.load(f)
 
     return _parse_config_dict(data)
@@ -538,7 +445,7 @@ def load_config(path: Union[str, Path]) -> ExperimentConfig:
         raise ValueError(f"Unsupported configuration format: {suffix}")
 
 
-def _parse_config_dict(data: Dict[str, Any]) -> ExperimentConfig:
+def _parse_config_dict(data: dict[str, Any]) -> ExperimentConfig:
     """Parse a configuration dictionary into ExperimentConfig.
 
     Args:
@@ -581,17 +488,13 @@ def save_config_to_yaml(config: ExperimentConfig, path: Union[str, Path]) -> Non
         import yaml
     except ImportError:
         raise ImportError(
-            "PyYAML is required for saving YAML configs. "
-            "Install it with: pip install pyyaml"
+            "PyYAML is required for saving YAML configs. Install it with: pip install pyyaml"
         )
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if PYDANTIC_AVAILABLE:
-        data = config.model_dump()
-    else:
-        data = _config_to_dict(config)
+    data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
 
     with open(path, "w") as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
@@ -609,16 +512,13 @@ def save_config_to_json(config: ExperimentConfig, path: Union[str, Path]) -> Non
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if PYDANTIC_AVAILABLE:
-        data = config.model_dump()
-    else:
-        data = _config_to_dict(config)
+    data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
 
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
 
 
-def _config_to_dict(config: Any) -> Dict[str, Any]:
+def _config_to_dict(config: Any) -> dict[str, Any]:
     """Convert config object to dictionary (fallback for non-Pydantic)."""
     if hasattr(config, "model_dump"):
         return config.model_dump()
@@ -670,7 +570,7 @@ def create_example_config() -> ExperimentConfig:
     )
 
 
-def validate_config(config: Union[Dict[str, Any], ExperimentConfig]) -> ExperimentConfig:
+def validate_config(config: Union[dict[str, Any], ExperimentConfig]) -> ExperimentConfig:
     """Validate a configuration and return a validated ExperimentConfig.
 
     Args:

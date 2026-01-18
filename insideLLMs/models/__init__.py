@@ -8,7 +8,8 @@ Heavy dependencies (like HuggingFace transformers) are lazily loaded
 to keep import times fast.
 """
 
-from typing import Any, Dict, Iterator, List
+from collections.abc import Iterator
+from typing import Any, Dict, List
 
 # Import lightweight core components directly
 from insideLLMs.models.base import AsyncModel, ChatMessage, Model, ModelProtocol, ModelWrapper
@@ -67,7 +68,7 @@ class DummyModel(Model):
             return self.canned_response
         return f"{self.response_prefix} You said: {prompt}"
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Simulate a chat response.
 
         Args:
@@ -129,6 +130,7 @@ def __getattr__(name: str):
     """Lazy load model classes to avoid importing heavy dependencies upfront."""
     if name in _LAZY_MODEL_IMPORTS:
         import importlib
+
         module = importlib.import_module(_LAZY_MODEL_IMPORTS[name])
         return getattr(module, name)
     raise AttributeError(f"module 'insideLLMs.models' has no attribute '{name}'")

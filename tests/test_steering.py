@@ -1,39 +1,41 @@
 """Tests for the steering module."""
 
-import pytest
 import math
+
+import pytest
+
 from insideLLMs.steering import (
+    ActivationAnalyzer,
+    ActivationLayer,
+    ActivationPattern,
+    BehavioralShiftMeasurer,
+    ContrastPair,
+    PromptSteerer,
+    RepresentationAnalyzer,
+    RepresentationSpace,
+    SteeringExperiment,
+    SteeringExperimenter,
     # Enums
     SteeringMethod,
-    ActivationLayer,
-    RepresentationSpace,
+    SteeringReport,
     SteeringStrength,
     # Dataclasses
     SteeringVector,
-    ActivationPattern,
-    SteeringExperiment,
-    ContrastPair,
-    SteeringReport,
     # Classes
     SteeringVectorExtractor,
-    PromptSteerer,
-    ActivationAnalyzer,
-    BehavioralShiftMeasurer,
-    SteeringExperimenter,
-    RepresentationAnalyzer,
+    analyze_activation_patterns,
+    apply_prompt_steering,
+    create_contrast_pair,
     # Convenience functions
     extract_steering_vector,
-    create_contrast_pair,
-    apply_prompt_steering,
     measure_behavioral_shift,
-    analyze_activation_patterns,
     quick_steering_analysis,
 )
-
 
 # ============================================================================
 # Enum Tests
 # ============================================================================
+
 
 class TestSteeringEnums:
     """Test steering-related enums."""
@@ -72,6 +74,7 @@ class TestSteeringEnums:
 # ============================================================================
 # Dataclass Tests
 # ============================================================================
+
 
 class TestSteeringVector:
     """Test SteeringVector dataclass."""
@@ -273,6 +276,7 @@ class TestSteeringReport:
 # SteeringVectorExtractor Tests
 # ============================================================================
 
+
 class TestSteeringVectorExtractor:
     """Test SteeringVectorExtractor class."""
 
@@ -281,9 +285,7 @@ class TestSteeringVectorExtractor:
         positive = [1.0, 2.0, 3.0]
         negative = [0.5, 1.0, 1.5]
 
-        vector = extractor.extract_from_contrast_pair(
-            positive, negative, "test", "increase values"
-        )
+        vector = extractor.extract_from_contrast_pair(positive, negative, "test", "increase values")
 
         assert vector.name == "test"
         assert vector.direction == [0.5, 1.0, 1.5]
@@ -294,20 +296,16 @@ class TestSteeringVectorExtractor:
         positive = [3.0, 0.0]
         negative = [0.0, 0.0]
 
-        vector = extractor.extract_from_contrast_pair(
-            positive, negative, "test", "test"
-        )
+        vector = extractor.extract_from_contrast_pair(positive, negative, "test", "test")
 
         # Should be normalized to unit length
-        magnitude = math.sqrt(sum(x ** 2 for x in vector.direction))
+        magnitude = math.sqrt(sum(x**2 for x in vector.direction))
         assert abs(magnitude - 1.0) < 0.001
 
     def test_extract_mismatched_lengths(self):
         extractor = SteeringVectorExtractor()
         with pytest.raises(ValueError):
-            extractor.extract_from_contrast_pair(
-                [1.0, 2.0], [1.0, 2.0, 3.0], "test", "test"
-            )
+            extractor.extract_from_contrast_pair([1.0, 2.0], [1.0, 2.0, 3.0], "test", "test")
 
     def test_extract_from_examples(self):
         extractor = SteeringVectorExtractor(normalize=False)
@@ -350,6 +348,7 @@ class TestSteeringVectorExtractor:
 # ============================================================================
 # PromptSteerer Tests
 # ============================================================================
+
 
 class TestPromptSteerer:
     """Test PromptSteerer class."""
@@ -442,14 +441,13 @@ class TestPromptSteerer:
 # ActivationAnalyzer Tests
 # ============================================================================
 
+
 class TestActivationAnalyzer:
     """Test ActivationAnalyzer class."""
 
     def test_record_pattern(self):
         analyzer = ActivationAnalyzer()
-        pattern = analyzer.record_pattern(
-            "test", "layer1", [0.1, 0.2, 0.3]
-        )
+        pattern = analyzer.record_pattern("test", "layer1", [0.1, 0.2, 0.3])
 
         assert len(analyzer.patterns) == 1
         assert pattern.prompt == "test"
@@ -518,6 +516,7 @@ class TestActivationAnalyzer:
 # BehavioralShiftMeasurer Tests
 # ============================================================================
 
+
 class TestBehavioralShiftMeasurer:
     """Test BehavioralShiftMeasurer class."""
 
@@ -565,7 +564,9 @@ class TestBehavioralShiftMeasurer:
         steered = "Therefore, consequently and furthermore, greetings to you"
 
         side_effects = measurer.detect_side_effects(
-            original, steered, "sentiment"  # targeting sentiment
+            original,
+            steered,
+            "sentiment",  # targeting sentiment
         )
         # Should detect formality and length as side effects
         assert len(side_effects) > 0
@@ -574,6 +575,7 @@ class TestBehavioralShiftMeasurer:
 # ============================================================================
 # SteeringExperimenter Tests
 # ============================================================================
+
 
 class TestSteeringExperimenter:
     """Test SteeringExperimenter class."""
@@ -584,16 +586,17 @@ class TestSteeringExperimenter:
 
     def test_set_model(self):
         experimenter = SteeringExperimenter()
-        mock_model = lambda x: f"Response to: {x}"
+
+        def mock_model(x):
+            return f"Response to: {x}"
+
         experimenter.set_model(mock_model)
         assert experimenter.model_fn is not None
 
     def test_run_experiment_no_model(self):
         experimenter = SteeringExperimenter()
         with pytest.raises(ValueError, match="Model function not set"):
-            experimenter.run_experiment(
-                "test", SteeringMethod.PROMPT_PREFIX, {}
-            )
+            experimenter.run_experiment("test", SteeringMethod.PROMPT_PREFIX, {})
 
     def test_run_experiment(self):
         def mock_model(prompt):
@@ -626,12 +629,14 @@ class TestSteeringExperimenter:
         assert len(experiments) == 2
 
     def test_analyze_steerability(self):
-        responses = iter([
-            "casual response",
-            "formal response",
-            "short",
-            "very long and detailed response",
-        ])
+        responses = iter(
+            [
+                "casual response",
+                "formal response",
+                "short",
+                "very long and detailed response",
+            ]
+        )
 
         def mock_model(prompt):
             try:
@@ -652,6 +657,7 @@ class TestSteeringExperimenter:
 # ============================================================================
 # RepresentationAnalyzer Tests
 # ============================================================================
+
 
 class TestRepresentationAnalyzer:
     """Test RepresentationAnalyzer class."""
@@ -710,6 +716,7 @@ class TestRepresentationAnalyzer:
 # ============================================================================
 # Convenience Function Tests
 # ============================================================================
+
 
 class TestConvenienceFunctions:
     """Test module-level convenience functions."""
@@ -777,6 +784,7 @@ class TestConvenienceFunctions:
 # Edge Cases and Error Handling
 # ============================================================================
 
+
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
@@ -793,9 +801,7 @@ class TestEdgeCases:
     def test_zero_magnitude_vector(self):
         extractor = SteeringVectorExtractor(normalize=True)
         # Same positive and negative should give zero vector
-        vector = extractor.extract_from_contrast_pair(
-            [1.0, 1.0], [1.0, 1.0], "zero", "none"
-        )
+        vector = extractor.extract_from_contrast_pair([1.0, 1.0], [1.0, 1.0], "zero", "none")
         assert vector.magnitude == 0.0
 
     def test_empty_text_shift(self):
@@ -820,6 +826,7 @@ class TestEdgeCases:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for steering workflows."""

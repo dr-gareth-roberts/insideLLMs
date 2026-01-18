@@ -8,23 +8,19 @@ from pathlib import Path
 import pytest
 
 from insideLLMs.logging_utils import (
-    ColoredFormatter,
     ErrorRecord,
     ErrorTracker,
     ExperimentLog,
     ExperimentLogger,
     LogEntry,
     LogLevel,
-    LoggerAdapter,
     ProgressLogger,
     StructuredFormatter,
     configure_logging,
-    get_error_tracker,
     get_experiment_logger,
     get_logger,
     log_call,
     log_timing,
-    log_with_context,
     progress_context,
     track_error,
 )

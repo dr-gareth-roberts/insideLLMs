@@ -7,8 +7,8 @@ import pytest
 from insideLLMs.calibration import (
     CalibrationAnalyzer,
     CalibrationBin,
-    CalibrationMetrics,
     CalibrationMethod,
+    CalibrationMetrics,
     CalibrationResult,
     Calibrator,
     ConfidenceEstimate,
@@ -135,26 +135,89 @@ class TestCalibrationMetrics:
     def test_is_well_calibrated(self):
         """Test well-calibrated check."""
         good_metrics = CalibrationMetrics(
-            ece=0.03, mce=0.1, ace=0.04,
-            overconfidence=0.01, underconfidence=0.02,
-            brier_score=0.1, log_loss=0.3,
+            ece=0.03,
+            mce=0.1,
+            ace=0.04,
+            overconfidence=0.01,
+            underconfidence=0.02,
+            brier_score=0.1,
+            log_loss=0.3,
         )
         assert good_metrics.is_well_calibrated
 
         bad_metrics = CalibrationMetrics(
-            ece=0.15, mce=0.3, ace=0.2,
-            overconfidence=0.1, underconfidence=0.05,
-            brier_score=0.3, log_loss=0.8,
+            ece=0.15,
+            mce=0.3,
+            ace=0.2,
+            overconfidence=0.1,
+            underconfidence=0.05,
+            brier_score=0.3,
+            log_loss=0.8,
         )
         assert not bad_metrics.is_well_calibrated
 
     def test_calibration_quality(self):
         """Test calibration quality description."""
-        assert CalibrationMetrics(ece=0.01, mce=0, ace=0, overconfidence=0, underconfidence=0, brier_score=0, log_loss=0).calibration_quality == "excellent"
-        assert CalibrationMetrics(ece=0.03, mce=0, ace=0, overconfidence=0, underconfidence=0, brier_score=0, log_loss=0).calibration_quality == "good"
-        assert CalibrationMetrics(ece=0.08, mce=0, ace=0, overconfidence=0, underconfidence=0, brier_score=0, log_loss=0).calibration_quality == "moderate"
-        assert CalibrationMetrics(ece=0.15, mce=0, ace=0, overconfidence=0, underconfidence=0, brier_score=0, log_loss=0).calibration_quality == "poor"
-        assert CalibrationMetrics(ece=0.25, mce=0, ace=0, overconfidence=0, underconfidence=0, brier_score=0, log_loss=0).calibration_quality == "very_poor"
+        assert (
+            CalibrationMetrics(
+                ece=0.01,
+                mce=0,
+                ace=0,
+                overconfidence=0,
+                underconfidence=0,
+                brier_score=0,
+                log_loss=0,
+            ).calibration_quality
+            == "excellent"
+        )
+        assert (
+            CalibrationMetrics(
+                ece=0.03,
+                mce=0,
+                ace=0,
+                overconfidence=0,
+                underconfidence=0,
+                brier_score=0,
+                log_loss=0,
+            ).calibration_quality
+            == "good"
+        )
+        assert (
+            CalibrationMetrics(
+                ece=0.08,
+                mce=0,
+                ace=0,
+                overconfidence=0,
+                underconfidence=0,
+                brier_score=0,
+                log_loss=0,
+            ).calibration_quality
+            == "moderate"
+        )
+        assert (
+            CalibrationMetrics(
+                ece=0.15,
+                mce=0,
+                ace=0,
+                overconfidence=0,
+                underconfidence=0,
+                brier_score=0,
+                log_loss=0,
+            ).calibration_quality
+            == "poor"
+        )
+        assert (
+            CalibrationMetrics(
+                ece=0.25,
+                mce=0,
+                ace=0,
+                overconfidence=0,
+                underconfidence=0,
+                brier_score=0,
+                log_loss=0,
+            ).calibration_quality
+            == "very_poor"
+        )
 
 
 class TestConfidenceEstimate:
@@ -187,9 +250,13 @@ class TestCalibrationResult:
     def test_to_dict(self):
         """Test conversion to dictionary."""
         metrics = CalibrationMetrics(
-            ece=0.05, mce=0.1, ace=0.06,
-            overconfidence=0.03, underconfidence=0.02,
-            brier_score=0.15, log_loss=0.5,
+            ece=0.05,
+            mce=0.1,
+            ace=0.06,
+            overconfidence=0.03,
+            underconfidence=0.02,
+            brier_score=0.15,
+            log_loss=0.5,
         )
         result = CalibrationResult(
             predictions=[0.8, 0.9],

@@ -8,9 +8,9 @@ Tests the model's ability to solve logic problems, including:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-from insideLLMs.probes.base import Probe, ScoredProbe
+from insideLLMs.probes.base import ScoredProbe
 from insideLLMs.types import ProbeCategory, ProbeResult, ProbeScore, ResultStatus
 
 
@@ -79,7 +79,7 @@ class LogicProbe(ScoredProbe[str]):
         model_output: str,
         reference: Any,
         input_data: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate a single logic problem response.
 
         Args:
@@ -97,11 +97,7 @@ class LogicProbe(ScoredProbe[str]):
         extracted = self._extract_final_answer(model_output).lower().strip()
 
         # Check for exact match or containment
-        is_correct = (
-            ref_answer == extracted
-            or ref_answer in extracted
-            or extracted in ref_answer
-        )
+        is_correct = ref_answer == extracted or ref_answer in extracted or extracted in ref_answer
 
         return {
             "is_correct": is_correct,
@@ -155,7 +151,7 @@ class LogicProbe(ScoredProbe[str]):
         response_lower = response.lower()
         return any(indicator in response_lower for indicator in reasoning_indicators)
 
-    def score(self, results: List[ProbeResult[str]]) -> ProbeScore:
+    def score(self, results: list[ProbeResult[str]]) -> ProbeScore:
         """Calculate scores for logic probe results.
 
         Args:

@@ -21,10 +21,6 @@ Example:
     >>> snapshot.save("experiment_v1.json")
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import hashlib
 import json
 import os
@@ -32,10 +28,14 @@ import platform
 import random
 import sys
 import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Optional
 
 
 class SnapshotFormat(Enum):
     """Snapshot file formats."""
+
     JSON = "json"
     YAML = "yaml"
     PICKLE = "pickle"
@@ -43,6 +43,7 @@ class SnapshotFormat(Enum):
 
 class ReproducibilityLevel(Enum):
     """Levels of reproducibility guarantees."""
+
     NONE = "none"  # No guarantees
     SEED_ONLY = "seed_only"  # Random seeds set
     DETERMINISTIC = "deterministic"  # Full deterministic mode
@@ -51,6 +52,7 @@ class ReproducibilityLevel(Enum):
 
 class EnvironmentType(Enum):
     """Types of environment information."""
+
     PYTHON = "python"
     SYSTEM = "system"
     PACKAGES = "packages"
@@ -61,14 +63,15 @@ class EnvironmentType(Enum):
 @dataclass
 class SeedState:
     """Captured state of random seeds."""
+
     global_seed: int
     python_random_state: Optional[tuple] = None
-    numpy_state: Optional[Dict[str, Any]] = None
+    numpy_state: Optional[dict[str, Any]] = None
     torch_state: Optional[bytes] = None
     tensorflow_seed: Optional[int] = None
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "global_seed": self.global_seed,
@@ -83,15 +86,16 @@ class SeedState:
 @dataclass
 class EnvironmentInfo:
     """Captured environment information."""
+
     python_version: str
     platform_info: str
     os_info: str
-    packages: Dict[str, str] = field(default_factory=dict)
-    env_vars: Dict[str, str] = field(default_factory=dict)
+    packages: dict[str, str] = field(default_factory=dict)
+    env_vars: dict[str, str] = field(default_factory=dict)
     working_directory: str = ""
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "python_version": self.python_version,
@@ -107,13 +111,14 @@ class EnvironmentInfo:
 @dataclass
 class ConfigSnapshot:
     """Snapshot of experiment configuration."""
-    config: Dict[str, Any]
+
+    config: dict[str, Any]
     config_hash: str
     source_file: Optional[str] = None
     version: str = "1.0"
     created_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "config": self.config,
@@ -127,17 +132,18 @@ class ConfigSnapshot:
 @dataclass
 class ExperimentMetadata:
     """Metadata for an experiment run."""
+
     experiment_id: str
     name: str
     description: str = ""
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     author: str = ""
     created_at: float = field(default_factory=time.time)
     git_commit: Optional[str] = None
     git_branch: Optional[str] = None
     parent_experiment: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "experiment_id": self.experiment_id,
@@ -155,15 +161,16 @@ class ExperimentMetadata:
 @dataclass
 class ReplayResult:
     """Result of replaying an experiment."""
+
     success: bool
     original_hash: str
     replay_hash: str
     matches: bool
-    differences: List[str] = field(default_factory=list)
+    differences: list[str] = field(default_factory=list)
     duration_ms: float = 0.0
     error: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "success": self.success,
@@ -186,8 +193,8 @@ class SeedManager:
             global_seed: The seed to use. If None, generates a random seed.
         """
         self.global_seed = global_seed if global_seed is not None else self._generate_seed()
-        self._seed_history: List[SeedState] = []
-        self._libraries_seeded: List[str] = []
+        self._seed_history: list[SeedState] = []
+        self._libraries_seeded: list[str] = []
 
     def _generate_seed(self) -> int:
         """Generate a random seed."""
@@ -202,6 +209,7 @@ class SeedManager:
         """Set NumPy's random seed if available."""
         try:
             import numpy as np
+
             np.random.seed(self.global_seed)
             self._libraries_seeded.append("numpy")
             return True
@@ -212,6 +220,7 @@ class SeedManager:
         """Set PyTorch's random seed if available."""
         try:
             import torch
+
             torch.manual_seed(self.global_seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed_all(self.global_seed)
@@ -224,13 +233,14 @@ class SeedManager:
         """Set TensorFlow's random seed if available."""
         try:
             import tensorflow as tf
+
             tf.random.set_seed(self.global_seed)
             self._libraries_seeded.append("tensorflow")
             return True
         except ImportError:
             return False
 
-    def set_all_seeds(self) -> Dict[str, bool]:
+    def set_all_seeds(self) -> dict[str, bool]:
         """Set seeds for all available libraries."""
         results = {
             "python_random": True,
@@ -258,6 +268,7 @@ class SeedManager:
         # Capture NumPy state if available
         try:
             import numpy as np
+
             state.numpy_state = {"state": str(np.random.get_state())}
         except ImportError:
             pass
@@ -265,6 +276,7 @@ class SeedManager:
         # Capture PyTorch state if available
         try:
             import torch
+
             state.torch_state = torch.get_rng_state().numpy().tobytes()
         except ImportError:
             pass
@@ -283,7 +295,7 @@ class SeedManager:
         if state.python_random_state:
             random.setstate(state.python_random_state)
 
-    def get_libraries_seeded(self) -> List[str]:
+    def get_libraries_seeded(self) -> list[str]:
         """Get list of libraries that have been seeded."""
         return list(self._libraries_seeded)
 
@@ -324,18 +336,19 @@ class EnvironmentCapture:
             working_directory=os.getcwd(),
         )
 
-    def _get_installed_packages(self) -> Dict[str, str]:
+    def _get_installed_packages(self) -> dict[str, str]:
         """Get installed Python packages."""
         packages = {}
         try:
             import importlib.metadata
+
             for dist in importlib.metadata.distributions():
                 packages[dist.metadata["Name"]] = dist.version
         except Exception:
             pass
         return packages
 
-    def compare(self, env1: EnvironmentInfo, env2: EnvironmentInfo) -> Dict[str, Any]:
+    def compare(self, env1: EnvironmentInfo, env2: EnvironmentInfo) -> dict[str, Any]:
         """Compare two environment snapshots."""
         differences = {
             "python_version_match": env1.python_version == env2.python_version,
@@ -361,8 +374,7 @@ class EnvironmentCapture:
                 differences["env_var_differences"][var] = {"env1": v1, "env2": v2}
 
         differences["is_compatible"] = (
-            differences["python_version_match"]
-            and len(differences["package_differences"]) == 0
+            differences["python_version_match"] and len(differences["package_differences"]) == 0
         )
 
         return differences
@@ -371,13 +383,14 @@ class EnvironmentCapture:
 @dataclass
 class ExperimentSnapshot:
     """Complete snapshot of an experiment state."""
+
     snapshot_id: str
     metadata: ExperimentMetadata
     config: ConfigSnapshot
     seed_state: SeedState
     environment: EnvironmentInfo
-    inputs: Dict[str, Any] = field(default_factory=dict)
-    outputs: Dict[str, Any] = field(default_factory=dict)
+    inputs: dict[str, Any] = field(default_factory=dict)
+    outputs: dict[str, Any] = field(default_factory=dict)
     checksum: str = ""
 
     def __post_init__(self):
@@ -387,14 +400,17 @@ class ExperimentSnapshot:
 
     def _calculate_checksum(self) -> str:
         """Calculate a checksum for the snapshot."""
-        content = json.dumps({
-            "config": self.config.to_dict(),
-            "seed": self.seed_state.global_seed,
-            "inputs": str(self.inputs),
-        }, sort_keys=True)
+        content = json.dumps(
+            {
+                "config": self.config.to_dict(),
+                "seed": self.seed_state.global_seed,
+                "inputs": str(self.inputs),
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "snapshot_id": self.snapshot_id,
@@ -417,6 +433,7 @@ class ExperimentSnapshot:
         elif format == SnapshotFormat.YAML:
             try:
                 import yaml
+
                 with open(path, "w") as f:
                     yaml.dump(data, f, default_flow_style=False)
             except ImportError:
@@ -425,7 +442,7 @@ class ExperimentSnapshot:
     @classmethod
     def load(cls, path: str) -> "ExperimentSnapshot":
         """Load snapshot from file."""
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
 
         return cls(
@@ -443,7 +460,7 @@ class ExperimentSnapshot:
     def capture(
         cls,
         name: str = "experiment",
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[dict[str, Any]] = None,
         seed: Optional[int] = None,
     ) -> "ExperimentSnapshot":
         """Capture current state as a snapshot."""
@@ -482,19 +499,17 @@ class ConfigVersionManager:
 
     def __init__(self):
         """Initialize version manager."""
-        self._versions: Dict[str, ConfigSnapshot] = {}
+        self._versions: dict[str, ConfigSnapshot] = {}
         self._current_version: Optional[str] = None
 
     def add_version(
         self,
         version: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         source_file: Optional[str] = None,
     ) -> ConfigSnapshot:
         """Add a configuration version."""
-        config_hash = hashlib.sha256(
-            json.dumps(config, sort_keys=True).encode()
-        ).hexdigest()[:16]
+        config_hash = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()[:16]
 
         snapshot = ConfigSnapshot(
             config=config,
@@ -518,11 +533,11 @@ class ConfigVersionManager:
             return self._versions.get(self._current_version)
         return None
 
-    def list_versions(self) -> List[str]:
+    def list_versions(self) -> list[str]:
         """List all versions."""
         return list(self._versions.keys())
 
-    def diff(self, version1: str, version2: str) -> Dict[str, Any]:
+    def diff(self, version1: str, version2: str) -> dict[str, Any]:
         """Compare two versions."""
         v1 = self._versions.get(version1)
         v2 = self._versions.get(version2)
@@ -534,10 +549,10 @@ class ConfigVersionManager:
 
     def _diff_configs(
         self,
-        config1: Dict[str, Any],
-        config2: Dict[str, Any],
+        config1: dict[str, Any],
+        config2: dict[str, Any],
         path: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Recursively diff two configs."""
         differences = {
             "added": {},
@@ -574,7 +589,7 @@ class ExperimentReplayManager:
 
     def __init__(self):
         """Initialize replay manager."""
-        self._snapshots: Dict[str, ExperimentSnapshot] = {}
+        self._snapshots: dict[str, ExperimentSnapshot] = {}
 
     def register_snapshot(self, snapshot: ExperimentSnapshot) -> None:
         """Register a snapshot for replay."""
@@ -601,7 +616,7 @@ class ExperimentReplayManager:
     def verify_replay(
         self,
         snapshot_id: str,
-        outputs: Dict[str, Any],
+        outputs: dict[str, Any],
     ) -> ReplayResult:
         """Verify replay outputs match original."""
         snapshot = self._snapshots.get(snapshot_id)
@@ -654,14 +669,14 @@ class DeterministicExecutor:
         """
         self.seed = seed
         self.seed_manager = SeedManager(global_seed=seed)
-        self._execution_log: List[Dict[str, Any]] = []
+        self._execution_log: list[dict[str, Any]] = []
 
     def execute(
         self,
         func: Callable,
         *args,
         **kwargs,
-    ) -> Tuple[Any, Dict[str, Any]]:
+    ) -> tuple[Any, dict[str, Any]]:
         """Execute a function deterministically."""
         # Set seeds before execution
         self.seed_manager.set_all_seeds()
@@ -684,7 +699,7 @@ class DeterministicExecutor:
 
         return result, execution_record
 
-    def get_execution_log(self) -> List[Dict[str, Any]]:
+    def get_execution_log(self) -> list[dict[str, Any]]:
         """Get execution log."""
         return list(self._execution_log)
 
@@ -699,12 +714,12 @@ class CheckpointManager:
             checkpoint_dir: Directory to store checkpoints
         """
         self.checkpoint_dir = checkpoint_dir
-        self._checkpoints: Dict[str, Dict[str, Any]] = {}
+        self._checkpoints: dict[str, dict[str, Any]] = {}
 
     def create_checkpoint(
         self,
         name: str,
-        state: Dict[str, Any],
+        state: dict[str, Any],
         seed_state: Optional[SeedState] = None,
     ) -> str:
         """Create a checkpoint."""
@@ -722,18 +737,18 @@ class CheckpointManager:
 
         return checkpoint_id
 
-    def get_checkpoint(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+    def get_checkpoint(self, checkpoint_id: str) -> Optional[dict[str, Any]]:
         """Get a checkpoint by ID."""
         return self._checkpoints.get(checkpoint_id)
 
-    def list_checkpoints(self) -> List[Dict[str, str]]:
+    def list_checkpoints(self) -> list[dict[str, str]]:
         """List all checkpoints."""
         return [
             {"id": ckpt["checkpoint_id"], "name": ckpt["name"]}
             for ckpt in self._checkpoints.values()
         ]
 
-    def restore_checkpoint(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+    def restore_checkpoint(self, checkpoint_id: str) -> Optional[dict[str, Any]]:
         """Restore state from a checkpoint."""
         checkpoint = self._checkpoints.get(checkpoint_id)
         if not checkpoint:
@@ -744,15 +759,16 @@ class CheckpointManager:
 @dataclass
 class ReproducibilityReport:
     """Report on reproducibility status."""
+
     level: ReproducibilityLevel
     seed_set: bool
     environment_captured: bool
     config_versioned: bool
     checkpoints_available: bool
-    warnings: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "level": self.level.value,
@@ -770,7 +786,7 @@ class ReproducibilityChecker:
 
     def __init__(self):
         """Initialize checker."""
-        self._checks: List[Tuple[str, Callable[[], bool]]] = []
+        self._checks: list[tuple[str, Callable[[], bool]]] = []
         self._setup_default_checks()
 
     def _setup_default_checks(self) -> None:
@@ -824,8 +840,8 @@ class ExperimentRegistry:
 
     def __init__(self):
         """Initialize registry."""
-        self._experiments: Dict[str, ExperimentSnapshot] = {}
-        self._tags: Dict[str, List[str]] = {}  # tag -> experiment_ids
+        self._experiments: dict[str, ExperimentSnapshot] = {}
+        self._tags: dict[str, list[str]] = {}  # tag -> experiment_ids
 
     def register(self, snapshot: ExperimentSnapshot) -> str:
         """Register an experiment."""
@@ -843,19 +859,16 @@ class ExperimentRegistry:
         """Get an experiment by ID."""
         return self._experiments.get(experiment_id)
 
-    def find_by_tag(self, tag: str) -> List[ExperimentSnapshot]:
+    def find_by_tag(self, tag: str) -> list[ExperimentSnapshot]:
         """Find experiments by tag."""
         experiment_ids = self._tags.get(tag, [])
         return [self._experiments[eid] for eid in experiment_ids if eid in self._experiments]
 
-    def find_by_name(self, name: str) -> List[ExperimentSnapshot]:
+    def find_by_name(self, name: str) -> list[ExperimentSnapshot]:
         """Find experiments by name."""
-        return [
-            exp for exp in self._experiments.values()
-            if exp.metadata.name == name
-        ]
+        return [exp for exp in self._experiments.values() if exp.metadata.name == name]
 
-    def list_all(self) -> List[Dict[str, str]]:
+    def list_all(self) -> list[dict[str, str]]:
         """List all experiments."""
         return [
             {
@@ -873,7 +886,7 @@ def create_seed_manager(seed: Optional[int] = None) -> SeedManager:
     return SeedManager(global_seed=seed)
 
 
-def set_global_seed(seed: int) -> Dict[str, bool]:
+def set_global_seed(seed: int) -> dict[str, bool]:
     """Set global seed across all libraries."""
     manager = SeedManager(global_seed=seed)
     return manager.set_all_seeds()
@@ -881,7 +894,7 @@ def set_global_seed(seed: int) -> Dict[str, bool]:
 
 def capture_snapshot(
     name: str = "experiment",
-    config: Optional[Dict[str, Any]] = None,
+    config: Optional[dict[str, Any]] = None,
     seed: Optional[int] = None,
 ) -> ExperimentSnapshot:
     """Capture a complete experiment snapshot."""
@@ -904,13 +917,13 @@ def capture_environment() -> EnvironmentInfo:
     return capture.capture()
 
 
-def compare_environments(env1: EnvironmentInfo, env2: EnvironmentInfo) -> Dict[str, Any]:
+def compare_environments(env1: EnvironmentInfo, env2: EnvironmentInfo) -> dict[str, Any]:
     """Compare two environment snapshots."""
     capture = EnvironmentCapture()
     return capture.compare(env1, env2)
 
 
-def diff_configs(config1: Dict[str, Any], config2: Dict[str, Any]) -> Dict[str, Any]:
+def diff_configs(config1: dict[str, Any], config2: dict[str, Any]) -> dict[str, Any]:
     """Diff two configurations."""
     manager = ConfigVersionManager()
     manager.add_version("v1", config1)
@@ -932,7 +945,7 @@ def run_deterministic(
     seed: int,
     *args,
     **kwargs,
-) -> Tuple[Any, Dict[str, Any]]:
+) -> tuple[Any, dict[str, Any]]:
     """Run a function deterministically with a fixed seed."""
     executor = DeterministicExecutor(seed=seed)
     return executor.execute(func, *args, **kwargs)

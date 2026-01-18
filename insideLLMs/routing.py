@@ -29,29 +29,19 @@ Example:
 """
 
 import hashlib
-import json
+import math
 import random
 import re
-import time
 import threading
-from abc import ABC, abstractmethod
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
-    List,
     Optional,
-    Pattern,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
 )
-import math
-
 
 # =============================================================================
 # Configuration and Types
@@ -60,6 +50,7 @@ import math
 
 class RoutingStrategy(Enum):
     """Strategy for selecting among matching routes."""
+
     FIRST_MATCH = "first_match"  # Use first matching route
     BEST_MATCH = "best_match"  # Use highest scoring route
     ROUND_ROBIN = "round_robin"  # Rotate among matching routes
@@ -70,6 +61,7 @@ class RoutingStrategy(Enum):
 
 class RouteStatus(Enum):
     """Status of a route."""
+
     ACTIVE = "active"
     DISABLED = "disabled"
     RATE_LIMITED = "rate_limited"
@@ -100,7 +92,7 @@ class RouterConfig:
     # Load balancing
     max_concurrent_per_route: int = 100
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "strategy": self.strategy.value,
@@ -114,13 +106,14 @@ class RouterConfig:
 @dataclass
 class RouteMatch:
     """Result of matching a query to a route."""
+
     route_name: str
     score: float
-    matched_patterns: List[str]
+    matched_patterns: list[str]
     model: Any
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "route_name": self.route_name,
@@ -134,6 +127,7 @@ class RouteMatch:
 @dataclass
 class RoutingResult:
     """Result of routing a query."""
+
     query: str
     route_name: str
     response: Any
@@ -141,9 +135,9 @@ class RoutingResult:
     match_score: float
     retries: int = 0
     fallback_used: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "query": self.query,
@@ -160,6 +154,7 @@ class RoutingResult:
 @dataclass
 class RouteStats:
     """Statistics for a route."""
+
     route_name: str
     total_requests: int = 0
     successful_requests: int = 0
@@ -182,9 +177,11 @@ class RouteStats:
         else:
             self.failed_requests += 1
 
-        self.error_rate = self.failed_requests / self.total_requests if self.total_requests > 0 else 0.0
+        self.error_rate = (
+            self.failed_requests / self.total_requests if self.total_requests > 0 else 0.0
+        )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "route_name": self.route_name,
@@ -221,13 +218,13 @@ class Route:
         self,
         name: str,
         model: Any,
-        patterns: Optional[List[str]] = None,
-        regex_patterns: Optional[List[str]] = None,
+        patterns: Optional[list[str]] = None,
+        regex_patterns: Optional[list[str]] = None,
         description: str = "",
         priority: int = 0,
         cost_per_token: float = 0.0,
         max_tokens: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ):
         self.name = name
         self.model = model
@@ -246,7 +243,7 @@ class Route:
         self,
         query: str,
         case_sensitive: bool = False,
-    ) -> Tuple[bool, float, List[str]]:
+    ) -> tuple[bool, float, list[str]]:
         """Check if query matches this route.
 
         Args:
@@ -256,10 +253,7 @@ class Route:
         Returns:
             Tuple of (matches, score, matched_patterns)
         """
-        if not case_sensitive:
-            query_lower = query.lower()
-        else:
-            query_lower = query
+        query_lower = query.lower() if not case_sensitive else query
 
         matched = []
         total_score = 0.0
@@ -282,10 +276,7 @@ class Route:
                 total_score += 0.5  # Fixed score for regex matches
 
         # Normalize score
-        if matched:
-            score = min(total_score / len(matched) if matched else 0, 1.0)
-        else:
-            score = 0.0
+        score = min(total_score / len(matched) if matched else 0, 1.0) if matched else 0.0
 
         return len(matched) > 0, score, matched
 
@@ -294,7 +285,7 @@ class Route:
         """Get route statistics."""
         return self._stats
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -321,10 +312,10 @@ class SemanticMatcher:
 
     def __init__(
         self,
-        embedder: Optional[Callable[[str], List[float]]] = None,
+        embedder: Optional[Callable[[str], list[float]]] = None,
     ):
         self._embedder = embedder
-        self._route_embeddings: Dict[str, List[float]] = {}
+        self._route_embeddings: dict[str, list[float]] = {}
 
     def compute_similarity(self, text1: str, text2: str) -> float:
         """Compute similarity between two texts."""
@@ -348,7 +339,7 @@ class SemanticMatcher:
 
         return intersection / union if union > 0 else 0.0
 
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Compute cosine similarity."""
         if len(vec1) != len(vec2):
             return 0.0
@@ -367,7 +358,7 @@ class SemanticMatcher:
         if self._embedder:
             self._route_embeddings[route_name] = self._embedder(text)
 
-    def get_cached_embedding(self, route_name: str) -> Optional[List[float]]:
+    def get_cached_embedding(self, route_name: str) -> Optional[list[float]]:
         """Get cached embedding for a route."""
         return self._route_embeddings.get(route_name)
 
@@ -396,13 +387,13 @@ class SemanticRouter:
         self,
         config: Optional[RouterConfig] = None,
         fallback_model: Optional[Any] = None,
-        embedder: Optional[Callable[[str], List[float]]] = None,
+        embedder: Optional[Callable[[str], list[float]]] = None,
     ):
         self.config = config or RouterConfig()
         self.fallback_model = fallback_model
-        self._routes: Dict[str, Route] = {}
+        self._routes: dict[str, Route] = {}
         self._matcher = SemanticMatcher(embedder)
-        self._route_cache: Dict[str, Tuple[str, datetime]] = {}
+        self._route_cache: dict[str, tuple[str, datetime]] = {}
         self._lock = threading.RLock()
         self._round_robin_index = 0
 
@@ -438,11 +429,11 @@ class SemanticRouter:
         """Get a route by name."""
         return self._routes.get(name)
 
-    def list_routes(self) -> List[Route]:
+    def list_routes(self) -> list[Route]:
         """List all routes."""
         return list(self._routes.values())
 
-    def match(self, query: str) -> List[RouteMatch]:
+    def match(self, query: str) -> list[RouteMatch]:
         """Match a query to routes.
 
         Args:
@@ -458,9 +449,7 @@ class SemanticRouter:
                 continue
 
             # Pattern matching
-            is_match, score, matched_patterns = route.matches(
-                query, self.config.case_sensitive
-            )
+            is_match, score, matched_patterns = route.matches(query, self.config.case_sensitive)
 
             # Add semantic similarity
             if route.description:
@@ -468,20 +457,22 @@ class SemanticRouter:
                 score = max(score, semantic_score)
 
             if is_match or score >= self.config.similarity_threshold:
-                matches.append(RouteMatch(
-                    route_name=route.name,
-                    score=score,
-                    matched_patterns=matched_patterns,
-                    model=route.model,
-                    metadata={"priority": route.priority},
-                ))
+                matches.append(
+                    RouteMatch(
+                        route_name=route.name,
+                        score=score,
+                        matched_patterns=matched_patterns,
+                        model=route.model,
+                        metadata={"priority": route.priority},
+                    )
+                )
 
         # Sort by score (and priority for ties)
         matches.sort(key=lambda m: (m.score, m.metadata.get("priority", 0)), reverse=True)
 
         return matches
 
-    def select_route(self, matches: List[RouteMatch]) -> Optional[RouteMatch]:
+    def select_route(self, matches: list[RouteMatch]) -> Optional[RouteMatch]:
         """Select a route from matches based on strategy.
 
         Args:
@@ -550,12 +541,14 @@ class SemanticRouter:
             if cached:
                 route = self._routes.get(cached)
                 if route:
-                    matches = [RouteMatch(
-                        route_name=route.name,
-                        score=1.0,
-                        matched_patterns=[],
-                        model=route.model,
-                    )]
+                    matches = [
+                        RouteMatch(
+                            route_name=route.name,
+                            score=1.0,
+                            matched_patterns=[],
+                            model=route.model,
+                        )
+                    ]
                 else:
                     matches = self.match(query)
             else:
@@ -648,7 +641,7 @@ class SemanticRouter:
         key = hashlib.md5(query.encode()).hexdigest()
         self._route_cache[key] = (route_name, datetime.now())
 
-    def get_stats(self) -> Dict[str, RouteStats]:
+    def get_stats(self) -> dict[str, RouteStats]:
         """Get statistics for all routes."""
         return {name: route.stats for name, route in self._routes.items()}
 
@@ -668,19 +661,18 @@ class ModelPool:
 
     def __init__(
         self,
-        models: List[Any],
+        models: list[Any],
         strategy: RoutingStrategy = RoutingStrategy.ROUND_ROBIN,
     ):
         self.models = models
         self.strategy = strategy
         self._index = 0
-        self._stats: Dict[int, RouteStats] = {
-            i: RouteStats(route_name=f"model_{i}")
-            for i in range(len(models))
+        self._stats: dict[int, RouteStats] = {
+            i: RouteStats(route_name=f"model_{i}") for i in range(len(models))
         }
         self._lock = threading.Lock()
 
-    def select(self) -> Tuple[Any, int]:
+    def select(self) -> tuple[Any, int]:
         """Select a model from the pool.
 
         Returns:
@@ -721,13 +713,13 @@ class ModelPool:
                 self._stats[idx].update(True, (time.time() - start_time) * 1000)
             return response
 
-        except Exception as e:
+        except Exception:
             with self._lock:
                 self._stats[idx].current_load -= 1
                 self._stats[idx].update(False, (time.time() - start_time) * 1000)
             raise
 
-    def stats(self) -> Dict[int, RouteStats]:
+    def stats(self) -> dict[int, RouteStats]:
         """Get pool statistics."""
         return self._stats.copy()
 
@@ -748,17 +740,17 @@ class IntentClassifier:
     def __init__(
         self,
         model: Optional[Any] = None,
-        intents: Optional[Dict[str, str]] = None,
+        intents: Optional[dict[str, str]] = None,
     ):
         self.model = model
         self.intents = intents or {}
-        self._intent_patterns: Dict[str, List[str]] = {}
+        self._intent_patterns: dict[str, list[str]] = {}
 
     def add_intent(
         self,
         name: str,
         description: str,
-        patterns: Optional[List[str]] = None,
+        patterns: Optional[list[str]] = None,
     ) -> None:
         """Add an intent.
 
@@ -771,7 +763,7 @@ class IntentClassifier:
         if patterns:
             self._intent_patterns[name] = patterns
 
-    def classify(self, query: str) -> Tuple[str, float]:
+    def classify(self, query: str) -> tuple[str, float]:
         """Classify query intent.
 
         Args:
@@ -803,11 +795,9 @@ class IntentClassifier:
         # Fallback to best pattern match or unknown
         return best_intent or "unknown", best_score
 
-    def _classify_with_model(self, query: str) -> Tuple[str, float]:
+    def _classify_with_model(self, query: str) -> tuple[str, float]:
         """Classify using the model."""
-        intent_list = "\n".join(
-            f"- {name}: {desc}" for name, desc in self.intents.items()
-        )
+        intent_list = "\n".join(f"- {name}: {desc}" for name, desc in self.intents.items())
 
         prompt = f"""Classify the following query into one of these intents:
 
@@ -837,7 +827,7 @@ Respond with just the intent name."""
 
 
 def create_router(
-    routes: Optional[List[Dict[str, Any]]] = None,
+    routes: Optional[list[dict[str, Any]]] = None,
     fallback_model: Optional[Any] = None,
     strategy: str = "best_match",
 ) -> SemanticRouter:
@@ -870,7 +860,7 @@ def create_router(
 
 def quick_route(
     query: str,
-    routes: List[Dict[str, Any]],
+    routes: list[dict[str, Any]],
     fallback: Optional[Any] = None,
 ) -> RoutingResult:
     """Quick helper for routing a query.
@@ -889,7 +879,7 @@ def quick_route(
 
 def create_intent_router(
     model: Any,
-    intent_models: Dict[str, Any],
+    intent_models: dict[str, Any],
     fallback_model: Optional[Any] = None,
 ) -> SemanticRouter:
     """Create a router based on intent classification.
@@ -905,12 +895,14 @@ def create_intent_router(
     router = SemanticRouter(fallback_model=fallback_model)
 
     for intent, intent_model in intent_models.items():
-        router.add_route(Route(
-            name=intent,
-            model=intent_model,
-            patterns=[intent],
-            description=f"Handle {intent} queries",
-        ))
+        router.add_route(
+            Route(
+                name=intent,
+                model=intent_model,
+                patterns=[intent],
+                description=f"Handle {intent} queries",
+            )
+        )
 
     return router
 

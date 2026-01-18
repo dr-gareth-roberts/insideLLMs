@@ -1,10 +1,10 @@
 """Tests for semantic similarity and embedding analysis utilities."""
 
 import pytest
+
 from insideLLMs.semantic_analysis import (
     ClusterInfo,
     ClusteringMethod,
-    ClusteringResult,
     DimensionalityReduction,
     EmbeddingAnalyzer,
     EmbeddingClusterer,
@@ -73,11 +73,18 @@ class TestSimilarityResult:
 
     def test_similarity_levels(self):
         """Test similarity level categorization."""
-        assert SimilarityResult("a", "b", 0.95, SimilarityMetric.COSINE).similarity_level == "very_high"
+        assert (
+            SimilarityResult("a", "b", 0.95, SimilarityMetric.COSINE).similarity_level
+            == "very_high"
+        )
         assert SimilarityResult("a", "b", 0.75, SimilarityMetric.COSINE).similarity_level == "high"
-        assert SimilarityResult("a", "b", 0.55, SimilarityMetric.COSINE).similarity_level == "moderate"
+        assert (
+            SimilarityResult("a", "b", 0.55, SimilarityMetric.COSINE).similarity_level == "moderate"
+        )
         assert SimilarityResult("a", "b", 0.35, SimilarityMetric.COSINE).similarity_level == "low"
-        assert SimilarityResult("a", "b", 0.15, SimilarityMetric.COSINE).similarity_level == "very_low"
+        assert (
+            SimilarityResult("a", "b", 0.15, SimilarityMetric.COSINE).similarity_level == "very_low"
+        )
 
     def test_to_dict(self):
         """Test conversion to dictionary."""
@@ -340,6 +347,7 @@ class TestTextSimilarityAnalyzer:
 
     def test_compare_with_custom_embedder(self):
         """Test with custom embedding function."""
+
         def simple_embed(text: str) -> list:
             return [len(text), text.count(" ")]
 
@@ -359,6 +367,7 @@ class TestTextSimilarityAnalyzer:
 
     def test_find_most_similar(self):
         """Test finding most similar texts."""
+
         # Use custom embedder that clearly differentiates
         def embed(text: str) -> list:
             # Create unique signature per text
@@ -411,6 +420,7 @@ class TestEmbeddingClusterer:
 
     def test_cluster_kmeans(self):
         """Test k-means clustering."""
+
         # Use custom embedder that differentiates texts clearly
         def embed(text: str) -> list:
             return [ord(c) / 256.0 for c in text[:20].ljust(20)]
@@ -448,6 +458,7 @@ class TestEmbeddingClusterer:
 
     def test_cluster_with_custom_embedder(self):
         """Test clustering with custom embedder."""
+
         def simple_embed(text: str) -> list:
             return [len(text), text.count("a")]
 
@@ -518,6 +529,7 @@ class TestConvenienceFunctions:
 
     def test_find_similar_texts(self):
         """Test find_similar_texts function."""
+
         # Use custom embedder for clear differentiation
         def embed(text: str) -> list:
             return [ord(c) / 256.0 for c in text[:20].ljust(20)]
@@ -531,6 +543,7 @@ class TestConvenienceFunctions:
 
     def test_cluster_texts(self):
         """Test cluster_texts function."""
+
         # Use custom embedder for clear differentiation
         def embed(text: str) -> list:
             return [ord(c) / 256.0 for c in text[:20].ljust(20)]
@@ -570,7 +583,7 @@ class TestEdgeCases:
     def test_empty_text(self):
         """Test handling of empty text."""
         analyzer = TextSimilarityAnalyzer()
-        result = analyzer.compare("", "")
+        analyzer.compare("", "")
         # Should not crash
 
     def test_single_word(self):

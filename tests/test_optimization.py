@@ -1,7 +1,5 @@
 """Tests for prompt optimization and tuning utilities."""
 
-import pytest
-
 from insideLLMs.optimization import (
     AblationResult,
     CompressionResult,
@@ -304,6 +302,7 @@ Provide a detailed response with examples."""
 
     def test_custom_scorer(self):
         """Test with custom scorer."""
+
         def custom_scorer(prompt):
             return len(prompt) / 100  # Score based on length
 
@@ -369,7 +368,9 @@ class TestTokenBudgetOptimizer:
     def test_compress_when_over_budget(self):
         """Test compression when over budget."""
         optimizer = TokenBudgetOptimizer(max_tokens=100)
-        prompt = "Basically, essentially, in order to do this very important task, please note that " * 5
+        prompt = (
+            "Basically, essentially, in order to do this very important task, please note that " * 5
+        )
 
         result = optimizer.optimize(prompt, reserve_for_response=20)
 
@@ -380,14 +381,9 @@ class TestTokenBudgetOptimizer:
         """Test example reduction when over budget."""
         optimizer = TokenBudgetOptimizer(max_tokens=200)
         prompt = "Main prompt."
-        examples = [
-            {"input": "example " * 20, "output": "result " * 20}
-            for _ in range(5)
-        ]
+        examples = [{"input": "example " * 20, "output": "result " * 20} for _ in range(5)]
 
-        result = optimizer.optimize(
-            prompt, examples=examples, reserve_for_response=50
-        )
+        result = optimizer.optimize(prompt, examples=examples, reserve_for_response=50)
 
         assert len(result["final_examples"]) < len(examples)
 
@@ -400,9 +396,7 @@ class TestPromptOptimizer:
         optimizer = PromptOptimizer()
         prompt = "Basically, in order to achieve this, please note that we need to do things."
 
-        report = optimizer.optimize(
-            prompt, strategies=[OptimizationStrategy.COMPRESSION]
-        )
+        report = optimizer.optimize(prompt, strategies=[OptimizationStrategy.COMPRESSION])
 
         assert len(report.optimized_prompt) <= len(prompt)
         if OptimizationStrategy.COMPRESSION in report.strategies_applied:
@@ -413,16 +407,16 @@ class TestPromptOptimizer:
         optimizer = PromptOptimizer()
         prompt = "Try to maybe consider analyzing the good data."
 
-        report = optimizer.optimize(
-            prompt, strategies=[OptimizationStrategy.CLARITY]
-        )
+        report = optimizer.optimize(prompt, strategies=[OptimizationStrategy.CLARITY])
 
         assert len(report.suggestions) > 0
 
     def test_apply_multiple_strategies(self):
         """Test applying multiple strategies."""
         optimizer = PromptOptimizer()
-        prompt = "Basically, try to consider the appropriate approach in order to achieve good results."
+        prompt = (
+            "Basically, try to consider the appropriate approach in order to achieve good results."
+        )
 
         report = optimizer.optimize(prompt)
 
@@ -541,7 +535,7 @@ class TestEdgeCases:
     def test_very_long_prompt_compression(self):
         """Test compression of very long prompt."""
         compressor = PromptCompressor()
-        long_prompt = ("In order to achieve this goal, basically, " * 50)
+        long_prompt = "In order to achieve this goal, basically, " * 50
 
         result = compressor.compress(long_prompt)
 

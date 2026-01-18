@@ -13,7 +13,7 @@ import time
 
 def measure_cold_import():
     """Measure cold import time in a fresh Python process."""
-    code = '''
+    code = """
 import sys
 sys.path.insert(0, '.')
 import time
@@ -21,7 +21,7 @@ start = time.time()
 import insideLLMs
 end = time.time()
 print(f"{(end-start)*1000:.2f}")
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
@@ -33,10 +33,11 @@ print(f"{(end-start)*1000:.2f}")
 def measure_warm_import():
     """Measure warm import time (module cached)."""
     # First import to warm cache
-    import insideLLMs
-
     # Measure reimport
     import importlib
+
+    import insideLLMs
+
     start = time.time()
     importlib.reload(insideLLMs)
     end = time.time()
@@ -45,7 +46,7 @@ def measure_warm_import():
 
 def check_lazy_loading():
     """Check if heavy modules are lazily loaded."""
-    code = '''
+    code = """
 import sys
 sys.path.insert(0, '.')
 import insideLLMs
@@ -53,7 +54,7 @@ import insideLLMs
 heavy = ['transformers', 'torch', 'tensorflow']
 loaded = [h for h in heavy if h in sys.modules]
 print(",".join(loaded) if loaded else "none")
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
@@ -73,8 +74,8 @@ def main():
     for i in range(3):
         t = measure_cold_import()
         cold_times.append(t)
-        print(f"  Run {i+1}: {t:.2f}ms")
-    print(f"  Average: {sum(cold_times)/len(cold_times):.2f}ms")
+        print(f"  Run {i + 1}: {t:.2f}ms")
+    print(f"  Average: {sum(cold_times) / len(cold_times):.2f}ms")
 
     # Check lazy loading
     print("\nLazy loading check:")

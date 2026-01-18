@@ -13,10 +13,10 @@ import csv
 import gzip
 import io
 import json
-import os
 import shutil
 import zipfile
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
 from enum import Enum
@@ -25,14 +25,9 @@ from typing import (
     Any,
     BinaryIO,
     Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
     Optional,
     Protocol,
     TextIO,
-    Type,
     Union,
 )
 
@@ -84,9 +79,9 @@ class ExportMetadata:
     record_count: int = 0
     format: str = ""
     compression: str = "none"
-    custom: Dict[str, Any] = field(default_factory=dict)
+    custom: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "export_time": self.export_time,
@@ -103,7 +98,7 @@ class ExportMetadata:
 class Serializable(Protocol):
     """Protocol for serializable objects."""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         ...
 
@@ -142,7 +137,7 @@ def serialize_value(value: Any, config: ExportConfig) -> Any:
     return value
 
 
-def serialize_record(record: Any, config: ExportConfig) -> Dict[str, Any]:
+def serialize_record(record: Any, config: ExportConfig) -> dict[str, Any]:
     """Serialize a record for export.
 
     Args:
@@ -199,7 +194,7 @@ class Exporter(ABC):
         """
         pass
 
-    def _prepare_data(self, data: Any) -> List[Dict[str, Any]]:
+    def _prepare_data(self, data: Any) -> list[dict[str, Any]]:
         """Prepare data for export.
 
         Args:
@@ -288,9 +283,7 @@ class JSONLExporter(Exporter):
         lines = [json.dumps(record, ensure_ascii=False, default=str) for record in prepared]
         return "\n".join(lines)
 
-    def export_stream(
-        self, data: Iterable[Any], output: Union[str, Path, TextIO]
-    ) -> int:
+    def export_stream(self, data: Iterable[Any], output: Union[str, Path, TextIO]) -> int:
         """Export data as stream (memory efficient).
 
         Args:
@@ -386,7 +379,7 @@ class CSVExporter(Exporter):
 
         return output.getvalue()
 
-    def _flatten_record(self, record: Dict[str, Any]) -> Dict[str, str]:
+    def _flatten_record(self, record: dict[str, Any]) -> dict[str, str]:
         """Flatten nested record for CSV.
 
         Args:
@@ -505,9 +498,8 @@ class DataArchiver:
             output_path = Path(output_path)
 
         if self.compression == CompressionType.GZIP:
-            with open(input_path, "rb") as f_in:
-                with gzip.open(output_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(input_path, "rb") as f_in, gzip.open(output_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
         elif self.compression == CompressionType.ZIP:
             with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -515,15 +507,15 @@ class DataArchiver:
 
         elif self.compression == CompressionType.BZIP2:
             import bz2
-            with open(input_path, "rb") as f_in:
-                with bz2.open(output_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+
+            with open(input_path, "rb") as f_in, bz2.open(output_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
         return output_path
 
     def create_archive(
         self,
-        files: List[Union[str, Path]],
+        files: list[Union[str, Path]],
         output_path: Union[str, Path],
         base_path: Optional[Union[str, Path]] = None,
     ) -> Path:
@@ -543,10 +535,7 @@ class DataArchiver:
             with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for file_path in files:
                     file_path = Path(file_path)
-                    if base_path:
-                        arcname = file_path.relative_to(base_path)
-                    else:
-                        arcname = file_path.name
+                    arcname = file_path.relative_to(base_path) if base_path else file_path.name
                     zf.write(file_path, arcname)
         else:
             raise ValueError(f"Multi-file archive only supports ZIP, not {self.compression}")
@@ -579,9 +568,8 @@ class DataArchiver:
             output_path = Path(output_path)
 
         if self.compression == CompressionType.GZIP or input_path.suffix == ".gz":
-            with gzip.open(input_path, "rb") as f_in:
-                with open(output_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
         elif self.compression == CompressionType.ZIP or input_path.suffix == ".zip":
             with zipfile.ZipFile(input_path, "r") as zf:
@@ -589,9 +577,9 @@ class DataArchiver:
 
         elif self.compression == CompressionType.BZIP2 or input_path.suffix == ".bz2":
             import bz2
-            with bz2.open(input_path, "rb") as f_in:
-                with open(output_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+
+            with bz2.open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
         return output_path
 
@@ -613,10 +601,10 @@ class DataSchema:
 
     name: str
     version: str
-    fields: List[SchemaField]
+    fields: list[SchemaField]
     description: str = ""
 
-    def validate(self, record: Dict[str, Any]) -> List[str]:
+    def validate(self, record: dict[str, Any]) -> list[str]:
         """Validate a record against this schema.
 
         Args:
@@ -653,7 +641,7 @@ class DataSchema:
 
         return errors
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert schema to dictionary."""
         return {
             "name": self.name,
@@ -677,7 +665,7 @@ class ExportPipeline:
 
     def __init__(self):
         """Initialize pipeline."""
-        self._steps: List[Callable[[Any], Any]] = []
+        self._steps: list[Callable[[Any], Any]] = []
         self._config = ExportConfig()
 
     def configure(self, config: ExportConfig) -> "ExportPipeline":
@@ -701,6 +689,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def filter_step(data):
             if isinstance(data, (list, tuple)):
                 return [item for item in data if predicate(item)]
@@ -718,6 +707,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def transform_step(data):
             if isinstance(data, (list, tuple)):
                 return [transformer(item) for item in data]
@@ -726,7 +716,7 @@ class ExportPipeline:
         self._steps.append(transform_step)
         return self
 
-    def select(self, fields: List[str]) -> "ExportPipeline":
+    def select(self, fields: list[str]) -> "ExportPipeline":
         """Select specific fields.
 
         Args:
@@ -735,6 +725,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def select_step(data):
             def select_from_record(record):
                 if isinstance(record, dict):
@@ -748,7 +739,7 @@ class ExportPipeline:
         self._steps.append(select_step)
         return self
 
-    def rename(self, mapping: Dict[str, str]) -> "ExportPipeline":
+    def rename(self, mapping: dict[str, str]) -> "ExportPipeline":
         """Rename fields.
 
         Args:
@@ -757,6 +748,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def rename_step(data):
             def rename_record(record):
                 if isinstance(record, dict):
@@ -780,6 +772,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def sort_step(data):
             if isinstance(data, (list, tuple)):
                 return sorted(
@@ -801,6 +794,7 @@ class ExportPipeline:
         Returns:
             Self for chaining.
         """
+
         def limit_step(data):
             if isinstance(data, (list, tuple)):
                 return data[:n]
@@ -970,7 +964,7 @@ def create_export_bundle(
     data: Any,
     output_dir: Union[str, Path],
     name: str,
-    formats: Optional[List[ExportFormat]] = None,
+    formats: Optional[list[ExportFormat]] = None,
     include_schema: bool = True,
     compress: bool = True,
 ) -> Path:

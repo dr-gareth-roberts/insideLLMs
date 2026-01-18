@@ -1,7 +1,8 @@
 """Tests for type definitions and dataclasses."""
 
-import pytest
 from datetime import datetime
+
+import pytest
 
 from insideLLMs.types import (
     AttackResult,
@@ -208,7 +209,7 @@ class TestExperimentResult:
         assert exp.success_count == 2
         assert exp.error_count == 1
         assert exp.total_count == 3
-        assert exp.success_rate == pytest.approx(2/3)
+        assert exp.success_rate == pytest.approx(2 / 3)
 
     def test_duration_calculation(self):
         """Test experiment duration calculation."""

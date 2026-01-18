@@ -1,6 +1,5 @@
 """Tests for benchmark dataset utilities."""
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -27,11 +26,9 @@ from insideLLMs.benchmark_datasets import (
     get_dataset_stats,
     get_default_registry,
     list_datasets,
-    load_dataset,
     merge_datasets,
     register_dataset,
     sample_dataset,
-    save_dataset,
 )
 
 
@@ -212,10 +209,12 @@ class TestBenchmarkDataset:
     def test_iteration(self):
         """Test iterating over dataset."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Q1"),
-            DatasetExample(id="2", input_text="Q2"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(id="1", input_text="Q1"),
+                DatasetExample(id="2", input_text="Q2"),
+            ]
+        )
         examples = list(dataset)
         assert len(examples) == 2
 
@@ -262,11 +261,13 @@ class TestBenchmarkDataset:
     def test_get_examples_by_category(self):
         """Test filtering examples by category."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Q1", category="cat1"),
-            DatasetExample(id="2", input_text="Q2", category="cat2"),
-            DatasetExample(id="3", input_text="Q3", category="cat1"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(id="1", input_text="Q1", category="cat1"),
+                DatasetExample(id="2", input_text="Q2", category="cat2"),
+                DatasetExample(id="3", input_text="Q3", category="cat1"),
+            ]
+        )
 
         cat1 = dataset.get_examples(category="cat1")
         assert len(cat1) == 2
@@ -304,10 +305,24 @@ class TestBenchmarkDataset:
     def test_get_stats(self):
         """Test getting dataset statistics."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Short", expected_output="A", category="cat1", difficulty="easy"),
-            DatasetExample(id="2", input_text="A longer question", expected_output="B", category="cat2", difficulty="hard"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(
+                    id="1",
+                    input_text="Short",
+                    expected_output="A",
+                    category="cat1",
+                    difficulty="easy",
+                ),
+                DatasetExample(
+                    id="2",
+                    input_text="A longer question",
+                    expected_output="B",
+                    category="cat2",
+                    difficulty="hard",
+                ),
+            ]
+        )
 
         stats = dataset.get_stats()
         assert stats.total_examples == 2
@@ -317,10 +332,12 @@ class TestBenchmarkDataset:
     def test_filter(self):
         """Test filtering dataset."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Q1", category="cat1"),
-            DatasetExample(id="2", input_text="Q2", category="cat2"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(id="1", input_text="Q1", category="cat1"),
+                DatasetExample(id="2", input_text="Q2", category="cat2"),
+            ]
+        )
 
         filtered = dataset.filter(lambda e: e.category == "cat1")
         assert len(filtered) == 1
@@ -581,10 +598,12 @@ class TestConvenienceFunctions:
     def test_filter_dataset(self):
         """Test filter_dataset function."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Short", category="cat1"),
-            DatasetExample(id="2", input_text="A longer question", category="cat2"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(id="1", input_text="Short", category="cat1"),
+                DatasetExample(id="2", input_text="A longer question", category="cat2"),
+            ]
+        )
 
         filtered = filter_dataset(dataset, category="cat1")
         assert len(filtered) == 1
@@ -592,10 +611,12 @@ class TestConvenienceFunctions:
     def test_filter_dataset_by_length(self):
         """Test filtering by length."""
         dataset = BenchmarkDataset("test")
-        dataset.add_examples([
-            DatasetExample(id="1", input_text="Short"),
-            DatasetExample(id="2", input_text="A much longer question here"),
-        ])
+        dataset.add_examples(
+            [
+                DatasetExample(id="1", input_text="Short"),
+                DatasetExample(id="2", input_text="A much longer question here"),
+            ]
+        )
 
         filtered = filter_dataset(dataset, min_length=10)
         assert len(filtered) == 1

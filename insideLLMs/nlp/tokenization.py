@@ -1,10 +1,9 @@
 import re
-from typing import List, Tuple
 
 from insideLLMs.nlp.dependencies import ensure_nltk, ensure_spacy
 
-
 # ===== Dependency Management =====
+
 
 def check_nltk():
     """Ensure NLTK and required resources are available."""
@@ -18,12 +17,13 @@ def check_spacy(model_name: str = "en_core_web_sm"):
 
 # ===== Tokenization and Segmentation =====
 
-def simple_tokenize(text: str) -> List[str]:
+
+def simple_tokenize(text: str) -> list[str]:
     """Simple word tokenization by splitting on whitespace."""
     return text.split()
 
 
-def nltk_tokenize(text: str) -> List[str]:
+def nltk_tokenize(text: str) -> list[str]:
     """Tokenize text using NLTK's word_tokenize."""
     check_nltk()
     from nltk.tokenize import word_tokenize  # Local import after ensuring nltk
@@ -31,14 +31,14 @@ def nltk_tokenize(text: str) -> List[str]:
     return word_tokenize(text)
 
 
-def spacy_tokenize(text: str, model_name: str = "en_core_web_sm") -> List[str]:
+def spacy_tokenize(text: str, model_name: str = "en_core_web_sm") -> list[str]:
     """Tokenize text using spaCy."""
     nlp = check_spacy(model_name)
     doc = nlp(text)
     return [token.text for token in doc]
 
 
-def segment_sentences(text: str, use_nltk: bool = True) -> List[str]:
+def segment_sentences(text: str, use_nltk: bool = True) -> list[str]:
     """Split text into sentences."""
     if use_nltk:
         check_nltk()
@@ -46,16 +46,16 @@ def segment_sentences(text: str, use_nltk: bool = True) -> List[str]:
 
         return sent_tokenize(text)
     # Simple regex-based sentence segmentation
-    pattern = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s')
+    pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
     return pattern.split(text)
 
 
-def get_ngrams(tokens: List[str], n: int = 2) -> List[Tuple[str, ...]]:
+def get_ngrams(tokens: list[str], n: int = 2) -> list[tuple[str, ...]]:
     """Generate n-grams from a list of tokens."""
-    return [tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
+    return [tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
 
-def remove_stopwords(tokens: List[str], language: str = "english") -> List[str]:
+def remove_stopwords(tokens: list[str], language: str = "english") -> list[str]:
     """Remove stopwords from a list of tokens."""
     check_nltk()
     from nltk.corpus import stopwords  # Local import after ensuring nltk
@@ -64,7 +64,7 @@ def remove_stopwords(tokens: List[str], language: str = "english") -> List[str]:
     return [token for token in tokens if token.lower() not in stop_words_set]
 
 
-def stem_words(tokens: List[str]) -> List[str]:
+def stem_words(tokens: list[str]) -> list[str]:
     """Apply stemming to a list of tokens using Porter stemmer."""
     check_nltk()
     from nltk.stem import PorterStemmer  # Local import after ensuring nltk
@@ -73,7 +73,7 @@ def stem_words(tokens: List[str]) -> List[str]:
     return [stemmer.stem(token) for token in tokens]
 
 
-def lemmatize_words(tokens: List[str]) -> List[str]:
+def lemmatize_words(tokens: list[str]) -> list[str]:
     """Apply lemmatization to a list of tokens using WordNet lemmatizer."""
     check_nltk()
     from nltk.stem import WordNetLemmatizer  # Local import after ensuring nltk

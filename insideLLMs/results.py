@@ -11,8 +11,7 @@ import csv
 import json
 from dataclasses import asdict
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from insideLLMs.types import (
     BenchmarkComparison,
@@ -58,7 +57,7 @@ def _serialize_for_json(obj: Any) -> Any:
 
 
 def save_results_json(
-    results: Union[List[Dict[str, Any]], List[ProbeResult], ExperimentResult],
+    results: Union[list[dict[str, Any]], list[ProbeResult], ExperimentResult],
     path: str,
     indent: int = 2,
 ) -> None:
@@ -74,7 +73,7 @@ def save_results_json(
         json.dump(serializable, f, indent=indent, default=str)
 
 
-def load_results_json(path: str) -> Dict[str, Any]:
+def load_results_json(path: str) -> dict[str, Any]:
     """Load results from a JSON file.
 
     Args:
@@ -83,14 +82,14 @@ def load_results_json(path: str) -> Dict[str, Any]:
     Returns:
         Loaded results as dictionary.
     """
-    with open(path, "r") as f:
+    with open(path) as f:
         return json.load(f)
 
 
 # Markdown Export Functions
 
 
-def results_to_markdown(results: List[Dict[str, Any]]) -> str:
+def results_to_markdown(results: list[dict[str, Any]]) -> str:
     """Convert results list to a Markdown table.
 
     Args:
@@ -144,11 +143,13 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
         lines.extend(_score_to_markdown_lines(experiment.score))
 
     if experiment.duration_seconds:
-        lines.extend([
-            "## Timing",
-            f"- **Duration:** {experiment.duration_seconds:.2f} seconds",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Timing",
+                f"- **Duration:** {experiment.duration_seconds:.2f} seconds",
+                "",
+            ]
+        )
 
     # Add results table
     lines.append("## Results")
@@ -169,7 +170,7 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
     return "\n".join(lines)
 
 
-def _score_to_markdown_lines(score: ProbeScore) -> List[str]:
+def _score_to_markdown_lines(score: ProbeScore) -> list[str]:
     """Convert ProbeScore to markdown lines."""
     lines = ["## Scores", ""]
 
@@ -196,7 +197,7 @@ def _score_to_markdown_lines(score: ProbeScore) -> List[str]:
 
 
 def save_results_markdown(
-    results: Union[List[Dict[str, Any]], ExperimentResult],
+    results: Union[list[dict[str, Any]], ExperimentResult],
     path: str,
 ) -> None:
     """Save results as a Markdown file.
@@ -218,8 +219,8 @@ def save_results_markdown(
 
 
 def results_to_csv(
-    results: List[Dict[str, Any]],
-    fields: Optional[List[str]] = None,
+    results: list[dict[str, Any]],
+    fields: Optional[list[str]] = None,
 ) -> str:
     """Convert results to CSV format.
 
@@ -237,6 +238,7 @@ def results_to_csv(
         fields = list(results[0].keys())
 
     import io
+
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
@@ -245,9 +247,9 @@ def results_to_csv(
 
 
 def save_results_csv(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     path: str,
-    fields: Optional[List[str]] = None,
+    fields: Optional[list[str]] = None,
 ) -> None:
     """Save results as a CSV file.
 
@@ -303,46 +305,60 @@ def experiment_to_html(
     ]
 
     # Model Info
-    html_parts.extend([
-        "<h2>Model Information</h2>",
-        "<ul>",
-        f"<li><strong>Name:</strong> {experiment.model_info.name}</li>",
-        f"<li><strong>Provider:</strong> {experiment.model_info.provider}</li>",
-        f"<li><strong>Model ID:</strong> {experiment.model_info.model_id}</li>",
-        "</ul>",
-    ])
+    html_parts.extend(
+        [
+            "<h2>Model Information</h2>",
+            "<ul>",
+            f"<li><strong>Name:</strong> {experiment.model_info.name}</li>",
+            f"<li><strong>Provider:</strong> {experiment.model_info.provider}</li>",
+            f"<li><strong>Model ID:</strong> {experiment.model_info.model_id}</li>",
+            "</ul>",
+        ]
+    )
 
     # Summary metrics
-    html_parts.extend([
-        "<h2>Summary</h2>",
-        "<div class='metrics'>",
-        f"<div class='metric'><div class='metric-value'>{experiment.total_count}</div><div class='metric-label'>Total Samples</div></div>",
-        f"<div class='metric'><div class='metric-value success'>{experiment.success_count}</div><div class='metric-label'>Successful</div></div>",
-        f"<div class='metric'><div class='metric-value error'>{experiment.error_count}</div><div class='metric-label'>Errors</div></div>",
-        f"<div class='metric'><div class='metric-value'>{experiment.success_rate * 100:.1f}%</div><div class='metric-label'>Success Rate</div></div>",
-        "</div>",
-    ])
+    html_parts.extend(
+        [
+            "<h2>Summary</h2>",
+            "<div class='metrics'>",
+            f"<div class='metric'><div class='metric-value'>{experiment.total_count}</div><div class='metric-label'>Total Samples</div></div>",
+            f"<div class='metric'><div class='metric-value success'>{experiment.success_count}</div><div class='metric-label'>Successful</div></div>",
+            f"<div class='metric'><div class='metric-value error'>{experiment.error_count}</div><div class='metric-label'>Errors</div></div>",
+            f"<div class='metric'><div class='metric-value'>{experiment.success_rate * 100:.1f}%</div><div class='metric-label'>Success Rate</div></div>",
+            "</div>",
+        ]
+    )
 
     # Scores
     if experiment.score:
         html_parts.append("<h2>Scores</h2>")
         html_parts.append("<div class='metrics'>")
         if experiment.score.accuracy is not None:
-            html_parts.append(f"<div class='metric'><div class='metric-value'>{experiment.score.accuracy * 100:.1f}%</div><div class='metric-label'>Accuracy</div></div>")
+            html_parts.append(
+                f"<div class='metric'><div class='metric-value'>{experiment.score.accuracy * 100:.1f}%</div><div class='metric-label'>Accuracy</div></div>"
+            )
         if experiment.score.precision is not None:
-            html_parts.append(f"<div class='metric'><div class='metric-value'>{experiment.score.precision * 100:.1f}%</div><div class='metric-label'>Precision</div></div>")
+            html_parts.append(
+                f"<div class='metric'><div class='metric-value'>{experiment.score.precision * 100:.1f}%</div><div class='metric-label'>Precision</div></div>"
+            )
         if experiment.score.recall is not None:
-            html_parts.append(f"<div class='metric'><div class='metric-value'>{experiment.score.recall * 100:.1f}%</div><div class='metric-label'>Recall</div></div>")
+            html_parts.append(
+                f"<div class='metric'><div class='metric-value'>{experiment.score.recall * 100:.1f}%</div><div class='metric-label'>Recall</div></div>"
+            )
         if experiment.score.f1_score is not None:
-            html_parts.append(f"<div class='metric'><div class='metric-value'>{experiment.score.f1_score:.3f}</div><div class='metric-label'>F1 Score</div></div>")
+            html_parts.append(
+                f"<div class='metric'><div class='metric-value'>{experiment.score.f1_score:.3f}</div><div class='metric-label'>F1 Score</div></div>"
+            )
         html_parts.append("</div>")
 
     # Results table
-    html_parts.extend([
-        "<h2>Results</h2>",
-        "<table>",
-        "<tr><th>#</th><th>Input</th><th>Output</th><th>Status</th><th>Latency (ms)</th></tr>",
-    ])
+    html_parts.extend(
+        [
+            "<h2>Results</h2>",
+            "<table>",
+            "<tr><th>#</th><th>Input</th><th>Output</th><th>Status</th><th>Latency (ms)</th></tr>",
+        ]
+    )
 
     for i, result in enumerate(experiment.results, 1):
         status_class = "success" if result.status.value == "success" else "error"
@@ -354,12 +370,14 @@ def experiment_to_html(
             f"<td class='{status_class}'>{result.status.value}</td><td>{latency}</td></tr>"
         )
 
-    html_parts.extend([
-        "</table>",
-        f"<p><em>Generated at {datetime.now().isoformat()}</em></p>",
-        "</body>",
-        "</html>",
-    ])
+    html_parts.extend(
+        [
+            "</table>",
+            f"<p><em>Generated at {datetime.now().isoformat()}</em></p>",
+            "</body>",
+            "</html>",
+        ]
+    )
 
     return "\n".join(html_parts)
 
@@ -404,8 +422,14 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
     for exp in comparison.experiments:
         success_rate = f"{exp.success_rate * 100:.1f}%"
         accuracy = f"{exp.score.accuracy * 100:.1f}%" if exp.score and exp.score.accuracy else "N/A"
-        latency = f"{exp.score.mean_latency_ms:.1f} ms" if exp.score and exp.score.mean_latency_ms else "N/A"
-        lines.append(f"| {exp.model_info.name} | {exp.probe_name} | {success_rate} | {accuracy} | {latency} |")
+        latency = (
+            f"{exp.score.mean_latency_ms:.1f} ms"
+            if exp.score and exp.score.mean_latency_ms
+            else "N/A"
+        )
+        lines.append(
+            f"| {exp.model_info.name} | {exp.probe_name} | {success_rate} | {accuracy} | {latency} |"
+        )
 
     lines.append("")
 
@@ -446,7 +470,7 @@ def save_comparison_markdown(comparison: BenchmarkComparison, path: str) -> None
 
 
 def generate_statistical_report(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     output_path: Optional[str] = None,
     format: str = "markdown",
     confidence_level: float = 0.95,
@@ -463,11 +487,6 @@ def generate_statistical_report(
         The generated report as a string.
     """
     from insideLLMs.statistics import (
-        confidence_interval,
-        descriptive_statistics,
-        extract_latencies,
-        extract_metric_from_results,
-        extract_success_rates,
         generate_summary_report,
     )
 
@@ -492,7 +511,7 @@ def generate_statistical_report(
 
 
 def _statistical_report_to_markdown(
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     confidence_level: float,
 ) -> str:
     """Convert statistical summary to Markdown."""
@@ -508,14 +527,18 @@ def _statistical_report_to_markdown(
 
     # Overall statistics
     if summary.get("overall"):
-        lines.extend([
-            "## Overall Performance",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Overall Performance",
+                "",
+            ]
+        )
         overall = summary["overall"]
         if "success_rate" in overall:
             sr = overall["success_rate"]
-            lines.append(f"- **Mean Success Rate:** {sr['mean'] * 100:.1f}% (SD: {sr['std'] * 100:.1f}%)")
+            lines.append(
+                f"- **Mean Success Rate:** {sr['mean'] * 100:.1f}% (SD: {sr['std'] * 100:.1f}%)"
+            )
 
         if "latency_ms" in overall:
             lat = overall["latency_ms"]
@@ -524,18 +547,24 @@ def _statistical_report_to_markdown(
 
     # By model
     if summary.get("by_model"):
-        lines.extend([
-            "## Performance by Model",
-            "",
-            "| Model | N | Success Rate | SR CI | Latency (ms) |",
-            "|---|---|---|---|---|",
-        ])
+        lines.extend(
+            [
+                "## Performance by Model",
+                "",
+                "| Model | N | Success Rate | SR CI | Latency (ms) |",
+                "|---|---|---|---|---|",
+            ]
+        )
 
         for model_name, model_data in summary["by_model"].items():
             n = model_data["n_experiments"]
             sr = model_data["success_rate"]["mean"] * 100
             sr_ci = model_data.get("success_rate_ci", {})
-            ci_str = f"[{sr_ci.get('lower', 0) * 100:.1f}%, {sr_ci.get('upper', 0) * 100:.1f}%]" if sr_ci else "N/A"
+            ci_str = (
+                f"[{sr_ci.get('lower', 0) * 100:.1f}%, {sr_ci.get('upper', 0) * 100:.1f}%]"
+                if sr_ci
+                else "N/A"
+            )
             lat = model_data.get("latency_ms", {}).get("mean", "N/A")
             lat_str = f"{lat:.1f}" if isinstance(lat, (int, float)) else lat
             lines.append(f"| {model_name} | {n} | {sr:.1f}% | {ci_str} | {lat_str} |")
@@ -544,12 +573,14 @@ def _statistical_report_to_markdown(
 
     # By probe
     if summary.get("by_probe"):
-        lines.extend([
-            "## Performance by Probe",
-            "",
-            "| Probe | N | Success Rate | Accuracy | Accuracy CI |",
-            "|---|---|---|---|---|",
-        ])
+        lines.extend(
+            [
+                "## Performance by Probe",
+                "",
+                "| Probe | N | Success Rate | Accuracy | Accuracy CI |",
+                "|---|---|---|---|---|",
+            ]
+        )
 
         for probe_name, probe_data in summary["by_probe"].items():
             n = probe_data["n_experiments"]
@@ -557,7 +588,11 @@ def _statistical_report_to_markdown(
             acc = probe_data.get("accuracy", {}).get("mean")
             acc_str = f"{acc * 100:.1f}%" if acc is not None else "N/A"
             acc_ci = probe_data.get("accuracy_ci", {})
-            acc_ci_str = f"[{acc_ci.get('lower', 0) * 100:.1f}%, {acc_ci.get('upper', 0) * 100:.1f}%]" if acc_ci else "N/A"
+            acc_ci_str = (
+                f"[{acc_ci.get('lower', 0) * 100:.1f}%, {acc_ci.get('upper', 0) * 100:.1f}%]"
+                if acc_ci
+                else "N/A"
+            )
             lines.append(f"| {probe_name} | {n} | {sr:.1f}% | {acc_str} | {acc_ci_str} |")
 
         lines.append("")
@@ -568,7 +603,7 @@ def _statistical_report_to_markdown(
 
 
 def _statistical_report_to_html(
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     confidence_level: float,
 ) -> str:
     """Convert statistical summary to HTML."""
@@ -603,26 +638,36 @@ def _statistical_report_to_html(
 
     # By model table
     if summary.get("by_model"):
-        html.extend([
-            "<div class='card'>",
-            "<h2>Performance by Model</h2>",
-            "<table>",
-            "<tr><th>Model</th><th>Experiments</th><th>Success Rate</th><th>Confidence Interval</th></tr>",
-        ])
+        html.extend(
+            [
+                "<div class='card'>",
+                "<h2>Performance by Model</h2>",
+                "<table>",
+                "<tr><th>Model</th><th>Experiments</th><th>Success Rate</th><th>Confidence Interval</th></tr>",
+            ]
+        )
 
         for model_name, model_data in summary["by_model"].items():
             n = model_data["n_experiments"]
             sr = model_data["success_rate"]["mean"] * 100
             sr_ci = model_data.get("success_rate_ci", {})
-            ci_str = f"[{sr_ci.get('lower', 0) * 100:.1f}%, {sr_ci.get('upper', 0) * 100:.1f}%]" if sr_ci else "N/A"
-            html.append(f"<tr><td>{model_name}</td><td>{n}</td><td>{sr:.1f}%</td><td>{ci_str}</td></tr>")
+            ci_str = (
+                f"[{sr_ci.get('lower', 0) * 100:.1f}%, {sr_ci.get('upper', 0) * 100:.1f}%]"
+                if sr_ci
+                else "N/A"
+            )
+            html.append(
+                f"<tr><td>{model_name}</td><td>{n}</td><td>{sr:.1f}%</td><td>{ci_str}</td></tr>"
+            )
 
         html.extend(["</table>", "</div>"])
 
-    html.extend([
-        f"<p><em>Report generated at {datetime.now().isoformat()}</em></p>",
-        "</body>",
-        "</html>",
-    ])
+    html.extend(
+        [
+            f"<p><em>Report generated at {datetime.now().isoformat()}</em></p>",
+            "</body>",
+            "</html>",
+        ]
+    )
 
     return "\n".join(html)

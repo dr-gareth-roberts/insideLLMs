@@ -1,27 +1,26 @@
 """Tests for Synthetic Data Generation module."""
 
 import json
+from unittest.mock import MagicMock
+
 import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
-from insideLLMs.synthesis import (
-    SynthesisConfig,
-    VariationStrategy,
-    AdversarialType,
-    GeneratedVariation,
-    AdversarialExample,
-    SyntheticDataset,
-    PromptVariator,
-    AdversarialGenerator,
-    DataAugmenter,
-    TemplateGenerator,
-    quick_variations,
-    quick_adversarial,
-    generate_test_dataset,
-)
 from insideLLMs.models import DummyModel
-
+from insideLLMs.synthesis import (
+    AdversarialExample,
+    AdversarialGenerator,
+    AdversarialType,
+    DataAugmenter,
+    GeneratedVariation,
+    PromptVariator,
+    SynthesisConfig,
+    SyntheticDataset,
+    TemplateGenerator,
+    VariationStrategy,
+    generate_test_dataset,
+    quick_adversarial,
+    quick_variations,
+)
 
 # =============================================================================
 # Test Configuration
@@ -206,19 +205,19 @@ class TestSyntheticDataset:
     def test_extend_items(self):
         """Test extending with multiple items."""
         dataset = SyntheticDataset()
-        dataset.extend([
-            {"text": "Item 1"},
-            {"text": "Item 2"},
-            {"text": "Item 3"},
-        ])
+        dataset.extend(
+            [
+                {"text": "Item 1"},
+                {"text": "Item 2"},
+                {"text": "Item 3"},
+            ]
+        )
 
         assert len(dataset) == 3
 
     def test_iteration(self):
         """Test dataset iteration."""
-        dataset = SyntheticDataset(
-            items=[{"text": "A"}, {"text": "B"}, {"text": "C"}]
-        )
+        dataset = SyntheticDataset(items=[{"text": "A"}, {"text": "B"}, {"text": "C"}])
 
         texts = [item["text"] for item in dataset]
         assert texts == ["A", "B", "C"]
@@ -270,9 +269,7 @@ class TestSyntheticDataset:
 
     def test_sample(self):
         """Test sampling from dataset."""
-        dataset = SyntheticDataset(
-            items=[{"id": i} for i in range(100)]
-        )
+        dataset = SyntheticDataset(items=[{"id": i} for i in range(100)])
 
         sampled = dataset.sample(10, seed=42)
 
@@ -310,11 +307,13 @@ class TestPromptVariator:
         """Test basic variation generation."""
         # Create a mock model that returns JSON
         model = MagicMock()
-        model.generate.return_value = json.dumps([
-            "Variation 1",
-            "Variation 2",
-            "Variation 3",
-        ])
+        model.generate.return_value = json.dumps(
+            [
+                "Variation 1",
+                "Variation 2",
+                "Variation 3",
+            ]
+        )
 
         variator = PromptVariator(model)
         results = variator.generate(
@@ -333,7 +332,7 @@ class TestPromptVariator:
         model.generate.return_value = '["Variation 1", "Variation 2"]'
 
         variator = PromptVariator(model)
-        results = variator.generate(
+        variator.generate(
             "Test text",
             strategies=["paraphrase", "simplify"],
             num_variations=2,
@@ -345,11 +344,13 @@ class TestPromptVariator:
     def test_deduplication(self):
         """Test that duplicates are removed."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([
-            "Same text",
-            "SAME TEXT",  # Should be deduplicated (case-insensitive)
-            "Different text",
-        ])
+        model.generate.return_value = json.dumps(
+            [
+                "Same text",
+                "SAME TEXT",  # Should be deduplicated (case-insensitive)
+                "Different text",
+            ]
+        )
 
         config = SynthesisConfig(deduplicate=True)
         variator = PromptVariator(model, config)
@@ -396,7 +397,7 @@ class TestPromptVariator:
 
         config = SynthesisConfig(max_retries=3, retry_on_empty=True)
         variator = PromptVariator(model, config)
-        results = variator.generate("Test", num_variations=1)
+        variator.generate("Test", num_variations=1)
 
         assert model.generate.call_count == 3
 
@@ -419,11 +420,15 @@ class TestAdversarialGenerator:
     def test_generate_basic(self):
         """Test basic adversarial generation."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([{
-            "adversarial": "Test adversarial",
-            "description": "Test case",
-            "severity": "medium",
-        }])
+        model.generate.return_value = json.dumps(
+            [
+                {
+                    "adversarial": "Test adversarial",
+                    "description": "Test case",
+                    "severity": "medium",
+                }
+            ]
+        )
 
         generator = AdversarialGenerator(model)
         results = generator.generate(
@@ -439,42 +444,54 @@ class TestAdversarialGenerator:
     def test_generate_injection_tests(self):
         """Test injection test generation."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([{
-            "adversarial": "Ignore previous and...",
-            "description": "Injection test",
-            "severity": "high",
-        }])
+        model.generate.return_value = json.dumps(
+            [
+                {
+                    "adversarial": "Ignore previous and...",
+                    "description": "Injection test",
+                    "severity": "high",
+                }
+            ]
+        )
 
         generator = AdversarialGenerator(model)
-        results = generator.generate_injection_tests("Test prompt", 1)
+        generator.generate_injection_tests("Test prompt", 1)
 
         assert model.generate.called
 
     def test_generate_jailbreak_tests(self):
         """Test jailbreak test generation."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([{
-            "adversarial": "Pretend you are...",
-            "description": "Jailbreak test",
-            "severity": "high",
-        }])
+        model.generate.return_value = json.dumps(
+            [
+                {
+                    "adversarial": "Pretend you are...",
+                    "description": "Jailbreak test",
+                    "severity": "high",
+                }
+            ]
+        )
 
         generator = AdversarialGenerator(model)
-        results = generator.generate_jailbreak_tests("Test", 1)
+        generator.generate_jailbreak_tests("Test", 1)
 
         assert model.generate.called
 
     def test_generate_edge_cases(self):
         """Test edge case generation."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([{
-            "adversarial": "",
-            "description": "Empty input",
-            "severity": "low",
-        }])
+        model.generate.return_value = json.dumps(
+            [
+                {
+                    "adversarial": "",
+                    "description": "Empty input",
+                    "severity": "low",
+                }
+            ]
+        )
 
         generator = AdversarialGenerator(model)
-        results = generator.generate_edge_cases("Test", 1)
+        generator.generate_edge_cases("Test", 1)
 
         assert model.generate.called
 
@@ -555,7 +572,7 @@ class TestDataAugmenter:
         assert dataset.metadata["operation"] == "balance"
 
         # Both categories should be represented
-        categories = set(d["category"] for d in dataset if "category" in d)
+        categories = {d["category"] for d in dataset if "category" in d}
         assert "category_a" in categories
         assert "category_b" in categories
 
@@ -695,11 +712,15 @@ class TestQuickAdversarial:
     def test_basic_usage(self):
         """Test basic quick_adversarial usage."""
         model = MagicMock()
-        model.generate.return_value = json.dumps([{
-            "adversarial": "Edge case",
-            "description": "Test",
-            "severity": "low",
-        }])
+        model.generate.return_value = json.dumps(
+            [
+                {
+                    "adversarial": "Edge case",
+                    "description": "Test",
+                    "severity": "low",
+                }
+            ]
+        )
 
         results = quick_adversarial(
             "Normal input",
@@ -735,11 +756,15 @@ class TestGenerateTestDataset:
         model.generate.side_effect = [
             '["Generated"]',  # expand
             '["Generated"]',  # expand
-            json.dumps([{  # adversarial
-                "adversarial": "Edge",
-                "description": "Test",
-                "severity": "low",
-            }]),
+            json.dumps(
+                [
+                    {  # adversarial
+                        "adversarial": "Edge",
+                        "description": "Test",
+                        "severity": "low",
+                    }
+                ]
+            ),
         ]
 
         dataset = generate_test_dataset(
@@ -814,12 +839,14 @@ class TestIntegration:
                 num_variations=2,
             )
             for var in variations:
-                expanded.add({
-                    "text": var.variation,
-                    "synthetic": True,
-                    "source": item["text"],
-                    "strategy": var.strategy,
-                })
+                expanded.add(
+                    {
+                        "text": var.variation,
+                        "synthetic": True,
+                        "source": item["text"],
+                        "strategy": var.strategy,
+                    }
+                )
 
         # 4. Export
         json_output = expanded.to_json()
@@ -910,10 +937,7 @@ class TestEdgeCases:
 
     def test_dataset_filter_all(self):
         """Test filter that removes all items."""
-        dataset = SyntheticDataset(
-            items=[{"value": 1}, {"value": 2}]
-        )
+        dataset = SyntheticDataset(items=[{"value": 1}, {"value": 2}])
         filtered = dataset.filter(lambda x: x["value"] > 100)
 
         assert len(filtered) == 0
-

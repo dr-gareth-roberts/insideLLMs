@@ -1,7 +1,5 @@
 """Tests for data preprocessing utilities."""
 
-import pytest
-
 from insideLLMs.preprocessing import (
     DataValidator,
     ProcessingPipeline,
@@ -294,11 +292,7 @@ class TestProcessingPipeline:
 
     def test_chaining(self):
         """Test method chaining."""
-        pipeline = (
-            ProcessingPipeline()
-            .add_step("lower", str.lower)
-            .add_step("strip", str.strip)
-        )
+        pipeline = ProcessingPipeline().add_step("lower", str.lower).add_step("strip", str.strip)
 
         result = pipeline.process("  HELLO  ")
         assert result == "hello"

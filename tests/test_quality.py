@@ -1,12 +1,10 @@
 """Tests for response quality scoring and analysis utilities."""
 
-import pytest
-
 from insideLLMs.quality import (
     ClarityScorer,
     CoherenceScorer,
-    CompletenessScorer,
     ComparisonResult,
+    CompletenessScorer,
     ConcisenessScorer,
     DimensionScore,
     QualityDimension,
@@ -280,7 +278,7 @@ This sugar is their food."""
         prompt = "How do plants make food?"
         response = "The photoautotrophic biochemical pathway utilizing photochemically-driven electron transfer chains facilitates the transformation of electromagnetic radiation into chemical potential energy through complex molecular mechanisms (involving various photosynthetic pigment-protein supercomplexes)."
 
-        score = scorer.score(prompt, response)
+        scorer.score(prompt, response)
         # May still score decently if structure is ok
 
 
@@ -370,8 +368,7 @@ In conclusion, prioritizing sleep is one of the most important things you can do
         analyzer = ResponseQualityAnalyzer()
 
         score, passed, issues = analyzer.quick_check(
-            "What is AI?",
-            "AI stands for artificial intelligence."
+            "What is AI?", "AI stands for artificial intelligence."
         )
 
         assert isinstance(score, float)
@@ -426,7 +423,7 @@ class TestConvenienceFunctions:
         """Test analyze_quality function."""
         report = analyze_quality(
             "What is Python?",
-            "Python is a high-level programming language known for its readability and versatility."
+            "Python is a high-level programming language known for its readability and versatility.",
         )
 
         assert isinstance(report, QualityReport)
@@ -435,8 +432,7 @@ class TestConvenienceFunctions:
     def test_quick_quality_check(self):
         """Test quick_quality_check function."""
         score, passed, issues = quick_quality_check(
-            "Explain gravity.",
-            "Gravity is the force that attracts objects toward each other."
+            "Explain gravity.", "Gravity is the force that attracts objects toward each other."
         )
 
         assert 0 <= score <= 1
@@ -444,11 +440,7 @@ class TestConvenienceFunctions:
 
     def test_compare_responses(self):
         """Test compare_responses function."""
-        result = compare_responses(
-            "What is 2+2?",
-            "The answer is 4.",
-            "Two plus two equals four."
-        )
+        result = compare_responses("What is 2+2?", "The answer is 4.", "Two plus two equals four.")
 
         assert isinstance(result, ComparisonResult)
 
@@ -483,8 +475,7 @@ class TestEdgeCases:
         """Test with unicode characters."""
         analyzer = ResponseQualityAnalyzer()
         report = analyzer.analyze(
-            "How do you say hello in Japanese?",
-            "In Japanese, hello is こんにちは (konnichiwa). 🇯🇵"
+            "How do you say hello in Japanese?", "In Japanese, hello is こんにちは (konnichiwa). 🇯🇵"
         )
 
         assert report is not None
@@ -501,7 +492,7 @@ class TestEdgeCases:
 print("Hello, World!")
 ```
 
-This program uses the print function to display text."""
+This program uses the print function to display text.""",
         )
 
         assert report is not None

@@ -18,7 +18,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class RankingMethod(Enum):
@@ -58,11 +58,11 @@ class ModelScore:
     model_id: str
     benchmark_id: str
     score: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: Optional[str] = None
-    run_id: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    timestamp: str | None = None
+    run_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
@@ -81,19 +81,19 @@ class LeaderboardEntry:
     rank: int
     model_id: str
     score: float
-    previous_rank: Optional[int]
+    previous_rank: int | None
     trend: TrendDirection
-    score_breakdown: Dict[str, float]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    score_breakdown: dict[str, float]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def rank_change(self) -> Optional[int]:
+    def rank_change(self) -> int | None:
         """Calculate rank change from previous."""
         if self.previous_rank is None:
             return None
         return self.previous_rank - self.rank  # Positive = improved
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "rank": self.rank,
@@ -113,15 +113,15 @@ class Leaderboard:
 
     name: str
     description: str
-    entries: List[LeaderboardEntry]
-    benchmark_ids: List[str]
-    metric_weights: Dict[str, float]
+    entries: list[LeaderboardEntry]
+    benchmark_ids: list[str]
+    metric_weights: dict[str, float]
     ranking_method: RankingMethod
     updated_at: str
     version: str = "1.0"
 
     @property
-    def top_model(self) -> Optional[str]:
+    def top_model(self) -> str | None:
         """Get top-ranked model."""
         return self.entries[0].model_id if self.entries else None
 
@@ -130,14 +130,14 @@ class Leaderboard:
         """Get number of models."""
         return len(self.entries)
 
-    def get_entry(self, model_id: str) -> Optional[LeaderboardEntry]:
+    def get_entry(self, model_id: str) -> LeaderboardEntry | None:
         """Get entry for a model."""
         for entry in self.entries:
             if entry.model_id == model_id:
                 return entry
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -159,12 +159,12 @@ class LeaderboardComparison:
 
     leaderboard_a: str
     leaderboard_b: str
-    common_models: List[str]
+    common_models: list[str]
     rank_correlations: float
     score_correlations: float
-    divergent_rankings: List[Tuple[str, int, int]]  # model, rank_a, rank_b
+    divergent_rankings: list[tuple[str, int, int]]  # model, rank_a, rank_b
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "leaderboard_a": self.leaderboard_a,
@@ -173,8 +173,7 @@ class LeaderboardComparison:
             "rank_correlations": self.rank_correlations,
             "score_correlations": self.score_correlations,
             "divergent_rankings": [
-                {"model": m, "rank_a": ra, "rank_b": rb}
-                for m, ra, rb in self.divergent_rankings
+                {"model": m, "rank_a": ra, "rank_b": rb} for m, ra, rb in self.divergent_rankings
             ],
         }
 
@@ -185,7 +184,7 @@ class ScoreAggregator:
     def __init__(
         self,
         method: ScoreAggregation = ScoreAggregation.MEAN,
-        weights: Optional[Dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
     ):
         """Initialize aggregator.
 
@@ -198,7 +197,7 @@ class ScoreAggregator:
 
     def aggregate(
         self,
-        scores: Dict[str, float],
+        scores: dict[str, float],
     ) -> float:
         """Aggregate multiple scores.
 
@@ -232,7 +231,7 @@ class ScoreAggregator:
 
         return statistics.mean(values)
 
-    def _weighted_aggregate(self, scores: Dict[str, float]) -> float:
+    def _weighted_aggregate(self, scores: dict[str, float]) -> float:
         """Calculate weighted aggregate."""
         if not self._weights:
             return statistics.mean(scores.values())
@@ -254,7 +253,7 @@ class ModelRanker:
     def __init__(
         self,
         method: RankingMethod = RankingMethod.SCORE,
-        aggregator: Optional[ScoreAggregator] = None,
+        aggregator: ScoreAggregator | None = None,
     ):
         """Initialize ranker.
 
@@ -267,9 +266,9 @@ class ModelRanker:
 
     def rank(
         self,
-        model_scores: Dict[str, Dict[str, float]],
-        previous_rankings: Optional[Dict[str, int]] = None,
-    ) -> List[LeaderboardEntry]:
+        model_scores: dict[str, dict[str, float]],
+        previous_rankings: dict[str, int] | None = None,
+    ) -> list[LeaderboardEntry]:
         """Rank models.
 
         Args:
@@ -301,21 +300,23 @@ class ModelRanker:
             prev_rank = previous_rankings.get(model_id) if previous_rankings else None
             trend = self._calculate_trend(rank, prev_rank)
 
-            entries.append(LeaderboardEntry(
-                rank=rank,
-                model_id=model_id,
-                score=score,
-                previous_rank=prev_rank,
-                trend=trend,
-                score_breakdown=model_scores[model_id],
-            ))
+            entries.append(
+                LeaderboardEntry(
+                    rank=rank,
+                    model_id=model_id,
+                    score=score,
+                    previous_rank=prev_rank,
+                    trend=trend,
+                    score_breakdown=model_scores[model_id],
+                )
+            )
 
         return entries
 
     @staticmethod
     def _calculate_trend(
         current_rank: int,
-        previous_rank: Optional[int],
+        previous_rank: int | None,
     ) -> TrendDirection:
         """Calculate trend direction."""
         if previous_rank is None:
@@ -333,7 +334,7 @@ class LeaderboardBuilder:
 
     def __init__(
         self,
-        ranker: Optional[ModelRanker] = None,
+        ranker: ModelRanker | None = None,
     ):
         """Initialize builder.
 
@@ -341,8 +342,8 @@ class LeaderboardBuilder:
             ranker: Model ranker
         """
         self._ranker = ranker or ModelRanker()
-        self._scores: List[ModelScore] = []
-        self._history: Dict[str, List[Leaderboard]] = defaultdict(list)
+        self._scores: list[ModelScore] = []
+        self._history: dict[str, list[Leaderboard]] = defaultdict(list)
 
     def add_score(self, score: ModelScore) -> None:
         """Add a score.
@@ -352,7 +353,7 @@ class LeaderboardBuilder:
         """
         self._scores.append(score)
 
-    def add_scores(self, scores: List[ModelScore]) -> None:
+    def add_scores(self, scores: list[ModelScore]) -> None:
         """Add multiple scores.
 
         Args:
@@ -364,9 +365,9 @@ class LeaderboardBuilder:
         self,
         name: str,
         description: str = "",
-        benchmark_filter: Optional[List[str]] = None,
-        model_filter: Optional[List[str]] = None,
-        metric_weights: Optional[Dict[str, float]] = None,
+        benchmark_filter: list[str] | None = None,
+        model_filter: list[str] | None = None,
+        metric_weights: dict[str, float] | None = None,
     ) -> Leaderboard:
         """Build a leaderboard.
 
@@ -383,18 +384,12 @@ class LeaderboardBuilder:
         # Filter scores
         filtered_scores = self._scores
         if benchmark_filter:
-            filtered_scores = [
-                s for s in filtered_scores
-                if s.benchmark_id in benchmark_filter
-            ]
+            filtered_scores = [s for s in filtered_scores if s.benchmark_id in benchmark_filter]
         if model_filter:
-            filtered_scores = [
-                s for s in filtered_scores
-                if s.model_id in model_filter
-            ]
+            filtered_scores = [s for s in filtered_scores if s.model_id in model_filter]
 
         # Organize by model
-        model_scores: Dict[str, Dict[str, float]] = defaultdict(dict)
+        model_scores: dict[str, dict[str, float]] = defaultdict(dict)
         for score in filtered_scores:
             model_scores[score.model_id][score.benchmark_id] = score.score
 
@@ -421,7 +416,7 @@ class LeaderboardBuilder:
 
         return leaderboard
 
-    def _get_previous_rankings(self, name: str) -> Dict[str, int]:
+    def _get_previous_rankings(self, name: str) -> dict[str, int]:
         """Get previous rankings for a leaderboard."""
         history = self._history.get(name, [])
         if not history:
@@ -434,7 +429,7 @@ class LeaderboardBuilder:
         """Clear all scores."""
         self._scores = []
 
-    def get_history(self, name: str) -> List[Leaderboard]:
+    def get_history(self, name: str) -> list[Leaderboard]:
         """Get leaderboard history."""
         return self._history.get(name, [])
 
@@ -483,14 +478,17 @@ class LeaderboardFormatter:
 
             if show_breakdown and leaderboard.benchmark_ids:
                 breakdown_vals = [
-                    f"{entry.score_breakdown.get(b, 0):.3f}"
-                    for b in leaderboard.benchmark_ids
+                    f"{entry.score_breakdown.get(b, 0):.3f}" for b in leaderboard.benchmark_ids
                 ]
-                row = [
-                    str(entry.rank),
-                    entry.model_id,
-                    f"{entry.score:.3f}",
-                ] + breakdown_vals + [trend_emoji]
+                row = (
+                    [
+                        str(entry.rank),
+                        entry.model_id,
+                        f"{entry.score:.3f}",
+                    ]
+                    + breakdown_vals
+                    + [trend_emoji]
+                )
             else:
                 row = [
                     str(entry.rank),
@@ -563,7 +561,7 @@ class LeaderboardFormatter:
                 <td>{entry.rank}</td>
                 <td>{entry.model_id}</td>
                 <td>{entry.score:.3f}</td>
-                <td>{entry.rank_change or '-'}</td>
+                <td>{entry.rank_change or "-"}</td>
                 <td>{self._trend_emoji(entry.trend)}</td>
             </tr>
             """)
@@ -583,7 +581,7 @@ class LeaderboardFormatter:
                     </tr>
                 </thead>
                 <tbody>
-                    {''.join(rows)}
+                    {"".join(rows)}
                 </tbody>
             </table>
             <p class="meta">Updated: {leaderboard.updated_at}</p>
@@ -667,9 +665,9 @@ class LeaderboardAnalyzer:
 
     def analyze_trends(
         self,
-        history: List[Leaderboard],
+        history: list[Leaderboard],
         model_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze trends for a model.
 
         Args:
@@ -709,7 +707,7 @@ class LeaderboardAnalyzer:
         }
 
     @staticmethod
-    def _spearman_correlation(x: List[int], y: List[int]) -> float:
+    def _spearman_correlation(x: list[int], y: list[int]) -> float:
         """Calculate Spearman rank correlation."""
         n = len(x)
         if n < 2:
@@ -719,11 +717,11 @@ class LeaderboardAnalyzer:
         d_squared_sum = sum((xi - yi) ** 2 for xi, yi in zip(x, y))
 
         # Spearman formula
-        rho = 1 - (6 * d_squared_sum) / (n * (n ** 2 - 1))
+        rho = 1 - (6 * d_squared_sum) / (n * (n**2 - 1))
         return rho
 
     @staticmethod
-    def _pearson_correlation(x: List[float], y: List[float]) -> float:
+    def _pearson_correlation(x: list[float], y: list[float]) -> float:
         """Calculate Pearson correlation."""
         n = len(x)
         if n < 2:
@@ -742,7 +740,7 @@ class LeaderboardAnalyzer:
         return numerator / (denom_x * denom_y)
 
     @staticmethod
-    def _calculate_linear_trend(values: List[float]) -> str:
+    def _calculate_linear_trend(values: list[float]) -> str:
         """Calculate linear trend direction."""
         if len(values) < 2:
             return "insufficient_data"
@@ -771,10 +769,10 @@ class LeaderboardAnalyzer:
 
 
 def create_leaderboard(
-    scores: List[ModelScore],
+    scores: list[ModelScore],
     name: str,
     description: str = "",
-    weights: Optional[Dict[str, float]] = None,
+    weights: dict[str, float] | None = None,
 ) -> Leaderboard:
     """Create a leaderboard from scores.
 
@@ -842,7 +840,7 @@ def compare_leaderboards(
 
 
 def quick_leaderboard(
-    model_scores: Dict[str, Dict[str, float]],
+    model_scores: dict[str, dict[str, float]],
     name: str = "Quick Leaderboard",
 ) -> Leaderboard:
     """Create a quick leaderboard from model scores.
@@ -857,10 +855,12 @@ def quick_leaderboard(
     scores = []
     for model_id, benchmarks in model_scores.items():
         for benchmark_id, score in benchmarks.items():
-            scores.append(ModelScore(
-                model_id=model_id,
-                benchmark_id=benchmark_id,
-                score=score,
-            ))
+            scores.append(
+                ModelScore(
+                    model_id=model_id,
+                    benchmark_id=benchmark_id,
+                    score=score,
+                )
+            )
 
     return create_leaderboard(scores, name)

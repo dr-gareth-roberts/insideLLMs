@@ -13,23 +13,14 @@ Key features:
 """
 
 import statistics
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
     Optional,
-    Sequence,
-    Tuple,
     TypeVar,
-    Union,
 )
-
 
 T = TypeVar("T")
 
@@ -60,7 +51,7 @@ class MetricValue:
     value: float
     unit: str = ""
     timestamp: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -95,7 +86,7 @@ class MetricSummary:
     unit: str = ""
 
     @classmethod
-    def from_values(cls, name: str, values: List[float], unit: str = "") -> "MetricSummary":
+    def from_values(cls, name: str, values: list[float], unit: str = "") -> "MetricSummary":
         """Compute summary from list of values.
 
         Args:
@@ -153,11 +144,11 @@ class ModelProfile:
 
     model_name: str
     model_id: str = ""
-    metrics: Dict[str, MetricSummary] = field(default_factory=dict)
-    raw_results: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, MetricSummary] = field(default_factory=dict)
+    raw_results: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def add_metric(self, name: str, values: List[float], unit: str = "") -> None:
+    def add_metric(self, name: str, values: list[float], unit: str = "") -> None:
         """Add a metric summary.
 
         Args:
@@ -191,12 +182,12 @@ class ComparisonResult:
         summary: Text summary.
     """
 
-    models: List[str]
+    models: list[str]
     winner: Optional[str] = None
-    rankings: Dict[str, List[str]] = field(default_factory=dict)
-    differences: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    rankings: dict[str, list[str]] = field(default_factory=dict)
+    differences: dict[str, dict[str, float]] = field(default_factory=dict)
     summary: str = ""
-    significant_differences: Dict[str, bool] = field(default_factory=dict)
+    significant_differences: dict[str, bool] = field(default_factory=dict)
 
 
 class ModelComparator:
@@ -211,8 +202,8 @@ class ModelComparator:
 
     def __init__(self):
         """Initialize comparator."""
-        self._profiles: Dict[str, ModelProfile] = {}
-        self._weights: Dict[str, float] = {
+        self._profiles: dict[str, ModelProfile] = {}
+        self._weights: dict[str, float] = {
             ComparisonMetric.ACCURACY.value: 1.0,
             ComparisonMetric.LATENCY.value: 0.5,
             ComparisonMetric.ERROR_RATE.value: 0.8,
@@ -245,8 +236,8 @@ class ModelComparator:
 
     def compare(
         self,
-        metrics: Optional[List[str]] = None,
-        higher_is_better: Optional[Dict[str, bool]] = None,
+        metrics: Optional[list[str]] = None,
+        higher_is_better: Optional[dict[str, bool]] = None,
     ) -> ComparisonResult:
         """Compare all models.
 
@@ -283,12 +274,12 @@ class ModelComparator:
             metrics = list(all_metrics)
 
         # Compute rankings
-        rankings: Dict[str, List[str]] = {}
-        differences: Dict[str, Dict[str, float]] = {}
+        rankings: dict[str, list[str]] = {}
+        differences: dict[str, dict[str, float]] = {}
 
         for metric in metrics:
             # Get values for each model
-            values: Dict[str, float] = {}
+            values: dict[str, float] = {}
             for name, profile in self._profiles.items():
                 if metric in profile.metrics:
                     values[name] = profile.metrics[metric].mean
@@ -310,7 +301,7 @@ class ModelComparator:
                     differences[metric][name] = diff
 
         # Determine overall winner using weighted scoring
-        scores: Dict[str, float] = {name: 0.0 for name in model_names}
+        scores: dict[str, float] = dict.fromkeys(model_names, 0.0)
 
         for metric, ranked in rankings.items():
             weight = self._weights.get(metric, 1.0)
@@ -341,7 +332,7 @@ class ModelComparator:
         self,
         metric: str,
         higher_is_better: bool = True,
-    ) -> Tuple[str, List[Tuple[str, float]]]:
+    ) -> tuple[str, list[tuple[str, float]]]:
         """Compare models on a single metric.
 
         Args:
@@ -388,7 +379,7 @@ class ModelComparator:
             # Header
             header = "| Metric |"
             separator = "| --- |"
-            for name in self._profiles.keys():
+            for name in self._profiles:
                 header += f" {name} |"
                 separator += " --- |"
             lines.append(header)
@@ -512,7 +503,7 @@ class CostCalculator:
 
     def __init__(self):
         """Initialize with default pricing."""
-        self._pricing: Dict[str, Tuple[float, float]] = dict(self.DEFAULT_PRICING)
+        self._pricing: dict[str, tuple[float, float]] = dict(self.DEFAULT_PRICING)
 
     def set_pricing(
         self,
@@ -567,8 +558,8 @@ class CostCalculator:
         self,
         input_tokens: int,
         output_tokens: int,
-        models: Optional[List[str]] = None,
-    ) -> Dict[str, CostEstimate]:
+        models: Optional[list[str]] = None,
+    ) -> dict[str, CostEstimate]:
         """Compare costs across models.
 
         Args:
@@ -593,8 +584,8 @@ class CostCalculator:
         self,
         input_tokens: int,
         output_tokens: int,
-        models: Optional[List[str]] = None,
-    ) -> Tuple[str, CostEstimate]:
+        models: Optional[list[str]] = None,
+    ) -> tuple[str, CostEstimate]:
         """Find the cheapest model.
 
         Args:
@@ -632,7 +623,7 @@ class QualityMetrics:
 
     def compute_overall(
         self,
-        weights: Optional[Dict[str, float]] = None,
+        weights: Optional[dict[str, float]] = None,
     ) -> float:
         """Compute overall score from components.
 
@@ -678,11 +669,11 @@ class PerformanceTracker:
             model_name: Name of the model being tracked.
         """
         self.model_name = model_name
-        self._latencies: List[float] = []
-        self._successes: List[bool] = []
-        self._token_counts: List[Tuple[int, int]] = []  # (input, output)
-        self._timestamps: List[datetime] = []
-        self._errors: List[str] = []
+        self._latencies: list[float] = []
+        self._successes: list[bool] = []
+        self._token_counts: list[tuple[int, int]] = []  # (input, output)
+        self._timestamps: list[datetime] = []
+        self._errors: list[str] = []
 
     def record_latency(self, latency_ms: float) -> None:
         """Record a latency measurement.
@@ -761,8 +752,8 @@ class PerformanceTracker:
 
 
 def create_comparison_table(
-    profiles: List[ModelProfile],
-    metrics: Optional[List[str]] = None,
+    profiles: list[ModelProfile],
+    metrics: Optional[list[str]] = None,
 ) -> str:
     """Create a markdown comparison table.
 
@@ -810,10 +801,10 @@ def create_comparison_table(
 
 
 def rank_models(
-    profiles: List[ModelProfile],
+    profiles: list[ModelProfile],
     metric: str,
     higher_is_better: bool = True,
-) -> List[Tuple[str, float]]:
+) -> list[tuple[str, float]]:
     """Rank models by a specific metric.
 
     Args:

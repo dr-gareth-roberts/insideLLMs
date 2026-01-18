@@ -1,27 +1,24 @@
 """Tests for OpenTelemetry Observability module."""
 
 import json
-import time
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
 
 import pytest
 
+from insideLLMs.models import DummyModel
 from insideLLMs.observability import (
-    TracingConfig,
+    OTEL_AVAILABLE,
     CallRecord,
     TelemetryCollector,
+    TracedModel,
+    TracingConfig,
+    estimate_tokens,
     get_collector,
+    instrument_model,
     set_collector,
     trace_call,
     trace_function,
-    TracedModel,
-    instrument_model,
-    estimate_tokens,
-    OTEL_AVAILABLE,
 )
-from insideLLMs.models import DummyModel
-
 
 # =============================================================================
 # Test TracingConfig
@@ -205,27 +202,31 @@ class TestTelemetryCollector:
 
         # Add some records
         for i in range(5):
-            collector.record(CallRecord(
+            collector.record(
+                CallRecord(
+                    model_name="test",
+                    operation="generate",
+                    start_time=now,
+                    end_time=now,
+                    latency_ms=100.0 + i * 10,  # 100, 110, 120, 130, 140
+                    success=True,
+                    prompt_tokens=10,
+                    completion_tokens=20,
+                )
+            )
+
+        # Add a failure
+        collector.record(
+            CallRecord(
                 model_name="test",
                 operation="generate",
                 start_time=now,
                 end_time=now,
-                latency_ms=100.0 + i * 10,  # 100, 110, 120, 130, 140
-                success=True,
-                prompt_tokens=10,
-                completion_tokens=20,
-            ))
-
-        # Add a failure
-        collector.record(CallRecord(
-            model_name="test",
-            operation="generate",
-            start_time=now,
-            end_time=now,
-            latency_ms=50.0,
-            success=False,
-            error="Error",
-        ))
+                latency_ms=50.0,
+                success=False,
+                error="Error",
+            )
+        )
 
         stats = collector.get_stats()
 
@@ -241,14 +242,16 @@ class TestTelemetryCollector:
         now = datetime.now()
 
         for model in ["gpt-4", "gpt-4", "claude"]:
-            collector.record(CallRecord(
-                model_name=model,
-                operation="generate",
-                start_time=now,
-                end_time=now,
-                latency_ms=100.0,
-                success=True,
-            ))
+            collector.record(
+                CallRecord(
+                    model_name=model,
+                    operation="generate",
+                    start_time=now,
+                    end_time=now,
+                    latency_ms=100.0,
+                    success=True,
+                )
+            )
 
         stats = collector.get_stats(model_name="gpt-4")
         assert stats["total_calls"] == 2
@@ -267,14 +270,16 @@ class TestTelemetryCollector:
         collector.add_callback(callback)
 
         now = datetime.now()
-        collector.record(CallRecord(
-            model_name="test",
-            operation="generate",
-            start_time=now,
-            end_time=now,
-            latency_ms=100.0,
-            success=True,
-        ))
+        collector.record(
+            CallRecord(
+                model_name="test",
+                operation="generate",
+                start_time=now,
+                end_time=now,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
 
         assert len(callback_records) == 1
         assert callback_records[0].model_name == "test"
@@ -284,14 +289,16 @@ class TestTelemetryCollector:
         collector = TelemetryCollector()
         now = datetime.now()
 
-        collector.record(CallRecord(
-            model_name="test",
-            operation="generate",
-            start_time=now,
-            end_time=now,
-            latency_ms=100.0,
-            success=True,
-        ))
+        collector.record(
+            CallRecord(
+                model_name="test",
+                operation="generate",
+                start_time=now,
+                end_time=now,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
 
         assert len(collector.get_records()) == 1
         collector.clear()
@@ -302,14 +309,16 @@ class TestTelemetryCollector:
         collector = TelemetryCollector()
         now = datetime.now()
 
-        collector.record(CallRecord(
-            model_name="test",
-            operation="generate",
-            start_time=now,
-            end_time=now,
-            latency_ms=100.0,
-            success=True,
-        ))
+        collector.record(
+            CallRecord(
+                model_name="test",
+                operation="generate",
+                start_time=now,
+                end_time=now,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
 
         json_str = collector.export_json()
         data = json.loads(json_str)
@@ -396,7 +405,7 @@ class TestTraceCall:
         collector = TelemetryCollector()
 
         with pytest.raises(ValueError):
-            with trace_call("test-model", "generate", "Hello", collector) as ctx:
+            with trace_call("test-model", "generate", "Hello", collector):
                 raise ValueError("Test error")
 
         records = collector.get_records()
@@ -409,11 +418,7 @@ class TestTraceCall:
         collector = TelemetryCollector()
 
         with trace_call(
-            "test-model",
-            "generate",
-            "Hello",
-            collector,
-            metadata={"user_id": "123"}
+            "test-model", "generate", "Hello", collector, metadata={"user_id": "123"}
         ) as ctx:
             ctx["response"] = "Hi"
 
@@ -540,7 +545,7 @@ class TestTracedModel:
         model = DummyModel()
         traced = TracedModel(model, collector, config)
 
-        response = traced.generate("Secret prompt")
+        traced.generate("Secret prompt")
 
         # Config is stored but prompts/responses not stored in basic CallRecord
         assert traced._config.log_prompts is True
@@ -597,6 +602,7 @@ class TestOpenTelemetryIntegration:
     def test_otel_traced_model_import(self):
         """Test that OTelTracedModel can be imported."""
         from insideLLMs.observability import OTelTracedModel
+
         assert OTelTracedModel is not None
 
 

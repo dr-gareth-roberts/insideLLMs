@@ -10,26 +10,24 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from insideLLMs.registry import (
     ensure_builtins_registered,
     model_registry,
     probe_registry,
 )
+from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runner import (
-    create_experiment_result,
     run_experiment_from_config,
     run_experiment_from_config_async,
 )
-from insideLLMs.results import results_to_markdown, save_results_json
-
 
 # ============================================================================
 # Console Output Utilities (works without external dependencies)
 # ============================================================================
+
 
 # ANSI color codes for terminal output
 class Colors:
@@ -86,6 +84,7 @@ def _supports_color() -> bool:
     if sys.platform == "win32":
         try:
             import ctypes
+
             kernel32 = ctypes.windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
             return True
@@ -177,10 +176,7 @@ class ProgressBar:
 
     def _render(self) -> None:
         """Render the progress bar to the terminal."""
-        if self.total == 0:
-            pct = 100
-        else:
-            pct = min(100, (self.current / self.total) * 100)
+        pct = 100 if self.total == 0 else min(100, self.current / self.total * 100)
 
         filled = int(self.width * self.current / max(1, self.total))
         bar = "█" * filled + "░" * (self.width - filled)
@@ -230,6 +226,7 @@ class Spinner:
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser."""
+
     # Custom formatter that preserves formatting in epilog
     class CustomFormatter(argparse.RawDescriptionHelpFormatter):
         def __init__(self, prog):
@@ -237,31 +234,31 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog="insidellms",
-        description=colorize("insideLLMs", Colors.BOLD, Colors.CYAN) +
-                    " - A world-class toolkit for probing, evaluating, and testing large language models",
+        description=colorize("insideLLMs", Colors.BOLD, Colors.CYAN)
+        + " - A world-class toolkit for probing, evaluating, and testing large language models",
         formatter_class=CustomFormatter,
         epilog=f"""
-{colorize('Examples:', Colors.BOLD)}
+{colorize("Examples:", Colors.BOLD)}
 
-  {colorize('# Quick evaluation', Colors.DIM)}
+  {colorize("# Quick evaluation", Colors.DIM)}
   insidellms quicktest "What is 2+2?" --model openai
 
-  {colorize('# Run a full experiment from config', Colors.DIM)}
+  {colorize("# Run a full experiment from config", Colors.DIM)}
   insidellms run config.yaml --verbose
 
-  {colorize('# Run benchmark suite', Colors.DIM)}
+  {colorize("# Run benchmark suite", Colors.DIM)}
   insidellms benchmark --models openai,anthropic --probes logic,bias
 
-  {colorize('# List available resources', Colors.DIM)}
+  {colorize("# List available resources", Colors.DIM)}
   insidellms list all
 
-  {colorize('# Interactive exploration', Colors.DIM)}
+  {colorize("# Interactive exploration", Colors.DIM)}
   insidellms interactive
 
-  {colorize('# Compare models', Colors.DIM)}
+  {colorize("# Compare models", Colors.DIM)}
   insidellms compare --models gpt-4,claude-3 --input "Explain quantum computing"
 
-{colorize('Documentation:', Colors.BOLD)} https://github.com/dr-gareth-roberts/insideLLMs
+{colorize("Documentation:", Colors.BOLD)} https://github.com/dr-gareth-roberts/insideLLMs
 """,
     )
 
@@ -278,7 +275,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--quiet", "-q",
+        "--quiet",
+        "-q",
         action="store_true",
         help="Minimal output (errors only)",
     )
@@ -299,12 +297,14 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to the experiment configuration file (YAML or JSON)",
     )
     run_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         help="Output file path for results (JSON format)",
     )
     run_parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["json", "markdown", "table", "summary"],
         default="table",
         help="Output format (default: table)",
@@ -316,13 +316,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Use async execution for parallel processing",
     )
     run_parser.add_argument(
-        "--concurrency", "-c",
+        "--concurrency",
+        "-c",
         type=int,
         default=5,
         help="Number of concurrent requests (only with --async)",
     )
     run_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show detailed progress information",
     )
@@ -353,7 +355,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="The prompt to test",
     )
     quicktest_parser.add_argument(
-        "--model", "-m",
+        "--model",
+        "-m",
         type=str,
         default="dummy",
         help="Model to use (default: dummy)",
@@ -365,12 +368,14 @@ def create_parser() -> argparse.ArgumentParser:
         help="JSON string of model arguments",
     )
     quicktest_parser.add_argument(
-        "--probe", "-p",
+        "--probe",
+        "-p",
         type=str,
         help="Optional probe to apply to the response",
     )
     quicktest_parser.add_argument(
-        "--temperature", "-t",
+        "--temperature",
+        "-t",
         type=float,
         default=0.7,
         help="Temperature for generation",
@@ -391,30 +396,35 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=CustomFormatter,
     )
     benchmark_parser.add_argument(
-        "--models", "-m",
+        "--models",
+        "-m",
         type=str,
         default="dummy",
         help="Comma-separated list of models to benchmark",
     )
     benchmark_parser.add_argument(
-        "--probes", "-p",
+        "--probes",
+        "-p",
         type=str,
         default="logic",
         help="Comma-separated list of probes to run",
     )
     benchmark_parser.add_argument(
-        "--datasets", "-d",
+        "--datasets",
+        "-d",
         type=str,
         help="Comma-separated list of benchmark datasets (e.g., reasoning,math,coding)",
     )
     benchmark_parser.add_argument(
-        "--max-examples", "-n",
+        "--max-examples",
+        "-n",
         type=int,
         default=10,
         help="Maximum examples per dataset (default: 10)",
     )
     benchmark_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         help="Output directory for benchmark results",
     )
@@ -424,7 +434,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="Generate an HTML report with visualizations",
     )
     benchmark_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show detailed progress",
     )
@@ -438,13 +449,15 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=CustomFormatter,
     )
     compare_parser.add_argument(
-        "--models", "-m",
+        "--models",
+        "-m",
         type=str,
         required=True,
         help="Comma-separated list of models to compare",
     )
     compare_parser.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         type=str,
         help="Single input prompt to compare",
     )
@@ -454,12 +467,14 @@ def create_parser() -> argparse.ArgumentParser:
         help="File with inputs (one per line or JSON/JSONL)",
     )
     compare_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         help="Output file for comparison results",
     )
     compare_parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["table", "json", "markdown"],
         default="table",
         help="Output format",
@@ -484,7 +499,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="Filter results by name (substring match)",
     )
     list_parser.add_argument(
-        "--detailed", "-d",
+        "--detailed",
+        "-d",
         action="store_true",
         help="Show detailed information",
     )
@@ -505,13 +521,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output file path (default: experiment.yaml)",
     )
     init_parser.add_argument(
-        "--model", "-m",
+        "--model",
+        "-m",
         type=str,
         default="dummy",
         help="Model type for the sample config",
     )
     init_parser.add_argument(
-        "--probe", "-p",
+        "--probe",
+        "-p",
         type=str,
         default="logic",
         help="Probe type for the sample config",
@@ -552,7 +570,8 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=CustomFormatter,
     )
     interactive_parser.add_argument(
-        "--model", "-m",
+        "--model",
+        "-m",
         type=str,
         default="dummy",
         help="Model to use in interactive mode",
@@ -592,13 +611,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Input results file (JSON)",
     )
     export_parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["csv", "markdown", "html", "latex"],
         default="csv",
         help="Export format",
     )
     export_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         help="Output file path",
     )
@@ -666,16 +687,22 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(results_to_markdown(results))
         elif args.format == "summary":
             # Minimal summary output
-            print(f"✓ {success_count}/{total} successful ({success_count/max(1,total)*100:.1f}%)")
+            print(
+                f"✓ {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
+            )
         else:  # table format
             print_subheader("Results Summary")
             print_key_value("Total items", total)
-            print_key_value("Successful", f"{success_count} ({success_count/max(1,total)*100:.1f}%)")
-            print_key_value("Errors", f"{error_count} ({error_count/max(1,total)*100:.1f}%)")
+            print_key_value(
+                "Successful", f"{success_count} ({success_count / max(1, total) * 100:.1f}%)"
+            )
+            print_key_value("Errors", f"{error_count} ({error_count / max(1, total) * 100:.1f}%)")
             print_key_value("Duration", f"{elapsed:.2f}s")
 
             if results:
-                latencies = [r.get("latency_ms", 0) for r in results if r.get("status") == "success"]
+                latencies = [
+                    r.get("latency_ms", 0) for r in results if r.get("status") == "success"
+                ]
                 if latencies:
                     avg_latency = sum(latencies) / len(latencies)
                     min_latency = min(latencies)
@@ -686,11 +713,15 @@ def cmd_run(args: argparse.Namespace) -> int:
             # Show first few results
             print_subheader("Sample Results")
             for i, r in enumerate(results[:5]):
-                status_icon = colorize("✓", Colors.GREEN) if r.get("status") == "success" else colorize("✗", Colors.RED)
+                status_icon = (
+                    colorize("✓", Colors.GREEN)
+                    if r.get("status") == "success"
+                    else colorize("✗", Colors.RED)
+                )
                 inp = str(r.get("input", ""))[:50]
                 if len(str(r.get("input", ""))) > 50:
                     inp += "..."
-                print(f"  {status_icon} [{i+1}] {inp}")
+                print(f"  {status_icon} [{i + 1}] {inp}")
 
             if len(results) > 5:
                 print(colorize(f"  ... and {len(results) - 5} more", Colors.DIM))
@@ -701,6 +732,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         print_error(f"Error running experiment: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -751,6 +783,7 @@ def cmd_list(args: argparse.Namespace) -> int:
         print_subheader("Built-in Benchmark Datasets")
         try:
             from insideLLMs.benchmark_datasets import list_builtin_datasets
+
             datasets = list_builtin_datasets()
 
             if filter_str:
@@ -762,9 +795,13 @@ def cmd_list(args: argparse.Namespace) -> int:
                     print(f"    {colorize('Category:', Colors.DIM)} {ds['category']}")
                     print(f"    {colorize('Examples:', Colors.DIM)} {ds['num_examples']}")
                     print(f"    {colorize('Description:', Colors.DIM)} {ds['description'][:60]}")
-                    print(f"    {colorize('Difficulties:', Colors.DIM)} {', '.join(ds['difficulties'])}")
+                    print(
+                        f"    {colorize('Difficulties:', Colors.DIM)} {', '.join(ds['difficulties'])}"
+                    )
                 else:
-                    print(f"  {colorize(ds['name'], Colors.YELLOW):15} {ds['num_examples']:4} examples  [{ds['category']}]")
+                    print(
+                        f"  {colorize(ds['name'], Colors.YELLOW):15} {ds['num_examples']:4} examples  [{ds['category']}]"
+                    )
 
             print(f"\n  {colorize(f'Total: {len(datasets)} datasets', Colors.DIM)}")
         except ImportError:
@@ -791,7 +828,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print_header("Initialize Experiment Configuration")
 
     # Base configuration
-    config: Dict[str, Any] = {
+    config: dict[str, Any] = {
         "model": {
             "type": args.model,
             "args": {},
@@ -873,7 +910,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             {"question": "What is 2+2?", "reference_answer": "4"},
             {"question": "What is the capital of France?", "reference_answer": "Paris"},
             {"question": "Who wrote Romeo and Juliet?", "reference_answer": "William Shakespeare"},
-            {"question": "If all cats are mammals, and all mammals are animals, are all cats animals?", "reference_answer": "Yes"},
+            {
+                "question": "If all cats are mammals, and all mammals are animals, are all cats animals?",
+                "reference_answer": "Yes",
+            },
             {"question": "What is the chemical symbol for water?", "reference_answer": "H2O"},
         ]
         with open(sample_data_path, "w") as f:
@@ -896,24 +936,29 @@ def cmd_info(args: argparse.Namespace) -> int:
     try:
         if args.type == "model":
             info = model_registry.info(args.name)
-            color = Colors.CYAN
         elif args.type == "probe":
             info = probe_registry.info(args.name)
-            color = Colors.GREEN
         else:  # dataset
             from insideLLMs.benchmark_datasets import load_builtin_dataset
+
             ds = load_builtin_dataset(args.name)
             stats = ds.get_stats()
             print_header(f"Dataset: {args.name}")
             print_key_value("Description", ds.description)
-            print_key_value("Category", ds.category.value if hasattr(ds.category, "value") else ds.category)
+            print_key_value(
+                "Category", ds.category.value if hasattr(ds.category, "value") else ds.category
+            )
             print_key_value("Total examples", stats.total_count)
-            print_key_value("Categories", ", ".join(stats.categories) if stats.categories else "N/A")
-            print_key_value("Difficulties", ", ".join(stats.difficulties) if stats.difficulties else "N/A")
+            print_key_value(
+                "Categories", ", ".join(stats.categories) if stats.categories else "N/A"
+            )
+            print_key_value(
+                "Difficulties", ", ".join(stats.difficulties) if stats.difficulties else "N/A"
+            )
 
             print_subheader("Sample Examples")
             for i, ex in enumerate(ds.sample(3, seed=42)):
-                print(f"\n  {colorize(f'Example {i+1}', Colors.BOLD)}")
+                print(f"\n  {colorize(f'Example {i + 1}', Colors.BOLD)}")
                 print(f"    {colorize('Input:', Colors.DIM)} {ex.input_text[:80]}...")
                 if ex.expected_output:
                     print(f"    {colorize('Expected:', Colors.DIM)} {ex.expected_output[:50]}")
@@ -977,16 +1022,18 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
         print(f"  {response}")
 
         print_subheader("Stats")
-        print_key_value("Latency", f"{elapsed*1000:.1f}ms")
+        print_key_value("Latency", f"{elapsed * 1000:.1f}ms")
         print_key_value("Response length", f"{len(response)} characters")
 
         # Apply probe if specified
         if args.probe:
             print_subheader(f"Probe: {args.probe}")
             probe_factory = probe_registry.get(args.probe)
-            probe = probe_factory()
+            probe_factory()
             # Note: Probe evaluation would go here
-            print_info(f"Probe '{args.probe}' applied (detailed scoring available in full experiments)")
+            print_info(
+                f"Probe '{args.probe}' applied (detailed scoring available in full experiments)"
+            )
 
         return 0
 
@@ -1016,9 +1063,8 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
     try:
         from insideLLMs.benchmark_datasets import (
-            load_builtin_dataset,
-            list_builtin_datasets,
             create_comprehensive_benchmark_suite,
+            load_builtin_dataset,
         )
 
         # Load datasets
@@ -1029,19 +1075,23 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 for ex in ds.sample(args.max_examples, seed=42):
                     suite_examples.append(ex)
         else:
-            suite = create_comprehensive_benchmark_suite(max_examples_per_dataset=args.max_examples, seed=42)
+            suite = create_comprehensive_benchmark_suite(
+                max_examples_per_dataset=args.max_examples, seed=42
+            )
             suite_examples = list(suite.sample(args.max_examples * 5, seed=42))
 
         print_info(f"Loaded {len(suite_examples)} benchmark examples")
 
-        results_all: List[Dict[str, Any]] = []
+        results_all: list[dict[str, Any]] = []
 
         for model_name in models:
             print_subheader(f"Model: {model_name}")
 
             try:
                 model_or_factory = model_registry.get(model_name)
-                model = model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                model = (
+                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                )
             except Exception as e:
                 print_warning(f"Could not load model {model_name}: {e}")
                 continue
@@ -1051,16 +1101,21 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
                 try:
                     probe_or_factory = probe_registry.get(probe_name)
-                    probe = probe_or_factory() if isinstance(probe_or_factory, type) else probe_or_factory
+                    probe = (
+                        probe_or_factory()
+                        if isinstance(probe_or_factory, type)
+                        else probe_or_factory
+                    )
                 except Exception as e:
                     print_warning(f"  Could not load probe {probe_name}: {e}")
                     continue
 
                 # Create runner and run
                 from insideLLMs.runner import ProbeRunner
+
                 runner = ProbeRunner(model, probe)
 
-                inputs = [ex.input_text for ex in suite_examples[:args.max_examples]]
+                inputs = [ex.input_text for ex in suite_examples[: args.max_examples]]
                 progress = ProgressBar(len(inputs), prefix=f"  {probe_name}")
 
                 probe_results = []
@@ -1074,21 +1129,30 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
                 progress.finish()
 
-                success_count = sum(1 for r in probe_results if getattr(r, "status", None) == "success" or (isinstance(r, dict) and r.get("status") == "success"))
-                results_all.append({
-                    "model": model_name,
-                    "probe": probe_name,
-                    "total": len(inputs),
-                    "success": success_count,
-                    "accuracy": success_count / max(1, len(inputs)),
-                })
+                success_count = sum(
+                    1
+                    for r in probe_results
+                    if getattr(r, "status", None) == "success"
+                    or (isinstance(r, dict) and r.get("status") == "success")
+                )
+                results_all.append(
+                    {
+                        "model": model_name,
+                        "probe": probe_name,
+                        "total": len(inputs),
+                        "success": success_count,
+                        "accuracy": success_count / max(1, len(inputs)),
+                    }
+                )
 
         # Summary
         print_subheader("Benchmark Results Summary")
         print(f"\n  {'Model':<15} {'Probe':<15} {'Accuracy':>10} {'Success':>10}")
         print("  " + "-" * 55)
         for r in results_all:
-            print(f"  {r['model']:<15} {r['probe']:<15} {r['accuracy']*100:>9.1f}% {r['success']:>5}/{r['total']}")
+            print(
+                f"  {r['model']:<15} {r['probe']:<15} {r['accuracy'] * 100:>9.1f}% {r['success']:>5}/{r['total']}"
+            )
 
         # Save results if output specified
         if args.output:
@@ -1103,9 +1167,10 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             if args.html_report:
                 try:
                     from insideLLMs.visualization import create_interactive_html_report
-                    report_path = output_dir / "benchmark_report.html"
+
+                    output_dir / "benchmark_report.html"
                     # Note: Would need to convert results to ExperimentResult objects
-                    print_info(f"HTML report generation requires ExperimentResult format")
+                    print_info("HTML report generation requires ExperimentResult format")
                 except ImportError:
                     print_warning("HTML report generation requires plotly")
 
@@ -1115,6 +1180,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         print_error(f"Benchmark error: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -1129,7 +1195,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     print_key_value("Models", ", ".join(models))
 
     # Get inputs
-    inputs: List[str] = []
+    inputs: list[str] = []
     if args.input:
         inputs = [args.input]
     elif args.input_file:
@@ -1157,7 +1223,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     print_key_value("Inputs", len(inputs))
 
     try:
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         for inp in inputs:
             inp_display = inp[:50] + "..." if len(inp) > 50 else inp
@@ -1168,7 +1234,11 @@ def cmd_compare(args: argparse.Namespace) -> int:
             for model_name in models:
                 try:
                     model_or_factory = model_registry.get(model_name)
-                    model = model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                    model = (
+                        model_or_factory()
+                        if isinstance(model_or_factory, type)
+                        else model_or_factory
+                    )
 
                     start = time.time()
                     response = model.generate(inp)
@@ -1179,7 +1249,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
                     print(f"\n  {colorize(model_name, Colors.CYAN)}:")
                     print(f"    {response[:100]}{'...' if len(response) > 100 else ''}")
-                    print(f"    {colorize(f'({elapsed*1000:.1f}ms)', Colors.DIM)}")
+                    print(f"    {colorize(f'({elapsed * 1000:.1f}ms)', Colors.DIM)}")
 
                 except Exception as e:
                     row[f"{model_name}_response"] = f"ERROR: {e}"
@@ -1217,7 +1287,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
         return 1
 
     # Command history
-    history: List[str] = []
+    history: list[str] = []
 
     # Load history file
     history_path = Path(args.history_file)
@@ -1249,7 +1319,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
             break
         elif prompt.lower() == "help":
             print(f"""
-{colorize('Available Commands:', Colors.BOLD)}
+{colorize("Available Commands:", Colors.BOLD)}
   help          - Show this help message
   quit/exit/q   - Exit interactive mode
   history       - Show command history
@@ -1257,7 +1327,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
   model <name>  - Switch to a different model
   probe <name>  - Run a probe on the last response
 
-{colorize('Usage:', Colors.BOLD)}
+{colorize("Usage:", Colors.BOLD)}
   Just type your prompt and press Enter to get a response.
 """)
         elif prompt.lower() == "history":
@@ -1270,7 +1340,9 @@ def cmd_interactive(args: argparse.Namespace) -> int:
             new_model = prompt[6:].strip()
             try:
                 model_or_factory = model_registry.get(new_model)
-                model = model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                model = (
+                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                )
                 print_success(f"Switched to model: {new_model}")
             except Exception as e:
                 print_error(f"Could not load model: {e}")
@@ -1286,7 +1358,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
                 spinner.stop(success=True)
 
                 print(f"\n{response}\n")
-                print(colorize(f"[{elapsed*1000:.0f}ms]", Colors.DIM))
+                print(colorize(f"[{elapsed * 1000:.0f}ms]", Colors.DIM))
                 print()
             except Exception as e:
                 spinner.stop(success=False)
@@ -1311,13 +1383,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
         # Load config
         with open(config_path) as f:
-            if config_path.suffix in (".yaml", ".yml"):
-                config = yaml.safe_load(f)
-            else:
-                config = json.load(f)
+            config = yaml.safe_load(f) if config_path.suffix in (".yaml", ".yml") else json.load(f)
 
-        errors: List[str] = []
-        warnings: List[str] = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Validate model
         if "model" not in config:
@@ -1419,6 +1488,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         elif args.format == "html":
             try:
                 from insideLLMs.visualization import create_interactive_html_report
+
                 # Would need ExperimentResult conversion
                 print_warning("HTML export requires ExperimentResult format")
                 return 1
@@ -1441,12 +1511,14 @@ def cmd_export(args: argparse.Namespace) -> int:
                 for r in results[:20]:  # Limit rows
                     values = [str(r.get(k, ""))[:30] for k in keys]
                     lines.append(" & ".join(values) + " \\\\")
-                lines.extend([
-                    "\\hline",
-                    "\\end{tabular}",
-                    "\\caption{Experiment Results}",
-                    "\\end{table}",
-                ])
+                lines.extend(
+                    [
+                        "\\hline",
+                        "\\end{tabular}",
+                        "\\caption{Experiment Results}",
+                        "\\end{table}",
+                    ]
+                )
                 with open(output_path, "w") as f:
                     f.write("\n".join(lines))
 
@@ -1458,7 +1530,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         return 1
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point for the CLI."""
     global USE_COLOR
 
@@ -1476,7 +1548,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         print()
         parser.print_help()
         print()
-        print(colorize("Quick start: ", Colors.BOLD) + "insidellms quicktest \"Hello world\" --model dummy")
+        print(
+            colorize("Quick start: ", Colors.BOLD)
+            + 'insidellms quicktest "Hello world" --model dummy'
+        )
         return 0
 
     commands = {

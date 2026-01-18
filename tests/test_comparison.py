@@ -328,7 +328,9 @@ class TestQualityMetrics:
         )
 
         # Weight coherence heavily
-        overall = metrics.compute_overall({"coherence": 1.0, "relevance": 0, "accuracy": 0, "completeness": 0, "fluency": 0})
+        overall = metrics.compute_overall(
+            {"coherence": 1.0, "relevance": 0, "accuracy": 0, "completeness": 0, "fluency": 0}
+        )
 
         assert overall == 1.0
 

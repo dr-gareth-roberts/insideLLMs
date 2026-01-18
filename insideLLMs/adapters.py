@@ -23,17 +23,16 @@ Example:
     >>> adapter = factory.create("claude-3-opus", provider="anthropic")
 """
 
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
-import hashlib
-import time
+from typing import Any, Optional
 
 
 class Provider(Enum):
     """Supported LLM providers."""
+
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
@@ -50,6 +49,7 @@ class Provider(Enum):
 
 class AdapterStatus(Enum):
     """Status of an adapter."""
+
     READY = "ready"
     INITIALIZING = "initializing"
     ERROR = "error"
@@ -59,6 +59,7 @@ class AdapterStatus(Enum):
 
 class ModelCapability(Enum):
     """Model capabilities."""
+
     CHAT = "chat"
     COMPLETION = "completion"
     EMBEDDING = "embedding"
@@ -72,19 +73,20 @@ class ModelCapability(Enum):
 @dataclass
 class ModelInfo:
     """Information about a model."""
+
     model_id: str
     provider: Provider
     display_name: str
-    capabilities: List[ModelCapability] = field(default_factory=list)
+    capabilities: list[ModelCapability] = field(default_factory=list)
     context_window: int = 4096
     max_output_tokens: int = 4096
     input_price_per_1k: float = 0.0
     output_price_per_1k: float = 0.0
-    aliases: List[str] = field(default_factory=list)
+    aliases: list[str] = field(default_factory=list)
     deprecated: bool = False
     deprecation_date: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
@@ -103,6 +105,7 @@ class ModelInfo:
 @dataclass
 class AdapterConfig:
     """Configuration for an adapter."""
+
     model_id: str
     provider: Provider
     api_key: Optional[str] = None
@@ -113,9 +116,9 @@ class AdapterConfig:
     retry_delay: float = 1.0
     rate_limit_rpm: Optional[int] = None
     rate_limit_tpm: Optional[int] = None
-    extra_params: Dict[str, Any] = field(default_factory=dict)
+    extra_params: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary (excluding sensitive data)."""
         return {
             "model_id": self.model_id,
@@ -131,19 +134,20 @@ class AdapterConfig:
 @dataclass
 class GenerationParams:
     """Parameters for text generation."""
+
     temperature: float = 0.7
     max_tokens: int = 1024
     top_p: float = 1.0
     top_k: Optional[int] = None
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
-    stop_sequences: List[str] = field(default_factory=list)
+    stop_sequences: list[str] = field(default_factory=list)
     seed: Optional[int] = None
     stream: bool = False
     json_mode: bool = False
-    functions: Optional[List[Dict[str, Any]]] = None
+    functions: Optional[list[dict[str, Any]]] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "temperature": self.temperature,
@@ -163,6 +167,7 @@ class GenerationParams:
 @dataclass
 class GenerationResult:
     """Result from text generation."""
+
     text: str
     model: str
     provider: str
@@ -170,10 +175,10 @@ class GenerationResult:
     tokens_output: int = 0
     latency_ms: float = 0.0
     finish_reason: str = "stop"
-    raw_response: Optional[Dict[str, Any]] = None
-    function_call: Optional[Dict[str, Any]] = None
+    raw_response: Optional[dict[str, Any]] = None
+    function_call: Optional[dict[str, Any]] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text": self.text,
@@ -190,12 +195,13 @@ class GenerationResult:
 @dataclass
 class HealthCheckResult:
     """Result of a health check."""
+
     healthy: bool
     latency_ms: float
     error: Optional[str] = None
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "healthy": self.healthy,
@@ -258,7 +264,7 @@ class BaseAdapter(ABC):
     @abstractmethod
     def generate_chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         params: Optional[GenerationParams] = None,
         **kwargs,
     ) -> GenerationResult:
@@ -279,7 +285,7 @@ class BaseAdapter(ABC):
         start = time.time()
         try:
             # Simple check - generate minimal output
-            result = self.generate("Hello", GenerationParams(max_tokens=5))
+            self.generate("Hello", GenerationParams(max_tokens=5))
             latency = (time.time() - start) * 1000
             return HealthCheckResult(
                 healthy=True,
@@ -293,7 +299,7 @@ class BaseAdapter(ABC):
                 error=str(e),
             )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get adapter statistics."""
         return {
             "model_id": self.model_id,
@@ -321,7 +327,7 @@ class MockAdapter(BaseAdapter):
         """Initialize mock adapter."""
         super().__init__(config)
         self._status = AdapterStatus.READY
-        self._responses: Dict[str, str] = {}
+        self._responses: dict[str, str] = {}
         self._default_response = "This is a mock response."
 
     def set_response(self, prompt_pattern: str, response: str) -> None:
@@ -351,7 +357,7 @@ class MockAdapter(BaseAdapter):
         params = params or GenerationParams()
 
         return GenerationResult(
-            text=response[:params.max_tokens],
+            text=response[: params.max_tokens],
             model=self.model_id,
             provider=self.provider.value,
             tokens_input=len(prompt.split()),
@@ -361,16 +367,13 @@ class MockAdapter(BaseAdapter):
 
     def generate_chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         params: Optional[GenerationParams] = None,
         **kwargs,
     ) -> GenerationResult:
         """Generate mock chat response."""
         # Convert messages to prompt
-        prompt = "\n".join(
-            f"{m.get('role', 'user')}: {m.get('content', '')}"
-            for m in messages
-        )
+        prompt = "\n".join(f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages)
         return self.generate(prompt, params, **kwargs)
 
 
@@ -386,6 +389,7 @@ class OpenAIAdapter(BaseAdapter):
         """Initialize OpenAI client."""
         try:
             import openai
+
             self._client = openai.OpenAI(
                 api_key=self.config.api_key,
                 base_url=self.config.api_base,
@@ -410,7 +414,7 @@ class OpenAIAdapter(BaseAdapter):
 
     def generate_chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         params: Optional[GenerationParams] = None,
         **kwargs,
     ) -> GenerationResult:
@@ -461,6 +465,7 @@ class AnthropicAdapter(BaseAdapter):
         """Initialize Anthropic client."""
         try:
             import anthropic
+
             self._client = anthropic.Anthropic(
                 api_key=self.config.api_key,
                 base_url=self.config.api_base,
@@ -484,7 +489,7 @@ class AnthropicAdapter(BaseAdapter):
 
     def generate_chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         params: Optional[GenerationParams] = None,
         **kwargs,
     ) -> GenerationResult:
@@ -529,140 +534,156 @@ class ModelRegistry:
 
     def __init__(self):
         """Initialize registry."""
-        self._models: Dict[str, ModelInfo] = {}
-        self._aliases: Dict[str, str] = {}
+        self._models: dict[str, ModelInfo] = {}
+        self._aliases: dict[str, str] = {}
         self._setup_default_models()
 
     def _setup_default_models(self) -> None:
         """Setup default model definitions."""
         # OpenAI models
-        self.register(ModelInfo(
-            model_id="gpt-4o",
-            provider=Provider.OPENAI,
-            display_name="GPT-4o",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.STREAMING,
-                ModelCapability.JSON_MODE,
-            ],
-            context_window=128000,
-            max_output_tokens=16384,
-            input_price_per_1k=0.005,
-            output_price_per_1k=0.015,
-            aliases=["gpt-4o-2024-08-06"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="gpt-4o",
+                provider=Provider.OPENAI,
+                display_name="GPT-4o",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.FUNCTION_CALLING,
+                    ModelCapability.STREAMING,
+                    ModelCapability.JSON_MODE,
+                ],
+                context_window=128000,
+                max_output_tokens=16384,
+                input_price_per_1k=0.005,
+                output_price_per_1k=0.015,
+                aliases=["gpt-4o-2024-08-06"],
+            )
+        )
 
-        self.register(ModelInfo(
-            model_id="gpt-4-turbo",
-            provider=Provider.OPENAI,
-            display_name="GPT-4 Turbo",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.STREAMING,
-                ModelCapability.JSON_MODE,
-            ],
-            context_window=128000,
-            max_output_tokens=4096,
-            input_price_per_1k=0.01,
-            output_price_per_1k=0.03,
-            aliases=["gpt-4-turbo-preview", "gpt-4-1106-preview"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="gpt-4-turbo",
+                provider=Provider.OPENAI,
+                display_name="GPT-4 Turbo",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.FUNCTION_CALLING,
+                    ModelCapability.STREAMING,
+                    ModelCapability.JSON_MODE,
+                ],
+                context_window=128000,
+                max_output_tokens=4096,
+                input_price_per_1k=0.01,
+                output_price_per_1k=0.03,
+                aliases=["gpt-4-turbo-preview", "gpt-4-1106-preview"],
+            )
+        )
 
-        self.register(ModelInfo(
-            model_id="gpt-3.5-turbo",
-            provider=Provider.OPENAI,
-            display_name="GPT-3.5 Turbo",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.STREAMING,
-                ModelCapability.JSON_MODE,
-            ],
-            context_window=16385,
-            max_output_tokens=4096,
-            input_price_per_1k=0.0005,
-            output_price_per_1k=0.0015,
-        ))
+        self.register(
+            ModelInfo(
+                model_id="gpt-3.5-turbo",
+                provider=Provider.OPENAI,
+                display_name="GPT-3.5 Turbo",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.FUNCTION_CALLING,
+                    ModelCapability.STREAMING,
+                    ModelCapability.JSON_MODE,
+                ],
+                context_window=16385,
+                max_output_tokens=4096,
+                input_price_per_1k=0.0005,
+                output_price_per_1k=0.0015,
+            )
+        )
 
         # Anthropic models
-        self.register(ModelInfo(
-            model_id="claude-3-5-sonnet-20241022",
-            provider=Provider.ANTHROPIC,
-            display_name="Claude 3.5 Sonnet",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.STREAMING,
-            ],
-            context_window=200000,
-            max_output_tokens=8192,
-            input_price_per_1k=0.003,
-            output_price_per_1k=0.015,
-            aliases=["claude-3.5-sonnet", "claude-sonnet"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="claude-3-5-sonnet-20241022",
+                provider=Provider.ANTHROPIC,
+                display_name="Claude 3.5 Sonnet",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.STREAMING,
+                ],
+                context_window=200000,
+                max_output_tokens=8192,
+                input_price_per_1k=0.003,
+                output_price_per_1k=0.015,
+                aliases=["claude-3.5-sonnet", "claude-sonnet"],
+            )
+        )
 
-        self.register(ModelInfo(
-            model_id="claude-3-opus-20240229",
-            provider=Provider.ANTHROPIC,
-            display_name="Claude 3 Opus",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.STREAMING,
-            ],
-            context_window=200000,
-            max_output_tokens=4096,
-            input_price_per_1k=0.015,
-            output_price_per_1k=0.075,
-            aliases=["claude-3-opus", "claude-opus"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="claude-3-opus-20240229",
+                provider=Provider.ANTHROPIC,
+                display_name="Claude 3 Opus",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.STREAMING,
+                ],
+                context_window=200000,
+                max_output_tokens=4096,
+                input_price_per_1k=0.015,
+                output_price_per_1k=0.075,
+                aliases=["claude-3-opus", "claude-opus"],
+            )
+        )
 
-        self.register(ModelInfo(
-            model_id="claude-3-haiku-20240307",
-            provider=Provider.ANTHROPIC,
-            display_name="Claude 3 Haiku",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.STREAMING,
-            ],
-            context_window=200000,
-            max_output_tokens=4096,
-            input_price_per_1k=0.00025,
-            output_price_per_1k=0.00125,
-            aliases=["claude-3-haiku", "claude-haiku"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="claude-3-haiku-20240307",
+                provider=Provider.ANTHROPIC,
+                display_name="Claude 3 Haiku",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.STREAMING,
+                ],
+                context_window=200000,
+                max_output_tokens=4096,
+                input_price_per_1k=0.00025,
+                output_price_per_1k=0.00125,
+                aliases=["claude-3-haiku", "claude-haiku"],
+            )
+        )
 
         # Mistral models
-        self.register(ModelInfo(
-            model_id="mistral-large-latest",
-            provider=Provider.MISTRAL,
-            display_name="Mistral Large",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.STREAMING,
-                ModelCapability.FUNCTION_CALLING,
-            ],
-            context_window=128000,
-            max_output_tokens=4096,
-            input_price_per_1k=0.002,
-            output_price_per_1k=0.006,
-            aliases=["mistral-large"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="mistral-large-latest",
+                provider=Provider.MISTRAL,
+                display_name="Mistral Large",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.STREAMING,
+                    ModelCapability.FUNCTION_CALLING,
+                ],
+                context_window=128000,
+                max_output_tokens=4096,
+                input_price_per_1k=0.002,
+                output_price_per_1k=0.006,
+                aliases=["mistral-large"],
+            )
+        )
 
-        self.register(ModelInfo(
-            model_id="mistral-small-latest",
-            provider=Provider.MISTRAL,
-            display_name="Mistral Small",
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.STREAMING,
-            ],
-            context_window=32000,
-            max_output_tokens=4096,
-            input_price_per_1k=0.0002,
-            output_price_per_1k=0.0006,
-            aliases=["mistral-small"],
-        ))
+        self.register(
+            ModelInfo(
+                model_id="mistral-small-latest",
+                provider=Provider.MISTRAL,
+                display_name="Mistral Small",
+                capabilities=[
+                    ModelCapability.CHAT,
+                    ModelCapability.STREAMING,
+                ],
+                context_window=32000,
+                max_output_tokens=4096,
+                input_price_per_1k=0.0002,
+                output_price_per_1k=0.0006,
+                aliases=["mistral-small"],
+            )
+        )
 
     def register(self, model_info: ModelInfo) -> None:
         """Register a model."""
@@ -689,19 +710,16 @@ class ModelRegistry:
         """Resolve model alias to canonical ID."""
         return self._aliases.get(model_id, model_id)
 
-    def list_models(self, provider: Optional[Provider] = None) -> List[ModelInfo]:
+    def list_models(self, provider: Optional[Provider] = None) -> list[ModelInfo]:
         """List all models, optionally filtered by provider."""
         models = list(self._models.values())
         if provider:
             models = [m for m in models if m.provider == provider]
         return models
 
-    def get_by_capability(self, capability: ModelCapability) -> List[ModelInfo]:
+    def get_by_capability(self, capability: ModelCapability) -> list[ModelInfo]:
         """Get models with a specific capability."""
-        return [
-            m for m in self._models.values()
-            if capability in m.capabilities
-        ]
+        return [m for m in self._models.values() if capability in m.capabilities]
 
 
 class ProviderDetector:
@@ -734,7 +752,7 @@ class AdapterFactory:
     """Factory for creating model adapters."""
 
     # Adapter classes by provider
-    ADAPTER_CLASSES: Dict[Provider, Type[BaseAdapter]] = {
+    ADAPTER_CLASSES: dict[Provider, type[BaseAdapter]] = {
         Provider.OPENAI: OpenAIAdapter,
         Provider.ANTHROPIC: AnthropicAdapter,
         Provider.MOCK: MockAdapter,
@@ -743,9 +761,9 @@ class AdapterFactory:
     def __init__(self):
         """Initialize factory."""
         self._registry = ModelRegistry()
-        self._adapters: Dict[str, BaseAdapter] = {}
-        self._api_keys: Dict[Provider, str] = {}
-        self._default_configs: Dict[Provider, Dict[str, Any]] = {}
+        self._adapters: dict[str, BaseAdapter] = {}
+        self._api_keys: dict[Provider, str] = {}
+        self._default_configs: dict[Provider, dict[str, Any]] = {}
 
     def set_api_key(self, provider: Provider, api_key: str) -> None:
         """Set API key for a provider."""
@@ -784,10 +802,7 @@ class AdapterFactory:
         if provider is None:
             # Try registry first
             model_info = self._registry.get(resolved_id)
-            if model_info:
-                provider = model_info.provider
-            else:
-                provider = ProviderDetector.detect(resolved_id)
+            provider = model_info.provider if model_info else ProviderDetector.detect(resolved_id)
 
             if provider is None:
                 raise ValueError(f"Could not detect provider for model: {model_id}")
@@ -827,7 +842,7 @@ class AdapterFactory:
         cache_key = f"{provider.value}:{model_id}"
         return self._adapters.get(cache_key)
 
-    def list_available(self) -> List[Provider]:
+    def list_available(self) -> list[Provider]:
         """List providers with available adapters."""
         return list(self.ADAPTER_CLASSES.keys())
 
@@ -835,7 +850,7 @@ class AdapterFactory:
         """Get model information."""
         return self._registry.get(model_id)
 
-    def list_models(self, provider: Optional[Provider] = None) -> List[ModelInfo]:
+    def list_models(self, provider: Optional[Provider] = None) -> list[ModelInfo]:
         """List known models."""
         return self._registry.list_models(provider)
 
@@ -845,7 +860,7 @@ class FallbackChain:
 
     def __init__(
         self,
-        adapters: List[BaseAdapter],
+        adapters: list[BaseAdapter],
         fallback_on_error: bool = True,
         fallback_on_rate_limit: bool = True,
     ):
@@ -886,7 +901,7 @@ class FallbackChain:
 
     def generate_chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         params: Optional[GenerationParams] = None,
         **kwargs,
     ) -> GenerationResult:
@@ -905,7 +920,7 @@ class FallbackChain:
 
         raise RuntimeError(f"All adapters failed. Last error: {last_error}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get chain statistics."""
         return {
             "adapter_count": len(self.adapters),
@@ -919,7 +934,7 @@ class AdapterPool:
 
     def __init__(
         self,
-        adapters: List[BaseAdapter],
+        adapters: list[BaseAdapter],
         strategy: str = "round_robin",
     ):
         """Initialize adapter pool.
@@ -931,7 +946,7 @@ class AdapterPool:
         self.adapters = adapters
         self.strategy = strategy
         self._current_index = 0
-        self._request_counts: Dict[str, int] = {}
+        self._request_counts: dict[str, int] = {}
 
     def get_adapter(self) -> BaseAdapter:
         """Get next adapter based on strategy."""
@@ -948,6 +963,7 @@ class AdapterPool:
 
         elif self.strategy == "random":
             import random
+
             return random.choice(self.adapters)
 
         return self.adapters[0]
@@ -966,6 +982,7 @@ class AdapterPool:
 @dataclass
 class ConnectionInfo:
     """Connection information for an adapter."""
+
     adapter_id: str
     provider: Provider
     connected: bool
@@ -973,7 +990,7 @@ class ConnectionInfo:
     error: Optional[str] = None
     checked_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "adapter_id": self.adapter_id,
@@ -990,7 +1007,7 @@ class ConnectionMonitor:
 
     def __init__(self):
         """Initialize monitor."""
-        self._connections: Dict[str, ConnectionInfo] = {}
+        self._connections: dict[str, ConnectionInfo] = {}
 
     def check_adapter(self, adapter: BaseAdapter) -> ConnectionInfo:
         """Check adapter connection."""
@@ -1009,7 +1026,7 @@ class ConnectionMonitor:
         self._connections[adapter_id] = info
         return info
 
-    def get_status(self) -> Dict[str, ConnectionInfo]:
+    def get_status(self) -> dict[str, ConnectionInfo]:
         """Get all connection statuses."""
         return dict(self._connections)
 
@@ -1032,8 +1049,8 @@ def create_mock_adapter(model_id: str = "mock-model") -> MockAdapter:
 
 
 def create_fallback_chain(
-    model_ids: List[str],
-    api_keys: Optional[Dict[str, str]] = None,
+    model_ids: list[str],
+    api_keys: Optional[dict[str, str]] = None,
 ) -> FallbackChain:
     """Create a fallback chain from model IDs."""
     factory = AdapterFactory()
@@ -1048,7 +1065,7 @@ def create_fallback_chain(
 
 
 def create_adapter_pool(
-    model_ids: List[str],
+    model_ids: list[str],
     strategy: str = "round_robin",
 ) -> AdapterPool:
     """Create an adapter pool from model IDs."""
@@ -1062,12 +1079,12 @@ def detect_provider(model_id: str) -> Optional[Provider]:
     return ProviderDetector.detect(model_id)
 
 
-def list_providers() -> List[Provider]:
+def list_providers() -> list[Provider]:
     """List all supported providers."""
     return list(Provider)
 
 
-def list_models(provider: Optional[str] = None) -> List[ModelInfo]:
+def list_models(provider: Optional[str] = None) -> list[ModelInfo]:
     """List known models."""
     registry = ModelRegistry()
     p = Provider(provider) if provider else None

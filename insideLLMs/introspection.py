@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 
 class AttentionPattern(Enum):
@@ -37,7 +37,7 @@ class TokenImportance:
     gradient_score: float = 0.0
     attention_received: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "token": self.token,
@@ -58,9 +58,9 @@ class AttentionHead:
     pattern_type: AttentionPattern
     entropy: float  # Higher = more distributed attention
     sparsity: float  # Higher = more focused attention
-    key_positions: List[int] = field(default_factory=list)
+    key_positions: list[int] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "layer": self.layer,
@@ -80,9 +80,9 @@ class LayerAnalysis:
     representation_norm: float
     token_similarity: float  # How similar token representations are
     information_retention: float  # Information from input retained
-    key_features: List[str] = field(default_factory=list)
+    key_features: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "layer_index": self.layer_index,
@@ -99,14 +99,14 @@ class IntrospectionReport:
 
     prompt: str
     response: str
-    token_importances: List[TokenImportance] = field(default_factory=list)
-    attention_analysis: List[AttentionHead] = field(default_factory=list)
-    layer_analyses: List[LayerAnalysis] = field(default_factory=list)
-    key_tokens: List[str] = field(default_factory=list)
-    attention_patterns: Dict[str, int] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    token_importances: list[TokenImportance] = field(default_factory=list)
+    attention_analysis: list[AttentionHead] = field(default_factory=list)
+    layer_analyses: list[LayerAnalysis] = field(default_factory=list)
+    key_tokens: list[str] = field(default_factory=list)
+    attention_patterns: dict[str, int] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def get_top_tokens(self, n: int = 10) -> List[TokenImportance]:
+    def get_top_tokens(self, n: int = 10) -> list[TokenImportance]:
         """Get top n most important tokens."""
         sorted_tokens = sorted(
             self.token_importances,
@@ -115,7 +115,7 @@ class IntrospectionReport:
         )
         return sorted_tokens[:n]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "num_tokens": len(self.token_importances),
@@ -134,21 +134,95 @@ class TokenImportanceEstimator:
 
     # Low importance tokens (stop words)
     STOP_WORDS = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "must", "shall", "can", "to", "of", "in",
-        "for", "on", "with", "at", "by", "from", "as", "into", "through",
-        "during", "before", "after", "above", "below", "between", "under",
-        "again", "further", "then", "once", "here", "there", "when", "where",
-        "why", "how", "all", "each", "few", "more", "most", "other", "some",
-        "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-        "too", "very", "just", "and", "but", "if", "or", "because", "until",
-        "while", "although", "though", "this", "that", "these", "those",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "must",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "and",
+        "but",
+        "if",
+        "or",
+        "because",
+        "until",
+        "while",
+        "although",
+        "though",
+        "this",
+        "that",
+        "these",
+        "those",
     }
 
-    def estimate(
-        self, text: str, context: Optional[str] = None
-    ) -> List[TokenImportance]:
+    def estimate(self, text: str, context: Optional[str] = None) -> list[TokenImportance]:
         """Estimate token importance.
 
         Args:
@@ -167,14 +241,12 @@ class TokenImportanceEstimator:
             context_tokens = set(self._tokenize(context))
 
         for i, token in enumerate(tokens):
-            importance = self._calculate_importance(
-                token, i, tokens, context_tokens
-            )
+            importance = self._calculate_importance(token, i, tokens, context_tokens)
             importances.append(importance)
 
         return importances
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization."""
         # Split on whitespace and punctuation
         tokens = re.findall(r"\b\w+\b|[^\w\s]", text.lower())
@@ -184,8 +256,8 @@ class TokenImportanceEstimator:
         self,
         token: str,
         position: int,
-        all_tokens: List[str],
-        context_tokens: Set[str],
+        all_tokens: list[str],
+        context_tokens: set[str],
     ) -> TokenImportance:
         """Calculate importance for a single token."""
         score = 0.5  # Base score
@@ -235,9 +307,7 @@ class TokenImportanceEstimator:
 class AttentionAnalyzer:
     """Analyze attention patterns (simulated for API models)."""
 
-    def analyze_text(
-        self, prompt: str, response: str
-    ) -> List[AttentionHead]:
+    def analyze_text(self, prompt: str, response: str) -> list[AttentionHead]:
         """Analyze attention patterns from text.
 
         Since we don't have access to actual attention weights,
@@ -258,31 +328,27 @@ class AttentionAnalyzer:
         # Simulate multiple layers and heads
         for layer in range(4):  # Simulate 4 layers
             for head in range(2):  # Simulate 2 heads per layer
-                pattern = self._infer_pattern(
-                    prompt_tokens, response_tokens, layer, head
-                )
+                pattern = self._infer_pattern(prompt_tokens, response_tokens, layer, head)
                 analysis = AttentionHead(
                     layer=layer,
                     head=head,
                     pattern_type=pattern,
                     entropy=self._estimate_entropy(pattern),
                     sparsity=self._estimate_sparsity(pattern),
-                    key_positions=self._find_key_positions(
-                        prompt_tokens, response_tokens
-                    ),
+                    key_positions=self._find_key_positions(prompt_tokens, response_tokens),
                 )
                 analyses.append(analysis)
 
         return analyses
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization."""
         return re.findall(r"\b\w+\b", text.lower())
 
     def _infer_pattern(
         self,
-        prompt_tokens: List[str],
-        response_tokens: List[str],
+        prompt_tokens: list[str],
+        response_tokens: list[str],
         layer: int,
         head: int,
     ) -> AttentionPattern:
@@ -328,8 +394,8 @@ class AttentionAnalyzer:
         return sparsity_map.get(pattern, 0.5)
 
     def _find_key_positions(
-        self, prompt_tokens: List[str], response_tokens: List[str]
-    ) -> List[int]:
+        self, prompt_tokens: list[str], response_tokens: list[str]
+    ) -> list[int]:
         """Find key positions (tokens that appear in both)."""
         prompt_set = set(prompt_tokens)
         key_positions = []
@@ -348,7 +414,7 @@ class LayerAnalyzer:
         self,
         text: str,
         num_layers: int = 12,
-    ) -> List[LayerAnalysis]:
+    ) -> list[LayerAnalysis]:
         """Analyze layer representations.
 
         Args:
@@ -358,7 +424,7 @@ class LayerAnalyzer:
         Returns:
             List of layer analyses.
         """
-        tokens = re.findall(r"\b\w+\b", text.lower())
+        re.findall(r"\b\w+\b", text.lower())
         analyses = []
 
         for layer in range(num_layers):
@@ -379,7 +445,7 @@ class LayerAnalyzer:
 
         return analyses
 
-    def _infer_features(self, layer: int, num_layers: int) -> List[str]:
+    def _infer_features(self, layer: int, num_layers: int) -> list[str]:
         """Infer features captured at each layer."""
         progress = layer / num_layers
 
@@ -397,8 +463,8 @@ class LayerAnalyzer:
 class SaliencyMap:
     """Saliency map for input tokens."""
 
-    tokens: List[str]
-    scores: List[float]
+    tokens: list[str]
+    scores: list[float]
     method: str = "gradient"
 
     def get_highlighted_text(self, threshold: float = 0.5) -> str:
@@ -411,13 +477,13 @@ class SaliencyMap:
                 highlighted.append(token)
         return " ".join(highlighted)
 
-    def get_top_salient(self, n: int = 10) -> List[Tuple[str, float]]:
+    def get_top_salient(self, n: int = 10) -> list[tuple[str, float]]:
         """Get top n most salient tokens."""
         pairs = list(zip(self.tokens, self.scores))
         pairs.sort(key=lambda x: x[1], reverse=True)
         return pairs[:n]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "tokens": self.tokens,
@@ -434,9 +500,7 @@ class SaliencyEstimator:
         """Initialize estimator."""
         self.importance_estimator = TokenImportanceEstimator()
 
-    def estimate(
-        self, prompt: str, response: str, method: str = "importance"
-    ) -> SaliencyMap:
+    def estimate(self, prompt: str, response: str, method: str = "importance") -> SaliencyMap:
         """Estimate saliency map.
 
         Args:
@@ -499,21 +563,17 @@ class ModelIntrospector:
         # Layer analysis
         layer_analyses = []
         if include_layers:
-            layer_analyses = self.layer_analyzer.analyze(
-                prompt + " " + response, num_layers
-            )
+            layer_analyses = self.layer_analyzer.analyze(prompt + " " + response, num_layers)
 
         # Extract key tokens
         key_tokens = [
             imp.token
-            for imp in sorted(
-                all_importance, key=lambda x: x.importance_score, reverse=True
-            )[:10]
+            for imp in sorted(all_importance, key=lambda x: x.importance_score, reverse=True)[:10]
             if imp.importance_score > 0.6
         ]
 
         # Count attention patterns
-        pattern_counts: Dict[str, int] = {}
+        pattern_counts: dict[str, int] = {}
         for head in attention_analysis:
             pattern = head.pattern_type.value
             pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
@@ -542,9 +602,9 @@ class ActivationProfile:
     mean_activation: float
     max_activation: float
     sparsity: float  # Fraction of near-zero activations
-    top_neurons: List[int] = field(default_factory=list)
+    top_neurons: list[int] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "layer": self.layer,
@@ -558,9 +618,7 @@ class ActivationProfile:
 class ActivationProfiler:
     """Profile model activations (simulated)."""
 
-    def profile(
-        self, text: str, num_layers: int = 12
-    ) -> List[ActivationProfile]:
+    def profile(self, text: str, num_layers: int = 12) -> list[ActivationProfile]:
         """Profile activations for text.
 
         Args:
@@ -571,7 +629,7 @@ class ActivationProfiler:
             List of activation profiles.
         """
         profiles = []
-        text_length = len(text.split())
+        len(text.split())
 
         for layer in range(num_layers):
             # Simulate activation characteristics
@@ -593,9 +651,7 @@ class ActivationProfiler:
 # Convenience functions
 
 
-def estimate_token_importance(
-    text: str, context: Optional[str] = None
-) -> List[TokenImportance]:
+def estimate_token_importance(text: str, context: Optional[str] = None) -> list[TokenImportance]:
     """Estimate token importance.
 
     Args:
@@ -609,7 +665,7 @@ def estimate_token_importance(
     return estimator.estimate(text, context)
 
 
-def analyze_attention(prompt: str, response: str) -> List[AttentionHead]:
+def analyze_attention(prompt: str, response: str) -> list[AttentionHead]:
     """Analyze attention patterns.
 
     Args:
@@ -656,7 +712,7 @@ def estimate_saliency(prompt: str, response: str) -> SaliencyMap:
     return estimator.estimate(prompt, response)
 
 
-def profile_activations(text: str, num_layers: int = 12) -> List[ActivationProfile]:
+def profile_activations(text: str, num_layers: int = 12) -> list[ActivationProfile]:
     """Profile model activations.
 
     Args:

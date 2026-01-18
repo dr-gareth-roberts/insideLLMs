@@ -7,7 +7,7 @@ experiment results, model responses, and probe outputs.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 # Type variable for generic result types
 T = TypeVar("T")
@@ -46,7 +46,7 @@ class ModelInfo:
     max_tokens: Optional[int] = None
     supports_streaming: bool = False
     supports_chat: bool = True
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -82,7 +82,7 @@ class ProbeResult(Generic[T]):
     status: ResultStatus = ResultStatus.SUCCESS
     error: Optional[str] = None
     latency_ms: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -121,7 +121,7 @@ class LogicResult:
     model_answer: str
     expected_answer: Optional[str] = None
     is_correct: Optional[bool] = None
-    reasoning_steps: Optional[List[str]] = None
+    reasoning_steps: Optional[list[str]] = None
     problem_type: str = "general"
 
 
@@ -134,7 +134,7 @@ class AttackResult:
     attack_type: str
     attack_succeeded: Optional[bool] = None
     severity: Optional[str] = None
-    indicators: List[str] = field(default_factory=list)
+    indicators: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -148,7 +148,7 @@ class ProbeScore:
     mean_latency_ms: Optional[float] = None
     total_tokens: Optional[int] = None
     error_rate: float = 0.0
-    custom_metrics: Dict[str, float] = field(default_factory=dict)
+    custom_metrics: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -159,12 +159,12 @@ class ExperimentResult:
     model_info: ModelInfo
     probe_name: str
     probe_category: ProbeCategory
-    results: List[ProbeResult]
+    results: list[ProbeResult]
     score: Optional[ProbeScore] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    config: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def success_count(self) -> int:
@@ -201,13 +201,13 @@ class BenchmarkComparison:
     """Comparison of multiple models or probes."""
 
     name: str
-    experiments: List[ExperimentResult]
-    rankings: Dict[str, List[str]] = field(default_factory=dict)
-    summary: Dict[str, Any] = field(default_factory=dict)
+    experiments: list[ExperimentResult]
+    rankings: dict[str, list[str]] = field(default_factory=dict)
+    summary: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
 
 
 # Type aliases for common patterns
-ProbeInput = Union[str, Dict[str, Any], List[Any]]
-ProbeOutput = Union[str, Dict[str, Any], List[Dict[str, Any]]]
-ConfigDict = Dict[str, Any]
+ProbeInput = Union[str, dict[str, Any], list[Any]]
+ProbeOutput = Union[str, dict[str, Any], list[dict[str, Any]]]
+ConfigDict = dict[str, Any]

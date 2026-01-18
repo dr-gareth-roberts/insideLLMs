@@ -23,17 +23,17 @@ Example:
 import json
 import os
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from insideLLMs.types import ExperimentResult, ProbeScore
-
 
 # Check for optional dependencies
 try:
     import wandb
+
     WANDB_AVAILABLE = True
 except ImportError:
     WANDB_AVAILABLE = False
@@ -41,16 +41,19 @@ except ImportError:
 try:
     import mlflow
     from mlflow.entities import Metric, Param
+
     MLFLOW_AVAILABLE = True
 except ImportError:
     MLFLOW_AVAILABLE = False
 
 try:
     from torch.utils.tensorboard import SummaryWriter
+
     TENSORBOARD_AVAILABLE = True
 except ImportError:
     try:
         from tensorboardX import SummaryWriter
+
         TENSORBOARD_AVAILABLE = True
     except ImportError:
         TENSORBOARD_AVAILABLE = False
@@ -69,9 +72,10 @@ class TrackingConfig:
         log_code: Whether to log source code.
         auto_log_metrics: Whether to auto-log common metrics.
     """
+
     project: str = "insideLLMs"
     experiment_name: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     notes: Optional[str] = None
     log_artifacts: bool = True
     log_code: bool = False
@@ -131,7 +135,7 @@ class ExperimentTracker(ABC):
     @abstractmethod
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to the tracker.
@@ -143,7 +147,7 @@ class ExperimentTracker(ABC):
         pass
 
     @abstractmethod
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log parameters/config to the tracker.
 
         Args:
@@ -211,7 +215,7 @@ class ExperimentTracker(ABC):
         self,
         score: ProbeScore,
         prefix: str = "",
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Convert ProbeScore to metrics dict."""
         metrics = {}
         if score.accuracy is not None:
@@ -267,10 +271,7 @@ class WandBTracker(ExperimentTracker):
             **wandb_kwargs: Additional kwargs passed to wandb.init.
         """
         if not WANDB_AVAILABLE:
-            raise ImportError(
-                "wandb is required for WandBTracker. "
-                "Install with: pip install wandb"
-            )
+            raise ImportError("wandb is required for WandBTracker. Install with: pip install wandb")
 
         if config is None:
             config = TrackingConfig(project=project)
@@ -318,7 +319,7 @@ class WandBTracker(ExperimentTracker):
 
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to W&B."""
@@ -331,7 +332,7 @@ class WandBTracker(ExperimentTracker):
 
         wandb.log(metrics, step=step)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log params to W&B config."""
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
@@ -358,8 +359,8 @@ class WandBTracker(ExperimentTracker):
     def log_table(
         self,
         table_name: str,
-        data: List[Dict[str, Any]],
-        columns: Optional[List[str]] = None,
+        data: list[dict[str, Any]],
+        columns: Optional[list[str]] = None,
     ) -> None:
         """Log a table to W&B.
 
@@ -419,8 +420,7 @@ class MLflowTracker(ExperimentTracker):
         """
         if not MLFLOW_AVAILABLE:
             raise ImportError(
-                "mlflow is required for MLflowTracker. "
-                "Install with: pip install mlflow"
+                "mlflow is required for MLflowTracker. Install with: pip install mlflow"
             )
 
         if config is None:
@@ -450,7 +450,7 @@ class MLflowTracker(ExperimentTracker):
             run_name=run_name,
             run_id=run_id,
             nested=nested,
-            tags={tag: "true" for tag in self.config.tags},
+            tags=dict.fromkeys(self.config.tags, "true"),
             description=self.config.notes,
         )
 
@@ -474,7 +474,7 @@ class MLflowTracker(ExperimentTracker):
 
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to MLflow."""
@@ -487,7 +487,7 @@ class MLflowTracker(ExperimentTracker):
 
         mlflow.log_metrics(metrics, step=step)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log params to MLflow."""
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
@@ -567,8 +567,7 @@ class TensorBoardTracker(ExperimentTracker):
         """
         if not TENSORBOARD_AVAILABLE:
             raise ImportError(
-                "tensorboard or tensorboardX is required. "
-                "Install with: pip install tensorboard"
+                "tensorboard or tensorboardX is required. Install with: pip install tensorboard"
             )
 
         super().__init__(config)
@@ -601,7 +600,7 @@ class TensorBoardTracker(ExperimentTracker):
 
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to TensorBoard."""
@@ -615,7 +614,7 @@ class TensorBoardTracker(ExperimentTracker):
         for name, value in metrics.items():
             self._writer.add_scalar(name, value, step)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log params to TensorBoard as text."""
         if not self._run_active or not self._writer:
             raise RuntimeError("No active run. Call start_run() first.")
@@ -684,9 +683,9 @@ class LocalFileTracker(ExperimentTracker):
         super().__init__(config)
         self.output_dir = Path(output_dir)
         self._run_dir: Optional[Path] = None
-        self._metrics: List[Dict[str, Any]] = []
-        self._params: Dict[str, Any] = {}
-        self._artifacts: List[str] = []
+        self._metrics: list[dict[str, Any]] = []
+        self._params: dict[str, Any] = {}
+        self._artifacts: list[str] = []
 
     def start_run(
         self,
@@ -695,7 +694,9 @@ class LocalFileTracker(ExperimentTracker):
         nested: bool = False,
     ) -> str:
         """Start a local tracking run."""
-        run_name = run_name or self.config.experiment_name or datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_name = (
+            run_name or self.config.experiment_name or datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
         run_id = run_id or run_name
 
         self._run_dir = self.output_dir / self.config.project / run_id
@@ -747,7 +748,7 @@ class LocalFileTracker(ExperimentTracker):
 
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to local file."""
@@ -765,7 +766,7 @@ class LocalFileTracker(ExperimentTracker):
         }
         self._metrics.append(entry)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log params to local file."""
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
@@ -791,19 +792,21 @@ class LocalFileTracker(ExperimentTracker):
         dest_path = artifacts_dir / artifact_name
         shutil.copy2(artifact_path, dest_path)
 
-        self._artifacts.append({
-            "name": artifact_name,
-            "type": artifact_type,
-            "path": str(dest_path),
-            "original_path": artifact_path,
-        })
+        self._artifacts.append(
+            {
+                "name": artifact_name,
+                "type": artifact_type,
+                "path": str(dest_path),
+                "original_path": artifact_path,
+            }
+        )
 
     def _save_json(self, path: Path, data: Any) -> None:
         """Save data to JSON file."""
         with open(path, "w") as f:
             json.dump(data, f, indent=2, default=str)
 
-    def load_run(self, run_id: str) -> Dict[str, Any]:
+    def load_run(self, run_id: str) -> dict[str, Any]:
         """Load a previous run's data.
 
         Args:
@@ -818,7 +821,13 @@ class LocalFileTracker(ExperimentTracker):
             raise FileNotFoundError(f"Run not found: {run_id}")
 
         data = {}
-        for filename in ["metadata.json", "metrics.json", "params.json", "artifacts.json", "final_state.json"]:
+        for filename in [
+            "metadata.json",
+            "metrics.json",
+            "params.json",
+            "artifacts.json",
+            "final_state.json",
+        ]:
             filepath = run_dir / filename
             if filepath.exists():
                 with open(filepath) as f:
@@ -827,7 +836,7 @@ class LocalFileTracker(ExperimentTracker):
 
         return data
 
-    def list_runs(self) -> List[str]:
+    def list_runs(self) -> list[str]:
         """List all runs in the project.
 
         Returns:
@@ -854,7 +863,7 @@ class MultiTracker(ExperimentTracker):
 
     def __init__(
         self,
-        trackers: List[ExperimentTracker],
+        trackers: list[ExperimentTracker],
         config: Optional[TrackingConfig] = None,
     ):
         """Initialize multi-tracker.
@@ -890,14 +899,14 @@ class MultiTracker(ExperimentTracker):
 
     def log_metrics(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         step: Optional[int] = None,
     ) -> None:
         """Log metrics to all trackers."""
         for tracker in self.trackers:
             tracker.log_metrics(metrics, step=step)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """Log params to all trackers."""
         for tracker in self.trackers:
             tracker.log_params(params)
@@ -958,6 +967,7 @@ def auto_track(
         ... def train_model():
         ...     return {"accuracy": 0.95}
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             name = experiment_name or func.__name__
@@ -969,17 +979,17 @@ def auto_track(
                 # If result is a dict of metrics, log them
                 if isinstance(result, dict):
                     numeric_metrics = {
-                        k: v for k, v in result.items()
-                        if isinstance(v, (int, float))
+                        k: v for k, v in result.items() if isinstance(v, (int, float))
                     }
                     if numeric_metrics:
                         tracker.log_metrics(numeric_metrics)
 
                 tracker.end_run(status="finished")
                 return result
-            except Exception as e:
+            except Exception:
                 tracker.end_run(status="failed")
                 raise
 
         return wrapper
+
     return decorator

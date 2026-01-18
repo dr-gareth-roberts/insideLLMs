@@ -9,23 +9,25 @@ streaming output from language models, including:
 - Aggregation and transformation
 """
 
+import re
+import time
+from collections import deque
+from collections.abc import AsyncIterator, Generator, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
-    Any, AsyncIterator, Callable, Dict, Generator, Iterator,
-    List, Optional, Tuple, TypeVar, Union
+    Any,
+    Callable,
+    Optional,
+    TypeVar,
 )
-from datetime import datetime
-import time
-import re
-from collections import deque
 
-
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class StreamEventType(Enum):
     """Types of streaming events."""
+
     TOKEN = "token"
     CHUNK = "chunk"
     START = "start"
@@ -38,6 +40,7 @@ class StreamEventType(Enum):
 
 class StreamState(Enum):
     """State of a stream."""
+
     IDLE = "idle"
     STREAMING = "streaming"
     PAUSED = "paused"
@@ -47,6 +50,7 @@ class StreamState(Enum):
 
 class FilterAction(Enum):
     """Actions for content filtering."""
+
     ALLOW = "allow"
     BLOCK = "block"
     REPLACE = "replace"
@@ -56,14 +60,15 @@ class FilterAction(Enum):
 @dataclass
 class StreamToken:
     """A single token from a stream."""
+
     text: str
     index: int
     timestamp: float
     logprob: Optional[float] = None
     token_id: Optional[int] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "text": self.text,
             "index": self.index,
@@ -77,14 +82,15 @@ class StreamToken:
 @dataclass
 class StreamChunk:
     """A chunk of streamed content (may contain multiple tokens)."""
+
     content: str
     event_type: StreamEventType
     timestamp: float
     index: int
-    tokens: List[StreamToken] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tokens: list[StreamToken] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "content": self.content,
             "event_type": self.event_type.value,
@@ -98,15 +104,16 @@ class StreamChunk:
 @dataclass
 class StreamMetrics:
     """Metrics collected during streaming."""
+
     start_time: float
     end_time: Optional[float] = None
     total_tokens: int = 0
     total_chunks: int = 0
     total_characters: int = 0
-    inter_token_times: List[float] = field(default_factory=list)
+    inter_token_times: list[float] = field(default_factory=list)
     error_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "start_time": self.start_time,
             "end_time": self.end_time,
@@ -145,13 +152,14 @@ class StreamMetrics:
 @dataclass
 class FilterResult:
     """Result of content filtering."""
+
     action: FilterAction
     original: str
     filtered: str
     reason: Optional[str] = None
     rule_triggered: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "action": self.action.value,
             "original": self.original,
@@ -164,16 +172,17 @@ class FilterResult:
 @dataclass
 class StreamSummary:
     """Summary of a completed stream."""
+
     full_content: str
     metrics: StreamMetrics
     chunk_count: int
     token_count: int
     state: StreamState
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     filtered_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "full_content": self.full_content,
             "metrics": self.metrics.to_dict(),
@@ -191,9 +200,9 @@ class StreamBuffer:
 
     def __init__(self, max_size: int = 1000000):
         self.max_size = max_size
-        self.chunks: List[StreamChunk] = []
-        self.tokens: List[StreamToken] = []
-        self._content_buffer: List[str] = []
+        self.chunks: list[StreamChunk] = []
+        self.tokens: list[StreamToken] = []
+        self._content_buffer: list[str] = []
         self._total_chars = 0
 
     def add_chunk(self, chunk: StreamChunk) -> None:
@@ -267,10 +276,10 @@ class StreamProcessor:
     """Process streaming content with transformations and filters."""
 
     def __init__(self):
-        self.transformers: List[Callable[[str], str]] = []
-        self.filters: List[Callable[[str], FilterResult]] = []
-        self.callbacks: List[Callable[[StreamChunk], None]] = []
-        self.filter_patterns: Dict[str, Tuple[str, FilterAction, str]] = {}
+        self.transformers: list[Callable[[str], str]] = []
+        self.filters: list[Callable[[str], FilterResult]] = []
+        self.callbacks: list[Callable[[StreamChunk], None]] = []
+        self.filter_patterns: dict[str, tuple[str, FilterAction, str]] = {}
 
     def add_transformer(self, transformer: Callable[[str], str]) -> None:
         """Add a content transformer."""
@@ -294,7 +303,7 @@ class StreamProcessor:
         """Add a regex-based pattern filter."""
         self.filter_patterns[name] = (pattern, action, replacement)
 
-    def process_chunk(self, chunk: StreamChunk) -> Tuple[StreamChunk, List[FilterResult]]:
+    def process_chunk(self, chunk: StreamChunk) -> tuple[StreamChunk, list[FilterResult]]:
         """Process a chunk through all transformers and filters."""
         content = chunk.content
         filter_results = []
@@ -307,32 +316,38 @@ class StreamProcessor:
         for name, (pattern, action, replacement) in self.filter_patterns.items():
             if re.search(pattern, content):
                 if action == FilterAction.BLOCK:
-                    filter_results.append(FilterResult(
-                        action=action,
-                        original=content,
-                        filtered="",
-                        reason="Blocked by pattern",
-                        rule_triggered=name,
-                    ))
+                    filter_results.append(
+                        FilterResult(
+                            action=action,
+                            original=content,
+                            filtered="",
+                            reason="Blocked by pattern",
+                            rule_triggered=name,
+                        )
+                    )
                     content = ""
                 elif action == FilterAction.REPLACE:
                     new_content = re.sub(pattern, replacement, content)
-                    filter_results.append(FilterResult(
-                        action=action,
-                        original=content,
-                        filtered=new_content,
-                        reason="Replaced by pattern",
-                        rule_triggered=name,
-                    ))
+                    filter_results.append(
+                        FilterResult(
+                            action=action,
+                            original=content,
+                            filtered=new_content,
+                            reason="Replaced by pattern",
+                            rule_triggered=name,
+                        )
+                    )
                     content = new_content
                 elif action == FilterAction.WARN:
-                    filter_results.append(FilterResult(
-                        action=action,
-                        original=content,
-                        filtered=content,
-                        reason="Warning: pattern matched",
-                        rule_triggered=name,
-                    ))
+                    filter_results.append(
+                        FilterResult(
+                            action=action,
+                            original=content,
+                            filtered=content,
+                            reason="Warning: pattern matched",
+                            rule_triggered=name,
+                        )
+                    )
 
         # Apply custom filters
         for filter_fn in self.filters:
@@ -365,7 +380,7 @@ class StreamAggregator:
 
     def __init__(self, strategy: str = "concatenate"):
         self.strategy = strategy
-        self.buffers: Dict[str, StreamBuffer] = {}
+        self.buffers: dict[str, StreamBuffer] = {}
         self.default_buffer = StreamBuffer()
 
     def add(self, chunk: StreamChunk, stream_id: str = "default") -> None:
@@ -381,14 +396,11 @@ class StreamAggregator:
             return ""
         return buffer.get_content()
 
-    def get_all_aggregated(self) -> Dict[str, str]:
+    def get_all_aggregated(self) -> dict[str, str]:
         """Get aggregated content for all streams."""
-        return {
-            stream_id: buffer.get_content()
-            for stream_id, buffer in self.buffers.items()
-        }
+        return {stream_id: buffer.get_content() for stream_id, buffer in self.buffers.items()}
 
-    def merge_streams(self, stream_ids: List[str], separator: str = "\n") -> str:
+    def merge_streams(self, stream_ids: list[str], separator: str = "\n") -> str:
         """Merge multiple streams into one."""
         contents = []
         for stream_id in stream_ids:
@@ -416,7 +428,7 @@ class StreamCollector:
         self.processor: Optional[StreamProcessor] = None
         self.state = StreamState.IDLE
         self._last_token_time: Optional[float] = None
-        self.errors: List[str] = []
+        self.errors: list[str] = []
         self.filtered_count = 0
 
     def set_processor(self, processor: StreamProcessor) -> None:
@@ -429,7 +441,9 @@ class StreamCollector:
         self.metrics = StreamMetrics(start_time=time.time())
         self._last_token_time = time.time()
 
-    def collect_chunk(self, content: str, event_type: StreamEventType = StreamEventType.CHUNK) -> StreamChunk:
+    def collect_chunk(
+        self, content: str, event_type: StreamEventType = StreamEventType.CHUNK
+    ) -> StreamChunk:
         """Collect a chunk of content."""
         if self.state == StreamState.IDLE:
             self.start()
@@ -595,8 +609,8 @@ class ContentDetector:
     """Detect specific content patterns in streams."""
 
     def __init__(self):
-        self.patterns: Dict[str, str] = {}
-        self.detections: List[Dict[str, Any]] = []
+        self.patterns: dict[str, str] = {}
+        self.detections: list[dict[str, Any]] = []
         self._buffer = ""
         self._buffer_size = 10000
 
@@ -604,12 +618,12 @@ class ContentDetector:
         """Add a pattern to detect."""
         self.patterns[name] = pattern
 
-    def check(self, content: str) -> List[Dict[str, Any]]:
+    def check(self, content: str) -> list[dict[str, Any]]:
         """Check content for patterns."""
         # Add to buffer
         self._buffer += content
         if len(self._buffer) > self._buffer_size:
-            self._buffer = self._buffer[-self._buffer_size:]
+            self._buffer = self._buffer[-self._buffer_size :]
 
         detected = []
         for name, pattern in self.patterns.items():
@@ -628,7 +642,7 @@ class ContentDetector:
 
         return detected
 
-    def get_all_detections(self) -> List[Dict[str, Any]]:
+    def get_all_detections(self) -> list[dict[str, Any]]:
         """Get all detections."""
         return self.detections
 
@@ -644,13 +658,13 @@ class StreamingWindowAnalyzer:
     def __init__(self, window_size: int = 100):
         self.window_size = window_size
         self.window: deque = deque(maxlen=window_size)
-        self.analyzers: List[Callable[[List[str]], Dict[str, Any]]] = []
+        self.analyzers: list[Callable[[list[str]], dict[str, Any]]] = []
 
-    def add_analyzer(self, analyzer: Callable[[List[str]], Dict[str, Any]]) -> None:
+    def add_analyzer(self, analyzer: Callable[[list[str]], dict[str, Any]]) -> None:
         """Add a window analyzer function."""
         self.analyzers.append(analyzer)
 
-    def add_token(self, token: str) -> Dict[str, Any]:
+    def add_token(self, token: str) -> dict[str, Any]:
         """Add a token and run analysis."""
         self.window.append(token)
 
@@ -709,6 +723,7 @@ class StreamRateLimiter:
 
 # Convenience functions
 
+
 def create_stream_collector() -> StreamCollector:
     """Create a new stream collector."""
     return StreamCollector()
@@ -753,7 +768,7 @@ def iterate_stream(
 
 def add_content_filter(
     processor: StreamProcessor,
-    patterns: Dict[str, str],
+    patterns: dict[str, str],
     action: FilterAction = FilterAction.REPLACE,
     replacement: str = "[FILTERED]",
 ) -> None:
@@ -765,7 +780,7 @@ def add_content_filter(
 def measure_stream_speed(
     stream: Iterator[str],
     sample_size: int = 100,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Measure the speed of a stream."""
     collector = StreamCollector()
     collector.start()
@@ -789,8 +804,8 @@ def measure_stream_speed(
 
 def detect_in_stream(
     stream: Iterator[str],
-    patterns: Dict[str, str],
-) -> Tuple[str, List[Dict[str, Any]]]:
+    patterns: dict[str, str],
+) -> tuple[str, list[dict[str, Any]]]:
     """Detect patterns in a stream and return content with detections."""
     detector = ContentDetector()
     for name, pattern in patterns.items():

@@ -1,34 +1,33 @@
 """Tests for Autonomous Agents module."""
 
 import json
+from unittest.mock import MagicMock
+
 import pytest
-import time
-from unittest.mock import MagicMock, patch
 
 from insideLLMs.agents import (
     AgentConfig,
-    AgentStatus,
-    Tool,
-    ToolParameter,
-    ToolResult,
-    ToolRegistry,
-    tool,
-    AgentStep,
-    AgentResult,
+    AgentExecutor,
     AgentMemory,
+    AgentResult,
+    AgentStatus,
+    AgentStep,
+    ChainOfThoughtAgent,
     ReActAgent,
     SimpleAgent,
-    ChainOfThoughtAgent,
-    AgentExecutor,
+    Tool,
+    ToolParameter,
+    ToolRegistry,
+    ToolResult,
     create_calculator_tool,
-    create_search_tool,
     create_python_tool,
     create_react_agent,
+    create_search_tool,
     create_simple_agent,
     quick_agent_run,
+    tool,
 )
 from insideLLMs.models import DummyModel
-
 
 # =============================================================================
 # Test Configuration
@@ -120,6 +119,7 @@ class TestTool:
 
     def test_basic_tool(self):
         """Test basic tool creation."""
+
         def add(a: int, b: int) -> int:
             """Add two numbers."""
             return a + b
@@ -131,6 +131,7 @@ class TestTool:
 
     def test_tool_inference(self):
         """Test parameter inference from function."""
+
         def greet(name: str, formal: bool = False) -> str:
             """Greet a person."""
             if formal:
@@ -147,6 +148,7 @@ class TestTool:
 
     def test_tool_execution(self):
         """Test tool execution."""
+
         def multiply(x: int, y: int) -> int:
             return x * y
 
@@ -158,6 +160,7 @@ class TestTool:
 
     def test_tool_execution_string_input(self):
         """Test execution with string input."""
+
         def echo(text: str) -> str:
             return text
 
@@ -169,6 +172,7 @@ class TestTool:
 
     def test_tool_execution_json_input(self):
         """Test execution with JSON string input."""
+
         def add(a: int, b: int) -> int:
             return a + b
 
@@ -180,6 +184,7 @@ class TestTool:
 
     def test_tool_execution_error(self):
         """Test execution with error."""
+
         def divide(a: int, b: int) -> float:
             return a / b
 
@@ -192,6 +197,7 @@ class TestTool:
 
     def test_tool_to_dict(self):
         """Test dictionary conversion."""
+
         def test_func(param1: str) -> str:
             return param1
 
@@ -204,6 +210,7 @@ class TestTool:
 
     def test_tool_format_for_prompt(self):
         """Test prompt formatting."""
+
         def search(query: str, limit: int = 10) -> str:
             return f"Results for {query}"
 
@@ -220,6 +227,7 @@ class TestToolDecorator:
 
     def test_basic_decorator(self):
         """Test basic decorator usage."""
+
         @tool(name="add_nums")
         def add(a: int, b: int) -> int:
             return a + b
@@ -229,6 +237,7 @@ class TestToolDecorator:
 
     def test_decorator_with_description(self):
         """Test decorator with description."""
+
         @tool(name="greet", description="Greet someone")
         def greet(name: str) -> str:
             return f"Hello, {name}!"
@@ -271,11 +280,13 @@ class TestToolRegistry:
     def test_format_for_prompt(self):
         """Test prompt formatting."""
         registry = ToolRegistry()
-        registry.register(Tool(
-            name="calc",
-            func=lambda x: x,
-            description="Calculator",
-        ))
+        registry.register(
+            Tool(
+                name="calc",
+                func=lambda x: x,
+                description="Calculator",
+            )
+        )
 
         prompt = registry.format_for_prompt()
         assert "calc" in prompt
@@ -487,13 +498,15 @@ class TestAgentMemory:
         memory = AgentMemory()
         config = AgentConfig()
 
-        memory.add_step(AgentStep(
-            step_number=1,
-            thought="I should search",
-            action="search",
-            action_input="python",
-            observation="Found results",
-        ))
+        memory.add_step(
+            AgentStep(
+                step_number=1,
+                thought="I should search",
+                action="search",
+                action_input="python",
+                observation="Found results",
+            )
+        )
 
         scratchpad = memory.format_scratchpad(config)
 
@@ -839,6 +852,7 @@ class TestBuiltInTools:
 
     def test_search_tool_custom_fn(self):
         """Test search tool with custom function."""
+
         def custom_search(query: str) -> str:
             return f"Custom results for: {query}"
 
@@ -958,6 +972,7 @@ class TestIntegration:
         agent = ReActAgent(model)
 
         execution_log = []
+
         def log_hook(result):
             execution_log.append(result.answer)
 
@@ -1058,4 +1073,3 @@ class TestEdgeCases:
 
         # Should handle gracefully
         assert result is not None
-

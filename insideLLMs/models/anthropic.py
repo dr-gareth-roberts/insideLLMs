@@ -1,18 +1,24 @@
 import os
-from typing import Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Optional
 
 import anthropic
 from anthropic import APIError as AnthropicAPIError
-from anthropic import RateLimitError as AnthropicRateLimitError
 from anthropic import APITimeoutError as AnthropicTimeoutError
+from anthropic import RateLimitError as AnthropicRateLimitError
 
+from insideLLMs.exceptions import (
+    APIError as InsideLLMsAPIError,
+)
 from insideLLMs.exceptions import (
     ModelGenerationError,
     ModelInitializationError,
     RateLimitError,
-    TimeoutError as InsideLLMsTimeoutError,
-    APIError as InsideLLMsAPIError,
 )
+from insideLLMs.exceptions import (
+    TimeoutError as InsideLLMsTimeoutError,
+)
+
 from .base import ChatMessage, Model
 
 
@@ -60,7 +66,7 @@ class AnthropicModel(Model):
                 model=self.model_name,
                 max_tokens=kwargs.get("max_tokens", 1024),
                 temperature=kwargs.get("temperature", 0.7),
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text
         except AnthropicRateLimitError as e:
@@ -68,7 +74,7 @@ class AnthropicModel(Model):
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except AnthropicTimeoutError as e:
+        except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -87,7 +93,7 @@ class AnthropicModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: List[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
         try:
             # Convert messages to Anthropic format if needed
             anthropic_messages = []
@@ -99,7 +105,7 @@ class AnthropicModel(Model):
                 model=self.model_name,
                 max_tokens=kwargs.get("max_tokens", 1024),
                 temperature=kwargs.get("temperature", 0.7),
-                messages=anthropic_messages
+                messages=anthropic_messages,
             )
             return response.content[0].text
         except AnthropicRateLimitError as e:
@@ -107,7 +113,7 @@ class AnthropicModel(Model):
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except AnthropicTimeoutError as e:
+        except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -133,16 +139,15 @@ class AnthropicModel(Model):
                 model=self.model_name,
                 max_tokens=kwargs.get("max_tokens", 1024),
                 temperature=kwargs.get("temperature", 0.7),
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             ) as stream:
-                for text in stream.text_stream:
-                    yield text
+                yield from stream.text_stream
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except AnthropicTimeoutError as e:
+        except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -163,10 +168,12 @@ class AnthropicModel(Model):
 
     def info(self):
         base_info = super().info()
-        base_info.extra.update({
-            "model_name": self.model_name,
-            "description": (
-                "Anthropic Claude model via API. Requires ANTHROPIC_API_KEY env variable."
-            ),
-        })
+        base_info.extra.update(
+            {
+                "model_name": self.model_name,
+                "description": (
+                    "Anthropic Claude model via API. Requires ANTHROPIC_API_KEY env variable."
+                ),
+            }
+        )
         return base_info

@@ -8,12 +8,12 @@ This example demonstrates the most common usage patterns:
 """
 
 from insideLLMs import (
+    BiasProbe,
     DummyModel,
     LogicProbe,
-    BiasProbe,
     ProbeRunner,
-    save_results_json,
     load_results_json,
+    save_results_json,
 )
 
 
@@ -89,7 +89,7 @@ def using_the_runner():
     results = runner.run(test_data)
     print(f"Processed {len(results)} test cases")
     for i, result in enumerate(results):
-        print(f"  [{i+1}] {result[:50]}...")
+        print(f"  [{i + 1}] {result[:50]}...")
 
 
 def saving_and_loading_results():

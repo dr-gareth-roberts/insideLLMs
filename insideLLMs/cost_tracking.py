@@ -8,16 +8,17 @@ costs associated with LLM API calls, including:
 - Usage analytics and reporting
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from datetime import datetime, timedelta
 import math
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Optional
 
 
 class PricingTier(Enum):
     """Pricing tiers for different API access levels."""
+
     FREE = "free"
     PAY_AS_YOU_GO = "pay_as_you_go"
     STANDARD = "standard"
@@ -27,6 +28,7 @@ class PricingTier(Enum):
 
 class CostCategory(Enum):
     """Categories of costs."""
+
     INPUT_TOKENS = "input_tokens"
     OUTPUT_TOKENS = "output_tokens"
     EMBEDDING = "embedding"
@@ -38,6 +40,7 @@ class CostCategory(Enum):
 
 class AlertLevel(Enum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -45,6 +48,7 @@ class AlertLevel(Enum):
 
 class TimeGranularity(Enum):
     """Time granularity for reporting."""
+
     MINUTE = "minute"
     HOUR = "hour"
     DAY = "day"
@@ -55,6 +59,7 @@ class TimeGranularity(Enum):
 @dataclass
 class ModelPricing:
     """Pricing information for a model."""
+
     model_name: str
     input_cost_per_1k: float  # Cost per 1000 input tokens
     output_cost_per_1k: float  # Cost per 1000 output tokens
@@ -65,7 +70,7 @@ class ModelPricing:
     effective_date: Optional[datetime] = None
     notes: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "model_name": self.model_name,
             "input_cost_per_1k": self.input_cost_per_1k,
@@ -79,7 +84,7 @@ class ModelPricing:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ModelPricing":
+    def from_dict(cls, data: dict[str, Any]) -> "ModelPricing":
         return cls(
             model_name=data["model_name"],
             input_cost_per_1k=data["input_cost_per_1k"],
@@ -88,7 +93,9 @@ class ModelPricing:
             tier=PricingTier(data.get("tier", "pay_as_you_go")),
             embedding_cost_per_1k=data.get("embedding_cost_per_1k"),
             context_window=data.get("context_window"),
-            effective_date=datetime.fromisoformat(data["effective_date"]) if data.get("effective_date") else None,
+            effective_date=datetime.fromisoformat(data["effective_date"])
+            if data.get("effective_date")
+            else None,
             notes=data.get("notes", ""),
         )
 
@@ -96,15 +103,16 @@ class ModelPricing:
 @dataclass
 class UsageRecord:
     """Record of a single API usage event."""
+
     timestamp: datetime
     model_name: str
     input_tokens: int
     output_tokens: int
     cost: float
     request_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timestamp": self.timestamp.isoformat(),
             "model_name": self.model_name,
@@ -124,6 +132,7 @@ class UsageRecord:
 @dataclass
 class Budget:
     """Budget configuration."""
+
     name: str
     limit: float
     period: TimeGranularity
@@ -133,7 +142,7 @@ class Budget:
     hard_limit: bool = False  # Whether to block requests when exceeded
     created_at: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "limit": self.limit,
@@ -149,6 +158,7 @@ class Budget:
 @dataclass
 class BudgetAlert:
     """An alert triggered by budget conditions."""
+
     level: AlertLevel
     budget_name: str
     message: str
@@ -157,7 +167,7 @@ class BudgetAlert:
     percentage_used: float
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "level": self.level.value,
             "budget_name": self.budget_name,
@@ -172,18 +182,19 @@ class BudgetAlert:
 @dataclass
 class CostSummary:
     """Summary of costs over a period."""
+
     period_start: datetime
     period_end: datetime
     total_cost: float
     total_input_tokens: int
     total_output_tokens: int
     total_requests: int
-    by_model: Dict[str, float]
-    by_category: Dict[str, float]
+    by_model: dict[str, float]
+    by_category: dict[str, float]
     average_cost_per_request: float
     currency: str = "USD"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "period_start": self.period_start.isoformat(),
             "period_end": self.period_end.isoformat(),
@@ -201,6 +212,7 @@ class CostSummary:
 @dataclass
 class CostForecast:
     """Forecast of future costs."""
+
     forecast_period: TimeGranularity
     projected_cost: float
     confidence_low: float
@@ -208,9 +220,9 @@ class CostForecast:
     based_on_days: int
     trend: str  # "increasing", "decreasing", "stable"
     projected_monthly: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "forecast_period": self.forecast_period.value,
             "projected_cost": self.projected_cost,
@@ -227,7 +239,7 @@ class PricingRegistry:
     """Registry of model pricing information."""
 
     def __init__(self):
-        self.models: Dict[str, ModelPricing] = {}
+        self.models: dict[str, ModelPricing] = {}
         self._initialize_default_pricing()
 
     def _initialize_default_pricing(self) -> None:
@@ -260,7 +272,9 @@ class PricingRegistry:
         """Get pricing for a model."""
         return self.models.get(model_name)
 
-    def get_or_default(self, model_name: str, default_pricing: Optional[ModelPricing] = None) -> ModelPricing:
+    def get_or_default(
+        self, model_name: str, default_pricing: Optional[ModelPricing] = None
+    ) -> ModelPricing:
         """Get pricing or return a default."""
         pricing = self.get(model_name)
         if pricing:
@@ -272,7 +286,7 @@ class PricingRegistry:
         # Return a generic expensive default to avoid underestimating
         return ModelPricing(model_name, 0.01, 0.03)
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List all registered models."""
         return list(self.models.keys())
 
@@ -307,13 +321,10 @@ class CostCalculator:
     def calculate_batch_cost(
         self,
         model_name: str,
-        requests: List[Tuple[int, int]],  # List of (input_tokens, output_tokens)
+        requests: list[tuple[int, int]],  # List of (input_tokens, output_tokens)
     ) -> float:
         """Calculate cost for a batch of requests."""
-        return sum(
-            self.calculate_cost(model_name, inp, out)
-            for inp, out in requests
-        )
+        return sum(self.calculate_cost(model_name, inp, out) for inp, out in requests)
 
     def estimate_cost(
         self,
@@ -330,23 +341,22 @@ class CostCalculator:
         self,
         input_tokens: int,
         output_tokens: int,
-        model_names: Optional[List[str]] = None,
-    ) -> Dict[str, float]:
+        model_names: Optional[list[str]] = None,
+    ) -> dict[str, float]:
         """Compare costs across models for the same usage."""
         if model_names is None:
             model_names = self.registry.list_models()
 
         return {
-            name: self.calculate_cost(name, input_tokens, output_tokens)
-            for name in model_names
+            name: self.calculate_cost(name, input_tokens, output_tokens) for name in model_names
         }
 
     def get_cheapest_model(
         self,
         input_tokens: int,
         output_tokens: int,
-        model_names: Optional[List[str]] = None,
-    ) -> Tuple[str, float]:
+        model_names: Optional[list[str]] = None,
+    ) -> tuple[str, float]:
         """Find the cheapest model for given usage."""
         costs = self.compare_models(input_tokens, output_tokens, model_names)
         cheapest = min(costs.items(), key=lambda x: x[1])
@@ -358,7 +368,7 @@ class UsageTracker:
 
     def __init__(self, calculator: Optional[CostCalculator] = None):
         self.calculator = calculator or CostCalculator()
-        self.records: List[UsageRecord] = []
+        self.records: list[UsageRecord] = []
 
     def record_usage(
         self,
@@ -367,7 +377,7 @@ class UsageTracker:
         output_tokens: int,
         request_id: Optional[str] = None,
         timestamp: Optional[datetime] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> UsageRecord:
         """Record a usage event."""
         cost = self.calculator.calculate_cost(model_name, input_tokens, output_tokens)
@@ -389,7 +399,7 @@ class UsageTracker:
         self,
         start: datetime,
         end: Optional[datetime] = None,
-    ) -> List[UsageRecord]:
+    ) -> list[UsageRecord]:
         """Get records within a time range."""
         end = end or datetime.now()
         return [r for r in self.records if start <= r.timestamp <= end]
@@ -411,7 +421,7 @@ class UsageTracker:
         self,
         start: Optional[datetime] = None,
         end: Optional[datetime] = None,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Get total input and output tokens."""
         if start is None:
             records = self.records
@@ -426,14 +436,14 @@ class UsageTracker:
         self,
         start: Optional[datetime] = None,
         end: Optional[datetime] = None,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Get cost breakdown by model."""
         if start is None:
             records = self.records
         else:
             records = self.get_records_in_range(start, end or datetime.now())
 
-        by_model: Dict[str, float] = defaultdict(float)
+        by_model: dict[str, float] = defaultdict(float)
         for r in records:
             by_model[r.model_name] += r.cost
 
@@ -452,7 +462,7 @@ class UsageTracker:
         total_input = sum(r.input_tokens for r in records)
         total_output = sum(r.output_tokens for r in records)
 
-        by_model: Dict[str, float] = defaultdict(float)
+        by_model: dict[str, float] = defaultdict(float)
         for r in records:
             by_model[r.model_name] += r.cost
 
@@ -463,8 +473,12 @@ class UsageTracker:
         }
         for r in records:
             pricing = self.calculator.registry.get_or_default(r.model_name)
-            by_category[CostCategory.INPUT_TOKENS.value] += (r.input_tokens / 1000) * pricing.input_cost_per_1k
-            by_category[CostCategory.OUTPUT_TOKENS.value] += (r.output_tokens / 1000) * pricing.output_cost_per_1k
+            by_category[CostCategory.INPUT_TOKENS.value] += (
+                r.input_tokens / 1000
+            ) * pricing.input_cost_per_1k
+            by_category[CostCategory.OUTPUT_TOKENS.value] += (
+                r.output_tokens / 1000
+            ) * pricing.output_cost_per_1k
 
         return CostSummary(
             period_start=start,
@@ -490,9 +504,9 @@ class BudgetManager:
 
     def __init__(self, tracker: Optional[UsageTracker] = None):
         self.tracker = tracker or UsageTracker()
-        self.budgets: Dict[str, Budget] = {}
-        self.alerts: List[BudgetAlert] = []
-        self.alert_callbacks: List[Callable[[BudgetAlert], None]] = []
+        self.budgets: dict[str, Budget] = {}
+        self.alerts: list[BudgetAlert] = []
+        self.alert_callbacks: list[Callable[[BudgetAlert], None]] = []
 
     def create_budget(
         self,
@@ -560,7 +574,7 @@ class BudgetManager:
             alert = BudgetAlert(
                 level=AlertLevel.CRITICAL,
                 budget_name=name,
-                message=f"CRITICAL: Budget '{name}' at {percentage*100:.1f}% (${current_spend:.4f}/${budget.limit:.2f})",
+                message=f"CRITICAL: Budget '{name}' at {percentage * 100:.1f}% (${current_spend:.4f}/${budget.limit:.2f})",
                 current_spend=current_spend,
                 budget_limit=budget.limit,
                 percentage_used=percentage,
@@ -569,7 +583,7 @@ class BudgetManager:
             alert = BudgetAlert(
                 level=AlertLevel.WARNING,
                 budget_name=name,
-                message=f"WARNING: Budget '{name}' at {percentage*100:.1f}% (${current_spend:.4f}/${budget.limit:.2f})",
+                message=f"WARNING: Budget '{name}' at {percentage * 100:.1f}% (${current_spend:.4f}/${budget.limit:.2f})",
                 current_spend=current_spend,
                 budget_limit=budget.limit,
                 percentage_used=percentage,
@@ -583,7 +597,7 @@ class BudgetManager:
 
         return alert
 
-    def check_all_budgets(self) -> List[BudgetAlert]:
+    def check_all_budgets(self) -> list[BudgetAlert]:
         """Check all budgets and return any alerts."""
         alerts = []
         for name in self.budgets:
@@ -596,7 +610,7 @@ class BudgetManager:
         self,
         budget_name: str,
         estimated_cost: float,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, Optional[str]]:
         """Check if a request can be made within budget."""
         budget = self.budgets.get(budget_name)
         if not budget:
@@ -609,7 +623,10 @@ class BudgetManager:
         current_spend = self.tracker.get_total_cost(start=period_start)
 
         if current_spend + estimated_cost > budget.limit:
-            return False, f"Request would exceed budget '{budget_name}' (${current_spend:.4f} + ${estimated_cost:.4f} > ${budget.limit:.2f})"
+            return (
+                False,
+                f"Request would exceed budget '{budget_name}' (${current_spend:.4f} + ${estimated_cost:.4f} > ${budget.limit:.2f})",
+            )
 
         return True, None
 
@@ -617,7 +634,7 @@ class BudgetManager:
         """Add a callback to be called when alerts are triggered."""
         self.alert_callbacks.append(callback)
 
-    def get_budget_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_budget_status(self, name: str) -> Optional[dict[str, Any]]:
         """Get current status of a budget."""
         budget = self.budgets.get(name)
         if not budget:
@@ -670,7 +687,7 @@ class CostForecaster:
             )
 
         # Calculate daily costs
-        daily_costs: Dict[str, float] = defaultdict(float)
+        daily_costs: dict[str, float] = defaultdict(float)
         for r in records:
             day_key = r.timestamp.strftime("%Y-%m-%d")
             daily_costs[day_key] += r.cost
@@ -693,8 +710,8 @@ class CostForecaster:
 
         # Calculate trend
         if actual_days >= 7:
-            first_half = sum(costs_list[:actual_days//2]) / (actual_days//2)
-            second_half = sum(costs_list[actual_days//2:]) / (actual_days - actual_days//2)
+            first_half = sum(costs_list[: actual_days // 2]) / (actual_days // 2)
+            second_half = sum(costs_list[actual_days // 2 :]) / (actual_days - actual_days // 2)
 
             if second_half > first_half * 1.1:
                 trend = "increasing"
@@ -761,7 +778,7 @@ class CostReporter:
         self.tracker = tracker
         self.forecaster = forecaster or CostForecaster(tracker)
 
-    def generate_daily_report(self, date: Optional[datetime] = None) -> Dict[str, Any]:
+    def generate_daily_report(self, date: Optional[datetime] = None) -> dict[str, Any]:
         """Generate a daily cost report."""
         if date is None:
             date = datetime.now()
@@ -777,7 +794,7 @@ class CostReporter:
             "top_models": self._get_top_n(summary.by_model, 5),
         }
 
-    def generate_weekly_report(self, week_start: Optional[datetime] = None) -> Dict[str, Any]:
+    def generate_weekly_report(self, week_start: Optional[datetime] = None) -> dict[str, Any]:
         """Generate a weekly cost report."""
         if week_start is None:
             now = datetime.now()
@@ -795,10 +812,12 @@ class CostReporter:
             day_start = start + timedelta(days=i)
             day_end = day_start + timedelta(days=1)
             day_cost = self.tracker.get_total_cost(day_start, day_end)
-            daily_costs.append({
-                "date": day_start.strftime("%Y-%m-%d"),
-                "cost": day_cost,
-            })
+            daily_costs.append(
+                {
+                    "date": day_start.strftime("%Y-%m-%d"),
+                    "cost": day_cost,
+                }
+            )
 
         return {
             "week_start": start.strftime("%Y-%m-%d"),
@@ -812,17 +831,14 @@ class CostReporter:
         self,
         year: Optional[int] = None,
         month: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate a monthly cost report."""
         now = datetime.now()
         year = year or now.year
         month = month or now.month
 
         start = datetime(year, month, 1)
-        if month == 12:
-            end = datetime(year + 1, 1, 1)
-        else:
-            end = datetime(year, month + 1, 1)
+        end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
 
         summary = self.tracker.get_summary(start, end)
         forecast = self.forecaster.forecast(TimeGranularity.MONTH)
@@ -835,12 +851,12 @@ class CostReporter:
             "top_models": self._get_top_n(summary.by_model, 5),
         }
 
-    def _get_top_n(self, costs: Dict[str, float], n: int) -> List[Dict[str, Any]]:
+    def _get_top_n(self, costs: dict[str, float], n: int) -> list[dict[str, Any]]:
         """Get top N items by cost."""
         sorted_items = sorted(costs.items(), key=lambda x: x[1], reverse=True)
         return [{"name": name, "cost": cost} for name, cost in sorted_items[:n]]
 
-    def format_report_text(self, report: Dict[str, Any]) -> str:
+    def format_report_text(self, report: dict[str, Any]) -> str:
         """Format a report as text."""
         lines = []
 
@@ -869,13 +885,16 @@ class CostReporter:
             forecast = report["forecast"]
             lines.append(f"\nForecast ({forecast['forecast_period']}):")
             lines.append(f"  Projected: ${forecast['projected_cost']:.4f}")
-            lines.append(f"  Range: ${forecast['confidence_low']:.4f} - ${forecast['confidence_high']:.4f}")
+            lines.append(
+                f"  Range: ${forecast['confidence_low']:.4f} - ${forecast['confidence_high']:.4f}"
+            )
             lines.append(f"  Trend: {forecast['trend']}")
 
         return "\n".join(lines)
 
 
 # Convenience functions
+
 
 def calculate_cost(
     model_name: str,
@@ -900,8 +919,8 @@ def estimate_request_cost(
 def compare_model_costs(
     input_tokens: int,
     output_tokens: int,
-    model_names: Optional[List[str]] = None,
-) -> Dict[str, float]:
+    model_names: Optional[list[str]] = None,
+) -> dict[str, float]:
     """Compare costs across models."""
     calculator = CostCalculator()
     return calculator.compare_models(input_tokens, output_tokens, model_names)
@@ -910,8 +929,8 @@ def compare_model_costs(
 def get_cheapest_model(
     input_tokens: int,
     output_tokens: int,
-    model_names: Optional[List[str]] = None,
-) -> Tuple[str, float]:
+    model_names: Optional[list[str]] = None,
+) -> tuple[str, float]:
     """Find the cheapest model for given usage."""
     calculator = CostCalculator()
     return calculator.get_cheapest_model(input_tokens, output_tokens, model_names)
@@ -932,7 +951,7 @@ def quick_cost_estimate(
     num_requests: int,
     avg_input_tokens: int = 500,
     avg_output_tokens: int = 200,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Quick estimate for a batch of requests."""
     single_cost = calculate_cost(model_name, avg_input_tokens, avg_output_tokens)
     total_cost = single_cost * num_requests

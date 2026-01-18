@@ -13,22 +13,16 @@ Key features:
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
-    List,
     Optional,
-    Pattern,
-    Tuple,
-    Type,
     TypeVar,
     Union,
 )
-
 
 T = TypeVar("T")
 
@@ -155,8 +149,8 @@ class TableData:
         raw: Original table text.
     """
 
-    headers: List[str]
-    rows: List[List[str]]
+    headers: list[str]
+    rows: list[list[str]]
     raw: str = ""
 
     @property
@@ -169,11 +163,11 @@ class TableData:
         """Number of columns."""
         return len(self.headers)
 
-    def to_dicts(self) -> List[Dict[str, str]]:
+    def to_dicts(self) -> list[dict[str, str]]:
         """Convert rows to list of dictionaries."""
         return [dict(zip(self.headers, row)) for row in self.rows]
 
-    def get_column(self, name: str) -> List[str]:
+    def get_column(self, name: str) -> list[str]:
         """Get all values in a column by name."""
         if name not in self.headers:
             raise KeyError(f"Column not found: {name}")
@@ -189,9 +183,7 @@ class JSONParser:
     """
 
     # Patterns for extracting JSON
-    JSON_BLOCK_PATTERN = re.compile(
-        r"```(?:json)?\s*\n?([\s\S]*?)\n?```", re.MULTILINE
-    )
+    JSON_BLOCK_PATTERN = re.compile(r"```(?:json)?\s*\n?([\s\S]*?)\n?```", re.MULTILINE)
     JSON_OBJECT_PATTERN = re.compile(r"\{[\s\S]*\}", re.MULTILINE)
     JSON_ARRAY_PATTERN = re.compile(r"\[[\s\S]*\]", re.MULTILINE)
 
@@ -311,7 +303,7 @@ class JSONParser:
         return fixed
 
     @classmethod
-    def extract_all(cls, text: str) -> List[ParseResult[Any]]:
+    def extract_all(cls, text: str) -> list[ParseResult[Any]]:
         """Extract all JSON objects/arrays from text.
 
         Args:
@@ -365,14 +357,10 @@ class CodeBlockParser:
     """Parser for code blocks in LLM output."""
 
     # Pattern for fenced code blocks
-    FENCED_PATTERN = re.compile(
-        r"```(\w*)\s*\n([\s\S]*?)\n```", re.MULTILINE
-    )
+    FENCED_PATTERN = re.compile(r"```(\w*)\s*\n([\s\S]*?)\n```", re.MULTILINE)
 
     # Pattern for indented code blocks (4 spaces or 1 tab)
-    INDENTED_PATTERN = re.compile(
-        r"(?:^(?:    |\t).*$\n?)+", re.MULTILINE
-    )
+    INDENTED_PATTERN = re.compile(r"(?:^(?:    |\t).*$\n?)+", re.MULTILINE)
 
     # Common language aliases
     LANGUAGE_ALIASES = {
@@ -387,7 +375,7 @@ class CodeBlockParser:
     }
 
     @classmethod
-    def parse(cls, text: str) -> List[CodeBlock]:
+    def parse(cls, text: str) -> list[CodeBlock]:
         """Extract all code blocks from text.
 
         Args:
@@ -405,7 +393,7 @@ class CodeBlockParser:
             code = match.group(2)
 
             # Calculate line numbers
-            start = text[:match.start()].count("\n")
+            start = text[: match.start()].count("\n")
             end = start + code.count("\n") + 2  # +2 for fences
 
             blocks.append(
@@ -433,7 +421,7 @@ class CodeBlockParser:
         return blocks[0] if blocks else None
 
     @classmethod
-    def parse_by_language(cls, text: str, language: str) -> List[CodeBlock]:
+    def parse_by_language(cls, text: str, language: str) -> list[CodeBlock]:
         """Extract code blocks of a specific language.
 
         Args:
@@ -450,7 +438,7 @@ class CodeBlockParser:
         return [b for b in blocks if b.language == language]
 
     @classmethod
-    def extract_python(cls, text: str) -> List[str]:
+    def extract_python(cls, text: str) -> list[str]:
         """Extract Python code blocks.
 
         Args:
@@ -462,7 +450,7 @@ class CodeBlockParser:
         return [b.code for b in cls.parse_by_language(text, "python")]
 
     @classmethod
-    def extract_sql(cls, text: str) -> List[str]:
+    def extract_sql(cls, text: str) -> list[str]:
         """Extract SQL code blocks.
 
         Args:
@@ -483,7 +471,7 @@ class ListParser:
     LETTERED_PATTERN = re.compile(r"^\s*([a-zA-Z])[.)\]]\s*(.+)$", re.MULTILINE)
 
     @classmethod
-    def parse(cls, text: str) -> List[str]:
+    def parse(cls, text: str) -> list[str]:
         """Extract list items from text.
 
         Handles numbered lists, bullet lists, and lettered lists.
@@ -517,7 +505,7 @@ class ListParser:
         return items
 
     @classmethod
-    def parse_nested(cls, text: str) -> List[Union[str, List]]:
+    def parse_nested(cls, text: str) -> list[Union[str, list]]:
         """Parse nested lists based on indentation.
 
         Args:
@@ -527,8 +515,8 @@ class ListParser:
             Nested list structure.
         """
         lines = text.split("\n")
-        result: List[Union[str, List]] = []
-        stack: List[Tuple[int, List]] = [(0, result)]
+        result: list[Union[str, list]] = []
+        stack: list[tuple[int, list]] = [(0, result)]
 
         for line in lines:
             if not line.strip():
@@ -540,7 +528,11 @@ class ListParser:
             # Extract item text
             match = cls.BULLET_PATTERN.match(line) or cls.NUMBERED_PATTERN.match(line)
             if match:
-                item_text = match.group(1) if isinstance(match.group(1), str) and not match.group(1).isdigit() else match.groups()[-1]
+                item_text = (
+                    match.group(1)
+                    if isinstance(match.group(1), str) and not match.group(1).isdigit()
+                    else match.groups()[-1]
+                )
                 item_text = item_text.strip()
 
                 # Find appropriate level
@@ -597,7 +589,7 @@ class TableParser:
         )
 
     @classmethod
-    def parse_all(cls, text: str) -> List[TableData]:
+    def parse_all(cls, text: str) -> list[TableData]:
         """Parse all markdown tables from text.
 
         Args:
@@ -619,9 +611,7 @@ class TableParser:
                     if cells:
                         rows.append(cells)
 
-            tables.append(
-                TableData(headers=headers, rows=rows, raw=match.group(0))
-            )
+            tables.append(TableData(headers=headers, rows=rows, raw=match.group(0)))
 
         return tables
 
@@ -722,7 +712,7 @@ class AnswerExtractor:
         return None
 
     @classmethod
-    def extract_all_numbers(cls, text: str) -> List[float]:
+    def extract_all_numbers(cls, text: str) -> list[float]:
         """Extract all numbers from text.
 
         Args:
@@ -798,9 +788,9 @@ class OutputDetector:
         """Check if text looks like XML."""
         text = text.strip()
         return (
-            text.startswith("<") and
-            text.endswith(">") and
-            re.search(r"<\w+[^>]*>", text) is not None
+            text.startswith("<")
+            and text.endswith(">")
+            and re.search(r"<\w+[^>]*>", text) is not None
         )
 
     @classmethod
@@ -836,10 +826,7 @@ class OutputDetector:
             r"\*\*.+\*\*",  # Bold
             r"`.+`",  # Inline code
         ]
-        for pattern in md_patterns:
-            if re.search(pattern, text, re.MULTILINE):
-                return True
-        return False
+        return any(re.search(pattern, text, re.MULTILINE) for pattern in md_patterns)
 
 
 def parse_json(text: str, strict: bool = False) -> ParseResult[Any]:
@@ -850,7 +837,7 @@ def parse_json(text: str, strict: bool = False) -> ParseResult[Any]:
     return JSONParser.parse(text, strict=strict)
 
 
-def parse_code(text: str) -> List[CodeBlock]:
+def parse_code(text: str) -> list[CodeBlock]:
     """Extract code blocks from text.
 
     Convenience function for CodeBlockParser.parse().
@@ -858,7 +845,7 @@ def parse_code(text: str) -> List[CodeBlock]:
     return CodeBlockParser.parse(text)
 
 
-def parse_list(text: str) -> List[str]:
+def parse_list(text: str) -> list[str]:
     """Extract list items from text.
 
     Convenience function for ListParser.parse().

@@ -15,7 +15,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 
 class MessageRole(Enum):
@@ -63,8 +63,8 @@ class ConversationMessage:
 
     role: MessageRole
     content: str
-    timestamp: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def word_count(self) -> int:
@@ -76,7 +76,7 @@ class ConversationMessage:
         """Get character count of message."""
         return len(self.content)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "role": self.role.value,
@@ -95,11 +95,11 @@ class ConversationTurn:
     turn_number: int
     user_message: ConversationMessage
     assistant_response: ConversationMessage
-    topic: Optional[str] = None
+    topic: str | None = None
     quality: TurnQuality = TurnQuality.ACCEPTABLE
     relevance_score: float = 0.5
     coherence_score: float = 0.5
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def response_ratio(self) -> float:
@@ -113,7 +113,7 @@ class ConversationTurn:
         """Calculate overall turn score."""
         return (self.relevance_score + self.coherence_score) / 2
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "turn_number": self.turn_number,
@@ -140,7 +140,7 @@ class MemoryReference:
     is_accurate: bool = True
     confidence: float = 0.5
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "source_turn": self.source_turn,
@@ -156,11 +156,11 @@ class MemoryReference:
 class TopicAnalysis:
     """Analysis of topics in a conversation."""
 
-    main_topics: List[str]
-    topic_sequence: List[Tuple[int, str]]  # (turn_number, topic)
-    topic_transitions: List[Tuple[int, TopicTransition]]
-    topic_coverage: Dict[str, int]  # topic -> turn count
-    topic_depth: Dict[str, float]  # topic -> depth score
+    main_topics: list[str]
+    topic_sequence: list[tuple[int, str]]  # (turn_number, topic)
+    topic_transitions: list[tuple[int, TopicTransition]]
+    topic_coverage: dict[str, int]  # topic -> turn count
+    topic_depth: dict[str, float]  # topic -> depth score
 
     @property
     def n_topics(self) -> int:
@@ -178,21 +178,17 @@ class TopicAnalysis:
     def has_topic_drift(self) -> bool:
         """Check if conversation has significant topic drift."""
         abrupt_changes = sum(
-            1 for _, t in self.topic_transitions
-            if t == TopicTransition.ABRUPT_CHANGE
+            1 for _, t in self.topic_transitions if t == TopicTransition.ABRUPT_CHANGE
         )
         return abrupt_changes > 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "main_topics": self.main_topics,
-            "topic_sequence": [
-                {"turn": t, "topic": topic} for t, topic in self.topic_sequence
-            ],
+            "topic_sequence": [{"turn": t, "topic": topic} for t, topic in self.topic_sequence],
             "topic_transitions": [
-                {"turn": t, "type": trans.value}
-                for t, trans in self.topic_transitions
+                {"turn": t, "type": trans.value} for t, trans in self.topic_transitions
             ],
             "topic_coverage": self.topic_coverage,
             "topic_depth": self.topic_depth,
@@ -206,19 +202,19 @@ class TopicAnalysis:
 class ConsistencyAnalysis:
     """Analysis of consistency across conversation turns."""
 
-    memory_references: List[MemoryReference]
+    memory_references: list[MemoryReference]
     factual_consistency_score: float
     stylistic_consistency_score: float
     contextual_consistency_score: float
-    inconsistencies: List[Dict[str, Any]]
+    inconsistencies: list[dict[str, Any]]
 
     @property
     def overall_consistency(self) -> float:
         """Calculate overall consistency score."""
         return (
-            self.factual_consistency_score +
-            self.stylistic_consistency_score +
-            self.contextual_consistency_score
+            self.factual_consistency_score
+            + self.stylistic_consistency_score
+            + self.contextual_consistency_score
         ) / 3
 
     @property
@@ -231,7 +227,7 @@ class ConsistencyAnalysis:
         """Get number of detected inconsistencies."""
         return len(self.inconsistencies)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "memory_references": [r.to_dict() for r in self.memory_references],
@@ -265,7 +261,7 @@ class EngagementMetrics:
         )
         return (satisfaction + self.conversation_momentum) / 2
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "avg_response_length": self.avg_response_length,
@@ -284,15 +280,15 @@ class ConversationReport:
     """Comprehensive conversation analysis report."""
 
     n_turns: int
-    turns: List[ConversationTurn]
+    turns: list[ConversationTurn]
     topic_analysis: TopicAnalysis
     consistency_analysis: ConsistencyAnalysis
     engagement_metrics: EngagementMetrics
     conversation_state: ConversationState
     overall_quality_score: float
-    strengths: List[str]
-    weaknesses: List[str]
-    recommendations: List[str]
+    strengths: list[str]
+    weaknesses: list[str]
+    recommendations: list[str]
 
     @property
     def quality_level(self) -> str:
@@ -307,7 +303,7 @@ class ConversationReport:
             return "poor"
         return "failed"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_turns": self.n_turns,
@@ -329,8 +325,8 @@ class Conversation:
 
     def __init__(
         self,
-        messages: Optional[List[Dict[str, str]]] = None,
-        system_prompt: Optional[str] = None,
+        messages: list[dict[str, str]] | None = None,
+        system_prompt: str | None = None,
     ):
         """Initialize conversation.
 
@@ -338,7 +334,7 @@ class Conversation:
             messages: Optional list of message dicts with 'role' and 'content'
             system_prompt: Optional system prompt
         """
-        self._messages: List[ConversationMessage] = []
+        self._messages: list[ConversationMessage] = []
         self._system_prompt = system_prompt
 
         if messages:
@@ -352,8 +348,8 @@ class Conversation:
         self,
         role: MessageRole,
         content: str,
-        timestamp: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ConversationMessage:
         """Add a message to the conversation.
 
@@ -384,7 +380,7 @@ class Conversation:
         return self.add_message(MessageRole.ASSISTANT, content, **kwargs)
 
     @property
-    def messages(self) -> List[ConversationMessage]:
+    def messages(self) -> list[ConversationMessage]:
         """Get all messages."""
         return self._messages.copy()
 
@@ -399,7 +395,7 @@ class Conversation:
         user_messages = [m for m in self._messages if m.role == MessageRole.USER]
         return len(user_messages)
 
-    def get_turns(self) -> List[ConversationTurn]:
+    def get_turns(self) -> list[ConversationTurn]:
         """Get conversation as list of turns.
 
         Returns:
@@ -413,15 +409,19 @@ class Conversation:
             if self._messages[i].role == MessageRole.USER:
                 user_msg = self._messages[i]
                 # Look for next assistant message
-                if i + 1 < len(self._messages) and \
-                   self._messages[i + 1].role == MessageRole.ASSISTANT:
+                if (
+                    i + 1 < len(self._messages)
+                    and self._messages[i + 1].role == MessageRole.ASSISTANT
+                ):
                     assistant_msg = self._messages[i + 1]
                     turn_num += 1
-                    turns.append(ConversationTurn(
-                        turn_number=turn_num,
-                        user_message=user_msg,
-                        assistant_response=assistant_msg,
-                    ))
+                    turns.append(
+                        ConversationTurn(
+                            turn_number=turn_num,
+                            user_message=user_msg,
+                            assistant_response=assistant_msg,
+                        )
+                    )
                     i += 2
                 else:
                     i += 1
@@ -451,7 +451,7 @@ class Conversation:
 
         return "\n".join(lines)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "system_prompt": self._system_prompt,
@@ -466,8 +466,8 @@ class TurnAnalyzer:
 
     def __init__(
         self,
-        relevance_fn: Optional[Callable[[str, str], float]] = None,
-        coherence_fn: Optional[Callable[[str, str], float]] = None,
+        relevance_fn: Callable[[str, str], float] | None = None,
+        coherence_fn: Callable[[str, str], float] | None = None,
     ):
         """Initialize analyzer.
 
@@ -519,8 +519,8 @@ class TurnAnalyzer:
         self,
         user_message: str,
         assistant_response: str,
-        context: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        context: str | None = None,
+    ) -> dict[str, Any]:
         """Analyze a single conversation turn.
 
         Args:
@@ -560,7 +560,7 @@ class TopicTracker:
 
     def __init__(
         self,
-        topic_extractor: Optional[Callable[[str], List[str]]] = None,
+        topic_extractor: Callable[[str], list[str]] | None = None,
     ):
         """Initialize tracker.
 
@@ -568,27 +568,74 @@ class TopicTracker:
             topic_extractor: Function to extract topics from text
         """
         self._topic_extractor = topic_extractor or self._default_topic_extractor
-        self._topic_sequence: List[Tuple[int, str]] = []
-        self._topic_history: List[str] = []
+        self._topic_sequence: list[tuple[int, str]] = []
+        self._topic_history: list[str] = []
 
     @staticmethod
-    def _default_topic_extractor(text: str) -> List[str]:
+    def _default_topic_extractor(text: str) -> list[str]:
         """Simple keyword-based topic extraction."""
         # Extract potential topics (nouns and important words)
         words = text.lower().split()
         stopwords = {
-            "the", "a", "an", "is", "are", "was", "were", "to", "of", "and",
-            "or", "it", "this", "that", "what", "how", "why", "when", "where",
-            "who", "can", "could", "would", "should", "will", "do", "does",
-            "did", "have", "has", "had", "be", "been", "being", "i", "you",
-            "he", "she", "we", "they", "my", "your", "his", "her", "our",
-            "their", "me", "him", "us", "them", "please", "thanks", "thank",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "to",
+            "of",
+            "and",
+            "or",
+            "it",
+            "this",
+            "that",
+            "what",
+            "how",
+            "why",
+            "when",
+            "where",
+            "who",
+            "can",
+            "could",
+            "would",
+            "should",
+            "will",
+            "do",
+            "does",
+            "did",
+            "have",
+            "has",
+            "had",
+            "be",
+            "been",
+            "being",
+            "i",
+            "you",
+            "he",
+            "she",
+            "we",
+            "they",
+            "my",
+            "your",
+            "his",
+            "her",
+            "our",
+            "their",
+            "me",
+            "him",
+            "us",
+            "them",
+            "please",
+            "thanks",
+            "thank",
         }
 
         topics = []
         for word in words:
             # Clean word
-            word = re.sub(r'[^\w]', '', word)
+            word = re.sub(r"[^\w]", "", word)
             if word and word not in stopwords and len(word) > 2:
                 topics.append(word)
 
@@ -597,11 +644,7 @@ class TopicTracker:
         for t in topics:
             topic_counts[t] += 1
 
-        sorted_topics = sorted(
-            topic_counts.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_topics = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)
         return [t for t, _ in sorted_topics[:3]]
 
     def add_turn(self, turn_number: int, user_message: str, response: str) -> str:
@@ -695,7 +738,7 @@ class ConsistencyChecker:
 
     def __init__(
         self,
-        similarity_fn: Optional[Callable[[str, str], float]] = None,
+        similarity_fn: Callable[[str, str], float] | None = None,
     ):
         """Initialize checker.
 
@@ -703,7 +746,7 @@ class ConsistencyChecker:
             similarity_fn: Function to compute text similarity
         """
         self._similarity_fn = similarity_fn or self._default_similarity
-        self._facts: Dict[int, List[str]] = {}  # turn -> facts
+        self._facts: dict[int, list[str]] = {}  # turn -> facts
 
     @staticmethod
     def _default_similarity(text1: str, text2: str) -> float:
@@ -723,11 +766,11 @@ class ConsistencyChecker:
             response: Assistant's response
         """
         # Extract potential facts (sentences with declarative statements)
-        sentences = re.split(r'[.!?]', response)
+        sentences = re.split(r"[.!?]", response)
         facts = [s.strip() for s in sentences if len(s.strip()) > 10]
         self._facts[turn_number] = facts
 
-    def check(self, turns: List[ConversationTurn]) -> ConsistencyAnalysis:
+    def check(self, turns: list[ConversationTurn]) -> ConsistencyAnalysis:
         """Check consistency across turns.
 
         Args:
@@ -751,23 +794,22 @@ class ConsistencyChecker:
                 similarity = self._similarity_fn(current_response, prev_response)
 
                 if similarity > 0.3:  # Some overlap detected
-                    memory_references.append(MemoryReference(
-                        source_turn=j + 1,
-                        target_turn=i + 1,
-                        reference_type="content_overlap",
-                        content=f"Similarity with turn {j + 1}",
-                        is_accurate=True,
-                        confidence=similarity,
-                    ))
+                    memory_references.append(
+                        MemoryReference(
+                            source_turn=j + 1,
+                            target_turn=i + 1,
+                            reference_type="content_overlap",
+                            content=f"Similarity with turn {j + 1}",
+                            is_accurate=True,
+                            confidence=similarity,
+                        )
+                    )
 
         # Calculate consistency scores
         if turns:
             # Factual consistency (based on memory reference accuracy)
             accurate_refs = sum(1 for r in memory_references if r.is_accurate)
-            factual_score = (
-                accurate_refs / len(memory_references)
-                if memory_references else 1.0
-            )
+            factual_score = accurate_refs / len(memory_references) if memory_references else 1.0
 
             # Stylistic consistency (based on response length variance)
             lengths = [t.assistant_response.word_count for t in turns]
@@ -775,7 +817,7 @@ class ConsistencyChecker:
                 mean_len = sum(lengths) / len(lengths)
                 variance = sum((l - mean_len) ** 2 for l in lengths) / len(lengths)
                 # Lower variance = higher consistency
-                stylistic_score = max(0, 1 - (variance / max(mean_len ** 2, 1)))
+                stylistic_score = max(0, 1 - (variance / max(mean_len**2, 1)))
             else:
                 stylistic_score = 1.0
 
@@ -805,15 +847,27 @@ class EngagementAnalyzer:
     def __init__(self):
         """Initialize analyzer."""
         self._satisfaction_patterns = [
-            r'\bthanks?\b', r'\bthank you\b', r'\bgreat\b', r'\bperfect\b',
-            r'\bexcellent\b', r'\bhelpful\b', r'\bawesome\b', r'\bgood\b',
+            r"\bthanks?\b",
+            r"\bthank you\b",
+            r"\bgreat\b",
+            r"\bperfect\b",
+            r"\bexcellent\b",
+            r"\bhelpful\b",
+            r"\bawesome\b",
+            r"\bgood\b",
         ]
         self._frustration_patterns = [
-            r'\bnot helpful\b', r'\bwrong\b', r'\bincorrect\b', r'\bno\b',
-            r'\bstop\b', r'\bi said\b', r'\bthat\'s not\b', r'\byou\'re not\b',
+            r"\bnot helpful\b",
+            r"\bwrong\b",
+            r"\bincorrect\b",
+            r"\bno\b",
+            r"\bstop\b",
+            r"\bi said\b",
+            r"\bthat\'s not\b",
+            r"\byou\'re not\b",
         ]
 
-    def analyze(self, turns: List[ConversationTurn]) -> EngagementMetrics:
+    def analyze(self, turns: list[ConversationTurn]) -> EngagementMetrics:
         """Analyze engagement across turns.
 
         Args:
@@ -846,7 +900,11 @@ class EngagementAnalyzer:
         question_ratio = questions / len(turns)
 
         # Clarification analysis
-        clarification_patterns = [r'\bwhat do you mean\b', r'\bcan you explain\b', r'\bi don\'t understand\b']
+        clarification_patterns = [
+            r"\bwhat do you mean\b",
+            r"\bcan you explain\b",
+            r"\bi don\'t understand\b",
+        ]
         clarifications = 0
         for turn in turns:
             for pattern in clarification_patterns:
@@ -889,10 +947,10 @@ class ConversationAnalyzer:
 
     def __init__(
         self,
-        turn_analyzer: Optional[TurnAnalyzer] = None,
-        topic_tracker: Optional[TopicTracker] = None,
-        consistency_checker: Optional[ConsistencyChecker] = None,
-        engagement_analyzer: Optional[EngagementAnalyzer] = None,
+        turn_analyzer: TurnAnalyzer | None = None,
+        topic_tracker: TopicTracker | None = None,
+        consistency_checker: ConsistencyChecker | None = None,
+        engagement_analyzer: EngagementAnalyzer | None = None,
     ):
         """Initialize analyzer.
 
@@ -946,7 +1004,9 @@ class ConversationAnalyzer:
             turn.topic = topic
 
             # Update context
-            context += f"\nUser: {turn.user_message.content}\nAssistant: {turn.assistant_response.content}"
+            context += (
+                f"\nUser: {turn.user_message.content}\nAssistant: {turn.assistant_response.content}"
+            )
 
             # Track for consistency
             self._consistency_checker.add_turn(
@@ -970,11 +1030,7 @@ class ConversationAnalyzer:
         consistency_factor = consistency_analysis.overall_consistency
         engagement_factor = engagement_metrics.engagement_score
 
-        overall_quality = (
-            base_quality * 0.5 +
-            consistency_factor * 0.3 +
-            engagement_factor * 0.2
-        )
+        overall_quality = base_quality * 0.5 + consistency_factor * 0.3 + engagement_factor * 0.2
 
         # Generate insights
         strengths, weaknesses, recommendations = self._generate_insights(
@@ -1035,7 +1091,7 @@ class ConversationAnalyzer:
 
     def _determine_state(
         self,
-        turns: List[ConversationTurn],
+        turns: list[ConversationTurn],
         topic_analysis: TopicAnalysis,
     ) -> ConversationState:
         """Determine the current conversation state."""
@@ -1066,11 +1122,11 @@ class ConversationAnalyzer:
 
     def _generate_insights(
         self,
-        turns: List[ConversationTurn],
+        turns: list[ConversationTurn],
         topic_analysis: TopicAnalysis,
         consistency_analysis: ConsistencyAnalysis,
         engagement_metrics: EngagementMetrics,
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         """Generate strengths, weaknesses, and recommendations."""
         strengths = []
         weaknesses = []
@@ -1078,8 +1134,7 @@ class ConversationAnalyzer:
 
         # Analyze turn quality
         high_quality_turns = sum(
-            1 for t in turns
-            if t.quality in [TurnQuality.EXCELLENT, TurnQuality.GOOD]
+            1 for t in turns if t.quality in [TurnQuality.EXCELLENT, TurnQuality.GOOD]
         )
         if high_quality_turns > len(turns) * 0.7:
             strengths.append("High quality responses throughout conversation")
@@ -1121,7 +1176,7 @@ class ConversationAnalyzer:
 
 
 def create_conversation(
-    messages: Optional[List[Dict[str, str]]] = None,
+    messages: list[dict[str, str]] | None = None,
 ) -> Conversation:
     """Create a new conversation.
 
@@ -1150,7 +1205,7 @@ def analyze_conversation(
 
 
 def analyze_messages(
-    messages: List[Dict[str, str]],
+    messages: list[dict[str, str]],
 ) -> ConversationReport:
     """Analyze a list of messages.
 
@@ -1165,8 +1220,8 @@ def analyze_messages(
 
 
 def quick_conversation_check(
-    messages: List[Dict[str, str]],
-) -> Dict[str, Any]:
+    messages: list[dict[str, str]],
+) -> dict[str, Any]:
     """Quick check of conversation quality.
 
     Args:

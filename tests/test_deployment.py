@@ -1,40 +1,36 @@
 """Tests for Deployment module."""
 
-import pytest
-import time
-import threading
 import asyncio
-from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch, AsyncMock
-from typing import Dict, Any
+import threading
+import time
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 from insideLLMs.deployment import (
+    FASTAPI_AVAILABLE,
+    APIKeyAuth,
+    AppConfig,
+    BatchEndpoint,
+    DeploymentConfig,
     # Configuration
     EndpointConfig,
-    DeploymentConfig,
-    AppConfig,
-    # Middleware
-    RateLimiter,
-    APIKeyAuth,
-    RequestLogger,
+    HealthChecker,
     # Monitoring
     MetricsCollector,
-    HealthChecker,
     # Endpoints
     ModelEndpoint,
     ProbeEndpoint,
-    BatchEndpoint,
+    # Middleware
+    RateLimiter,
+    RequestLogger,
     # Convenience
     create_model_endpoint,
     create_probe_endpoint,
-    FASTAPI_AVAILABLE,
 )
 
 # Marker for FastAPI-dependent tests
-requires_fastapi = pytest.mark.skipif(
-    not FASTAPI_AVAILABLE,
-    reason="FastAPI not installed"
-)
+requires_fastapi = pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
 
 
 # =============================================================================
@@ -484,7 +480,7 @@ class TestHealthChecker:
         """Test health check that raises exception."""
         checker = HealthChecker()
         checker.add_check("healthy", lambda: True)
-        checker.add_check("broken", lambda: 1/0)
+        checker.add_check("broken", lambda: 1 / 0)
 
         result = checker.run_checks()
         assert result["status"] == "unhealthy"

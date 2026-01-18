@@ -8,11 +8,10 @@ Provides tools for:
 - Confidence-based hallucination assessment
 """
 
-import hashlib
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Optional
 
 
 class HallucinationType(Enum):
@@ -58,10 +57,10 @@ class HallucinationFlag:
     end_pos: int
     confidence: float  # Confidence that this is a hallucination
     explanation: str
-    evidence: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    evidence: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "type": self.hallucination_type.value,
@@ -79,18 +78,18 @@ class HallucinationFlag:
 class ConsistencyCheck:
     """Result of consistency checking across responses."""
 
-    responses: List[str]
-    consistent_claims: List[str]
-    inconsistent_claims: List[Tuple[str, str, float]]  # (claim1, claim2, disagreement)
+    responses: list[str]
+    consistent_claims: list[str]
+    inconsistent_claims: list[tuple[str, str, float]]  # (claim1, claim2, disagreement)
     overall_consistency: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_consistent(self) -> bool:
         """Check if responses are mostly consistent."""
         return self.overall_consistency >= 0.8
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_responses": len(self.responses),
@@ -114,8 +113,8 @@ class FactualityScore:
     verified_claims: int
     unverified_claims: int
     contradicted_claims: int
-    claim_details: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    claim_details: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def accuracy(self) -> float:
@@ -124,7 +123,7 @@ class FactualityScore:
             return 1.0
         return self.verified_claims / self.verifiable_claims
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "score": round(self.score, 4),
@@ -143,12 +142,12 @@ class HallucinationReport:
     """Comprehensive hallucination detection report."""
 
     text: str
-    flags: List[HallucinationFlag]
+    flags: list[HallucinationFlag]
     overall_score: float  # 0-1, 1 = no hallucinations detected
     consistency_check: Optional[ConsistencyCheck] = None
     factuality_score: Optional[FactualityScore] = None
-    recommendations: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def has_hallucinations(self) -> bool:
@@ -156,16 +155,16 @@ class HallucinationReport:
         return len(self.flags) > 0
 
     @property
-    def critical_flags(self) -> List[HallucinationFlag]:
+    def critical_flags(self) -> list[HallucinationFlag]:
         """Get only critical severity flags."""
         return [f for f in self.flags if f.severity == SeverityLevel.CRITICAL]
 
     @property
-    def high_confidence_flags(self) -> List[HallucinationFlag]:
+    def high_confidence_flags(self) -> list[HallucinationFlag]:
         """Get flags with high confidence (> 0.8)."""
         return [f for f in self.flags if f.confidence > 0.8]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text_preview": self.text[:200] + "..." if len(self.text) > 200 else self.text,
@@ -213,7 +212,7 @@ class PatternBasedDetector:
             (r"\bwill\b", r"\bwill not\b"),
         ]
 
-    def detect(self, text: str) -> List[HallucinationFlag]:
+    def detect(self, text: str) -> list[HallucinationFlag]:
         """Detect potential hallucinations using patterns."""
         flags = []
         text_lower = text.lower()
@@ -221,28 +220,32 @@ class PatternBasedDetector:
         # Check for overconfidence
         for pattern in self.overconfidence_patterns:
             for match in re.finditer(pattern, text_lower):
-                flags.append(HallucinationFlag(
-                    hallucination_type=HallucinationType.EXAGGERATION,
-                    severity=SeverityLevel.LOW,
-                    text_span=match.group(),
-                    start_pos=match.start(),
-                    end_pos=match.end(),
-                    confidence=0.4,
-                    explanation="Overconfident language may indicate unverified claims",
-                ))
+                flags.append(
+                    HallucinationFlag(
+                        hallucination_type=HallucinationType.EXAGGERATION,
+                        severity=SeverityLevel.LOW,
+                        text_span=match.group(),
+                        start_pos=match.start(),
+                        end_pos=match.end(),
+                        confidence=0.4,
+                        explanation="Overconfident language may indicate unverified claims",
+                    )
+                )
 
         # Check for fabrication indicators
         for pattern in self.fabrication_indicators:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                flags.append(HallucinationFlag(
-                    hallucination_type=HallucinationType.UNSUPPORTED_CLAIM,
-                    severity=SeverityLevel.MEDIUM,
-                    text_span=match.group(),
-                    start_pos=match.start(),
-                    end_pos=match.end(),
-                    confidence=0.5,
-                    explanation="Specific claims may need verification",
-                ))
+                flags.append(
+                    HallucinationFlag(
+                        hallucination_type=HallucinationType.UNSUPPORTED_CLAIM,
+                        severity=SeverityLevel.MEDIUM,
+                        text_span=match.group(),
+                        start_pos=match.start(),
+                        end_pos=match.end(),
+                        confidence=0.5,
+                        explanation="Specific claims may need verification",
+                    )
+                )
 
         return flags
 
@@ -267,10 +270,10 @@ class ConsistencyChecker:
         union = len(words_a | words_b)
         return intersection / union if union > 0 else 0.0
 
-    def _extract_claims(self, text: str) -> List[str]:
+    def _extract_claims(self, text: str) -> list[str]:
         """Extract claims from text (simple sentence-based)."""
         # Split into sentences
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         claims = []
         for sent in sentences:
             sent = sent.strip()
@@ -278,7 +281,7 @@ class ConsistencyChecker:
                 claims.append(sent)
         return claims
 
-    def check(self, responses: List[str]) -> ConsistencyCheck:
+    def check(self, responses: list[str]) -> ConsistencyCheck:
         """Check consistency across multiple responses."""
         if len(responses) < 2:
             return ConsistencyCheck(
@@ -299,7 +302,7 @@ class ConsistencyChecker:
         inconsistent = []
 
         # Compare claims across responses
-        claim_groups: Dict[str, List[str]] = {}
+        claim_groups: dict[str, list[str]] = {}
         for response, claim in all_claims:
             # Find similar claims
             found_group = False
@@ -325,10 +328,7 @@ class ConsistencyChecker:
 
         # Calculate overall consistency
         total_claims = len(claim_groups)
-        if total_claims == 0:
-            overall = 1.0
-        else:
-            overall = len(consistent) / total_claims
+        overall = 1.0 if total_claims == 0 else len(consistent) / total_claims
 
         return ConsistencyCheck(
             responses=responses,
@@ -343,8 +343,8 @@ class FactualityChecker:
 
     def __init__(
         self,
-        fact_checker: Optional[Callable[[str], Tuple[bool, float]]] = None,
-        knowledge_base: Optional[Dict[str, str]] = None,
+        fact_checker: Optional[Callable[[str], tuple[bool, float]]] = None,
+        knowledge_base: Optional[dict[str, str]] = None,
     ):
         """Initialize checker."""
         self.fact_checker = fact_checker
@@ -357,18 +357,20 @@ class FactualityChecker:
             r"The\s+([a-z]+)\s+of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+is\s+([^.]+)",
         ]
 
-    def _extract_factual_claims(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_factual_claims(self, text: str) -> list[dict[str, Any]]:
         """Extract claims that can be fact-checked."""
         claims = []
 
         for pattern in self.factual_patterns:
             for match in re.finditer(pattern, text):
-                claims.append({
-                    "text": match.group(),
-                    "start": match.start(),
-                    "end": match.end(),
-                    "groups": match.groups(),
-                })
+                claims.append(
+                    {
+                        "text": match.group(),
+                        "start": match.start(),
+                        "end": match.end(),
+                        "groups": match.groups(),
+                    }
+                )
 
         return claims
 
@@ -417,10 +419,12 @@ class FactualityChecker:
                     unverified += 1
                     status = "unverified"
 
-            details.append({
-                "claim": claim_text,
-                "status": status,
-            })
+            details.append(
+                {
+                    "claim": claim_text,
+                    "status": status,
+                }
+            )
 
         total = len(claims)
         score = 1.0 - (contradicted / total) if total > 0 else 1.0
@@ -452,7 +456,7 @@ class HallucinationDetector:
     def detect(
         self,
         text: str,
-        reference_texts: Optional[List[str]] = None,
+        reference_texts: Optional[list[str]] = None,
         check_consistency: bool = True,
         check_factuality: bool = True,
     ) -> HallucinationReport:
@@ -471,16 +475,18 @@ class HallucinationDetector:
 
             # Add flags for inconsistencies
             for claim1, claim2, disagreement in consistency_result.inconsistent_claims:
-                flags.append(HallucinationFlag(
-                    hallucination_type=HallucinationType.LOGICAL_INCONSISTENCY,
-                    severity=SeverityLevel.MEDIUM if disagreement < 0.5 else SeverityLevel.HIGH,
-                    text_span=claim1[:100],
-                    start_pos=text.find(claim1) if claim1 in text else 0,
-                    end_pos=text.find(claim1) + len(claim1) if claim1 in text else 0,
-                    confidence=disagreement,
-                    explanation=f"Inconsistent with: '{claim2[:50]}...'",
-                    evidence=[claim2],
-                ))
+                flags.append(
+                    HallucinationFlag(
+                        hallucination_type=HallucinationType.LOGICAL_INCONSISTENCY,
+                        severity=SeverityLevel.MEDIUM if disagreement < 0.5 else SeverityLevel.HIGH,
+                        text_span=claim1[:100],
+                        start_pos=text.find(claim1) if claim1 in text else 0,
+                        end_pos=text.find(claim1) + len(claim1) if claim1 in text else 0,
+                        confidence=disagreement,
+                        explanation=f"Inconsistent with: '{claim2[:50]}...'",
+                        evidence=[claim2],
+                    )
+                )
 
         # Factuality checking
         factuality_result = None
@@ -490,15 +496,19 @@ class HallucinationDetector:
             # Add flags for contradicted claims
             for detail in factuality_result.claim_details:
                 if detail["status"] == "contradicted":
-                    flags.append(HallucinationFlag(
-                        hallucination_type=HallucinationType.FACTUAL_ERROR,
-                        severity=SeverityLevel.HIGH,
-                        text_span=detail["claim"][:100],
-                        start_pos=text.find(detail["claim"]) if detail["claim"] in text else 0,
-                        end_pos=text.find(detail["claim"]) + len(detail["claim"]) if detail["claim"] in text else 0,
-                        confidence=0.8,
-                        explanation="Claim contradicts known facts",
-                    ))
+                    flags.append(
+                        HallucinationFlag(
+                            hallucination_type=HallucinationType.FACTUAL_ERROR,
+                            severity=SeverityLevel.HIGH,
+                            text_span=detail["claim"][:100],
+                            start_pos=text.find(detail["claim"]) if detail["claim"] in text else 0,
+                            end_pos=text.find(detail["claim"]) + len(detail["claim"])
+                            if detail["claim"] in text
+                            else 0,
+                            confidence=0.8,
+                            explanation="Claim contradicts known facts",
+                        )
+                    )
 
         # Calculate overall score
         if flags:
@@ -517,7 +527,9 @@ class HallucinationDetector:
             overall_score = 1.0
 
         # Generate recommendations
-        recommendations = self._generate_recommendations(flags, consistency_result, factuality_result)
+        recommendations = self._generate_recommendations(
+            flags, consistency_result, factuality_result
+        )
 
         return HallucinationReport(
             text=text,
@@ -530,10 +542,10 @@ class HallucinationDetector:
 
     def _generate_recommendations(
         self,
-        flags: List[HallucinationFlag],
+        flags: list[HallucinationFlag],
         consistency: Optional[ConsistencyCheck],
         factuality: Optional[FactualityScore],
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate recommendations based on detection results."""
         recommendations = []
 
@@ -544,7 +556,9 @@ class HallucinationDetector:
             high = [f for f in flags if f.severity == SeverityLevel.HIGH]
 
             if critical:
-                recommendations.append(f"Found {len(critical)} critical issues requiring immediate attention")
+                recommendations.append(
+                    f"Found {len(critical)} critical issues requiring immediate attention"
+                )
             if high:
                 recommendations.append(f"Found {len(high)} high-severity potential hallucinations")
 
@@ -553,12 +567,14 @@ class HallucinationDetector:
 
         if factuality:
             if factuality.contradicted_claims > 0:
-                recommendations.append(f"{factuality.contradicted_claims} claims contradict known facts")
+                recommendations.append(
+                    f"{factuality.contradicted_claims} claims contradict known facts"
+                )
             if factuality.unverified_claims > factuality.verified_claims:
                 recommendations.append("Many claims could not be verified")
 
         # Type-specific recommendations
-        type_counts: Dict[HallucinationType, int] = {}
+        type_counts: dict[HallucinationType, int] = {}
         for flag in flags:
             type_counts[flag.hallucination_type] = type_counts.get(flag.hallucination_type, 0) + 1
 
@@ -597,10 +613,10 @@ class GroundednessChecker:
         response: str,
         context: str,
         strict: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check if response is grounded in context."""
         # Extract sentences from response
-        sentences = [s.strip() for s in re.split(r'[.!?]+', response) if s.strip()]
+        sentences = [s.strip() for s in re.split(r"[.!?]+", response) if s.strip()]
 
         grounded = []
         ungrounded = []
@@ -614,7 +630,7 @@ class GroundednessChecker:
             best_match = ""
 
             # Compare against context sentences
-            context_sentences = [s.strip() for s in re.split(r'[.!?]+', context) if s.strip()]
+            context_sentences = [s.strip() for s in re.split(r"[.!?]+", context) if s.strip()]
             for ctx_sent in context_sentences:
                 sim = self.similarity_fn(sentence, ctx_sent)
                 if sim > max_sim:
@@ -622,17 +638,21 @@ class GroundednessChecker:
                     best_match = ctx_sent
 
             if max_sim >= self.threshold:
-                grounded.append({
-                    "sentence": sentence,
-                    "support": best_match,
-                    "similarity": max_sim,
-                })
+                grounded.append(
+                    {
+                        "sentence": sentence,
+                        "support": best_match,
+                        "similarity": max_sim,
+                    }
+                )
             else:
-                ungrounded.append({
-                    "sentence": sentence,
-                    "best_match": best_match,
-                    "similarity": max_sim,
-                })
+                ungrounded.append(
+                    {
+                        "sentence": sentence,
+                        "best_match": best_match,
+                        "similarity": max_sim,
+                    }
+                )
 
         total = len(grounded) + len(ungrounded)
         groundedness_score = len(grounded) / total if total > 0 else 1.0
@@ -661,17 +681,19 @@ class AttributionChecker:
             r"source: ([^,\n]+)",
         ]
 
-    def check(self, text: str) -> Dict[str, Any]:
+    def check(self, text: str) -> dict[str, Any]:
         """Check attribution in text."""
         attributions = []
 
         for pattern in self.attribution_patterns:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                attributions.append({
-                    "text": match.group(),
-                    "source": match.group(1).strip(),
-                    "position": match.start(),
-                })
+                attributions.append(
+                    {
+                        "text": match.group(),
+                        "source": match.group(1).strip(),
+                        "position": match.start(),
+                    }
+                )
 
         # Check for unattributed specific claims
         claim_patterns = [
@@ -685,37 +707,38 @@ class AttributionChecker:
                 # Check if this claim has an attribution nearby
                 claim_pos = match.start()
                 has_attribution = any(
-                    abs(attr["position"] - claim_pos) < 100
-                    for attr in attributions
+                    abs(attr["position"] - claim_pos) < 100 for attr in attributions
                 )
                 if not has_attribution:
-                    unattributed_claims.append({
-                        "text": match.group(),
-                        "position": claim_pos,
-                    })
+                    unattributed_claims.append(
+                        {
+                            "text": match.group(),
+                            "position": claim_pos,
+                        }
+                    )
 
         return {
             "attributions_found": len(attributions),
             "attributions": attributions,
             "unattributed_claims": len(unattributed_claims),
             "unattributed": unattributed_claims,
-            "attribution_score": 1.0 if not unattributed_claims else (
-                len(attributions) / (len(attributions) + len(unattributed_claims))
-            ),
+            "attribution_score": 1.0
+            if not unattributed_claims
+            else (len(attributions) / (len(attributions) + len(unattributed_claims))),
         }
 
 
 # Convenience functions
 def detect_hallucinations(
     text: str,
-    reference_texts: Optional[List[str]] = None,
+    reference_texts: Optional[list[str]] = None,
 ) -> HallucinationReport:
     """Detect potential hallucinations in text."""
     detector = HallucinationDetector()
     return detector.detect(text, reference_texts)
 
 
-def check_consistency(responses: List[str]) -> ConsistencyCheck:
+def check_consistency(responses: list[str]) -> ConsistencyCheck:
     """Check consistency across multiple responses."""
     checker = ConsistencyChecker()
     return checker.check(responses)
@@ -723,7 +746,7 @@ def check_consistency(responses: List[str]) -> ConsistencyCheck:
 
 def check_factuality(
     text: str,
-    knowledge_base: Optional[Dict[str, str]] = None,
+    knowledge_base: Optional[dict[str, str]] = None,
 ) -> FactualityScore:
     """Check factual accuracy of text."""
     checker = FactualityChecker(knowledge_base=knowledge_base)
@@ -734,19 +757,19 @@ def check_groundedness(
     response: str,
     context: str,
     threshold: float = 0.5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check if response is grounded in context."""
     checker = GroundednessChecker(threshold=threshold)
     return checker.check(response, context)
 
 
-def check_attribution(text: str) -> Dict[str, Any]:
+def check_attribution(text: str) -> dict[str, Any]:
     """Check if claims are properly attributed."""
     checker = AttributionChecker()
     return checker.check(text)
 
 
-def quick_hallucination_check(text: str) -> Dict[str, Any]:
+def quick_hallucination_check(text: str) -> dict[str, Any]:
     """Quick hallucination check returning summary."""
     report = detect_hallucinations(text)
     return {

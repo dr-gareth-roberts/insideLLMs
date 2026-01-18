@@ -1,32 +1,31 @@
 """Tests for benchmark leaderboard generation module."""
 
-import pytest
 import json
-from typing import Dict
+
+import pytest
 
 from insideLLMs.leaderboard import (
+    Leaderboard,
+    LeaderboardAnalyzer,
+    LeaderboardBuilder,
+    LeaderboardComparison,
+    LeaderboardEntry,
+    LeaderboardFormatter,
+    ModelRanker,
+    # Dataclasses
+    ModelScore,
     # Enums
     RankingMethod,
     ScoreAggregation,
-    TrendDirection,
-    # Dataclasses
-    ModelScore,
-    LeaderboardEntry,
-    Leaderboard,
-    LeaderboardComparison,
     # Classes
     ScoreAggregator,
-    ModelRanker,
-    LeaderboardBuilder,
-    LeaderboardFormatter,
-    LeaderboardAnalyzer,
+    TrendDirection,
+    compare_leaderboards,
     # Functions
     create_leaderboard,
     format_leaderboard,
-    compare_leaderboards,
     quick_leaderboard,
 )
-
 
 # ============================================================================
 # Enum Tests
@@ -166,8 +165,11 @@ class TestLeaderboard:
         """Test creating a leaderboard."""
         entries = [
             LeaderboardEntry(
-                rank=1, model_id="m1", score=0.9,
-                previous_rank=None, trend=TrendDirection.NEW,
+                rank=1,
+                model_id="m1",
+                score=0.9,
+                previous_rank=None,
+                trend=TrendDirection.NEW,
                 score_breakdown={},
             ),
         ]
@@ -187,19 +189,28 @@ class TestLeaderboard:
         """Test top model property."""
         entries = [
             LeaderboardEntry(
-                rank=1, model_id="winner", score=0.95,
-                previous_rank=None, trend=TrendDirection.NEW,
+                rank=1,
+                model_id="winner",
+                score=0.95,
+                previous_rank=None,
+                trend=TrendDirection.NEW,
                 score_breakdown={},
             ),
             LeaderboardEntry(
-                rank=2, model_id="second", score=0.85,
-                previous_rank=None, trend=TrendDirection.NEW,
+                rank=2,
+                model_id="second",
+                score=0.85,
+                previous_rank=None,
+                trend=TrendDirection.NEW,
                 score_breakdown={},
             ),
         ]
         lb = Leaderboard(
-            name="Test", description="", entries=entries,
-            benchmark_ids=[], metric_weights={},
+            name="Test",
+            description="",
+            entries=entries,
+            benchmark_ids=[],
+            metric_weights={},
             ranking_method=RankingMethod.SCORE,
             updated_at="2024-01-01",
         )
@@ -209,14 +220,20 @@ class TestLeaderboard:
         """Test getting entry by model ID."""
         entries = [
             LeaderboardEntry(
-                rank=1, model_id="m1", score=0.9,
-                previous_rank=None, trend=TrendDirection.NEW,
+                rank=1,
+                model_id="m1",
+                score=0.9,
+                previous_rank=None,
+                trend=TrendDirection.NEW,
                 score_breakdown={},
             ),
         ]
         lb = Leaderboard(
-            name="Test", description="", entries=entries,
-            benchmark_ids=[], metric_weights={},
+            name="Test",
+            description="",
+            entries=entries,
+            benchmark_ids=[],
+            metric_weights={},
             ranking_method=RankingMethod.SCORE,
             updated_at="2024-01-01",
         )
@@ -378,10 +395,12 @@ class TestLeaderboardBuilder:
     def test_benchmark_filter(self):
         """Test filtering by benchmark."""
         builder = LeaderboardBuilder()
-        builder.add_scores([
-            ModelScore(model_id="m1", benchmark_id="include", score=0.9),
-            ModelScore(model_id="m1", benchmark_id="exclude", score=0.5),
-        ])
+        builder.add_scores(
+            [
+                ModelScore(model_id="m1", benchmark_id="include", score=0.9),
+                ModelScore(model_id="m1", benchmark_id="exclude", score=0.5),
+            ]
+        )
         lb = builder.build("Test", benchmark_filter=["include"])
 
         assert "include" in lb.benchmark_ids
@@ -390,10 +409,12 @@ class TestLeaderboardBuilder:
     def test_model_filter(self):
         """Test filtering by model."""
         builder = LeaderboardBuilder()
-        builder.add_scores([
-            ModelScore(model_id="include", benchmark_id="b1", score=0.9),
-            ModelScore(model_id="exclude", benchmark_id="b1", score=0.8),
-        ])
+        builder.add_scores(
+            [
+                ModelScore(model_id="include", benchmark_id="b1", score=0.9),
+                ModelScore(model_id="exclude", benchmark_id="b1", score=0.8),
+            ]
+        )
         lb = builder.build("Test", model_filter=["include"])
 
         assert lb.n_models == 1
@@ -402,12 +423,14 @@ class TestLeaderboardBuilder:
     def test_history_tracking(self):
         """Test leaderboard history."""
         builder = LeaderboardBuilder()
-        builder.add_scores([
-            ModelScore(model_id="m1", benchmark_id="b1", score=0.9),
-        ])
+        builder.add_scores(
+            [
+                ModelScore(model_id="m1", benchmark_id="b1", score=0.9),
+            ]
+        )
 
-        lb1 = builder.build("History Test")
-        lb2 = builder.build("History Test")  # Same name
+        builder.build("History Test")
+        builder.build("History Test")  # Same name
 
         history = builder.get_history("History Test")
         assert len(history) == 2
@@ -433,13 +456,19 @@ class TestLeaderboardFormatter:
         """Create sample leaderboard for testing."""
         entries = [
             LeaderboardEntry(
-                rank=1, model_id="gpt-4", score=0.92,
-                previous_rank=2, trend=TrendDirection.UP,
+                rank=1,
+                model_id="gpt-4",
+                score=0.92,
+                previous_rank=2,
+                trend=TrendDirection.UP,
                 score_breakdown={"mmlu": 0.95, "hellaswag": 0.89},
             ),
             LeaderboardEntry(
-                rank=2, model_id="claude-3", score=0.90,
-                previous_rank=1, trend=TrendDirection.DOWN,
+                rank=2,
+                model_id="claude-3",
+                score=0.90,
+                previous_rank=1,
+                trend=TrendDirection.DOWN,
                 score_breakdown={"mmlu": 0.91, "hellaswag": 0.89},
             ),
         ]
@@ -507,20 +536,26 @@ class TestLeaderboardAnalyzer:
     def _create_leaderboard(
         self,
         name: str,
-        rankings: Dict[str, int],
+        rankings: dict[str, int],
     ) -> Leaderboard:
         """Create leaderboard with given rankings."""
         entries = [
             LeaderboardEntry(
-                rank=rank, model_id=model, score=1.0 - rank * 0.1,
-                previous_rank=None, trend=TrendDirection.NEW,
+                rank=rank,
+                model_id=model,
+                score=1.0 - rank * 0.1,
+                previous_rank=None,
+                trend=TrendDirection.NEW,
                 score_breakdown={},
             )
             for model, rank in sorted(rankings.items(), key=lambda x: x[1])
         ]
         return Leaderboard(
-            name=name, description="", entries=entries,
-            benchmark_ids=[], metric_weights={},
+            name=name,
+            description="",
+            entries=entries,
+            benchmark_ids=[],
+            metric_weights={},
             ranking_method=RankingMethod.SCORE,
             updated_at="2024-01-01",
         )
@@ -693,8 +728,7 @@ class TestEdgeCases:
     def test_many_models(self):
         """Test with many models."""
         scores = [
-            ModelScore(model_id=f"m{i}", benchmark_id="b1", score=i / 100)
-            for i in range(100)
+            ModelScore(model_id=f"m{i}", benchmark_id="b1", score=i / 100) for i in range(100)
         ]
         lb = create_leaderboard(scores, "Many")
 
@@ -756,18 +790,22 @@ class TestIntegration:
         builder = LeaderboardBuilder()
 
         # Initial scores
-        builder.add_scores([
-            ModelScore(model_id="rising", benchmark_id="b1", score=0.5),
-            ModelScore(model_id="falling", benchmark_id="b1", score=0.9),
-        ])
-        lb1 = builder.build("History")
+        builder.add_scores(
+            [
+                ModelScore(model_id="rising", benchmark_id="b1", score=0.5),
+                ModelScore(model_id="falling", benchmark_id="b1", score=0.9),
+            ]
+        )
+        builder.build("History")
 
         # Clear and add new scores
         builder.clear()
-        builder.add_scores([
-            ModelScore(model_id="rising", benchmark_id="b1", score=0.95),
-            ModelScore(model_id="falling", benchmark_id="b1", score=0.4),
-        ])
+        builder.add_scores(
+            [
+                ModelScore(model_id="rising", benchmark_id="b1", score=0.95),
+                ModelScore(model_id="falling", benchmark_id="b1", score=0.4),
+            ]
+        )
         lb2 = builder.build("History")
 
         # Check trends

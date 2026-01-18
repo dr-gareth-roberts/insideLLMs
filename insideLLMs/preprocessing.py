@@ -13,24 +13,14 @@ Key features:
 
 import re
 import unicodedata
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from enum import Enum
 from typing import (
-    Any,
     Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     Optional,
-    Pattern,
-    Sequence,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
 )
-
 
 T = TypeVar("T")
 
@@ -78,7 +68,7 @@ class TextStats:
             return cls()
 
         words = text.split()
-        unique = set(w.lower() for w in words)
+        unique = {w.lower() for w in words}
 
         # Approximate sentence count
         sentences = re.split(r"[.!?]+", text)
@@ -203,21 +193,11 @@ class TextCleaner:
     """
 
     # Common patterns
-    URL_PATTERN = re.compile(
-        r"https?://[^\s<>\"']+|www\.[^\s<>\"']+"
-    )
-    EMAIL_PATTERN = re.compile(
-        r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
-    )
-    PHONE_PATTERN = re.compile(
-        r"\+?[\d\s\-().]{7,}"
-    )
-    HTML_TAG_PATTERN = re.compile(
-        r"<[^>]+>"
-    )
-    MARKDOWN_LINK_PATTERN = re.compile(
-        r"\[([^\]]+)\]\([^)]+\)"
-    )
+    URL_PATTERN = re.compile(r"https?://[^\s<>\"']+|www\.[^\s<>\"']+")
+    EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+    PHONE_PATTERN = re.compile(r"\+?[\d\s\-().]{7,}")
+    HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+    MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\([^)]+\)")
     EMOJI_PATTERN = re.compile(
         r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF"
         r"\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF"
@@ -301,9 +281,7 @@ class TextCleaner:
         return cls.EMOJI_PATTERN.sub(replacement, text)
 
     @classmethod
-    def remove_punctuation(
-        cls, text: str, keep: str = "", replacement: str = ""
-    ) -> str:
+    def remove_punctuation(cls, text: str, keep: str = "", replacement: str = "") -> str:
         """Remove punctuation from text.
 
         Args:
@@ -315,6 +293,7 @@ class TextCleaner:
             Text with punctuation removed.
         """
         import string
+
         punct = set(string.punctuation) - set(keep)
         for p in punct:
             text = text.replace(p, replacement)
@@ -392,7 +371,7 @@ class TextSplitter:
         self.separator = separator
         self.keep_separator = keep_separator
 
-    def split(self, text: str) -> List[str]:
+    def split(self, text: str) -> list[str]:
         """Split text into chunks.
 
         Args:
@@ -415,10 +394,7 @@ class TextSplitter:
                 # Look for separator
                 sep_pos = text.rfind(self.separator, start, end)
                 if sep_pos > start:
-                    if self.keep_separator:
-                        end = sep_pos + len(self.separator)
-                    else:
-                        end = sep_pos
+                    end = sep_pos + len(self.separator) if self.keep_separator else sep_pos
 
                 else:
                     # Look for sentence end
@@ -442,7 +418,7 @@ class TextSplitter:
 
         return chunks
 
-    def split_by_sentences(self, text: str) -> List[str]:
+    def split_by_sentences(self, text: str) -> list[str]:
         """Split text into sentences.
 
         Args:
@@ -455,7 +431,7 @@ class TextSplitter:
         sentences = re.split(r"(?<=[.!?])\s+", text)
         return [s.strip() for s in sentences if s.strip()]
 
-    def split_by_paragraphs(self, text: str) -> List[str]:
+    def split_by_paragraphs(self, text: str) -> list[str]:
         """Split text into paragraphs.
 
         Args:
@@ -501,7 +477,7 @@ class ProcessingPipeline:
 
     def __init__(self):
         """Initialize empty pipeline."""
-        self._steps: List[ProcessingStep] = []
+        self._steps: list[ProcessingStep] = []
 
     def add_step(
         self,
@@ -566,7 +542,7 @@ class ProcessingPipeline:
             result = step.apply(result)
         return result
 
-    def process_batch(self, texts: Iterable[str]) -> List[str]:
+    def process_batch(self, texts: Iterable[str]) -> list[str]:
         """Process multiple texts.
 
         Args:
@@ -577,7 +553,7 @@ class ProcessingPipeline:
         """
         return [self.process(text) for text in texts]
 
-    def list_steps(self) -> List[Tuple[str, bool]]:
+    def list_steps(self) -> list[tuple[str, bool]]:
         """List all steps with their enabled status.
 
         Returns:
@@ -602,7 +578,7 @@ class DataValidator:
 
     def __init__(self):
         """Initialize with no rules."""
-        self._rules: Dict[str, Tuple[Callable[[str], bool], str]] = {}
+        self._rules: dict[str, tuple[Callable[[str], bool], str]] = {}
 
     def add_rule(
         self,
@@ -623,7 +599,7 @@ class DataValidator:
         self._rules[name] = (rule, error_msg or f"Failed rule: {name}")
         return self
 
-    def validate(self, text: str) -> Tuple[bool, List[str]]:
+    def validate(self, text: str) -> tuple[bool, list[str]]:
         """Validate text against all rules.
 
         Args:
@@ -641,9 +617,7 @@ class DataValidator:
                 errors.append(f"Rule '{name}' error: {e}")
         return len(errors) == 0, errors
 
-    def validate_batch(
-        self, texts: Iterable[str]
-    ) -> List[Tuple[int, bool, List[str]]]:
+    def validate_batch(self, texts: Iterable[str]) -> list[tuple[int, bool, list[str]]]:
         """Validate multiple texts.
 
         Args:
@@ -745,10 +719,10 @@ def count_tokens_approx(text: str, chars_per_token: float = 4.0) -> int:
 
 
 def batch_texts(
-    texts: List[str],
+    texts: list[str],
     batch_size: int,
     max_tokens_per_batch: Optional[int] = None,
-) -> Iterator[List[str]]:
+) -> Iterator[list[str]]:
     """Batch texts for processing.
 
     Args:
@@ -759,7 +733,7 @@ def batch_texts(
     Yields:
         Batches of texts.
     """
-    batch: List[str] = []
+    batch: list[str] = []
     batch_tokens = 0
 
     for text in texts:
@@ -786,9 +760,9 @@ def batch_texts(
 
 
 def deduplicate_texts(
-    texts: List[str],
+    texts: list[str],
     case_sensitive: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Remove duplicate texts.
 
     Args:
@@ -798,7 +772,7 @@ def deduplicate_texts(
     Returns:
         List with duplicates removed (preserves order).
     """
-    seen: Set[str] = set()
+    seen: set[str] = set()
     result = []
 
     for text in texts:
@@ -811,11 +785,11 @@ def deduplicate_texts(
 
 
 def filter_by_length(
-    texts: List[str],
+    texts: list[str],
     min_length: int = 0,
     max_length: Optional[int] = None,
     unit: str = "chars",
-) -> List[str]:
+) -> list[str]:
     """Filter texts by length.
 
     Args:
@@ -827,6 +801,7 @@ def filter_by_length(
     Returns:
         Filtered list.
     """
+
     def get_length(text: str) -> int:
         if unit == "chars":
             return len(text)
@@ -840,9 +815,8 @@ def filter_by_length(
     result = []
     for text in texts:
         length = get_length(text)
-        if length >= min_length:
-            if max_length is None or length <= max_length:
-                result.append(text)
+        if length >= min_length and (max_length is None or length <= max_length):
+            result.append(text)
 
     return result
 
@@ -870,7 +844,4 @@ def create_minimal_pipeline() -> ProcessingPipeline:
     Returns:
         Configured ProcessingPipeline with minimal steps.
     """
-    return (
-        ProcessingPipeline()
-        .add_step("whitespace", normalize_whitespace)
-    )
+    return ProcessingPipeline().add_step("whitespace", normalize_whitespace)

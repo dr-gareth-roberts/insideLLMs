@@ -1,18 +1,14 @@
 """Tests for data export and serialization utilities."""
 
 import json
-import os
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from pathlib import Path
 
 import pytest
 
 from insideLLMs.export import (
-    CSVExporter,
     CompressionType,
+    CSVExporter,
     DataArchiver,
     DataSchema,
     ExportConfig,
@@ -131,6 +127,7 @@ class TestSerialization:
 
     def test_serialize_dataclass(self):
         """Test serializing dataclass."""
+
         @dataclass
         class Sample:
             name: str
@@ -608,6 +605,7 @@ class TestStreamExport:
 
     def test_stream_export_jsonl(self, tmp_path):
         """Test streaming to JSONL."""
+
         def generate_data():
             for i in range(100):
                 yield {"index": i}
@@ -678,13 +676,7 @@ class TestEdgeCases:
     def test_nested_structures(self):
         """Test exporting nested structures."""
         exporter = JSONExporter()
-        data = {
-            "level1": {
-                "level2": {
-                    "level3": "deep value"
-                }
-            }
-        }
+        data = {"level1": {"level2": {"level3": "deep value"}}}
 
         result = exporter.export_string(data)
         parsed = json.loads(result)
