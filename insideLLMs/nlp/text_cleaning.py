@@ -5,6 +5,7 @@ from typing import Optional
 
 # ===== Text Cleaning and Normalization =====
 
+
 def remove_html_tags(text: str) -> str:
     """Remove HTML tags from text.
 
@@ -14,8 +15,9 @@ def remove_html_tags(text: str) -> str:
     Returns:
         Text with HTML tags removed
     """
-    html_pattern = re.compile('<.*?>')
-    return html_pattern.sub('', text)
+    html_pattern = re.compile("<.*?>")
+    return html_pattern.sub("", text)
+
 
 def remove_urls(text: str) -> str:
     """Remove URLs from text.
@@ -26,8 +28,9 @@ def remove_urls(text: str) -> str:
     Returns:
         Text with URLs removed
     """
-    url_pattern = re.compile(r'https?://\S+|www\.\S+')
-    return url_pattern.sub('', text)
+    url_pattern = re.compile(r"https?://\S+|www\.\S+")
+    return url_pattern.sub("", text)
+
 
 def remove_punctuation(text: str) -> str:
     """Remove punctuation from text.
@@ -38,8 +41,9 @@ def remove_punctuation(text: str) -> str:
     Returns:
         Text with punctuation removed
     """
-    translator = str.maketrans('', '', string.punctuation)
+    translator = str.maketrans("", "", string.punctuation)
     return text.translate(translator)
+
 
 def normalize_whitespace(text: str) -> str:
     """Normalize whitespace in text.
@@ -50,9 +54,10 @@ def normalize_whitespace(text: str) -> str:
     Returns:
         Text with normalized whitespace
     """
-    return ' '.join(text.split())
+    return " ".join(text.split())
 
-def normalize_unicode(text: str, form: str = 'NFKC') -> str:
+
+def normalize_unicode(text: str, form: str = "NFKC") -> str:
     """Normalize Unicode characters in text.
 
     Args:
@@ -63,6 +68,7 @@ def normalize_unicode(text: str, form: str = 'NFKC') -> str:
         Text with normalized Unicode characters
     """
     return unicodedata.normalize(form, text)
+
 
 def remove_emojis(text: str) -> str:
     """Remove emojis from text.
@@ -76,27 +82,28 @@ def remove_emojis(text: str) -> str:
     # This pattern matches most emoji characters
     emoji_pattern = re.compile(
         "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F700-\U0001F77F"  # alchemical symbols
-        "\U0001F780-\U0001F7FF"  # Geometric Shapes
-        "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
-        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
-        "\U0001FA00-\U0001FA6F"  # Chess Symbols
-        "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
-        "\U00002702-\U000027B0"  # Dingbats
-        "\U000024C2-\U0000257F"  # Enclosed characters
-        "\U00002600-\U000026FF"  # Miscellaneous Symbols
-        "\U00002700-\U000027BF"  # Dingbats
-        "\U0000FE00-\U0000FE0F"  # Variation Selectors
-        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
-        "\U00002B50"              # Star
-        "\U00002B55"              # Circle
+        "\U0001f600-\U0001f64f"  # emoticons
+        "\U0001f300-\U0001f5ff"  # symbols & pictographs
+        "\U0001f680-\U0001f6ff"  # transport & map symbols
+        "\U0001f700-\U0001f77f"  # alchemical symbols
+        "\U0001f780-\U0001f7ff"  # Geometric Shapes
+        "\U0001f800-\U0001f8ff"  # Supplemental Arrows-C
+        "\U0001f900-\U0001f9ff"  # Supplemental Symbols and Pictographs
+        "\U0001fa00-\U0001fa6f"  # Chess Symbols
+        "\U0001fa70-\U0001faff"  # Symbols and Pictographs Extended-A
+        "\U00002702-\U000027b0"  # Dingbats
+        "\U000024c2-\U0000257f"  # Enclosed characters
+        "\U00002600-\U000026ff"  # Miscellaneous Symbols
+        "\U00002700-\U000027bf"  # Dingbats
+        "\U0000fe00-\U0000fe0f"  # Variation Selectors
+        "\U0001f900-\U0001f9ff"  # Supplemental Symbols and Pictographs
+        "\U00002b50"  # Star
+        "\U00002b55"  # Circle
         "]",
-        flags=re.UNICODE
+        flags=re.UNICODE,
     )
-    return emoji_pattern.sub(r'', text)
+    return emoji_pattern.sub(r"", text)
+
 
 def remove_numbers(text: str) -> str:
     """Remove numbers from text.
@@ -107,7 +114,8 @@ def remove_numbers(text: str) -> str:
     Returns:
         Text with numbers removed
     """
-    return re.sub(r'\d+', '', text)
+    return re.sub(r"\d+", "", text)
+
 
 def normalize_contractions(text: str) -> str:
     """Normalize common English contractions.
@@ -236,11 +244,11 @@ def normalize_contractions(text: str) -> str:
         "you'll": "you will",
         "you'll've": "you will have",
         "you're": "you are",
-        "you've": "you have"
+        "you've": "you have",
     }
 
     # Create a regular expression pattern for contractions
-    pattern = re.compile(r'\b(' + '|'.join(contractions.keys()) + r')\b', re.IGNORECASE)
+    pattern = re.compile(r"\b(" + "|".join(contractions.keys()) + r")\b", re.IGNORECASE)
 
     # Function to replace contractions
     def replace(match):
@@ -248,6 +256,7 @@ def normalize_contractions(text: str) -> str:
         return contractions.get(word.lower(), word)
 
     return pattern.sub(replace, text)
+
 
 def replace_repeated_chars(text: str, threshold: int = 2) -> str:
     """Replace repeated characters with a single occurrence if they repeat more than threshold times.
@@ -259,21 +268,24 @@ def replace_repeated_chars(text: str, threshold: int = 2) -> str:
     Returns:
         Text with reduced character repetitions
     """
-    pattern = re.compile(r'(.)\1{' + str(threshold) + ',}')
+    pattern = re.compile(r"(.)\1{" + str(threshold) + ",}")
     return pattern.sub(lambda m: m.group(1) * threshold, text)
 
-def clean_text(text: str,
-               remove_html: bool = True,
-               remove_url: bool = True,
-               remove_punct: bool = False,
-               remove_emoji: bool = False,
-               remove_num: bool = False,
-               normalize_white: bool = True,
-               normalize_unicode_form: Optional[str] = 'NFKC',
-               normalize_contraction: bool = False,
-               replace_repeated: bool = False,
-               repeated_threshold: int = 2,
-               lowercase: bool = True) -> str:
+
+def clean_text(
+    text: str,
+    remove_html: bool = True,
+    remove_url: bool = True,
+    remove_punct: bool = False,
+    remove_emoji: bool = False,
+    remove_num: bool = False,
+    normalize_white: bool = True,
+    normalize_unicode_form: Optional[str] = "NFKC",
+    normalize_contraction: bool = False,
+    replace_repeated: bool = False,
+    repeated_threshold: int = 2,
+    lowercase: bool = True,
+) -> str:
     """Clean text by applying multiple cleaning operations.
 
     Args:

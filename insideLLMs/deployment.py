@@ -21,31 +21,18 @@ Note:
     pip install fastapi uvicorn
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Protocol,
-    Type,
-    TypeVar,
-    Union,
-)
 import asyncio
-import functools
-import hashlib
-import inspect
-import json
 import logging
 import threading
 import time
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import (
+    Any,
+    Callable,
+    Optional,
+)
 
 __all__ = [
     # Application
@@ -81,24 +68,31 @@ __all__ = [
 
 # Check for FastAPI availability
 try:
-    from fastapi import FastAPI, HTTPException, Depends, Request, Response
+    from fastapi import Depends, FastAPI, HTTPException, Request, Response
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
     from pydantic import BaseModel, Field
+
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
+
     # Dummy classes for type hints
     class FastAPI:  # type: ignore
         pass
+
     class BaseModel:  # type: ignore
         pass
+
     class HTTPException(Exception):  # type: ignore
         pass
+
     def Field(*args, **kwargs):  # type: ignore
         return None
+
     def Depends(*args, **kwargs):  # type: ignore
         return None
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,14 +103,16 @@ logger = logging.getLogger(__name__)
 
 
 if FASTAPI_AVAILABLE:
+
     class GenerateRequest(BaseModel):
         """Request schema for generation endpoint."""
+
         prompt: str = Field(..., description="Input prompt for generation")
         temperature: float = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
         max_tokens: Optional[int] = Field(None, ge=1, description="Maximum tokens to generate")
-        stop_sequences: Optional[List[str]] = Field(None, description="Stop sequences")
+        stop_sequences: Optional[list[str]] = Field(None, description="Stop sequences")
         stream: bool = Field(False, description="Enable streaming response")
-        metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+        metadata: Optional[dict[str, Any]] = Field(None, description="Additional metadata")
 
         class Config:
             json_schema_extra = {
@@ -129,71 +125,85 @@ if FASTAPI_AVAILABLE:
 
     class GenerateResponse(BaseModel):
         """Response schema for generation endpoint."""
+
         response: str = Field(..., description="Generated text")
         model_id: Optional[str] = Field(None, description="Model identifier")
         prompt_tokens: Optional[int] = Field(None, description="Input tokens used")
         completion_tokens: Optional[int] = Field(None, description="Output tokens generated")
         latency_ms: float = Field(..., description="Processing latency in milliseconds")
         request_id: str = Field(..., description="Unique request identifier")
-        metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+        metadata: Optional[dict[str, Any]] = Field(None, description="Additional metadata")
 
     class ProbeRequest(BaseModel):
         """Request schema for probe endpoint."""
-        prompts: List[str] = Field(..., description="List of prompts to probe")
+
+        prompts: list[str] = Field(..., description="List of prompts to probe")
         probe_type: Optional[str] = Field(None, description="Type of probe to run")
-        metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+        metadata: Optional[dict[str, Any]] = Field(None, description="Additional metadata")
 
     class ProbeResponse(BaseModel):
         """Response schema for probe endpoint."""
-        results: List[Dict[str, Any]] = Field(..., description="Probe results")
-        summary: Optional[Dict[str, Any]] = Field(None, description="Results summary")
+
+        results: list[dict[str, Any]] = Field(..., description="Probe results")
+        summary: Optional[dict[str, Any]] = Field(None, description="Results summary")
         latency_ms: float = Field(..., description="Processing latency")
         request_id: str = Field(..., description="Unique request identifier")
 
     class BatchRequest(BaseModel):
         """Request schema for batch generation."""
-        prompts: List[str] = Field(..., description="List of prompts")
+
+        prompts: list[str] = Field(..., description="List of prompts")
         temperature: float = Field(0.7, ge=0.0, le=2.0)
         max_tokens: Optional[int] = Field(None)
 
     class BatchResponse(BaseModel):
         """Response schema for batch generation."""
-        responses: List[str] = Field(..., description="Generated responses")
+
+        responses: list[str] = Field(..., description="Generated responses")
         total_tokens: int = Field(..., description="Total tokens used")
         latency_ms: float = Field(..., description="Total processing latency")
         request_id: str = Field(..., description="Unique request identifier")
 
     class HealthResponse(BaseModel):
         """Response schema for health check."""
+
         status: str = Field(..., description="Health status")
         version: str = Field(..., description="API version")
         model_id: Optional[str] = Field(None, description="Model identifier")
         uptime_seconds: float = Field(..., description="Server uptime")
-        checks: Optional[Dict[str, bool]] = Field(None, description="Individual health checks")
+        checks: Optional[dict[str, bool]] = Field(None, description="Individual health checks")
 
     class ErrorResponse(BaseModel):
         """Response schema for errors."""
+
         error: str = Field(..., description="Error message")
         error_code: str = Field(..., description="Error code")
         request_id: str = Field(..., description="Request identifier")
-        details: Optional[Dict[str, Any]] = Field(None, description="Additional details")
+        details: Optional[dict[str, Any]] = Field(None, description="Additional details")
 
 else:
     # Dummy classes when FastAPI not available
     class GenerateRequest:  # type: ignore
         pass
+
     class GenerateResponse:  # type: ignore
         pass
+
     class ProbeRequest:  # type: ignore
         pass
+
     class ProbeResponse:  # type: ignore
         pass
+
     class BatchRequest:  # type: ignore
         pass
+
     class BatchResponse:  # type: ignore
         pass
+
     class HealthResponse:  # type: ignore
         pass
+
     class ErrorResponse:  # type: ignore
         pass
 
@@ -206,16 +216,17 @@ else:
 @dataclass
 class EndpointConfig:
     """Configuration for an endpoint."""
+
     path: str = "/generate"
     method: str = "POST"
     enabled: bool = True
     rate_limit: Optional[int] = None  # Requests per minute
     timeout_seconds: float = 30.0
     require_auth: bool = False
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     description: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "method": self.method,
@@ -231,12 +242,13 @@ class EndpointConfig:
 @dataclass
 class DeploymentConfig:
     """Configuration for the deployment."""
+
     title: str = "insideLLMs API"
     description: str = "API for LLM probing and evaluation"
     version: str = "1.0.0"
     host: str = "0.0.0.0"
     port: int = 8000
-    cors_origins: List[str] = field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = field(default_factory=lambda: ["*"])
     enable_docs: bool = True
     enable_metrics: bool = True
     enable_health: bool = True
@@ -244,7 +256,7 @@ class DeploymentConfig:
     log_requests: bool = True
     max_batch_size: int = 100
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
             "description": self.description,
@@ -263,22 +275,29 @@ class DeploymentConfig:
 @dataclass
 class AppConfig:
     """Combined application configuration."""
+
     deployment: DeploymentConfig = field(default_factory=DeploymentConfig)
-    generate_endpoint: EndpointConfig = field(default_factory=lambda: EndpointConfig(
-        path="/generate",
-        description="Generate text from prompt",
-        tags=["generation"],
-    ))
-    batch_endpoint: EndpointConfig = field(default_factory=lambda: EndpointConfig(
-        path="/batch",
-        description="Batch generation",
-        tags=["generation"],
-    ))
-    probe_endpoint: EndpointConfig = field(default_factory=lambda: EndpointConfig(
-        path="/probe",
-        description="Run probes on model",
-        tags=["probing"],
-    ))
+    generate_endpoint: EndpointConfig = field(
+        default_factory=lambda: EndpointConfig(
+            path="/generate",
+            description="Generate text from prompt",
+            tags=["generation"],
+        )
+    )
+    batch_endpoint: EndpointConfig = field(
+        default_factory=lambda: EndpointConfig(
+            path="/batch",
+            description="Batch generation",
+            tags=["generation"],
+        )
+    )
+    probe_endpoint: EndpointConfig = field(
+        default_factory=lambda: EndpointConfig(
+            path="/probe",
+            description="Run probes on model",
+            tags=["probing"],
+        )
+    )
 
 
 # =============================================================================
@@ -302,10 +321,10 @@ class RateLimiter:
         """
         self.rate = requests_per_minute / 60.0  # Tokens per second
         self.burst_size = burst_size or requests_per_minute
-        self._buckets: Dict[str, Dict[str, float]] = {}
+        self._buckets: dict[str, dict[str, float]] = {}
         self._lock = threading.Lock()
 
-    def _get_bucket(self, key: str) -> Dict[str, float]:
+    def _get_bucket(self, key: str) -> dict[str, float]:
         """Get or create bucket for key."""
         with self._lock:
             if key not in self._buckets:
@@ -332,10 +351,7 @@ class RateLimiter:
             bucket["last_update"] = now
 
             # Add tokens based on elapsed time
-            bucket["tokens"] = min(
-                self.burst_size,
-                bucket["tokens"] + elapsed * self.rate
-            )
+            bucket["tokens"] = min(self.burst_size, bucket["tokens"] + elapsed * self.rate)
 
             if bucket["tokens"] >= 1:
                 bucket["tokens"] -= 1
@@ -364,7 +380,7 @@ class APIKeyAuth:
 
     def __init__(
         self,
-        valid_keys: Optional[List[str]] = None,
+        valid_keys: Optional[list[str]] = None,
         header_name: str = "X-API-Key",
     ):
         """Initialize API key auth.
@@ -375,7 +391,7 @@ class APIKeyAuth:
         """
         self.valid_keys = set(valid_keys) if valid_keys else set()
         self.header_name = header_name
-        self._key_usage: Dict[str, int] = {}
+        self._key_usage: dict[str, int] = {}
 
     def add_key(self, key: str) -> None:
         """Add a valid API key."""
@@ -412,7 +428,7 @@ class RequestLogger:
 
     def __init__(
         self,
-        log_func: Optional[Callable[[Dict[str, Any]], None]] = None,
+        log_func: Optional[Callable[[dict[str, Any]], None]] = None,
         include_body: bool = False,
         include_response: bool = False,
     ):
@@ -426,12 +442,14 @@ class RequestLogger:
         self.log_func = log_func or self._default_log
         self.include_body = include_body
         self.include_response = include_response
-        self._logs: List[Dict[str, Any]] = []
+        self._logs: list[dict[str, Any]] = []
 
-    def _default_log(self, entry: Dict[str, Any]) -> None:
+    def _default_log(self, entry: dict[str, Any]) -> None:
         """Default logging to list."""
         self._logs.append(entry)
-        logger.info(f"Request: {entry.get('method')} {entry.get('path')} - {entry.get('status_code')}")
+        logger.info(
+            f"Request: {entry.get('method')} {entry.get('path')} - {entry.get('status_code')}"
+        )
 
     def log_request(
         self,
@@ -440,8 +458,8 @@ class RequestLogger:
         status_code: int,
         latency_ms: float,
         request_id: str,
-        body: Optional[Dict[str, Any]] = None,
-        response: Optional[Dict[str, Any]] = None,
+        body: Optional[dict[str, Any]] = None,
+        response: Optional[dict[str, Any]] = None,
         client_ip: Optional[str] = None,
         api_key: Optional[str] = None,
     ) -> None:
@@ -479,7 +497,7 @@ class RequestLogger:
 
         self.log_func(entry)
 
-    def get_logs(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_logs(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent logs."""
         return self._logs[-limit:]
 
@@ -494,9 +512,9 @@ class MetricsCollector:
 
     def __init__(self):
         """Initialize metrics collector."""
-        self._counters: Dict[str, int] = {}
-        self._gauges: Dict[str, float] = {}
-        self._histograms: Dict[str, List[float]] = {}
+        self._counters: dict[str, int] = {}
+        self._gauges: dict[str, float] = {}
+        self._histograms: dict[str, list[float]] = {}
         self._lock = threading.Lock()
         self._start_time = time.time()
 
@@ -520,7 +538,7 @@ class MetricsCollector:
             if len(self._histograms[name]) > 1000:
                 self._histograms[name] = self._histograms[name][-1000:]
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get all metrics."""
         with self._lock:
             histogram_stats = {}
@@ -550,7 +568,7 @@ class HealthChecker:
 
     def __init__(self):
         """Initialize health checker."""
-        self._checks: Dict[str, Callable[[], bool]] = {}
+        self._checks: dict[str, Callable[[], bool]] = {}
         self._start_time = time.time()
 
     def add_check(self, name: str, check_func: Callable[[], bool]) -> None:
@@ -562,7 +580,7 @@ class HealthChecker:
         """
         self._checks[name] = check_func
 
-    def run_checks(self) -> Dict[str, Any]:
+    def run_checks(self) -> dict[str, Any]:
         """Run all health checks.
 
         Returns:
@@ -619,7 +637,7 @@ class ModelEndpoint:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate response from model.
 
         Args:
@@ -636,19 +654,13 @@ class ModelEndpoint:
 
         try:
             # Check if model has async generate
-            if hasattr(self.model, 'agenerate'):
+            if hasattr(self.model, "agenerate"):
                 response = await self.model.agenerate(
-                    prompt,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
+                    prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
                 )
-            elif asyncio.iscoroutinefunction(getattr(self.model, 'generate', None)):
+            elif asyncio.iscoroutinefunction(getattr(self.model, "generate", None)):
                 response = await self.model.generate(
-                    prompt,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
+                    prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
                 )
             else:
                 # Run sync model in thread pool
@@ -659,8 +671,8 @@ class ModelEndpoint:
                         prompt,
                         temperature=temperature,
                         max_tokens=max_tokens if max_tokens else None,
-                        **kwargs
-                    )
+                        **kwargs,
+                    ),
                 )
 
             latency_ms = (time.time() - start_time) * 1000
@@ -669,7 +681,7 @@ class ModelEndpoint:
 
             return {
                 "response": response,
-                "model_id": getattr(self.model, 'model_id', None),
+                "model_id": getattr(self.model, "model_id", None),
                 "latency_ms": latency_ms,
                 "request_id": request_id,
             }
@@ -678,14 +690,13 @@ class ModelEndpoint:
             self._error_count += 1
             raise RuntimeError(f"Generation failed: {str(e)}") from e
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get endpoint statistics."""
         return {
             "request_count": self._request_count,
             "error_count": self._error_count,
             "average_latency_ms": (
-                self._total_latency / self._request_count
-                if self._request_count > 0 else 0
+                self._total_latency / self._request_count if self._request_count > 0 else 0
             ),
         }
 
@@ -696,7 +707,7 @@ class ProbeEndpoint:
     def __init__(
         self,
         model: Any,
-        probes: Optional[Dict[str, Any]] = None,
+        probes: Optional[dict[str, Any]] = None,
         config: Optional[EndpointConfig] = None,
     ):
         """Initialize probe endpoint.
@@ -721,10 +732,10 @@ class ProbeEndpoint:
 
     async def run_probe(
         self,
-        prompts: List[str],
+        prompts: list[str],
         probe_type: Optional[str] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run probes on prompts.
 
         Args:
@@ -750,29 +761,37 @@ class ProbeEndpoint:
                 probe_results = []
                 for prompt in prompts:
                     # Run probe evaluation
-                    if hasattr(probe, 'evaluate'):
+                    if hasattr(probe, "evaluate"):
                         response = self.model.generate(prompt)
                         result = probe.evaluate(prompt, response)
-                        probe_results.append({
-                            "prompt": prompt,
-                            "response": response,
-                            "result": result,
-                        })
+                        probe_results.append(
+                            {
+                                "prompt": prompt,
+                                "response": response,
+                                "result": result,
+                            }
+                        )
                     else:
-                        probe_results.append({
-                            "prompt": prompt,
-                            "error": "Probe does not support evaluation",
-                        })
+                        probe_results.append(
+                            {
+                                "prompt": prompt,
+                                "error": "Probe does not support evaluation",
+                            }
+                        )
 
-                results.append({
-                    "probe": probe_name,
-                    "results": probe_results,
-                })
+                results.append(
+                    {
+                        "probe": probe_name,
+                        "results": probe_results,
+                    }
+                )
             except Exception as e:
-                results.append({
-                    "probe": probe_name,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "probe": probe_name,
+                        "error": str(e),
+                    }
+                )
 
         latency_ms = (time.time() - start_time) * 1000
 
@@ -805,11 +824,11 @@ class BatchEndpoint:
 
     async def generate_batch(
         self,
-        prompts: List[str],
+        prompts: list[str],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate responses for batch of prompts.
 
         Args:
@@ -832,13 +851,12 @@ class BatchEndpoint:
 
         for prompt in prompts:
             try:
-                if hasattr(self.model, 'agenerate'):
+                if hasattr(self.model, "agenerate"):
                     response = await self.model.agenerate(prompt, temperature=temperature)
                 else:
                     loop = asyncio.get_event_loop()
                     response = await loop.run_in_executor(
-                        None,
-                        lambda p=prompt: self.model.generate(p, temperature=temperature)
+                        None, lambda p=prompt: self.model.generate(p, temperature=temperature)
                     )
                 responses.append(response)
                 # Estimate tokens (rough approximation)
@@ -877,8 +895,7 @@ class DeploymentApp:
         """
         if not FASTAPI_AVAILABLE:
             raise ImportError(
-                "FastAPI is required for deployment. "
-                "Install with: pip install fastapi uvicorn"
+                "FastAPI is required for deployment. Install with: pip install fastapi uvicorn"
             )
 
         self.model = model
@@ -901,9 +918,8 @@ class DeploymentApp:
         Returns:
             Configured FastAPI application
         """
-        from fastapi import FastAPI, HTTPException, Request
+        from fastapi import FastAPI, Request
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import JSONResponse
 
         app = FastAPI(
             title=self.config.deployment.title,
@@ -943,6 +959,7 @@ class DeploymentApp:
 
         # Generate endpoint
         if self.config.generate_endpoint.enabled:
+
             @app.post(
                 self.config.generate_endpoint.path,
                 response_model=GenerateResponse,
@@ -951,7 +968,7 @@ class DeploymentApp:
             )
             async def generate(request: GenerateRequest, req: Request):
                 # Rate limiting
-                if not self._rate_limiter.is_allowed(getattr(req.state, 'request_id', 'default')):
+                if not self._rate_limiter.is_allowed(getattr(req.state, "request_id", "default")):
                     raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
                 self._metrics.increment("requests_total")
@@ -981,6 +998,7 @@ class DeploymentApp:
 
         # Batch endpoint
         if self.config.batch_endpoint.enabled:
+
             @app.post(
                 self.config.batch_endpoint.path,
                 response_model=BatchResponse,
@@ -1011,6 +1029,7 @@ class DeploymentApp:
 
         # Probe endpoint
         if self.config.probe_endpoint.enabled:
+
             @app.post(
                 self.config.probe_endpoint.path,
                 response_model=ProbeResponse,
@@ -1037,19 +1056,21 @@ class DeploymentApp:
 
         # Health endpoint
         if self.config.deployment.enable_health:
+
             @app.get("/health", response_model=HealthResponse, tags=["monitoring"])
             async def health():
                 health_status = self._health_checker.run_checks()
                 return HealthResponse(
                     status=health_status["status"],
                     version=self.config.deployment.version,
-                    model_id=getattr(self.model, 'model_id', None),
+                    model_id=getattr(self.model, "model_id", None),
                     uptime_seconds=health_status["uptime_seconds"],
                     checks=health_status["checks"],
                 )
 
         # Metrics endpoint
         if self.config.deployment.enable_metrics:
+
             @app.get("/metrics", tags=["monitoring"])
             async def metrics():
                 return self._metrics.get_metrics()
@@ -1060,7 +1081,7 @@ class DeploymentApp:
             return {
                 "name": self.config.deployment.title,
                 "version": self.config.deployment.version,
-                "model_id": getattr(self.model, 'model_id', None),
+                "model_id": getattr(self.model, "model_id", None),
             }
 
     def add_probe(self, name: str, probe: Any) -> None:
@@ -1094,7 +1115,7 @@ def create_app(
     title: str = "insideLLMs API",
     description: str = "API for LLM probing and evaluation",
     version: str = "1.0.0",
-    cors_origins: Optional[List[str]] = None,
+    cors_origins: Optional[list[str]] = None,
     enable_docs: bool = True,
     enable_metrics: bool = True,
     api_key: Optional[str] = None,
@@ -1200,7 +1221,7 @@ def create_model_endpoint(
 
 def create_probe_endpoint(
     model: Any,
-    probes: Optional[Dict[str, Any]] = None,
+    probes: Optional[dict[str, Any]] = None,
     path: str = "/probe",
 ) -> ProbeEndpoint:
     """Create a probe endpoint.

@@ -11,21 +11,14 @@ Provides tools for systematic prompt engineering:
 import itertools
 import random
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
-    Iterator,
-    List,
     Optional,
-    Protocol,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
 )
 
 
@@ -48,7 +41,7 @@ class PromptVariant:
     id: str
     content: str
     strategy: Optional[PromptStrategy] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
 
     def __hash__(self):
@@ -63,7 +56,7 @@ class PromptTestResult:
     response: str
     score: float
     latency_ms: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -73,29 +66,26 @@ class ExperimentResult:
     """Results from a prompt testing experiment."""
 
     experiment_id: str
-    variants: List[PromptVariant]
-    results: List[PromptTestResult]
+    variants: list[PromptVariant]
+    results: list[PromptTestResult]
     best_variant_id: Optional[str] = None
-    summary: Dict[str, Any] = field(default_factory=dict)
+    summary: dict[str, Any] = field(default_factory=dict)
     started_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
 
-    def get_variant_scores(self) -> Dict[str, List[float]]:
+    def get_variant_scores(self) -> dict[str, list[float]]:
         """Get scores grouped by variant ID."""
-        scores: Dict[str, List[float]] = {}
+        scores: dict[str, list[float]] = {}
         for result in self.results:
             if result.variant_id not in scores:
                 scores[result.variant_id] = []
             scores[result.variant_id].append(result.score)
         return scores
 
-    def get_average_scores(self) -> Dict[str, float]:
+    def get_average_scores(self) -> dict[str, float]:
         """Get average score per variant."""
         scores = self.get_variant_scores()
-        return {
-            vid: sum(s) / len(s) if s else 0.0
-            for vid, s in scores.items()
-        }
+        return {vid: sum(s) / len(s) if s else 0.0 for vid, s in scores.items()}
 
     def get_best_variant(self) -> Optional[str]:
         """Get the variant with the highest average score."""
@@ -142,10 +132,10 @@ class PromptVariationGenerator:
             base_prompt: The original prompt to generate variations from.
         """
         self.base_prompt = base_prompt
-        self._variations: List[PromptVariant] = []
+        self._variations: list[PromptVariant] = []
 
     def add_prefix_variations(
-        self, prefixes: Optional[List[str]] = None
+        self, prefixes: Optional[list[str]] = None
     ) -> "PromptVariationGenerator":
         """Add variations with different prefixes.
 
@@ -166,7 +156,7 @@ class PromptVariationGenerator:
         return self
 
     def add_suffix_variations(
-        self, suffixes: Optional[List[str]] = None
+        self, suffixes: Optional[list[str]] = None
     ) -> "PromptVariationGenerator":
         """Add variations with different suffixes/output formats.
 
@@ -187,7 +177,7 @@ class PromptVariationGenerator:
         return self
 
     def add_instruction_variations(
-        self, modifiers: Optional[List[str]] = None
+        self, modifiers: Optional[list[str]] = None
     ) -> "PromptVariationGenerator":
         """Add variations with different instruction modifiers.
 
@@ -199,10 +189,7 @@ class PromptVariationGenerator:
         """
         modifiers = modifiers or self.INSTRUCTION_MODIFIERS
         for i, modifier in enumerate(modifiers):
-            if modifier:
-                content = f"{modifier} {self.base_prompt}"
-            else:
-                content = self.base_prompt
+            content = f"{modifier} {self.base_prompt}" if modifier else self.base_prompt
             variant = PromptVariant(
                 id=f"modifier_{i}",
                 content=content,
@@ -218,30 +205,36 @@ class PromptVariationGenerator:
             Self for chaining.
         """
         # Zero-shot (base)
-        self._variations.append(PromptVariant(
-            id="strategy_zero_shot",
-            content=self.base_prompt,
-            strategy=PromptStrategy.ZERO_SHOT,
-            metadata={"variation_type": "strategy"},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id="strategy_zero_shot",
+                content=self.base_prompt,
+                strategy=PromptStrategy.ZERO_SHOT,
+                metadata={"variation_type": "strategy"},
+            )
+        )
 
         # Chain of thought
         cot_prompt = f"{self.base_prompt}\n\nLet's think through this step by step:"
-        self._variations.append(PromptVariant(
-            id="strategy_cot",
-            content=cot_prompt,
-            strategy=PromptStrategy.CHAIN_OF_THOUGHT,
-            metadata={"variation_type": "strategy"},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id="strategy_cot",
+                content=cot_prompt,
+                strategy=PromptStrategy.CHAIN_OF_THOUGHT,
+                metadata={"variation_type": "strategy"},
+            )
+        )
 
         # Step by step
         step_prompt = f"{self.base_prompt}\n\nPlease solve this step by step, showing your work."
-        self._variations.append(PromptVariant(
-            id="strategy_step",
-            content=step_prompt,
-            strategy=PromptStrategy.STEP_BY_STEP,
-            metadata={"variation_type": "strategy"},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id="strategy_step",
+                content=step_prompt,
+                strategy=PromptStrategy.STEP_BY_STEP,
+                metadata={"variation_type": "strategy"},
+            )
+        )
 
         return self
 
@@ -250,7 +243,7 @@ class PromptVariationGenerator:
         variant_id: str,
         content: str,
         strategy: Optional[PromptStrategy] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> "PromptVariationGenerator":
         """Add a custom variation.
 
@@ -263,12 +256,14 @@ class PromptVariationGenerator:
         Returns:
             Self for chaining.
         """
-        self._variations.append(PromptVariant(
-            id=variant_id,
-            content=content,
-            strategy=strategy,
-            metadata=metadata or {},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id=variant_id,
+                content=content,
+                strategy=strategy,
+                metadata=metadata or {},
+            )
+        )
         return self
 
     def add_temperature_hint_variations(self) -> "PromptVariationGenerator":
@@ -279,23 +274,27 @@ class PromptVariationGenerator:
         """
         # Creative/high temperature hint
         creative = f"{self.base_prompt}\n\nBe creative and explore different possibilities."
-        self._variations.append(PromptVariant(
-            id="temp_creative",
-            content=creative,
-            metadata={"variation_type": "temperature_hint", "hint": "creative"},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id="temp_creative",
+                content=creative,
+                metadata={"variation_type": "temperature_hint", "hint": "creative"},
+            )
+        )
 
         # Precise/low temperature hint
         precise = f"{self.base_prompt}\n\nBe precise and give the most accurate answer."
-        self._variations.append(PromptVariant(
-            id="temp_precise",
-            content=precise,
-            metadata={"variation_type": "temperature_hint", "hint": "precise"},
-        ))
+        self._variations.append(
+            PromptVariant(
+                id="temp_precise",
+                content=precise,
+                metadata={"variation_type": "temperature_hint", "hint": "precise"},
+            )
+        )
 
         return self
 
-    def generate(self) -> List[PromptVariant]:
+    def generate(self) -> list[PromptVariant]:
         """Generate all variations.
 
         Returns:
@@ -308,10 +307,10 @@ class PromptVariationGenerator:
 
     def generate_combinations(
         self,
-        prefixes: Optional[List[str]] = None,
-        suffixes: Optional[List[str]] = None,
+        prefixes: Optional[list[str]] = None,
+        suffixes: Optional[list[str]] = None,
         max_combinations: int = 20,
-    ) -> List[PromptVariant]:
+    ) -> list[PromptVariant]:
         """Generate combinations of prefix and suffix variations.
 
         Args:
@@ -338,15 +337,17 @@ class PromptVariationGenerator:
             if suffix:
                 parts.append(suffix)
 
-            variants.append(PromptVariant(
-                id=f"combo_{i}",
-                content="\n\n".join(parts),
-                metadata={
-                    "variation_type": "combination",
-                    "prefix": prefix,
-                    "suffix": suffix,
-                },
-            ))
+            variants.append(
+                PromptVariant(
+                    id=f"combo_{i}",
+                    content="\n\n".join(parts),
+                    metadata={
+                        "variation_type": "combination",
+                        "prefix": prefix,
+                        "suffix": suffix,
+                    },
+                )
+            )
 
         return variants
 
@@ -366,7 +367,7 @@ class PromptScorer:
 
     def __init__(self):
         """Initialize with default scoring criteria."""
-        self._criteria: List[ScoringCriteria] = []
+        self._criteria: list[ScoringCriteria] = []
 
     def add_criteria(
         self,
@@ -388,12 +389,14 @@ class PromptScorer:
         Returns:
             Self for chaining.
         """
-        self._criteria.append(ScoringCriteria(
-            name=name,
-            weight=weight,
-            scorer=scorer,
-            description=description,
-        ))
+        self._criteria.append(
+            ScoringCriteria(
+                name=name,
+                weight=weight,
+                scorer=scorer,
+                description=description,
+            )
+        )
         return self
 
     def add_length_criteria(
@@ -412,6 +415,7 @@ class PromptScorer:
         Returns:
             Self for chaining.
         """
+
         def length_scorer(prompt: str, response: str, expected: str) -> float:
             length = len(response)
             if length < min_length:
@@ -429,7 +433,7 @@ class PromptScorer:
 
     def add_keyword_criteria(
         self,
-        required_keywords: List[str],
+        required_keywords: list[str],
         weight: float = 1.0,
     ) -> "PromptScorer":
         """Add keyword presence scoring.
@@ -441,6 +445,7 @@ class PromptScorer:
         Returns:
             Self for chaining.
         """
+
         def keyword_scorer(prompt: str, response: str, expected: str) -> float:
             response_lower = response.lower()
             matches = sum(1 for kw in required_keywords if kw.lower() in response_lower)
@@ -465,6 +470,7 @@ class PromptScorer:
         Returns:
             Self for chaining.
         """
+
         def similarity_scorer(prompt: str, response: str, expected: str) -> float:
             if not expected:
                 return 1.0  # No expected response to compare
@@ -500,10 +506,12 @@ class PromptScorer:
         Returns:
             Self for chaining.
         """
+
         def format_scorer(prompt: str, response: str, expected: str) -> float:
             if expected_format == "json":
                 try:
                     import json
+
                     json.loads(response)
                     return 1.0
                 except:
@@ -540,7 +548,7 @@ class PromptScorer:
         prompt: str,
         response: str,
         expected: str = "",
-    ) -> Tuple[float, Dict[str, float]]:
+    ) -> tuple[float, dict[str, float]]:
         """Score a response.
 
         Args:
@@ -582,7 +590,7 @@ class ABTestRunner:
             scorer: Optional custom scorer.
         """
         self.scorer = scorer or PromptScorer()
-        self._results: List[PromptTestResult] = []
+        self._results: list[PromptTestResult] = []
 
     def test_variant(
         self,
@@ -590,7 +598,7 @@ class ABTestRunner:
         model_fn: Callable[[str], str],
         expected: str = "",
         num_runs: int = 1,
-    ) -> List[PromptTestResult]:
+    ) -> list[PromptTestResult]:
         """Test a single variant.
 
         Args:
@@ -620,9 +628,7 @@ class ABTestRunner:
                 score = 0.0
                 score_details = {}
             else:
-                score, score_details = self.scorer.score(
-                    variant.content, response, expected
-                )
+                score, score_details = self.scorer.score(variant.content, response, expected)
 
             result = PromptTestResult(
                 variant_id=variant.id,
@@ -642,7 +648,7 @@ class ABTestRunner:
 
     def run_experiment(
         self,
-        variants: List[PromptVariant],
+        variants: list[PromptVariant],
         model_fn: Callable[[str], str],
         expected: str = "",
         runs_per_variant: int = 1,
@@ -664,9 +670,7 @@ class ABTestRunner:
         all_results = []
 
         for variant in variants:
-            results = self.test_variant(
-                variant, model_fn, expected, runs_per_variant
-            )
+            results = self.test_variant(variant, model_fn, expected, runs_per_variant)
             all_results.extend(results)
 
         experiment = ExperimentResult(
@@ -694,9 +698,9 @@ class PromptTemplate:
     """Template for generating prompts with variables."""
 
     template: str
-    variables: Dict[str, List[Any]] = field(default_factory=dict)
+    variables: dict[str, list[Any]] = field(default_factory=dict)
 
-    def expand(self) -> Iterator[Tuple[str, Dict[str, Any]]]:
+    def expand(self) -> Iterator[tuple[str, dict[str, Any]]]:
         """Expand template with all variable combinations.
 
         Yields:
@@ -728,7 +732,7 @@ class PromptExperiment:
             name: Name for this experiment.
         """
         self.name = name
-        self.variants: List[PromptVariant] = []
+        self.variants: list[PromptVariant] = []
         self.scorer = PromptScorer()
         self.results: Optional[ExperimentResult] = None
 
@@ -737,7 +741,7 @@ class PromptExperiment:
         content: str,
         variant_id: Optional[str] = None,
         strategy: Optional[PromptStrategy] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> "PromptExperiment":
         """Add a prompt variant.
 
@@ -751,12 +755,14 @@ class PromptExperiment:
             Self for chaining.
         """
         variant_id = variant_id or f"variant_{len(self.variants)}"
-        self.variants.append(PromptVariant(
-            id=variant_id,
-            content=content,
-            strategy=strategy,
-            metadata=metadata or {},
-        ))
+        self.variants.append(
+            PromptVariant(
+                id=variant_id,
+                content=content,
+                strategy=strategy,
+                metadata=metadata or {},
+            )
+        )
         return self
 
     def add_variants_from_generator(
@@ -775,8 +781,8 @@ class PromptExperiment:
 
     def configure_scorer(
         self,
-        length_range: Optional[Tuple[int, int]] = None,
-        required_keywords: Optional[List[str]] = None,
+        length_range: Optional[tuple[int, int]] = None,
+        required_keywords: Optional[list[str]] = None,
         expected_format: Optional[str] = None,
         check_similarity: bool = False,
     ) -> "PromptExperiment":
@@ -871,24 +877,26 @@ class PromptExperiment:
             indicator = " ⭐" if variant_id == self.results.best_variant_id else ""
             lines.append(f"{rank}. **{variant_id}**: {avg_score:.3f}{indicator}")
 
-        lines.extend([
-            "",
-            "## Best Prompt",
-            "",
-            "```",
-            self.get_best_prompt() or "N/A",
-            "```",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Best Prompt",
+                "",
+                "```",
+                self.get_best_prompt() or "N/A",
+                "```",
+            ]
+        )
 
         return "\n".join(lines)
 
 
 def create_few_shot_variants(
     task: str,
-    examples: List[Dict[str, str]],
+    examples: list[dict[str, str]],
     query: str,
-    num_shots: List[int] = [0, 1, 3, 5],
-) -> List[PromptVariant]:
+    num_shots: list[int] = None,
+) -> list[PromptVariant]:
     """Create variants with different numbers of few-shot examples.
 
     Args:
@@ -900,6 +908,8 @@ def create_few_shot_variants(
     Returns:
         List of prompt variants.
     """
+    if num_shots is None:
+        num_shots = [0, 1, 3, 5]
     variants = []
 
     for n in num_shots:
@@ -918,19 +928,21 @@ def create_few_shot_variants(
             content = f"{task}\n\nExamples:\n{example_text}\n\nQuery: {query}"
             strategy = PromptStrategy.FEW_SHOT
 
-        variants.append(PromptVariant(
-            id=f"{n}_shot",
-            content=content,
-            strategy=strategy,
-            metadata={"num_examples": n},
-        ))
+        variants.append(
+            PromptVariant(
+                id=f"{n}_shot",
+                content=content,
+                strategy=strategy,
+                metadata={"num_examples": n},
+            )
+        )
 
     return variants
 
 
 def create_cot_variants(
     prompt: str,
-) -> List[PromptVariant]:
+) -> list[PromptVariant]:
     """Create chain-of-thought prompt variants.
 
     Args:

@@ -5,7 +5,7 @@ models, probes, and datasets to be registered and retrieved by name.
 Supports both direct registration and decorator-based registration.
 """
 
-from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 T = TypeVar("T")
 FactoryType = Callable[..., T]
@@ -45,12 +45,12 @@ class Registry(Generic[T]):
             name: A descriptive name for this registry (e.g., "models", "probes").
         """
         self.name = name
-        self._registry: Dict[str, Dict[str, Any]] = {}
+        self._registry: dict[str, dict[str, Any]] = {}
 
     def register(
         self,
         name: str,
-        factory: Union[Type[T], FactoryType[T]],
+        factory: Union[type[T], FactoryType[T]],
         *,
         overwrite: bool = False,
         **default_kwargs: Any,
@@ -84,7 +84,7 @@ class Registry(Generic[T]):
         self,
         name: Optional[str] = None,
         **default_kwargs: Any,
-    ) -> Callable[[Type[T]], Type[T]]:
+    ) -> Callable[[type[T]], type[T]]:
         """Decorator for registering classes.
 
         Args:
@@ -100,7 +100,7 @@ class Registry(Generic[T]):
             ...     pass
         """
 
-        def decorator(cls: Type[T]) -> Type[T]:
+        def decorator(cls: type[T]) -> type[T]:
             registration_name = name or cls.__name__
             self.register(registration_name, cls, **default_kwargs)
             return cls
@@ -126,15 +126,14 @@ class Registry(Generic[T]):
         if registration_name not in self._registry:
             available = ", ".join(self.list()) or "(none)"
             raise NotFoundError(
-                f"'{registration_name}' not found in {self.name} registry. "
-                f"Available: {available}"
+                f"'{registration_name}' not found in {self.name} registry. Available: {available}"
             )
 
         entry = self._registry[registration_name]
         kwargs = {**entry["default_kwargs"], **override_kwargs}
         return entry["factory"](**kwargs)
 
-    def get_factory(self, name: str) -> Union[Type[T], FactoryType[T]]:
+    def get_factory(self, name: str) -> Union[type[T], FactoryType[T]]:
         """Get the factory function/class without instantiating.
 
         Args:
@@ -150,7 +149,7 @@ class Registry(Generic[T]):
             raise NotFoundError(f"'{name}' not found in {self.name} registry.")
         return self._registry[name]["factory"]
 
-    def list(self) -> List[str]:
+    def list(self) -> list[str]:
         """List all registered names.
 
         Returns:
@@ -186,7 +185,7 @@ class Registry(Generic[T]):
         """Remove all registrations."""
         self._registry.clear()
 
-    def info(self, name: str) -> Dict[str, Any]:
+    def info(self, name: str) -> dict[str, Any]:
         """Get information about a registration.
 
         Args:
@@ -235,11 +234,14 @@ def _lazy_import_factory(module_path: str, class_name: str):
 
     This enables registration without importing heavy dependencies upfront.
     """
+
     def factory(**kwargs):
         import importlib
+
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
         return cls(**kwargs)
+
     factory.__name__ = class_name
     factory.__doc__ = f"Lazy factory for {class_name}"
     return factory
@@ -262,14 +264,21 @@ def register_builtins() -> None:
     # Register models - use lazy loading for heavy dependencies
     # DummyModel is lightweight, can import directly
     from insideLLMs.models import DummyModel
+
     model_registry.register("dummy", DummyModel)
 
     # API models are relatively lightweight
-    model_registry.register("openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel"))
-    model_registry.register("anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel"))
+    model_registry.register(
+        "openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel")
+    )
+    model_registry.register(
+        "anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel")
+    )
 
     # HuggingFace is heavy - use lazy loading
-    model_registry.register("huggingface", _lazy_import_factory("insideLLMs.models.huggingface", "HuggingFaceModel"))
+    model_registry.register(
+        "huggingface", _lazy_import_factory("insideLLMs.models.huggingface", "HuggingFaceModel")
+    )
 
     # Register probes - these are generally lightweight
     from insideLLMs.probes import (
@@ -278,6 +287,7 @@ def register_builtins() -> None:
         FactualityProbe,
         LogicProbe,
     )
+
     probe_registry.register("logic", LogicProbe)
     probe_registry.register("factuality", FactualityProbe)
     probe_registry.register("bias", BiasProbe)
@@ -289,6 +299,7 @@ def register_builtins() -> None:
         load_hf_dataset,
         load_jsonl_dataset,
     )
+
     dataset_registry.register("csv", load_csv_dataset)
     dataset_registry.register("jsonl", load_jsonl_dataset)
     dataset_registry.register("hf", load_hf_dataset)

@@ -10,22 +10,23 @@ Production-grade rate limiting and retry mechanisms for LLM APIs:
 - Provider-specific rate limit handling
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
-from datetime import datetime, timedelta
-from collections import deque
+import asyncio
+import random
 import threading
 import time
-import random
-import asyncio
+from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 from functools import wraps
+from typing import Any, Callable, Optional, TypeVar
 
 T = TypeVar("T")
 
 
 class RateLimitStrategy(Enum):
     """Rate limiting strategies."""
+
     TOKEN_BUCKET = "token_bucket"
     SLIDING_WINDOW = "sliding_window"
     FIXED_WINDOW = "fixed_window"
@@ -34,6 +35,7 @@ class RateLimitStrategy(Enum):
 
 class RetryStrategy(Enum):
     """Retry strategies."""
+
     EXPONENTIAL = "exponential"
     LINEAR = "linear"
     CONSTANT = "constant"
@@ -42,6 +44,7 @@ class RetryStrategy(Enum):
 
 class CircuitState(Enum):
     """Circuit breaker states."""
+
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing recovery
@@ -49,6 +52,7 @@ class CircuitState(Enum):
 
 class RequestPriority(Enum):
     """Request priority levels."""
+
     CRITICAL = 1
     HIGH = 2
     NORMAL = 3
@@ -59,6 +63,7 @@ class RequestPriority(Enum):
 @dataclass
 class RateLimitConfig:
     """Configuration for rate limiting."""
+
     requests_per_second: float = 10.0
     requests_per_minute: float = 600.0
     tokens_per_minute: int = 100000
@@ -79,6 +84,7 @@ class RateLimitConfig:
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_retries: int = 3
     base_delay: float = 1.0
     max_delay: float = 60.0
@@ -102,6 +108,7 @@ class RetryConfig:
 @dataclass
 class RateLimitState:
     """Current state of rate limiter."""
+
     available_tokens: float
     requests_in_window: int
     tokens_in_window: int
@@ -115,7 +122,9 @@ class RateLimitState:
             "available_tokens": self.available_tokens,
             "requests_in_window": self.requests_in_window,
             "tokens_in_window": self.tokens_in_window,
-            "last_request_time": self.last_request_time.isoformat() if self.last_request_time else None,
+            "last_request_time": self.last_request_time.isoformat()
+            if self.last_request_time
+            else None,
             "is_limited": self.is_limited,
             "wait_time_ms": self.wait_time_ms,
         }
@@ -124,6 +133,7 @@ class RateLimitState:
 @dataclass
 class RetryResult:
     """Result of a retry operation."""
+
     success: bool
     result: Any
     attempts: int
@@ -145,6 +155,7 @@ class RetryResult:
 @dataclass
 class CircuitBreakerState:
     """State of a circuit breaker."""
+
     state: CircuitState
     failure_count: int
     success_count: int
@@ -158,8 +169,12 @@ class CircuitBreakerState:
             "state": self.state.value,
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "last_failure_time": self.last_failure_time.isoformat() if self.last_failure_time else None,
-            "last_success_time": self.last_success_time.isoformat() if self.last_success_time else None,
+            "last_failure_time": self.last_failure_time.isoformat()
+            if self.last_failure_time
+            else None,
+            "last_success_time": self.last_success_time.isoformat()
+            if self.last_success_time
+            else None,
             "half_open_successes": self.half_open_successes,
         }
 
@@ -167,6 +182,7 @@ class CircuitBreakerState:
 @dataclass
 class RateLimitStats:
     """Statistics for rate limiting."""
+
     total_requests: int = 0
     allowed_requests: int = 0
     throttled_requests: int = 0
@@ -515,7 +531,9 @@ class RetryHandler:
 
                 # Check if error is retryable
                 if self.config.retryable_errors:
-                    if not any(isinstance(e, err_type) for err_type in self.config.retryable_errors):
+                    if not any(
+                        isinstance(e, err_type) for err_type in self.config.retryable_errors
+                    ):
                         break
 
                 if attempt < self.config.max_retries:
@@ -563,7 +581,9 @@ class RetryHandler:
                 errors.append(last_error)
 
                 if self.config.retryable_errors:
-                    if not any(isinstance(e, err_type) for err_type in self.config.retryable_errors):
+                    if not any(
+                        isinstance(e, err_type) for err_type in self.config.retryable_errors
+                    ):
                         break
 
                 if attempt < self.config.max_retries:
@@ -590,7 +610,7 @@ class RetryHandler:
             delay = self.config.base_delay * (attempt + 1)
 
         elif self.config.strategy == RetryStrategy.EXPONENTIAL:
-            delay = self.config.base_delay * (2 ** attempt)
+            delay = self.config.base_delay * (2**attempt)
 
         elif self.config.strategy == RetryStrategy.FIBONACCI:
             delay = self.config.base_delay * self._get_fibonacci(attempt + 1)
@@ -611,9 +631,7 @@ class RetryHandler:
     def _get_fibonacci(self, n: int) -> int:
         """Get nth Fibonacci number."""
         while len(self._fibonacci_cache) <= n:
-            self._fibonacci_cache.append(
-                self._fibonacci_cache[-1] + self._fibonacci_cache[-2]
-            )
+            self._fibonacci_cache.append(self._fibonacci_cache[-1] + self._fibonacci_cache[-2])
         return self._fibonacci_cache[n]
 
 
@@ -719,7 +737,7 @@ class CircuitBreaker:
             result = func()
             self.record_success()
             return result
-        except Exception as e:
+        except Exception:
             self.record_failure()
             raise
 
@@ -735,7 +753,7 @@ class CircuitBreaker:
                 result = func()
             self.record_success()
             return result
-        except Exception as e:
+        except Exception:
             self.record_failure()
             raise
 
@@ -761,6 +779,7 @@ class CircuitBreaker:
 
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is open."""
+
     pass
 
 
@@ -829,7 +848,7 @@ class RequestQueue:
             result = func()
             self._processed_count += 1
             return result
-        except Exception as e:
+        except Exception:
             raise
 
     async def process_one_async(self) -> Optional[Any]:
@@ -849,7 +868,7 @@ class RequestQueue:
                 result = func()
             self._processed_count += 1
             return result
-        except Exception as e:
+        except Exception:
             raise
 
     def process_all(self) -> list[Any]:
@@ -1034,7 +1053,7 @@ class RateLimitedExecutor:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
                     return result
-                except Exception as e:
+                except Exception:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
                     raise
@@ -1076,7 +1095,7 @@ class RateLimitedExecutor:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
                     return result
-                except Exception as e:
+                except Exception:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
                     raise
@@ -1086,6 +1105,7 @@ class RateLimitedExecutor:
 
 
 # Decorators
+
 
 def rate_limited(
     rate: float = 10.0,
@@ -1193,6 +1213,7 @@ def circuit_protected(
 
 
 # Convenience functions
+
 
 def create_rate_limiter(
     rate: float = 10.0,

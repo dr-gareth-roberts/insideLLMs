@@ -1,7 +1,5 @@
 """Tests for reasoning chain analysis and CoT evaluation utilities."""
 
-import pytest
-
 from insideLLMs.reasoning import (
     ChainAnalysis,
     CoTEvaluation,

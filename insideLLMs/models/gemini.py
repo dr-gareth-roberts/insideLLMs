@@ -5,7 +5,8 @@ google-generativeai SDK.
 """
 
 import os
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
 from insideLLMs.types import ModelInfo
@@ -30,8 +31,8 @@ class GeminiModel(Model):
         name: str = "GeminiModel",
         model_name: str = "gemini-1.5-flash",
         api_key: Optional[str] = None,
-        safety_settings: Optional[List[Dict[str, Any]]] = None,
-        generation_config: Optional[Dict[str, Any]] = None,
+        safety_settings: Optional[list[dict[str, Any]]] = None,
+        generation_config: Optional[dict[str, Any]] = None,
     ):
         """Initialize the Gemini model.
 
@@ -110,7 +111,7 @@ class GeminiModel(Model):
         self._call_count += 1
         return response.text
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -225,7 +226,7 @@ class GeminiModel(Model):
         result = model.count_tokens(text)
         return result.total_tokens
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List available Gemini models.
 
         Returns:
@@ -235,8 +236,4 @@ class GeminiModel(Model):
         import google.generativeai as genai
 
         models = genai.list_models()
-        return [
-            m.name
-            for m in models
-            if "generateContent" in m.supported_generation_methods
-        ]
+        return [m.name for m in models if "generateContent" in m.supported_generation_methods]

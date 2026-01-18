@@ -6,11 +6,10 @@ or from configuration files. Supports async execution for parallel processing.
 
 import asyncio
 import json
-import os
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import yaml
 
@@ -28,7 +27,6 @@ from insideLLMs.types import (
     ExperimentResult,
     ProbeCategory,
     ProbeResult,
-    ProbeScore,
     ResultStatus,
 )
 
@@ -58,16 +56,16 @@ class ProbeRunner:
         """
         self.model = model
         self.probe = probe
-        self._results: List[Dict[str, Any]] = []
+        self._results: list[dict[str, Any]] = []
 
     def run(
         self,
-        prompt_set: List[Any],
+        prompt_set: list[Any],
         *,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         stop_on_error: bool = False,
         **probe_kwargs: Any,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Run the probe on the model for each item in the prompt set.
 
         Args:
@@ -92,12 +90,14 @@ class ProbeRunner:
             try:
                 output = self.probe.run(self.model, item, **probe_kwargs)
                 latency_ms = (time.perf_counter() - start_time) * 1000
-                results.append({
-                    "input": item,
-                    "output": output,
-                    "latency_ms": latency_ms,
-                    "status": "success",
-                })
+                results.append(
+                    {
+                        "input": item,
+                        "output": output,
+                        "latency_ms": latency_ms,
+                        "status": "success",
+                    }
+                )
             except Exception as e:
                 latency_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
@@ -152,16 +152,16 @@ class AsyncProbeRunner:
         """
         self.model = model
         self.probe = probe
-        self._results: List[Dict[str, Any]] = []
+        self._results: list[dict[str, Any]] = []
 
     async def run(
         self,
-        prompt_set: List[Any],
+        prompt_set: list[Any],
         *,
         concurrency: int = 5,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         **probe_kwargs: Any,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Run the probe on all items with controlled concurrency.
 
         Args:
@@ -176,7 +176,7 @@ class AsyncProbeRunner:
         import time
 
         semaphore = asyncio.Semaphore(concurrency)
-        results: List[Dict[str, Any]] = [None] * len(prompt_set)  # type: ignore
+        results: list[dict[str, Any]] = [None] * len(prompt_set)  # type: ignore
         completed = 0
         total = len(prompt_set)
 
@@ -222,9 +222,9 @@ class AsyncProbeRunner:
 def run_probe(
     model: Model,
     probe: Probe,
-    prompt_set: List[Any],
+    prompt_set: list[Any],
     **probe_kwargs: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Convenience function to run a probe on a model.
 
     Args:
@@ -243,10 +243,10 @@ def run_probe(
 async def run_probe_async(
     model: Model,
     probe: Probe,
-    prompt_set: List[Any],
+    prompt_set: list[Any],
     concurrency: int = 5,
     **probe_kwargs: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Convenience function to run a probe asynchronously.
 
     Args:
@@ -369,7 +369,7 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
         return probe_map[probe_type](**probe_args)
 
 
-def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> List[Any]:
+def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
     """Load a dataset from configuration."""
     ensure_builtins_registered()
 
@@ -405,7 +405,7 @@ def run_experiment_from_config(
     config_path: Union[str, Path],
     *,
     progress_callback: Optional[Callable[[int, int], None]] = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Run an experiment from a configuration file.
 
     The configuration file should specify:
@@ -451,7 +451,7 @@ async def run_experiment_from_config_async(
     *,
     concurrency: int = 5,
     progress_callback: Optional[Callable[[int, int], None]] = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Run an experiment asynchronously from a configuration file.
 
     Like run_experiment_from_config, but uses async execution for
@@ -480,7 +480,7 @@ async def run_experiment_from_config_async(
 def create_experiment_result(
     model: Model,
     probe: Probe,
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     config: Optional[ConfigDict] = None,
 ) -> ExperimentResult:
     """Create a structured ExperimentResult from raw results.

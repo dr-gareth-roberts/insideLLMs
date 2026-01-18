@@ -1,4 +1,4 @@
-from typing import Iterator, List
+from collections.abc import Iterator
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -6,6 +6,7 @@ from insideLLMs.exceptions import (
     ModelGenerationError,
     ModelInitializationError,
 )
+
 from .base import ChatMessage, Model
 
 
@@ -69,7 +70,7 @@ class HuggingFaceModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: List[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
         try:
             # Simple chat: concatenate messages
             prompt = "\n".join([m.get("content", "") for m in messages])
@@ -99,9 +100,11 @@ class HuggingFaceModel(Model):
 
     def info(self):
         base_info = super().info()
-        base_info.extra.update({
-            "model_name": self.model_name,
-            "device": self.device,
-            "description": "HuggingFace Transformers model via pipeline.",
-        })
+        base_info.extra.update(
+            {
+                "model_name": self.model_name,
+                "device": self.device,
+                "description": "HuggingFace Transformers model via pipeline.",
+            }
+        )
         return base_info

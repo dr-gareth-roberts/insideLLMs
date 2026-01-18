@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Optional
 
 
 class DiversityMetric(Enum):
@@ -44,9 +44,9 @@ class DiversityScore:
     metric: DiversityMetric
     value: float
     interpretation: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "metric": self.metric.value,
@@ -60,19 +60,19 @@ class DiversityScore:
 class RepetitionAnalysis:
     """Analysis of repetition in text."""
 
-    repeated_phrases: List[Tuple[str, int]]  # (phrase, count)
-    repeated_words: List[Tuple[str, int]]
+    repeated_phrases: list[tuple[str, int]]  # (phrase, count)
+    repeated_words: list[tuple[str, int]]
     repetition_score: float  # 0-1, 0 = no repetition
     longest_repeated_sequence: str
-    n_gram_repetition: Dict[int, float]  # n -> repetition rate
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    n_gram_repetition: dict[int, float]  # n -> repetition rate
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def has_significant_repetition(self) -> bool:
         """Check if text has significant repetition."""
         return self.repetition_score > 0.3
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "repeated_phrases": self.repeated_phrases[:10],
@@ -90,11 +90,11 @@ class CreativityScore:
     """Score for creativity assessment."""
 
     overall_score: float  # 0-1
-    dimension_scores: Dict[CreativityDimension, float]
+    dimension_scores: dict[CreativityDimension, float]
     interpretation: str
-    strengths: List[str]
-    weaknesses: List[str]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    strengths: list[str]
+    weaknesses: list[str]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def creativity_level(self) -> str:
@@ -110,14 +110,12 @@ class CreativityScore:
         else:
             return "minimal"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "overall_score": round(self.overall_score, 4),
             "creativity_level": self.creativity_level,
-            "dimension_scores": {
-                d.value: round(s, 4) for d, s in self.dimension_scores.items()
-            },
+            "dimension_scores": {d.value: round(s, 4) for d, s in self.dimension_scores.items()},
             "interpretation": self.interpretation,
             "strengths": self.strengths,
             "weaknesses": self.weaknesses,
@@ -135,15 +133,15 @@ class VariabilityAnalysis:
     unique_tokens_ratio: float  # Unique tokens / total tokens
     semantic_spread: float  # How spread out responses are semantically
     clustering_coefficient: float  # How much responses cluster
-    outlier_indices: List[int]  # Indices of outlier responses
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    outlier_indices: list[int]  # Indices of outlier responses
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_diverse(self) -> bool:
         """Check if outputs are diverse."""
         return self.mean_similarity < 0.7 and self.semantic_spread > 0.3
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_samples": self.n_samples,
@@ -163,20 +161,18 @@ class DiversityReport:
     """Comprehensive diversity analysis report."""
 
     text: str
-    lexical_diversity: Dict[DiversityMetric, DiversityScore]
+    lexical_diversity: dict[DiversityMetric, DiversityScore]
     repetition: RepetitionAnalysis
     creativity: Optional[CreativityScore]
     overall_diversity_score: float
-    recommendations: List[str]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text_length": len(self.text),
-            "lexical_diversity": {
-                k.value: v.to_dict() for k, v in self.lexical_diversity.items()
-            },
+            "lexical_diversity": {k.value: v.to_dict() for k, v in self.lexical_diversity.items()},
             "repetition": self.repetition.to_dict(),
             "creativity": self.creativity.to_dict() if self.creativity else None,
             "overall_diversity_score": round(self.overall_diversity_score, 4),
@@ -188,13 +184,13 @@ class DiversityReport:
 class LexicalDiversityAnalyzer:
     """Analyzes lexical diversity of text."""
 
-    def __init__(self, tokenize_fn: Optional[Callable[[str], List[str]]] = None):
+    def __init__(self, tokenize_fn: Optional[Callable[[str], list[str]]] = None):
         """Initialize analyzer."""
         self.tokenize = tokenize_fn or self._default_tokenize
 
-    def _default_tokenize(self, text: str) -> List[str]:
+    def _default_tokenize(self, text: str) -> list[str]:
         """Default tokenization: lowercase words."""
-        return re.findall(r'\b\w+\b', text.lower())
+        return re.findall(r"\b\w+\b", text.lower())
 
     def type_token_ratio(self, text: str) -> DiversityScore:
         """Calculate Type-Token Ratio (TTR)."""
@@ -266,10 +262,7 @@ class LexicalDiversityAnalyzer:
         m1 = n  # Sum of frequencies
         m2 = sum(f * f for f in freq.values())
 
-        if m1 == m2:
-            k = 0.0
-        else:
-            k = 10000 * (m2 - m1) / (m1 * m1)
+        k = 0.0 if m1 == m2 else 10000 * (m2 - m1) / (m1 * m1)
 
         # Lower K = more diverse
         if k < 50:
@@ -362,12 +355,12 @@ class LexicalDiversityAnalyzer:
                 interpretation="Insufficient tokens for MTLD",
             )
 
-        def _mtld_forward(tokens: List[str], threshold: float) -> float:
+        def _mtld_forward(tokens: list[str], threshold: float) -> float:
             """Calculate MTLD in forward direction."""
             factor_count = 0
             factor_length = 0
             current_ttr = 1.0
-            types: Set[str] = set()
+            types: set[str] = set()
 
             for token in tokens:
                 types.add(token)
@@ -407,7 +400,7 @@ class LexicalDiversityAnalyzer:
             details={"forward": forward, "backward": backward},
         )
 
-    def analyze_all(self, text: str) -> Dict[DiversityMetric, DiversityScore]:
+    def analyze_all(self, text: str) -> dict[DiversityMetric, DiversityScore]:
         """Run all diversity analyses."""
         return {
             DiversityMetric.TYPE_TOKEN_RATIO: self.type_token_ratio(text),
@@ -427,13 +420,13 @@ class RepetitionDetector:
         self.min_phrase_length = min_phrase_length
         self.min_occurrences = min_occurrences
 
-    def _get_ngrams(self, tokens: List[str], n: int) -> List[str]:
+    def _get_ngrams(self, tokens: list[str], n: int) -> list[str]:
         """Get n-grams from tokens."""
-        return [" ".join(tokens[i:i+n]) for i in range(len(tokens) - n + 1)]
+        return [" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
     def detect(self, text: str) -> RepetitionAnalysis:
         """Detect repetition in text."""
-        words = re.findall(r'\b\w+\b', text.lower())
+        words = re.findall(r"\b\w+\b", text.lower())
 
         if len(words) < self.min_phrase_length:
             return RepetitionAnalysis(
@@ -447,7 +440,8 @@ class RepetitionDetector:
         # Find repeated words
         word_counts = Counter(words)
         repeated_words = [
-            (word, count) for word, count in word_counts.most_common()
+            (word, count)
+            for word, count in word_counts.most_common()
             if count >= self.min_occurrences and len(word) > 2
         ]
 
@@ -459,7 +453,8 @@ class RepetitionDetector:
             ngrams = self._get_ngrams(words, n)
             ngram_counts = Counter(ngrams)
             repeated = [
-                (phrase, count) for phrase, count in ngram_counts.items()
+                (phrase, count)
+                for phrase, count in ngram_counts.items()
                 if count >= self.min_occurrences
             ]
             repeated_phrases.extend(repeated)
@@ -474,7 +469,7 @@ class RepetitionDetector:
 
         # Find longest repeated sequence
         longest = ""
-        for phrase, count in repeated_phrases:
+        for phrase, _count in repeated_phrases:
             if len(phrase) > len(longest):
                 longest = phrase
 
@@ -496,33 +491,114 @@ class CreativityAnalyzer:
 
     def __init__(
         self,
-        reference_corpus: Optional[List[str]] = None,
-        common_words: Optional[Set[str]] = None,
+        reference_corpus: Optional[list[str]] = None,
+        common_words: Optional[set[str]] = None,
     ):
         """Initialize analyzer."""
         self.reference_corpus = reference_corpus or []
         self.common_words = common_words or self._default_common_words()
 
-    def _default_common_words(self) -> Set[str]:
+    def _default_common_words(self) -> set[str]:
         """Default set of common words."""
         return {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been",
-            "being", "have", "has", "had", "do", "does", "did", "will",
-            "would", "could", "should", "may", "might", "must", "shall",
-            "can", "to", "of", "in", "for", "on", "with", "at", "by",
-            "from", "as", "into", "through", "during", "before", "after",
-            "above", "below", "between", "under", "again", "further",
-            "then", "once", "here", "there", "when", "where", "why",
-            "how", "all", "each", "few", "more", "most", "other", "some",
-            "such", "no", "nor", "not", "only", "own", "same", "so",
-            "than", "too", "very", "just", "and", "but", "if", "or",
-            "because", "until", "while", "this", "that", "these", "those",
-            "it", "its", "i", "you", "he", "she", "we", "they", "what",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "and",
+            "but",
+            "if",
+            "or",
+            "because",
+            "until",
+            "while",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "i",
+            "you",
+            "he",
+            "she",
+            "we",
+            "they",
+            "what",
         }
 
     def _novelty_score(self, text: str) -> float:
         """Calculate novelty based on rare word usage."""
-        words = re.findall(r'\b\w+\b', text.lower())
+        words = re.findall(r"\b\w+\b", text.lower())
         if not words:
             return 0.0
 
@@ -531,12 +607,12 @@ class CreativityAnalyzer:
 
     def _unexpectedness_score(self, text: str) -> float:
         """Calculate unexpectedness based on unusual combinations."""
-        words = re.findall(r'\b\w+\b', text.lower())
+        words = re.findall(r"\b\w+\b", text.lower())
         if len(words) < 2:
             return 0.0
 
         # Check for unusual word pairs (simplified)
-        bigrams = [f"{words[i]} {words[i+1]}" for i in range(len(words) - 1)]
+        bigrams = [f"{words[i]} {words[i + 1]}" for i in range(len(words) - 1)]
 
         # Score based on bigram variety
         unique_bigrams = len(set(bigrams))
@@ -544,7 +620,7 @@ class CreativityAnalyzer:
 
     def _elaboration_score(self, text: str) -> float:
         """Calculate elaboration based on detail level."""
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         sentences = [s.strip() for s in sentences if s.strip()]
 
         if not sentences:
@@ -567,7 +643,7 @@ class CreativityAnalyzer:
 
     def _flexibility_score(self, text: str) -> float:
         """Calculate flexibility based on variety of structures."""
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         sentences = [s.strip() for s in sentences if s.strip()]
 
         if len(sentences) < 2:
@@ -582,7 +658,7 @@ class CreativityAnalyzer:
     def _fluency_score(self, text: str) -> float:
         """Calculate fluency based on grammatical flow."""
         # Simplified: check for proper punctuation and capitalization
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         sentences = [s.strip() for s in sentences if s.strip()]
 
         if not sentences:
@@ -653,7 +729,7 @@ class OutputVariabilityAnalyzer:
         union = len(words_a | words_b)
         return intersection / union if union > 0 else 0.0
 
-    def analyze(self, outputs: List[str]) -> VariabilityAnalysis:
+    def analyze(self, outputs: list[str]) -> VariabilityAnalysis:
         """Analyze variability across outputs."""
         n = len(outputs)
 
@@ -677,10 +753,10 @@ class OutputVariabilityAnalyzer:
 
         mean_sim = sum(similarities) / len(similarities)
         variance = sum((s - mean_sim) ** 2 for s in similarities) / len(similarities)
-        std_sim = variance ** 0.5
+        std_sim = variance**0.5
 
         # Calculate unique tokens ratio
-        all_tokens: List[str] = []
+        all_tokens: list[str] = []
         for output in outputs:
             all_tokens.extend(output.lower().split())
         unique_ratio = len(set(all_tokens)) / len(all_tokens) if all_tokens else 0.0
@@ -696,8 +772,7 @@ class OutputVariabilityAnalyzer:
         outliers = []
         for i in range(n):
             avg_sim_to_others = sum(
-                self.similarity_fn(outputs[i], outputs[j])
-                for j in range(n) if j != i
+                self.similarity_fn(outputs[i], outputs[j]) for j in range(n) if j != i
             ) / (n - 1)
 
             if avg_sim_to_others < mean_sim - 2 * std_sim:
@@ -768,11 +843,11 @@ class DiversityReporter:
 
     def _generate_recommendations(
         self,
-        lexical: Dict[DiversityMetric, DiversityScore],
+        lexical: dict[DiversityMetric, DiversityScore],
         repetition: RepetitionAnalysis,
         creativity: Optional[CreativityScore],
         overall: float,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate recommendations based on analysis."""
         recommendations = []
 
@@ -823,13 +898,13 @@ def analyze_creativity(text: str) -> CreativityScore:
     return analyzer.analyze(text)
 
 
-def analyze_output_variability(outputs: List[str]) -> VariabilityAnalysis:
+def analyze_output_variability(outputs: list[str]) -> VariabilityAnalysis:
     """Analyze variability across multiple outputs."""
     analyzer = OutputVariabilityAnalyzer()
     return analyzer.analyze(outputs)
 
 
-def quick_diversity_check(text: str) -> Dict[str, Any]:
+def quick_diversity_check(text: str) -> dict[str, Any]:
     """Quick diversity check returning summary."""
     report = analyze_diversity(text)
     return {

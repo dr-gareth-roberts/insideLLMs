@@ -12,10 +12,11 @@ Provides tools for:
 import hashlib
 import json
 import random
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 
 class DatasetCategory(Enum):
@@ -58,12 +59,12 @@ class DatasetExample:
     id: str
     input_text: str
     expected_output: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     category: Optional[str] = None
     difficulty: Optional[str] = None
     source: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -76,7 +77,7 @@ class DatasetExample:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DatasetExample":
+    def from_dict(cls, data: dict[str, Any]) -> "DatasetExample":
         """Create from dictionary."""
         return cls(
             id=data.get("id", ""),
@@ -94,15 +95,15 @@ class DatasetStats:
     """Statistics about a dataset."""
 
     total_examples: int
-    categories: Dict[str, int]
-    difficulties: Dict[str, int]
+    categories: dict[str, int]
+    difficulties: dict[str, int]
     avg_input_length: float
     avg_output_length: float
     min_input_length: int
     max_input_length: int
-    sources: Dict[str, int]
+    sources: dict[str, int]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "total_examples": self.total_examples,
@@ -127,7 +128,7 @@ class SplitInfo:
     validation_ratio: float
     test_ratio: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "train_size": self.train_size,
@@ -152,8 +153,8 @@ class BenchmarkDataset:
         self.name = name
         self.category = category
         self.description = description
-        self._examples: List[DatasetExample] = []
-        self._splits: Dict[SplitType, List[int]] = {
+        self._examples: list[DatasetExample] = []
+        self._splits: dict[SplitType, list[int]] = {
             SplitType.TRAIN: [],
             SplitType.VALIDATION: [],
             SplitType.TEST: [],
@@ -165,7 +166,7 @@ class BenchmarkDataset:
             example.id = self._generate_id(example.input_text)
         self._examples.append(example)
 
-    def add_examples(self, examples: List[DatasetExample]) -> None:
+    def add_examples(self, examples: list[DatasetExample]) -> None:
         """Add multiple examples to the dataset."""
         for example in examples:
             self.add_example(example)
@@ -182,7 +183,7 @@ class BenchmarkDataset:
         split: SplitType = SplitType.ALL,
         category: Optional[str] = None,
         difficulty: Optional[str] = None,
-    ) -> List[DatasetExample]:
+    ) -> list[DatasetExample]:
         """Get examples with optional filtering."""
         if split == SplitType.ALL:
             examples = self._examples
@@ -229,7 +230,7 @@ class BenchmarkDataset:
 
         if stratify_by:
             # Stratified split
-            groups: Dict[str, List[int]] = {}
+            groups: dict[str, list[int]] = {}
             for i, example in enumerate(self._examples):
                 key = getattr(example, stratify_by, None) or "unknown"
                 if key not in groups:
@@ -277,7 +278,7 @@ class BenchmarkDataset:
         strategy: SamplingStrategy = SamplingStrategy.RANDOM,
         seed: Optional[int] = None,
         split: SplitType = SplitType.ALL,
-    ) -> List[DatasetExample]:
+    ) -> list[DatasetExample]:
         """Sample examples from dataset."""
         examples = self.get_examples(split=split)
 
@@ -298,11 +299,9 @@ class BenchmarkDataset:
 
         return examples[:n]
 
-    def _stratified_sample(
-        self, examples: List[DatasetExample], n: int
-    ) -> List[DatasetExample]:
+    def _stratified_sample(self, examples: list[DatasetExample], n: int) -> list[DatasetExample]:
         """Perform stratified sampling."""
-        groups: Dict[str, List[DatasetExample]] = {}
+        groups: dict[str, list[DatasetExample]] = {}
         for example in examples:
             key = example.category or "unknown"
             if key not in groups:
@@ -320,11 +319,9 @@ class BenchmarkDataset:
 
         return result[:n]
 
-    def _balanced_sample(
-        self, examples: List[DatasetExample], n: int
-    ) -> List[DatasetExample]:
+    def _balanced_sample(self, examples: list[DatasetExample], n: int) -> list[DatasetExample]:
         """Perform balanced sampling across categories."""
-        groups: Dict[str, List[DatasetExample]] = {}
+        groups: dict[str, list[DatasetExample]] = {}
         for example in examples:
             key = example.category or "unknown"
             if key not in groups:
@@ -343,7 +340,9 @@ class BenchmarkDataset:
         if remaining > 0:
             remaining_examples = [e for e in examples if e not in result]
             if remaining_examples:
-                result.extend(random.sample(remaining_examples, min(remaining, len(remaining_examples))))
+                result.extend(
+                    random.sample(remaining_examples, min(remaining, len(remaining_examples)))
+                )
 
         return result[:n]
 
@@ -361,9 +360,9 @@ class BenchmarkDataset:
                 sources={},
             )
 
-        categories: Dict[str, int] = {}
-        difficulties: Dict[str, int] = {}
-        sources: Dict[str, int] = {}
+        categories: dict[str, int] = {}
+        difficulties: dict[str, int] = {}
+        sources: dict[str, int] = {}
         input_lengths = []
         output_lengths = []
 
@@ -440,9 +439,7 @@ class BenchmarkDataset:
             "category": self.category.value,
             "description": self.description,
             "examples": [e.to_dict() for e in self._examples],
-            "splits": {
-                k.value: v for k, v in self._splits.items()
-            },
+            "splits": {k.value: v for k, v in self._splits.items()},
         }
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
@@ -485,7 +482,7 @@ class DatasetBuilder:
         self.name = name
         self._category = DatasetCategory.CUSTOM
         self._description = ""
-        self._examples: List[DatasetExample] = []
+        self._examples: list[DatasetExample] = []
 
     def with_category(self, category: DatasetCategory) -> "DatasetBuilder":
         """Set dataset category."""
@@ -503,7 +500,7 @@ class DatasetBuilder:
         expected_output: Optional[str] = None,
         category: Optional[str] = None,
         difficulty: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> "DatasetBuilder":
         """Add an example."""
         example = DatasetExample(
@@ -519,7 +516,7 @@ class DatasetBuilder:
 
     def add_examples_from_list(
         self,
-        items: List[Dict[str, Any]],
+        items: list[dict[str, Any]],
         input_key: str = "input",
         output_key: str = "output",
     ) -> "DatasetBuilder":
@@ -531,7 +528,11 @@ class DatasetBuilder:
                 expected_output=item.get(output_key),
                 category=item.get("category"),
                 difficulty=item.get("difficulty"),
-                metadata={k: v for k, v in item.items() if k not in [input_key, output_key, "id", "category", "difficulty"]},
+                metadata={
+                    k: v
+                    for k, v in item.items()
+                    if k not in [input_key, output_key, "id", "category", "difficulty"]
+                },
             )
             self._examples.append(example)
         return self
@@ -558,7 +559,7 @@ class CrossValidator:
     def split(
         self,
         dataset: BenchmarkDataset,
-    ) -> Generator[Tuple[List[DatasetExample], List[DatasetExample]], None, None]:
+    ) -> Generator[tuple[list[DatasetExample], list[DatasetExample]], None, None]:
         """Generate cross-validation splits."""
         examples = list(dataset)
         n = len(examples)
@@ -588,7 +589,7 @@ class DatasetRegistry:
 
     def __init__(self):
         """Initialize registry."""
-        self._datasets: Dict[str, BenchmarkDataset] = {}
+        self._datasets: dict[str, BenchmarkDataset] = {}
 
     def register(self, dataset: BenchmarkDataset) -> None:
         """Register a dataset."""
@@ -598,17 +599,13 @@ class DatasetRegistry:
         """Get dataset by name."""
         return self._datasets.get(name)
 
-    def list_datasets(self) -> List[str]:
+    def list_datasets(self) -> list[str]:
         """List registered dataset names."""
         return list(self._datasets.keys())
 
-    def list_by_category(self, category: DatasetCategory) -> List[str]:
+    def list_by_category(self, category: DatasetCategory) -> list[str]:
         """List datasets by category."""
-        return [
-            name
-            for name, dataset in self._datasets.items()
-            if dataset.category == category
-        ]
+        return [name for name, dataset in self._datasets.items() if dataset.category == category]
 
     def remove(self, name: str) -> bool:
         """Remove dataset from registry."""
@@ -771,7 +768,7 @@ def get_dataset(name: str) -> Optional[BenchmarkDataset]:
     return _default_registry.get(name)
 
 
-def list_datasets() -> List[str]:
+def list_datasets() -> list[str]:
     """List datasets in default registry."""
     return _default_registry.list_datasets()
 
@@ -801,7 +798,7 @@ def save_dataset(dataset: BenchmarkDataset, path: Union[str, Path]) -> None:
 
 def create_dataset(
     name: str,
-    examples: List[Dict[str, Any]],
+    examples: list[dict[str, Any]],
     category: DatasetCategory = DatasetCategory.CUSTOM,
     description: str = "",
 ) -> BenchmarkDataset:
@@ -828,7 +825,7 @@ def sample_dataset(
     n: int,
     strategy: SamplingStrategy = SamplingStrategy.RANDOM,
     seed: Optional[int] = None,
-) -> List[DatasetExample]:
+) -> list[DatasetExample]:
     """Sample from dataset.
 
     Args:
@@ -847,7 +844,7 @@ def cross_validate(
     dataset: BenchmarkDataset,
     n_folds: int = 5,
     seed: Optional[int] = None,
-) -> Generator[Tuple[List[DatasetExample], List[DatasetExample]], None, None]:
+) -> Generator[tuple[list[DatasetExample], list[DatasetExample]], None, None]:
     """Perform cross-validation on dataset.
 
     Args:
@@ -920,9 +917,7 @@ def filter_dataset(
             return False
         if min_length and len(example.input_text) < min_length:
             return False
-        if max_length and len(example.input_text) > max_length:
-            return False
-        return True
+        return not (max_length and len(example.input_text) > max_length)
 
     return dataset.filter(predicate)
 
@@ -1513,7 +1508,7 @@ def create_world_knowledge_dataset() -> BenchmarkDataset:
 # =============================================================================
 
 
-def get_all_builtin_datasets() -> Dict[str, BenchmarkDataset]:
+def get_all_builtin_datasets() -> dict[str, BenchmarkDataset]:
     """Get all built-in benchmark datasets.
 
     Returns:
@@ -1558,7 +1553,7 @@ def load_builtin_dataset(name: str) -> BenchmarkDataset:
 
 
 def create_comprehensive_benchmark_suite(
-    categories: Optional[List[DatasetCategory]] = None,
+    categories: Optional[list[DatasetCategory]] = None,
     max_examples_per_dataset: Optional[int] = None,
     seed: Optional[int] = None,
 ) -> BenchmarkDataset:
@@ -1577,8 +1572,7 @@ def create_comprehensive_benchmark_suite(
     # Filter by category if specified
     if categories:
         filtered_datasets = {
-            name: ds for name, ds in all_datasets.items()
-            if ds.category in categories
+            name: ds for name, ds in all_datasets.items() if ds.category in categories
         }
     else:
         filtered_datasets = all_datasets
@@ -1659,7 +1653,7 @@ def create_difficulty_stratified_suite(
     return builder.build()
 
 
-def list_builtin_datasets() -> List[Dict[str, Any]]:
+def list_builtin_datasets() -> list[dict[str, Any]]:
     """List all available built-in datasets with their metadata.
 
     Returns:
@@ -1669,12 +1663,14 @@ def list_builtin_datasets() -> List[Dict[str, Any]]:
     result = []
     for name, dataset in datasets.items():
         stats = dataset.get_stats()
-        result.append({
-            "name": name,
-            "category": dataset.category.value,
-            "description": dataset.description,
-            "num_examples": stats.total_examples,
-            "difficulties": stats.difficulties,
-            "categories": stats.categories,
-        })
+        result.append(
+            {
+                "name": name,
+                "category": dataset.category.value,
+                "description": dataset.description,
+                "num_examples": stats.total_examples,
+                "difficulties": stats.difficulties,
+                "categories": stats.categories,
+            }
+        )
     return result

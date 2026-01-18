@@ -1,41 +1,41 @@
 """Tests for the streaming module."""
 
-import pytest
 import time
+
 from insideLLMs.streaming import (
-    # Enums
-    StreamEventType,
-    StreamState,
+    ContentDetector,
     FilterAction,
-    # Dataclasses
-    StreamToken,
-    StreamChunk,
-    StreamMetrics,
     FilterResult,
-    StreamSummary,
+    StreamAggregator,
     # Classes
     StreamBuffer,
-    StreamProcessor,
-    StreamAggregator,
+    StreamChunk,
     StreamCollector,
-    StreamIterator,
-    ContentDetector,
+    # Enums
+    StreamEventType,
     StreamingWindowAnalyzer,
+    StreamIterator,
+    StreamMetrics,
+    StreamProcessor,
     StreamRateLimiter,
+    StreamState,
+    StreamSummary,
+    # Dataclasses
+    StreamToken,
+    add_content_filter,
+    collect_stream,
     # Convenience functions
     create_stream_collector,
     create_stream_processor,
-    collect_stream,
-    iterate_stream,
-    add_content_filter,
-    measure_stream_speed,
     detect_in_stream,
+    iterate_stream,
+    measure_stream_speed,
 )
-
 
 # ============================================================================
 # Enum Tests
 # ============================================================================
+
 
 class TestStreamEnums:
     """Test streaming-related enums."""
@@ -64,6 +64,7 @@ class TestStreamEnums:
 # ============================================================================
 # Dataclass Tests
 # ============================================================================
+
 
 class TestStreamToken:
     """Test StreamToken dataclass."""
@@ -222,6 +223,7 @@ class TestStreamSummary:
 # StreamBuffer Tests
 # ============================================================================
 
+
 class TestStreamBuffer:
     """Test StreamBuffer class."""
 
@@ -279,6 +281,7 @@ class TestStreamBuffer:
 # ============================================================================
 # StreamProcessor Tests
 # ============================================================================
+
 
 class TestStreamProcessor:
     """Test StreamProcessor class."""
@@ -348,6 +351,7 @@ class TestStreamProcessor:
 # StreamAggregator Tests
 # ============================================================================
 
+
 class TestStreamAggregator:
     """Test StreamAggregator class."""
 
@@ -394,6 +398,7 @@ class TestStreamAggregator:
 # ============================================================================
 # StreamCollector Tests
 # ============================================================================
+
 
 class TestStreamCollector:
     """Test StreamCollector class."""
@@ -466,6 +471,7 @@ class TestStreamCollector:
 # StreamIterator Tests
 # ============================================================================
 
+
 class TestStreamIterator:
     """Test StreamIterator class."""
 
@@ -501,6 +507,7 @@ class TestStreamIterator:
 # ============================================================================
 # ContentDetector Tests
 # ============================================================================
+
 
 class TestContentDetector:
     """Test ContentDetector class."""
@@ -545,6 +552,7 @@ class TestContentDetector:
 # StreamingWindowAnalyzer Tests
 # ============================================================================
 
+
 class TestStreamingWindowAnalyzer:
     """Test StreamingWindowAnalyzer class."""
 
@@ -587,6 +595,7 @@ class TestStreamingWindowAnalyzer:
 # StreamRateLimiter Tests
 # ============================================================================
 
+
 class TestStreamRateLimiter:
     """Test StreamRateLimiter class."""
 
@@ -624,6 +633,7 @@ class TestStreamRateLimiter:
 # ============================================================================
 # Convenience Function Tests
 # ============================================================================
+
 
 class TestConvenienceFunctions:
     """Test module-level convenience functions."""
@@ -693,6 +703,7 @@ class TestConvenienceFunctions:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for streaming workflows."""
@@ -771,6 +782,7 @@ class TestIntegration:
 # ============================================================================
 # Edge Cases
 # ============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""

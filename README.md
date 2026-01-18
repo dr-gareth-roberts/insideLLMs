@@ -12,11 +12,11 @@
 </div>
 
 <p align="center">
+  <a href="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml"><img src="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/dr-gareth-roberts/insideLLMs"><img src="https://codecov.io/gh/dr-gareth-roberts/insideLLMs/branch/main/graph/badge.svg" alt="Coverage"></a>
+  <a href="https://pypi.org/project/insideLLMs/"><img src="https://img.shields.io/pypi/v/insideLLMs.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/tests-3098%20passed-brightgreen.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/modules-93-orange.svg" alt="Modules">
-  <img src="https://img.shields.io/badge/lines%20of%20code-113k+-purple.svg" alt="Lines of Code">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
 ---

@@ -1,52 +1,51 @@
 """Tests for the experiment reproducibility and snapshot module."""
 
-import json
 import os
-import pytest
 import random
 import tempfile
-import time
+
+import pytest
 
 from insideLLMs.reproducibility import (
-    # Enums
-    SnapshotFormat,
-    ReproducibilityLevel,
-    EnvironmentType,
-    # Dataclasses
-    SeedState,
-    EnvironmentInfo,
+    CheckpointManager,
     ConfigSnapshot,
+    ConfigVersionManager,
+    DeterministicExecutor,
+    EnvironmentCapture,
+    EnvironmentInfo,
+    EnvironmentType,
     ExperimentMetadata,
+    ExperimentRegistry,
+    ExperimentReplayManager,
+    ExperimentSnapshot,
     ReplayResult,
+    ReproducibilityChecker,
+    ReproducibilityLevel,
     ReproducibilityReport,
     # Classes
     SeedManager,
-    EnvironmentCapture,
-    ExperimentSnapshot,
-    ConfigVersionManager,
-    ExperimentReplayManager,
-    DeterministicExecutor,
-    CheckpointManager,
-    ReproducibilityChecker,
-    ExperimentRegistry,
+    # Dataclasses
+    SeedState,
+    # Enums
+    SnapshotFormat,
+    capture_environment,
+    capture_snapshot,
+    check_reproducibility,
+    compare_environments,
     # Functions
     create_seed_manager,
-    set_global_seed,
-    capture_snapshot,
-    save_snapshot,
-    load_snapshot,
-    capture_environment,
-    compare_environments,
-    diff_configs,
-    check_reproducibility,
-    run_deterministic,
     derive_seed,
+    diff_configs,
+    load_snapshot,
+    run_deterministic,
+    save_snapshot,
+    set_global_seed,
 )
-
 
 # =============================================================================
 # Enum Tests
 # =============================================================================
+
 
 class TestSnapshotFormat:
     """Tests for SnapshotFormat enum."""
@@ -82,6 +81,7 @@ class TestEnvironmentType:
 # =============================================================================
 # Dataclass Tests
 # =============================================================================
+
 
 class TestSeedState:
     """Tests for SeedState dataclass."""
@@ -255,6 +255,7 @@ class TestReproducibilityReport:
 # SeedManager Tests
 # =============================================================================
 
+
 class TestSeedManager:
     """Tests for SeedManager class."""
 
@@ -350,6 +351,7 @@ class TestSeedManager:
 # EnvironmentCapture Tests
 # =============================================================================
 
+
 class TestEnvironmentCapture:
     """Tests for EnvironmentCapture class."""
 
@@ -436,6 +438,7 @@ class TestEnvironmentCapture:
 # ExperimentSnapshot Tests
 # =============================================================================
 
+
 class TestExperimentSnapshot:
     """Tests for ExperimentSnapshot class."""
 
@@ -503,6 +506,7 @@ class TestExperimentSnapshot:
 # =============================================================================
 # ConfigVersionManager Tests
 # =============================================================================
+
 
 class TestConfigVersionManager:
     """Tests for ConfigVersionManager class."""
@@ -584,6 +588,7 @@ class TestConfigVersionManager:
 # ExperimentReplayManager Tests
 # =============================================================================
 
+
 class TestExperimentReplayManager:
     """Tests for ExperimentReplayManager class."""
 
@@ -643,11 +648,13 @@ class TestExperimentReplayManager:
 # DeterministicExecutor Tests
 # =============================================================================
 
+
 class TestDeterministicExecutor:
     """Tests for DeterministicExecutor class."""
 
     def test_execute_deterministic(self):
         """Test deterministic execution."""
+
         def random_func():
             return random.random()
 
@@ -660,6 +667,7 @@ class TestDeterministicExecutor:
 
     def test_execute_logs_execution(self):
         """Test execution logging."""
+
         def simple_func(x):
             return x * 2
 
@@ -674,6 +682,7 @@ class TestDeterministicExecutor:
 
     def test_execute_with_args_kwargs(self):
         """Test execution with arguments."""
+
         def add_func(a, b, multiplier=1):
             return (a + b) * multiplier
 
@@ -686,6 +695,7 @@ class TestDeterministicExecutor:
 # =============================================================================
 # CheckpointManager Tests
 # =============================================================================
+
 
 class TestCheckpointManager:
     """Tests for CheckpointManager class."""
@@ -759,6 +769,7 @@ class TestCheckpointManager:
 # ReproducibilityChecker Tests
 # =============================================================================
 
+
 class TestReproducibilityChecker:
     """Tests for ReproducibilityChecker class."""
 
@@ -797,6 +808,7 @@ class TestReproducibilityChecker:
 # =============================================================================
 # ExperimentRegistry Tests
 # =============================================================================
+
 
 class TestExperimentRegistry:
     """Tests for ExperimentRegistry class."""
@@ -867,6 +879,7 @@ class TestExperimentRegistry:
 # =============================================================================
 # Convenience Functions Tests
 # =============================================================================
+
 
 class TestConvenienceFunctions:
     """Tests for convenience functions."""
@@ -956,6 +969,7 @@ class TestConvenienceFunctions:
 
     def test_run_deterministic_func(self):
         """Test run_deterministic function."""
+
         def random_func():
             return random.random()
 
@@ -977,6 +991,7 @@ class TestConvenienceFunctions:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestReproducibilityIntegration:
     """Integration tests for reproducibility workflow."""
@@ -1032,17 +1047,23 @@ class TestReproducibilityIntegration:
         manager = ConfigVersionManager()
 
         # Add initial version
-        manager.add_version("v1.0", {
-            "model": "gpt-3.5",
-            "max_tokens": 100,
-        })
+        manager.add_version(
+            "v1.0",
+            {
+                "model": "gpt-3.5",
+                "max_tokens": 100,
+            },
+        )
 
         # Add updated version
-        manager.add_version("v2.0", {
-            "model": "gpt-4",
-            "max_tokens": 200,
-            "temperature": 0.7,
-        })
+        manager.add_version(
+            "v2.0",
+            {
+                "model": "gpt-4",
+                "max_tokens": 200,
+                "temperature": 0.7,
+            },
+        )
 
         # Compare versions
         diff = manager.diff("v1.0", "v2.0")
@@ -1061,7 +1082,7 @@ class TestReproducibilityIntegration:
         ckpt1 = checkpoint_manager.create_checkpoint("epoch_1", state1)
 
         state2 = {"epoch": 2, "loss": 0.3}
-        ckpt2 = checkpoint_manager.create_checkpoint("epoch_2", state2)
+        checkpoint_manager.create_checkpoint("epoch_2", state2)
 
         # Restore from earlier checkpoint
         restored = checkpoint_manager.restore_checkpoint(ckpt1)

@@ -5,12 +5,6 @@ for systematic LLM evaluation.
 """
 
 from insideLLMs import (
-    # Dataset utilities
-    list_builtin_datasets,
-    load_builtin_dataset,
-    get_all_builtin_datasets,
-    create_comprehensive_benchmark_suite,
-    create_difficulty_stratified_suite,
     DatasetCategory,
     # Models
     DummyModel,
@@ -18,6 +12,11 @@ from insideLLMs import (
     LogicProbe,
     # Runner
     ProbeRunner,
+    create_comprehensive_benchmark_suite,
+    create_difficulty_stratified_suite,
+    # Dataset utilities
+    list_builtin_datasets,
+    load_builtin_dataset,
 )
 
 
@@ -53,7 +52,7 @@ def load_and_use_dataset():
     # Sample some examples
     print("\nSample examples:")
     for i, example in enumerate(coding.sample(3, seed=42)):
-        print(f"\n{i+1}. [{example.difficulty}] {example.category}")
+        print(f"\n{i + 1}. [{example.difficulty}] {example.category}")
         print(f"   Input: {example.input_text[:80]}...")
         if example.expected_output:
             print(f"   Expected: {example.expected_output[:50]}...")
@@ -108,7 +107,7 @@ def run_with_dummy_model():
 
     print(f"\nRan {len(results)} examples")
     for i, result in enumerate(results):
-        print(f"\n{i+1}. Status: {result.status}")
+        print(f"\n{i + 1}. Status: {result.status}")
         print(f"   Input: {result.input[:50]}...")
         print(f"   Output: {result.output[:50] if result.output else 'N/A'}...")
 

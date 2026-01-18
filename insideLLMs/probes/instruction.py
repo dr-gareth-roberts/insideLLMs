@@ -8,10 +8,10 @@ Tests the model's ability to:
 """
 
 import re
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Callable, Optional
 
 from insideLLMs.probes.base import ScoredProbe
-from insideLLMs.types import ProbeCategory, ProbeResult, ProbeScore, ResultStatus
+from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 
 
 class InstructionFollowingProbe(ScoredProbe[str]):
@@ -77,7 +77,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         prompt = "".join(prompt_parts)
         return model.generate(prompt, **kwargs)
 
-    def _format_constraints(self, constraints: Dict[str, Any]) -> str:
+    def _format_constraints(self, constraints: dict[str, Any]) -> str:
         """Format constraints as explicit instructions.
 
         Args:
@@ -148,10 +148,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         Returns:
             ProbeResult with constraint compliance details.
         """
-        if isinstance(reference, dict):
-            constraints = reference.get("constraints", reference)
-        else:
-            constraints = {}
+        constraints = reference.get("constraints", reference) if isinstance(reference, dict) else {}
 
         checks = []
         details = {}
@@ -244,6 +241,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         if expected_format == "json":
             try:
                 import json
+
                 json.loads(output)
                 return 1.0
             except json.JSONDecodeError:
@@ -299,7 +297,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         Returns:
             Number of list items detected.
         """
-        lines = output.split("\n")
+        output.split("\n")
 
         # Count numbered items
         numbered = len(re.findall(r"^\s*\d+[\.\)]\s+", output, re.MULTILINE))
@@ -414,13 +412,14 @@ class MultiStepTaskProbe(ScoredProbe[str]):
         # Check for step indicators
         output_lower = model_output.lower()
         step_mentions = sum(
-            1 for i in range(1, len(steps) + 1)
+            1
+            for i in range(1, len(steps) + 1)
             if f"step {i}" in output_lower or f"{i}." in model_output
         )
         details["step_indicators_found"] = step_mentions
 
         # Check expected patterns per step
-        for i, step in enumerate(steps, 1):
+        for i, _step in enumerate(steps, 1):
             step_key = f"step_{i}"
             if step_key in expected_patterns:
                 patterns = expected_patterns[step_key]
@@ -511,10 +510,7 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         Returns:
             The model's response.
         """
-        if isinstance(data, dict):
-            task = data.get("task", str(data))
-        else:
-            task = str(data)
+        task = data.get("task", str(data)) if isinstance(data, dict) else str(data)
 
         # Build constraint instruction
         constraint_text = self._get_constraint_instruction()

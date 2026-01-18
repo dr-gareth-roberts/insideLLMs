@@ -1,45 +1,39 @@
 """Tests for the model adapter factory module."""
 
 import pytest
-import time
-from unittest.mock import Mock, patch
 
 from insideLLMs.adapters import (
-    # Enums
-    Provider,
-    AdapterStatus,
-    ModelCapability,
-    # Dataclasses
-    ModelInfo,
     AdapterConfig,
+    AdapterFactory,
+    AdapterPool,
+    AdapterStatus,
+    # Classes
+    ConnectionInfo,
+    ConnectionMonitor,
+    FallbackChain,
     GenerationParams,
     GenerationResult,
     HealthCheckResult,
-    ConnectionInfo,
-    # Classes
-    BaseAdapter,
     MockAdapter,
+    ModelCapability,
+    # Dataclasses
+    ModelInfo,
     ModelRegistry,
+    # Enums
+    Provider,
     ProviderDetector,
-    AdapterFactory,
-    FallbackChain,
-    AdapterPool,
-    ConnectionMonitor,
     # Functions
-    create_adapter,
     create_mock_adapter,
-    create_fallback_chain,
-    create_adapter_pool,
     detect_provider,
-    list_providers,
-    list_models,
     get_model_info,
+    list_models,
+    list_providers,
 )
-
 
 # =============================================================================
 # Enum Tests
 # =============================================================================
+
 
 class TestProvider:
     """Tests for Provider enum."""
@@ -83,6 +77,7 @@ class TestModelCapability:
 # =============================================================================
 # Dataclass Tests
 # =============================================================================
+
 
 class TestModelInfo:
     """Tests for ModelInfo dataclass."""
@@ -274,6 +269,7 @@ class TestConnectionInfo:
 # MockAdapter Tests
 # =============================================================================
 
+
 class TestMockAdapter:
     """Tests for MockAdapter class."""
 
@@ -355,6 +351,7 @@ class TestMockAdapter:
 # =============================================================================
 # ModelRegistry Tests
 # =============================================================================
+
 
 class TestModelRegistry:
     """Tests for ModelRegistry class."""
@@ -445,6 +442,7 @@ class TestModelRegistry:
 # ProviderDetector Tests
 # =============================================================================
 
+
 class TestProviderDetector:
     """Tests for ProviderDetector class."""
 
@@ -477,6 +475,7 @@ class TestProviderDetector:
 # =============================================================================
 # AdapterFactory Tests
 # =============================================================================
+
 
 class TestAdapterFactory:
     """Tests for AdapterFactory class."""
@@ -544,6 +543,7 @@ class TestAdapterFactory:
 # FallbackChain Tests
 # =============================================================================
 
+
 class TestFallbackChain:
     """Tests for FallbackChain class."""
 
@@ -575,6 +575,7 @@ class TestFallbackChain:
 
     def test_fallback_on_error(self):
         """Test fallback on error."""
+
         # First adapter that always fails
         class FailingAdapter(MockAdapter):
             def generate(self, prompt, params=None, **kwargs):
@@ -593,6 +594,7 @@ class TestFallbackChain:
 
     def test_all_fail(self):
         """Test when all adapters fail."""
+
         class FailingAdapter(MockAdapter):
             def generate(self, prompt, params=None, **kwargs):
                 raise RuntimeError("Failed")
@@ -626,6 +628,7 @@ class TestFallbackChain:
 # =============================================================================
 # AdapterPool Tests
 # =============================================================================
+
 
 class TestAdapterPool:
     """Tests for AdapterPool class."""
@@ -701,6 +704,7 @@ class TestAdapterPool:
 # ConnectionMonitor Tests
 # =============================================================================
 
+
 class TestConnectionMonitor:
     """Tests for ConnectionMonitor class."""
 
@@ -728,6 +732,7 @@ class TestConnectionMonitor:
 # =============================================================================
 # Convenience Functions Tests
 # =============================================================================
+
 
 class TestConvenienceFunctions:
     """Tests for convenience functions."""
@@ -788,6 +793,7 @@ class TestConvenienceFunctions:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestAdaptersIntegration:
     """Integration tests for adapters."""

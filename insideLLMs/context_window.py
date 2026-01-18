@@ -10,16 +10,17 @@ Smart context management for LLM applications including:
 - Multi-turn conversation context handling
 """
 
+import hashlib
+import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Optional
-from datetime import datetime
-import re
-import hashlib
 
 
 class TruncationStrategy(Enum):
     """Strategy for truncating content when exceeding limits."""
+
     TAIL = "tail"  # Keep beginning, remove end
     HEAD = "head"  # Keep end, remove beginning
     MIDDLE = "middle"  # Keep beginning and end, remove middle
@@ -30,6 +31,7 @@ class TruncationStrategy(Enum):
 
 class ContentType(Enum):
     """Types of content in context."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -42,6 +44,7 @@ class ContentType(Enum):
 
 class CompressionMethod(Enum):
     """Methods for compressing context content."""
+
     NONE = "none"
     SUMMARIZE = "summarize"
     EXTRACT_KEY_POINTS = "extract_key_points"
@@ -51,6 +54,7 @@ class CompressionMethod(Enum):
 
 class PriorityLevel(Enum):
     """Priority levels for context content."""
+
     CRITICAL = 5  # Must never be removed
     HIGH = 4
     MEDIUM = 3
@@ -61,6 +65,7 @@ class PriorityLevel(Enum):
 @dataclass
 class TokenBudget:
     """Token budget allocation for context."""
+
     total: int
     system: int = 0
     user: int = 0
@@ -115,6 +120,7 @@ class TokenBudget:
 @dataclass
 class ContextBlock:
     """A block of content in the context."""
+
     content: str
     content_type: ContentType
     priority: PriorityLevel = PriorityLevel.MEDIUM
@@ -151,6 +157,7 @@ class ContextBlock:
 @dataclass
 class TruncationResult:
     """Result of a truncation operation."""
+
     original_tokens: int
     final_tokens: int
     tokens_removed: int
@@ -177,6 +184,7 @@ class TruncationResult:
 @dataclass
 class CompressionResult:
     """Result of a compression operation."""
+
     original_tokens: int
     compressed_tokens: int
     compression_ratio: float
@@ -199,6 +207,7 @@ class CompressionResult:
 @dataclass
 class ContextWindowState:
     """Current state of the context window."""
+
     total_tokens: int
     used_tokens: int
     available_tokens: int
@@ -239,11 +248,11 @@ def find_semantic_boundaries(text: str) -> list[int]:
     boundaries = [0]
 
     # Find paragraph breaks
-    for match in re.finditer(r'\n\n+', text):
+    for match in re.finditer(r"\n\n+", text):
         boundaries.append(match.end())
 
     # Find sentence endings
-    for match in re.finditer(r'[.!?]+\s+', text):
+    for match in re.finditer(r"[.!?]+\s+", text):
         boundaries.append(match.end())
 
     boundaries.append(len(text))
@@ -279,10 +288,7 @@ class TokenCounter:
         self._cache_misses += 1
 
         # Count tokens
-        if self.tokenizer:
-            count = len(self.tokenizer(text))
-        else:
-            count = estimate_tokens(text)
+        count = len(self.tokenizer(text)) if self.tokenizer else estimate_tokens(text)
 
         # Cache result (limit cache size)
         if len(self._cache) < 10000:
@@ -360,9 +366,7 @@ class ContextTruncator:
             )
 
         if strategy == TruncationStrategy.PRIORITY:
-            return self._truncate_by_priority(
-                blocks, target_tokens, preserve_critical
-            )
+            return self._truncate_by_priority(blocks, target_tokens, preserve_critical)
         elif strategy == TruncationStrategy.TAIL:
             return self._truncate_tail(blocks, target_tokens, preserve_critical)
         elif strategy == TruncationStrategy.HEAD:
@@ -372,14 +376,10 @@ class ContextTruncator:
         elif strategy == TruncationStrategy.SEMANTIC:
             return self._truncate_semantic(blocks, target_tokens, preserve_critical)
         elif strategy == TruncationStrategy.SLIDING_WINDOW:
-            return self._truncate_sliding_window(
-                blocks, target_tokens, preserve_critical
-            )
+            return self._truncate_sliding_window(blocks, target_tokens, preserve_critical)
         else:
             # Default to priority
-            return self._truncate_by_priority(
-                blocks, target_tokens, preserve_critical
-            )
+            return self._truncate_by_priority(blocks, target_tokens, preserve_critical)
 
     def _truncate_by_priority(
         self,
@@ -398,10 +398,11 @@ class ContextTruncator:
 
         # Add blocks from highest priority first
         for block in reversed(sorted_blocks):
-            if preserve_critical and block.priority == PriorityLevel.CRITICAL:
-                result_blocks.append(block)
-                current_tokens += block.token_count
-            elif current_tokens + block.token_count <= target_tokens:
+            if (
+                preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+                or current_tokens + block.token_count <= target_tokens
+            ):
                 result_blocks.append(block)
                 current_tokens += block.token_count
             else:
@@ -435,18 +436,17 @@ class ContextTruncator:
         original_tokens = sum(b.token_count for b in blocks)
 
         for block in blocks:
-            if preserve_critical and block.priority == PriorityLevel.CRITICAL:
-                result_blocks.append(block)
-                current_tokens += block.token_count
-            elif current_tokens + block.token_count <= target_tokens:
+            if (
+                preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+                or current_tokens + block.token_count <= target_tokens
+            ):
                 result_blocks.append(block)
                 current_tokens += block.token_count
             elif current_tokens < target_tokens:
                 # Partial block
                 remaining = target_tokens - current_tokens
-                truncated = self._truncate_block_content(
-                    block, remaining, keep_start=True
-                )
+                truncated = self._truncate_block_content(block, remaining, keep_start=True)
                 result_blocks.append(truncated)
                 current_tokens += truncated.token_count
                 blocks_truncated += 1
@@ -479,18 +479,17 @@ class ContextTruncator:
 
         # Process in reverse
         for block in reversed(blocks):
-            if preserve_critical and block.priority == PriorityLevel.CRITICAL:
-                result_blocks.insert(0, block)
-                current_tokens += block.token_count
-            elif current_tokens + block.token_count <= target_tokens:
+            if (
+                preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+                or current_tokens + block.token_count <= target_tokens
+            ):
                 result_blocks.insert(0, block)
                 current_tokens += block.token_count
             elif current_tokens < target_tokens:
                 # Partial block
                 remaining = target_tokens - current_tokens
-                truncated = self._truncate_block_content(
-                    block, remaining, keep_start=False
-                )
+                truncated = self._truncate_block_content(block, remaining, keep_start=False)
                 result_blocks.insert(0, truncated)
                 current_tokens += truncated.token_count
                 blocks_truncated += 1
@@ -527,10 +526,11 @@ class ContextTruncator:
         head_blocks = []
         head_tokens = 0
         for block in blocks:
-            if head_tokens + block.token_count <= half_target:
-                head_blocks.append(block)
-                head_tokens += block.token_count
-            elif preserve_critical and block.priority == PriorityLevel.CRITICAL:
+            if (
+                head_tokens + block.token_count <= half_target
+                or preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+            ):
                 head_blocks.append(block)
                 head_tokens += block.token_count
             else:
@@ -543,10 +543,11 @@ class ContextTruncator:
         for block in reversed(blocks):
             if block in head_blocks:
                 continue
-            if tail_tokens + block.token_count <= remaining_target:
-                tail_blocks.insert(0, block)
-                tail_tokens += block.token_count
-            elif preserve_critical and block.priority == PriorityLevel.CRITICAL:
+            if (
+                tail_tokens + block.token_count <= remaining_target
+                or preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+            ):
                 tail_blocks.insert(0, block)
                 tail_tokens += block.token_count
 
@@ -579,10 +580,11 @@ class ContextTruncator:
         original_tokens = sum(b.token_count for b in blocks)
 
         for block in blocks:
-            if preserve_critical and block.priority == PriorityLevel.CRITICAL:
-                result_blocks.append(block)
-                current_tokens += block.token_count
-            elif current_tokens + block.token_count <= target_tokens:
+            if (
+                preserve_critical
+                and block.priority == PriorityLevel.CRITICAL
+                or current_tokens + block.token_count <= target_tokens
+            ):
                 result_blocks.append(block)
                 current_tokens += block.token_count
             elif current_tokens < target_tokens:
@@ -835,14 +837,14 @@ class ContextCompressor:
             return self.summarizer(content)
 
         # Simple extractive summary: keep first sentences
-        sentences = re.split(r'(?<=[.!?])\s+', content)
+        sentences = re.split(r"(?<=[.!?])\s+", content)
         target_count = max(1, int(len(sentences) * target_ratio))
-        return ' '.join(sentences[:target_count])
+        return " ".join(sentences[:target_count])
 
     def _extract_key_points(self, content: str) -> str:
         """Extract key points from content."""
         # Simple heuristic: look for bullet points, numbered lists, and important sentences
-        lines = content.split('\n')
+        lines = content.split("\n")
         key_points = []
 
         for line in lines:
@@ -850,28 +852,31 @@ class ContextCompressor:
             if not line:
                 continue
             # Keep bullet points and numbered items
-            if re.match(r'^[-•*]\s+', line) or re.match(r'^\d+[.)]\s+', line):
-                key_points.append(line)
-            # Keep lines with key indicators
-            elif any(kw in line.lower() for kw in ['important', 'key', 'note:', 'critical', 'must']):
+            if (
+                re.match(r"^[-•*]\s+", line)
+                or re.match(r"^\d+[.)]\s+", line)
+                or any(
+                    kw in line.lower() for kw in ["important", "key", "note:", "critical", "must"]
+                )
+            ):
                 key_points.append(line)
 
         if key_points:
-            return '\n'.join(key_points)
+            return "\n".join(key_points)
 
         # Fallback: return first paragraph
-        paragraphs = content.split('\n\n')
+        paragraphs = content.split("\n\n")
         return paragraphs[0] if paragraphs else content
 
     def _remove_redundancy(self, content: str) -> str:
         """Remove redundant content."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         seen_content: set[str] = set()
         unique_lines = []
 
         for line in lines:
             # Normalize for comparison
-            normalized = ' '.join(line.lower().split())
+            normalized = " ".join(line.lower().split())
             if normalized and normalized not in seen_content:
                 seen_content.add(normalized)
                 unique_lines.append(line)
@@ -879,41 +884,36 @@ class ContextCompressor:
                 unique_lines.append(line)
 
         # Also remove repeated phrases within text
-        result = '\n'.join(unique_lines)
+        result = "\n".join(unique_lines)
 
         # Remove consecutive duplicate words
-        result = re.sub(r'\b(\w+)\s+\1\b', r'\1', result, flags=re.IGNORECASE)
+        result = re.sub(r"\b(\w+)\s+\1\b", r"\1", result, flags=re.IGNORECASE)
 
         return result
 
     def _abbreviate(self, content: str) -> str:
         """Abbreviate common phrases."""
         abbreviations = {
-            'for example': 'e.g.',
-            'that is': 'i.e.',
-            'and so on': 'etc.',
-            'in other words': 'i.e.',
-            'with respect to': 'w.r.t.',
-            'as soon as possible': 'ASAP',
-            'information': 'info',
-            'configuration': 'config',
-            'documentation': 'docs',
-            'application': 'app',
-            'implementation': 'impl',
-            'approximately': 'approx.',
-            'function': 'func',
-            'parameter': 'param',
-            'argument': 'arg',
+            "for example": "e.g.",
+            "that is": "i.e.",
+            "and so on": "etc.",
+            "in other words": "i.e.",
+            "with respect to": "w.r.t.",
+            "as soon as possible": "ASAP",
+            "information": "info",
+            "configuration": "config",
+            "documentation": "docs",
+            "application": "app",
+            "implementation": "impl",
+            "approximately": "approx.",
+            "function": "func",
+            "parameter": "param",
+            "argument": "arg",
         }
 
         result = content
         for phrase, abbrev in abbreviations.items():
-            result = re.sub(
-                rf'\b{re.escape(phrase)}\b',
-                abbrev,
-                result,
-                flags=re.IGNORECASE
-            )
+            result = re.sub(rf"\b{re.escape(phrase)}\b", abbrev, result, flags=re.IGNORECASE)
 
         return result
 
@@ -1042,10 +1042,7 @@ class ContextWindow:
             preserve_critical: Whether to keep critical priority blocks
         """
         if preserve_critical:
-            self._blocks = [
-                b for b in self._blocks
-                if b.priority == PriorityLevel.CRITICAL
-            ]
+            self._blocks = [b for b in self._blocks if b.priority == PriorityLevel.CRITICAL]
         else:
             self._blocks = []
 
@@ -1164,15 +1161,17 @@ class ContextWindow:
 
     def _record_action(self, action: str, data: Any):
         """Record action in history."""
-        self._history.append({
-            "action": action,
-            "timestamp": datetime.now().isoformat(),
-            "data": data.to_dict() if hasattr(data, 'to_dict') else data,
-            "state": {
-                "used_tokens": self.get_used_tokens(),
-                "block_count": len(self._blocks),
-            },
-        })
+        self._history.append(
+            {
+                "action": action,
+                "timestamp": datetime.now().isoformat(),
+                "data": data.to_dict() if hasattr(data, "to_dict") else data,
+                "state": {
+                    "used_tokens": self.get_used_tokens(),
+                    "block_count": len(self._blocks),
+                },
+            }
+        )
 
     def get_history(self) -> list[dict[str, Any]]:
         """Get action history."""
@@ -1263,17 +1262,21 @@ class ConversationManager:
 
         # Add summary if available
         if self._summary:
-            messages.append({
-                "role": "system",
-                "content": f"[Previous conversation summary: {self._summary}]",
-            })
+            messages.append(
+                {
+                    "role": "system",
+                    "content": f"[Previous conversation summary: {self._summary}]",
+                }
+            )
 
         # Add recent turns
         for turn in self._turns:
-            messages.append({
-                "role": turn["role"],
-                "content": turn["content"],
-            })
+            messages.append(
+                {
+                    "role": turn["role"],
+                    "content": turn["content"],
+                }
+            )
 
         # Truncate if needed
         if max_tokens:
@@ -1312,7 +1315,7 @@ class ConversationManager:
             return
 
         # Turns to summarize
-        turns_to_summarize = self._turns[:-self.summarize_after]
+        turns_to_summarize = self._turns[: -self.summarize_after]
 
         if self.summarizer:
             self._summary = self.summarizer(turns_to_summarize)
@@ -1323,7 +1326,7 @@ class ConversationManager:
         self._summary_turn_count = len(turns_to_summarize)
 
         # Keep only recent turns
-        self._turns = self._turns[-self.summarize_after:]
+        self._turns = self._turns[-self.summarize_after :]
 
     def _default_summarize(self, turns: list[dict[str, Any]]) -> str:
         """Default summarization method."""
@@ -1453,6 +1456,7 @@ class SlidingWindowManager:
 
 
 # Convenience functions
+
 
 def create_context_window(
     max_tokens: int = 128000,

@@ -19,27 +19,18 @@ Example:
     >>> result = workflow.generate_with_approval("Write a summary")
 """
 
-from abc import ABC, abstractmethod
+import threading
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from queue import Empty, PriorityQueue
 from typing import (
     Any,
     Callable,
-    Dict,
-    Generic,
-    List,
     Optional,
     Protocol,
-    Tuple,
-    TypeVar,
-    Union,
 )
-import json
-import threading
-import time
-import uuid
-from queue import PriorityQueue, Empty
 
 __all__ = [
     # Core types
@@ -119,11 +110,11 @@ class Feedback:
     content: str = ""
     rating: Optional[float] = None  # 0.0 to 1.0
     edited_content: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
     reviewer_id: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "feedback_id": self.feedback_id,
@@ -137,7 +128,7 @@ class Feedback:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Feedback":
+    def from_dict(cls, data: dict[str, Any]) -> "Feedback":
         """Create from dictionary."""
         return cls(
             feedback_id=data.get("feedback_id", str(uuid.uuid4())),
@@ -146,7 +137,9 @@ class Feedback:
             rating=data.get("rating"),
             edited_content=data.get("edited_content"),
             metadata=data.get("metadata", {}),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if "timestamp" in data
+            else datetime.now(),
             reviewer_id=data.get("reviewer_id"),
         )
 
@@ -161,11 +154,11 @@ class Annotation:
     start_offset: Optional[int] = None
     end_offset: Optional[int] = None
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     annotator_id: Optional[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "annotation_id": self.annotation_id,
@@ -190,9 +183,9 @@ class ReviewItem:
     model_id: Optional[str] = None
     status: ReviewStatus = ReviewStatus.PENDING
     priority: Priority = Priority.MEDIUM
-    feedback: List[Feedback] = field(default_factory=list)
-    annotations: List[Annotation] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    feedback: list[Feedback] = field(default_factory=list)
+    annotations: list[Annotation] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     assigned_to: Optional[str] = None
@@ -214,7 +207,7 @@ class ReviewItem:
         self.annotations.append(annotation)
         self.updated_at = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "item_id": self.item_id,
@@ -246,7 +239,7 @@ class HITLConfig:
     require_comment: bool = False
     track_time: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "auto_approve_threshold": self.auto_approve_threshold,
@@ -269,8 +262,8 @@ class ReviewQueue:
         Args:
             max_size: Maximum queue size (None for unlimited)
         """
-        self._items: Dict[str, ReviewItem] = {}
-        self._pending: List[str] = []
+        self._items: dict[str, ReviewItem] = {}
+        self._pending: list[str] = []
         self._lock = threading.Lock()
         self._max_size = max_size
 
@@ -320,16 +313,12 @@ class ReviewQueue:
                 self._pending.remove(item_id)
             return item
 
-    def get_pending(self) -> List[ReviewItem]:
+    def get_pending(self) -> list[ReviewItem]:
         """Get all pending items."""
         with self._lock:
-            return [
-                self._items[item_id]
-                for item_id in self._pending
-                if item_id in self._items
-            ]
+            return [self._items[item_id] for item_id in self._pending if item_id in self._items]
 
-    def get_by_status(self, status: ReviewStatus) -> List[ReviewItem]:
+    def get_by_status(self, status: ReviewStatus) -> list[ReviewItem]:
         """Get items by status."""
         return [item for item in self._items.values() if item.status == status]
 
@@ -342,7 +331,7 @@ class ReviewQueue:
         """Get count of pending items."""
         return len(self._pending)
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Get queue statistics."""
         stats = {status.value: 0 for status in ReviewStatus}
         for item in self._items.values():
@@ -389,7 +378,7 @@ class PriorityReviewQueue(ReviewQueue):
 class InputHandler(Protocol):
     """Protocol for handling user input."""
 
-    def get_approval(self, item: ReviewItem) -> Tuple[bool, Optional[str]]:
+    def get_approval(self, item: ReviewItem) -> tuple[bool, Optional[str]]:
         """Get approval for item. Returns (approved, comment)."""
         ...
 
@@ -413,29 +402,29 @@ class ConsoleInputHandler:
         """
         self.timeout = timeout
 
-    def get_approval(self, item: ReviewItem) -> Tuple[bool, Optional[str]]:
+    def get_approval(self, item: ReviewItem) -> tuple[bool, Optional[str]]:
         """Get approval from console input."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Review Item: {item.item_id}")
         print(f"Prompt: {item.prompt}")
         print(f"Response: {item.response}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         response = input("Approve? (y/n/skip): ").strip().lower()
         comment = input("Comment (optional): ").strip() or None
 
-        if response == 'y':
+        if response == "y":
             return True, comment
-        elif response == 'skip':
+        elif response == "skip":
             return None, comment  # type: ignore
         return False, comment
 
     def get_feedback(self, item: ReviewItem) -> Feedback:
         """Get feedback from console input."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Provide feedback for: {item.item_id}")
         print(f"Response: {item.response}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         rating_str = input("Rating (0-10, or Enter to skip): ").strip()
         rating = float(rating_str) / 10 if rating_str else None
@@ -450,10 +439,10 @@ class ConsoleInputHandler:
 
     def get_edit(self, item: ReviewItem) -> str:
         """Get edited content from console input."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Edit response for: {item.item_id}")
         print(f"Current: {item.response}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         edited = input("New response (or Enter to keep): ").strip()
         return edited if edited else item.response
@@ -464,7 +453,7 @@ class CallbackInputHandler:
 
     def __init__(
         self,
-        approval_callback: Optional[Callable[[ReviewItem], Tuple[bool, Optional[str]]]] = None,
+        approval_callback: Optional[Callable[[ReviewItem], tuple[bool, Optional[str]]]] = None,
         feedback_callback: Optional[Callable[[ReviewItem], Feedback]] = None,
         edit_callback: Optional[Callable[[ReviewItem], str]] = None,
     ):
@@ -479,7 +468,7 @@ class CallbackInputHandler:
         self._feedback_callback = feedback_callback
         self._edit_callback = edit_callback
 
-    def get_approval(self, item: ReviewItem) -> Tuple[bool, Optional[str]]:
+    def get_approval(self, item: ReviewItem) -> tuple[bool, Optional[str]]:
         """Get approval via callback."""
         if self._approval_callback:
             return self._approval_callback(item)
@@ -518,7 +507,7 @@ class HITLSession:
         self.config = config or HITLConfig()
         self.input_handler = input_handler or CallbackInputHandler()
         self.session_id = str(uuid.uuid4())
-        self._history: List[ReviewItem] = []
+        self._history: list[ReviewItem] = []
         self._lock = threading.Lock()
         self._start_time = datetime.now()
 
@@ -527,7 +516,7 @@ class HITLSession:
         prompt: str,
         require_approval: bool = True,
         **kwargs: Any,
-    ) -> Tuple[str, ReviewItem]:
+    ) -> tuple[str, ReviewItem]:
         """Generate response and optionally get human review.
 
         Args:
@@ -545,7 +534,7 @@ class HITLSession:
         item = ReviewItem(
             prompt=prompt,
             response=response,
-            model_id=getattr(self.model, 'model_id', None),
+            model_id=getattr(self.model, "model_id", None),
             metadata=kwargs,
         )
 
@@ -560,10 +549,12 @@ class HITLSession:
                 item.status = ReviewStatus.REJECTED
 
             if comment:
-                item.add_feedback(Feedback(
-                    feedback_type=FeedbackType.COMMENT,
-                    content=comment,
-                ))
+                item.add_feedback(
+                    Feedback(
+                        feedback_type=FeedbackType.COMMENT,
+                        content=comment,
+                    )
+                )
         else:
             item.status = ReviewStatus.APPROVED
 
@@ -572,7 +563,7 @@ class HITLSession:
 
         return response, item
 
-    def collect_feedback(self, prompt: str, **kwargs: Any) -> Tuple[str, Feedback]:
+    def collect_feedback(self, prompt: str, **kwargs: Any) -> tuple[str, Feedback]:
         """Generate response and collect feedback.
 
         Args:
@@ -587,7 +578,7 @@ class HITLSession:
         item = ReviewItem(
             prompt=prompt,
             response=response,
-            model_id=getattr(self.model, 'model_id', None),
+            model_id=getattr(self.model, "model_id", None),
         )
 
         feedback = self.input_handler.get_feedback(item)
@@ -599,7 +590,7 @@ class HITLSession:
 
         return response, feedback
 
-    def edit_response(self, prompt: str, **kwargs: Any) -> Tuple[str, str]:
+    def edit_response(self, prompt: str, **kwargs: Any) -> tuple[str, str]:
         """Generate response and allow human edit.
 
         Args:
@@ -614,17 +605,19 @@ class HITLSession:
         item = ReviewItem(
             prompt=prompt,
             response=original,
-            model_id=getattr(self.model, 'model_id', None),
+            model_id=getattr(self.model, "model_id", None),
         )
 
         edited = self.input_handler.get_edit(item)
 
         if edited != original:
             item.status = ReviewStatus.EDITED
-            item.add_feedback(Feedback(
-                feedback_type=FeedbackType.EDIT,
-                edited_content=edited,
-            ))
+            item.add_feedback(
+                Feedback(
+                    feedback_type=FeedbackType.EDIT,
+                    edited_content=edited,
+                )
+            )
         else:
             item.status = ReviewStatus.APPROVED
 
@@ -634,11 +627,11 @@ class HITLSession:
         return original, edited
 
     @property
-    def history(self) -> List[ReviewItem]:
+    def history(self) -> list[ReviewItem]:
         """Get session history."""
         return list(self._history)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get session statistics."""
         with self._lock:
             total = len(self._history)
@@ -651,9 +644,7 @@ class HITLSession:
             skipped = sum(1 for item in self._history if item.status == ReviewStatus.SKIPPED)
 
             ratings = [
-                f.rating for item in self._history
-                for f in item.feedback
-                if f.rating is not None
+                f.rating for item in self._history for f in item.feedback if f.rating is not None
             ]
 
             return {
@@ -669,7 +660,7 @@ class HITLSession:
                 "duration_seconds": (datetime.now() - self._start_time).total_seconds(),
             }
 
-    def export_history(self) -> List[Dict[str, Any]]:
+    def export_history(self) -> list[dict[str, Any]]:
         """Export session history as list of dictionaries."""
         return [item.to_dict() for item in self._history]
 
@@ -685,7 +676,7 @@ class InteractiveSession(HITLSession):
     ):
         """Initialize interactive session."""
         super().__init__(model, config, input_handler)
-        self._callbacks: Dict[str, List[Callable]] = {
+        self._callbacks: dict[str, list[Callable]] = {
             "on_generate": [],
             "on_approve": [],
             "on_reject": [],
@@ -716,7 +707,7 @@ class InteractiveSession(HITLSession):
         prompt: str,
         require_approval: bool = True,
         **kwargs: Any,
-    ) -> Tuple[str, ReviewItem]:
+    ) -> tuple[str, ReviewItem]:
         """Generate with event emission."""
         response, item = super().generate_and_review(prompt, require_approval, **kwargs)
 
@@ -760,7 +751,7 @@ class ApprovalWorkflow:
         self,
         prompt: str,
         **kwargs: Any,
-    ) -> Tuple[str, bool, float]:
+    ) -> tuple[str, bool, float]:
         """Generate response with approval workflow.
 
         Args:
@@ -795,7 +786,7 @@ class ApprovalWorkflow:
         return response, bool(approved), confidence
 
     @property
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Get workflow statistics."""
         return dict(self._stats)
 
@@ -822,7 +813,7 @@ class ReviewWorkflow:
         prompt: str,
         response: str,
         priority: Priority = Priority.MEDIUM,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> ReviewItem:
         """Add item for review.
 
@@ -844,7 +835,7 @@ class ReviewWorkflow:
         self.queue.add(item)
         return item
 
-    def get_batch(self) -> List[ReviewItem]:
+    def get_batch(self) -> list[ReviewItem]:
         """Get batch of items for review."""
         items = []
         for _ in range(self.batch_size):
@@ -856,7 +847,7 @@ class ReviewWorkflow:
 
     def submit_reviews(
         self,
-        reviews: List[Tuple[str, ReviewStatus, Optional[Feedback]]],
+        reviews: list[tuple[str, ReviewStatus, Optional[Feedback]]],
     ) -> int:
         """Submit batch of reviews.
 
@@ -883,7 +874,7 @@ class AnnotationWorkflow:
 
     def __init__(
         self,
-        labels: List[str],
+        labels: list[str],
         multi_label: bool = False,
     ):
         """Initialize annotation workflow.
@@ -894,12 +885,12 @@ class AnnotationWorkflow:
         """
         self.labels = labels
         self.multi_label = multi_label
-        self._items: Dict[str, ReviewItem] = {}
+        self._items: dict[str, ReviewItem] = {}
 
     def add_for_annotation(
         self,
         text: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str:
         """Add text for annotation.
 
@@ -951,7 +942,9 @@ class AnnotationWorkflow:
                 return None
 
         annotation = Annotation(
-            text=item.response[start_offset:end_offset] if start_offset and end_offset else item.response,
+            text=item.response[start_offset:end_offset]
+            if start_offset and end_offset
+            else item.response,
             label=label,
             start_offset=start_offset,
             end_offset=end_offset,
@@ -960,12 +953,12 @@ class AnnotationWorkflow:
         item.add_annotation(annotation)
         return annotation
 
-    def get_annotations(self, item_id: str) -> List[Annotation]:
+    def get_annotations(self, item_id: str) -> list[Annotation]:
         """Get annotations for item."""
         item = self._items.get(item_id)
         return item.annotations if item else []
 
-    def export(self) -> List[Dict[str, Any]]:
+    def export(self) -> list[dict[str, Any]]:
         """Export all annotations."""
         return [
             {
@@ -994,14 +987,14 @@ class HumanValidator:
         """
         self.validation_func = validation_func
         self.input_handler = input_handler or CallbackInputHandler()
-        self._validations: List[Dict[str, Any]] = []
+        self._validations: list[dict[str, Any]] = []
 
     def validate(
         self,
         prompt: str,
         response: str,
         criteria: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, Optional[str]]:
         """Validate a response.
 
         Args:
@@ -1025,19 +1018,21 @@ class HumanValidator:
         else:
             is_valid, feedback = self.input_handler.get_approval(item)
 
-        self._validations.append({
-            "prompt": prompt,
-            "response": response,
-            "is_valid": is_valid,
-            "feedback": feedback,
-            "criteria": criteria,
-            "timestamp": datetime.now().isoformat(),
-        })
+        self._validations.append(
+            {
+                "prompt": prompt,
+                "response": response,
+                "is_valid": is_valid,
+                "feedback": feedback,
+                "criteria": criteria,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         return bool(is_valid), feedback
 
     @property
-    def validation_history(self) -> List[Dict[str, Any]]:
+    def validation_history(self) -> list[dict[str, Any]]:
         """Get validation history."""
         return list(self._validations)
 
@@ -1065,13 +1060,13 @@ class ConsensusValidator:
         """
         self.min_reviewers = min_reviewers
         self.consensus_threshold = consensus_threshold
-        self._pending: Dict[str, Dict[str, Any]] = {}
+        self._pending: dict[str, dict[str, Any]] = {}
 
     def create_validation_task(
         self,
         prompt: str,
         response: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str:
         """Create a validation task for multiple reviewers.
 
@@ -1099,7 +1094,7 @@ class ConsensusValidator:
         is_valid: bool,
         reviewer_id: str,
         comment: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """Submit a vote for a validation task.
 
         Args:
@@ -1120,12 +1115,14 @@ class ConsensusValidator:
         if any(v["reviewer_id"] == reviewer_id for v in task["votes"]):
             return None
 
-        task["votes"].append({
-            "is_valid": is_valid,
-            "reviewer_id": reviewer_id,
-            "comment": comment,
-            "timestamp": datetime.now().isoformat(),
-        })
+        task["votes"].append(
+            {
+                "is_valid": is_valid,
+                "reviewer_id": reviewer_id,
+                "comment": comment,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # Check for consensus
         if len(task["votes"]) >= self.min_reviewers:
@@ -1156,7 +1153,7 @@ class ConsensusValidator:
 
         return None
 
-    def get_pending_tasks(self) -> List[str]:
+    def get_pending_tasks(self) -> list[str]:
         """Get list of pending task IDs."""
         return list(self._pending.keys())
 
@@ -1166,7 +1163,7 @@ class FeedbackCollector:
 
     def __init__(self):
         """Initialize feedback collector."""
-        self._feedback: Dict[str, List[Feedback]] = {}
+        self._feedback: dict[str, list[Feedback]] = {}
         self._lock = threading.Lock()
 
     def add_feedback(
@@ -1185,7 +1182,7 @@ class FeedbackCollector:
                 self._feedback[item_id] = []
             self._feedback[item_id].append(feedback)
 
-    def get_feedback(self, item_id: str) -> List[Feedback]:
+    def get_feedback(self, item_id: str) -> list[Feedback]:
         """Get all feedback for an item."""
         return self._feedback.get(item_id, [])
 
@@ -1201,13 +1198,13 @@ class FeedbackCollector:
         if not feedback_list:
             return None
 
-        type_counts: Dict[FeedbackType, int] = {}
+        type_counts: dict[FeedbackType, int] = {}
         for f in feedback_list:
             type_counts[f.feedback_type] = type_counts.get(f.feedback_type, 0) + 1
 
         return max(type_counts, key=type_counts.get)  # type: ignore
 
-    def export(self) -> Dict[str, List[Dict[str, Any]]]:
+    def export(self) -> dict[str, list[dict[str, Any]]]:
         """Export all collected feedback."""
         return {
             item_id: [f.to_dict() for f in feedback_list]
@@ -1218,14 +1215,14 @@ class FeedbackCollector:
 class AnnotationCollector:
     """Collects annotations with inter-annotator agreement tracking."""
 
-    def __init__(self, labels: List[str]):
+    def __init__(self, labels: list[str]):
         """Initialize annotation collector.
 
         Args:
             labels: Valid annotation labels
         """
         self.labels = labels
-        self._annotations: Dict[str, List[Annotation]] = {}
+        self._annotations: dict[str, list[Annotation]] = {}
 
     def add_annotation(
         self,
@@ -1249,7 +1246,7 @@ class AnnotationCollector:
         self._annotations[item_id].append(annotation)
         return True
 
-    def get_annotations(self, item_id: str) -> List[Annotation]:
+    def get_annotations(self, item_id: str) -> list[Annotation]:
         """Get all annotations for an item."""
         return self._annotations.get(item_id, [])
 
@@ -1279,13 +1276,13 @@ class AnnotationCollector:
         if not annotations:
             return None
 
-        label_counts: Dict[str, int] = {}
+        label_counts: dict[str, int] = {}
         for a in annotations:
             label_counts[a.label] = label_counts.get(a.label, 0) + 1
 
         return max(label_counts, key=label_counts.get)  # type: ignore
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         """Export all annotations with agreement scores."""
         return {
             item_id: {
@@ -1324,8 +1321,8 @@ def create_hitl_session(
 def quick_review(
     prompt: str,
     response: str,
-    approval_callback: Callable[[ReviewItem], Tuple[bool, Optional[str]]],
-) -> Tuple[bool, Optional[str]]:
+    approval_callback: Callable[[ReviewItem], tuple[bool, Optional[str]]],
+) -> tuple[bool, Optional[str]]:
     """Quick review of a single response.
 
     Args:
@@ -1341,9 +1338,9 @@ def quick_review(
 
 
 def collect_feedback(
-    items: List[Tuple[str, str]],
+    items: list[tuple[str, str]],
     feedback_callback: Callable[[ReviewItem], Feedback],
-) -> List[Feedback]:
+) -> list[Feedback]:
     """Collect feedback for multiple items.
 
     Args:

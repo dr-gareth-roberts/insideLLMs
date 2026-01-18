@@ -22,6 +22,8 @@ Example:
     >>> result = agent.run("What is 25 * 4?")
 """
 
+import contextlib
+import inspect
 import json
 import re
 import time
@@ -32,16 +34,9 @@ from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
-    List,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     Union,
 )
-import inspect
-
 
 # =============================================================================
 # Configuration and Types
@@ -50,6 +45,7 @@ import inspect
 
 class AgentStatus(Enum):
     """Status of agent execution."""
+
     IDLE = "idle"
     THINKING = "thinking"
     ACTING = "acting"
@@ -83,7 +79,7 @@ class AgentConfig:
     retry_on_error: bool = True
     max_retries: int = 2
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "max_iterations": self.max_iterations,
@@ -98,6 +94,7 @@ class AgentConfig:
 @dataclass
 class ToolParameter:
     """Definition of a tool parameter."""
+
     name: str
     type: str
     description: str
@@ -108,15 +105,16 @@ class ToolParameter:
 @dataclass
 class ToolResult:
     """Result from executing a tool."""
+
     tool_name: str
     input: Any
     output: Any
     success: bool
     error: Optional[str] = None
     execution_time_ms: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "tool_name": self.tool_name,
@@ -132,6 +130,7 @@ class ToolResult:
 @dataclass
 class AgentStep:
     """A single step in agent execution."""
+
     step_number: int
     thought: Optional[str] = None
     action: Optional[str] = None
@@ -140,7 +139,7 @@ class AgentStep:
     tool_result: Optional[ToolResult] = None
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "step_number": self.step_number,
@@ -156,16 +155,17 @@ class AgentStep:
 @dataclass
 class AgentResult:
     """Result of agent execution."""
+
     query: str
     answer: Optional[str]
     status: AgentStatus
-    steps: List[AgentStep] = field(default_factory=list)
+    steps: list[AgentStep] = field(default_factory=list)
     total_iterations: int = 0
     execution_time_ms: float = 0.0
-    token_usage: Dict[str, int] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    token_usage: dict[str, int] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "query": self.query,
@@ -203,7 +203,7 @@ class Tool:
         name: str,
         func: Callable,
         description: str = "",
-        parameters: Optional[List[ToolParameter]] = None,
+        parameters: Optional[list[ToolParameter]] = None,
         return_type: str = "str",
     ):
         self.name = name
@@ -217,36 +217,40 @@ class Tool:
         doc = func.__doc__
         if doc:
             # Get first line
-            return doc.strip().split('\n')[0]
+            return doc.strip().split("\n")[0]
         return f"Execute {func.__name__}"
 
-    def _infer_parameters(self, func: Callable) -> List[ToolParameter]:
+    def _infer_parameters(self, func: Callable) -> list[ToolParameter]:
         """Infer parameters from function signature."""
         sig = inspect.signature(func)
         params = []
 
         for name, param in sig.parameters.items():
-            if name in ('self', 'cls'):
+            if name in ("self", "cls"):
                 continue
 
             # Get type annotation
             param_type = "str"
             if param.annotation != inspect.Parameter.empty:
-                param_type = param.annotation.__name__ if hasattr(
-                    param.annotation, '__name__'
-                ) else str(param.annotation)
+                param_type = (
+                    param.annotation.__name__
+                    if hasattr(param.annotation, "__name__")
+                    else str(param.annotation)
+                )
 
             # Check if required
             required = param.default == inspect.Parameter.empty
             default = None if required else param.default
 
-            params.append(ToolParameter(
-                name=name,
-                type=param_type,
-                description=f"Parameter {name}",
-                required=required,
-                default=default,
-            ))
+            params.append(
+                ToolParameter(
+                    name=name,
+                    type=param_type,
+                    description=f"Parameter {name}",
+                    required=required,
+                    default=default,
+                )
+            )
 
         return params
 
@@ -271,10 +275,7 @@ class Tool:
                 # Try to parse as JSON
                 try:
                     parsed = json.loads(input_data)
-                    if isinstance(parsed, dict):
-                        output = self.func(**parsed)
-                    else:
-                        output = self.func(parsed)
+                    output = self.func(**parsed) if isinstance(parsed, dict) else self.func(parsed)
                 except json.JSONDecodeError:
                     # Treat as single string argument
                     output = self.func(input_data)
@@ -301,7 +302,7 @@ class Tool:
                 execution_time_ms=(time.time() - start_time) * 1000,
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for prompts."""
         return {
             "name": self.name,
@@ -330,7 +331,7 @@ class Tool:
 def tool(
     name: Optional[str] = None,
     description: Optional[str] = None,
-    parameters: Optional[List[ToolParameter]] = None,
+    parameters: Optional[list[ToolParameter]] = None,
 ) -> Callable:
     """Decorator to create a tool from a function.
 
@@ -342,6 +343,7 @@ def tool(
     Returns:
         Decorated function wrapped as Tool
     """
+
     def decorator(func: Callable) -> Tool:
         tool_name = name or func.__name__
         return Tool(
@@ -350,6 +352,7 @@ def tool(
             description=description or "",
             parameters=parameters,
         )
+
     return decorator
 
 
@@ -357,7 +360,7 @@ class ToolRegistry:
     """Registry for managing tools."""
 
     def __init__(self):
-        self._tools: Dict[str, Tool] = {}
+        self._tools: dict[str, Tool] = {}
 
     def register(self, tool: Tool) -> None:
         """Register a tool."""
@@ -382,7 +385,7 @@ class ToolRegistry:
         """Get a tool by name."""
         return self._tools.get(name)
 
-    def list_tools(self) -> List[Tool]:
+    def list_tools(self) -> list[Tool]:
         """List all registered tools."""
         return list(self._tools.values())
 
@@ -401,17 +404,17 @@ class AgentMemory:
 
     def __init__(self, max_steps: int = 20):
         self.max_steps = max_steps
-        self._steps: List[AgentStep] = []
-        self._context: Dict[str, Any] = {}
+        self._steps: list[AgentStep] = []
+        self._context: dict[str, Any] = {}
 
     def add_step(self, step: AgentStep) -> None:
         """Add a step to memory."""
         self._steps.append(step)
         # Evict old steps if needed
         if len(self._steps) > self.max_steps:
-            self._steps = self._steps[-self.max_steps:]
+            self._steps = self._steps[-self.max_steps :]
 
-    def get_steps(self) -> List[AgentStep]:
+    def get_steps(self) -> list[AgentStep]:
         """Get all steps."""
         return self._steps.copy()
 
@@ -458,7 +461,7 @@ class BaseAgent(ABC):
     def __init__(
         self,
         model: Any,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[list[Tool]] = None,
         config: Optional[AgentConfig] = None,
     ):
         self.model = model
@@ -475,7 +478,7 @@ class BaseAgent(ABC):
                     self._registry.register_function(t)
 
     @property
-    def tools(self) -> List[Tool]:
+    def tools(self) -> list[Tool]:
         """Get registered tools."""
         return self._registry.list_tools()
 
@@ -549,7 +552,7 @@ class ReActAgent(BaseAgent):
     def __init__(
         self,
         model: Any,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[list[Tool]] = None,
         config: Optional[AgentConfig] = None,
         system_prompt: Optional[str] = None,
     ):
@@ -659,7 +662,7 @@ class ReActAgent(BaseAgent):
     def _parse_response(
         self,
         response: str,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
         """Parse the model response into thought, action, action_input, and final_answer."""
         thought = None
         action = None
@@ -668,7 +671,7 @@ class ReActAgent(BaseAgent):
 
         # Extract thought
         thought_match = re.search(
-            r'Thought:\s*(.+?)(?=Action:|Final Answer:|$)',
+            r"Thought:\s*(.+?)(?=Action:|Final Answer:|$)",
             response,
             re.DOTALL | re.IGNORECASE,
         )
@@ -677,7 +680,7 @@ class ReActAgent(BaseAgent):
 
         # Extract final answer
         final_match = re.search(
-            r'Final Answer:\s*(.+?)$',
+            r"Final Answer:\s*(.+?)$",
             response,
             re.DOTALL | re.IGNORECASE,
         )
@@ -687,7 +690,7 @@ class ReActAgent(BaseAgent):
 
         # Extract action
         action_match = re.search(
-            r'Action:\s*(.+?)(?=Action Input:|$)',
+            r"Action:\s*(.+?)(?=Action Input:|$)",
             response,
             re.DOTALL | re.IGNORECASE,
         )
@@ -696,7 +699,7 @@ class ReActAgent(BaseAgent):
 
         # Extract action input
         input_match = re.search(
-            r'Action Input:\s*(.+?)(?=Observation:|Thought:|$)',
+            r"Action Input:\s*(.+?)(?=Observation:|Thought:|$)",
             response,
             re.DOTALL | re.IGNORECASE,
         )
@@ -746,9 +749,9 @@ Answer: <direct_answer>"""
         step = AgentStep(step_number=1, thought=response)
 
         # Parse response
-        tool_match = re.search(r'Tool:\s*(\w+)', response, re.IGNORECASE)
-        input_match = re.search(r'Input:\s*(.+?)(?=\n|$)', response, re.DOTALL | re.IGNORECASE)
-        answer_match = re.search(r'Answer:\s*(.+?)$', response, re.DOTALL | re.IGNORECASE)
+        tool_match = re.search(r"Tool:\s*(\w+)", response, re.IGNORECASE)
+        input_match = re.search(r"Input:\s*(.+?)(?=\n|$)", response, re.DOTALL | re.IGNORECASE)
+        answer_match = re.search(r"Answer:\s*(.+?)$", response, re.DOTALL | re.IGNORECASE)
 
         if answer_match:
             result.answer = answer_match.group(1).strip()
@@ -799,7 +802,7 @@ class ChainOfThoughtAgent(BaseAgent):
     def __init__(
         self,
         model: Any,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[list[Tool]] = None,
         config: Optional[AgentConfig] = None,
         cot_prompt: Optional[str] = None,
     ):
@@ -837,7 +840,7 @@ Show your reasoning at each step, then provide your final answer prefixed with "
 
         # Extract final answer
         final_match = re.search(
-            r'Final Answer:\s*(.+?)$',
+            r"Final Answer:\s*(.+?)$",
             response,
             re.DOTALL | re.IGNORECASE,
         )
@@ -846,7 +849,7 @@ Show your reasoning at each step, then provide your final answer prefixed with "
             result.answer = final_match.group(1).strip()
         else:
             # Use last paragraph as answer
-            paragraphs = response.strip().split('\n\n')
+            paragraphs = response.strip().split("\n\n")
             result.answer = paragraphs[-1] if paragraphs else response
 
         result.status = AgentStatus.FINISHED
@@ -879,8 +882,8 @@ class AgentExecutor:
     def __init__(
         self,
         agent: BaseAgent,
-        pre_hooks: Optional[List[Callable]] = None,
-        post_hooks: Optional[List[Callable]] = None,
+        pre_hooks: Optional[list[Callable]] = None,
+        post_hooks: Optional[list[Callable]] = None,
         result_processor: Optional[Callable[[AgentResult], AgentResult]] = None,
     ):
         self.agent = agent
@@ -888,7 +891,7 @@ class AgentExecutor:
         self.post_hooks = post_hooks or []
         self.result_processor = result_processor
         self._execution_count = 0
-        self._results_history: List[AgentResult] = []
+        self._results_history: list[AgentResult] = []
 
     def run(
         self,
@@ -908,10 +911,8 @@ class AgentExecutor:
 
         # Pre-hooks
         for hook in self.pre_hooks:
-            try:
+            with contextlib.suppress(Exception):
                 hook(query, kwargs)
-            except Exception:
-                pass
 
         # Run agent
         result = self.agent.run(query, **kwargs)
@@ -922,19 +923,17 @@ class AgentExecutor:
 
         # Post-hooks
         for hook in self.post_hooks:
-            try:
+            with contextlib.suppress(Exception):
                 hook(result)
-            except Exception:
-                pass
 
         self._results_history.append(result)
         return result
 
     def batch_run(
         self,
-        queries: List[str],
+        queries: list[str],
         **kwargs: Any,
-    ) -> List[AgentResult]:
+    ) -> list[AgentResult]:
         """Run agent on multiple queries.
 
         Args:
@@ -946,7 +945,7 @@ class AgentExecutor:
         """
         return [self.run(q, **kwargs) for q in queries]
 
-    def get_history(self) -> List[AgentResult]:
+    def get_history(self) -> list[AgentResult]:
         """Get execution history."""
         return self._results_history.copy()
 
@@ -967,10 +966,11 @@ class AgentExecutor:
 
 def create_calculator_tool() -> Tool:
     """Create a calculator tool."""
+
     def calculate(expression: str) -> str:
         """Evaluate a mathematical expression."""
         # Safe evaluation (basic math only)
-        allowed = set('0123456789+-*/.() ')
+        allowed = set("0123456789+-*/.() ")
         if not all(c in allowed for c in expression):
             return "Error: Invalid characters in expression"
         try:
@@ -993,6 +993,7 @@ def create_search_tool(search_fn: Optional[Callable] = None) -> Tool:
     Args:
         search_fn: Optional custom search function
     """
+
     def default_search(query: str) -> str:
         return f"Search results for: {query} (placeholder - no real search)"
 
@@ -1010,12 +1011,13 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
     Args:
         allow_exec: Whether to allow actual code execution (DANGEROUS)
     """
+
     def execute_python(code: str) -> str:
         if not allow_exec:
             return "Code execution disabled for safety"
         try:
             # DANGEROUS: Only use in trusted environments
-            local_vars: Dict[str, Any] = {}
+            local_vars: dict[str, Any] = {}
             exec(code, {"__builtins__": {}}, local_vars)
             return str(local_vars.get("result", "Code executed successfully"))
         except Exception as e:
@@ -1036,7 +1038,7 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
 
 def create_react_agent(
     model: Any,
-    tools: Optional[List[Union[Tool, Callable]]] = None,
+    tools: Optional[list[Union[Tool, Callable]]] = None,
     max_iterations: int = 10,
     verbose: bool = False,
 ) -> ReActAgent:
@@ -1063,17 +1065,19 @@ def create_react_agent(
             if isinstance(t, Tool):
                 tool_list.append(t)
             elif callable(t):
-                tool_list.append(Tool(
-                    name=t.__name__,
-                    func=t,
-                ))
+                tool_list.append(
+                    Tool(
+                        name=t.__name__,
+                        func=t,
+                    )
+                )
 
     return ReActAgent(model, tool_list, config)
 
 
 def create_simple_agent(
     model: Any,
-    tools: Optional[List[Union[Tool, Callable]]] = None,
+    tools: Optional[list[Union[Tool, Callable]]] = None,
 ) -> SimpleAgent:
     """Create a simple agent.
 
@@ -1098,7 +1102,7 @@ def create_simple_agent(
 def quick_agent_run(
     query: str,
     model: Any,
-    tools: Optional[List[Union[Tool, Callable]]] = None,
+    tools: Optional[list[Union[Tool, Callable]]] = None,
     agent_type: str = "react",
 ) -> AgentResult:
     """Quick helper to run an agent.

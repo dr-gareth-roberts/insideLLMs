@@ -7,25 +7,25 @@ See caching_unified.py for the full implementation.
 
 # Re-export from unified module for backward compatibility
 from insideLLMs.caching_unified import (
+    BaseCacheABC as BaseCache,
+)
+from insideLLMs.caching_unified import (
+    # Model wrapper
+    CachedModel,
     # Core types
     CacheEntry,
     CacheStats,
-    # Key generation
-    generate_cache_key,
-    generate_model_cache_key,
-    # Abstract base
-    BaseCacheABC as BaseCache,
+    DiskCache,
     # Implementations
     InMemoryCache,
-    DiskCache,
-    # Model wrapper
-    CachedModel,
+    # Decorator
+    cached,
+    clear_default_cache,
+    # Key generation
+    generate_cache_key,
     # Global cache functions
     get_default_cache,
     set_default_cache,
-    clear_default_cache,
-    # Decorator
-    cached,
 )
 
 # For backward compatibility with old module structure

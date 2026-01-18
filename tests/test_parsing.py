@@ -73,17 +73,17 @@ class TestJSONParser:
 
     def test_parse_array(self):
         """Test parsing JSON array."""
-        result = JSONParser.parse('[1, 2, 3]')
+        result = JSONParser.parse("[1, 2, 3]")
         assert result.success
         assert result.unwrap() == [1, 2, 3]
 
     def test_parse_from_code_block(self):
         """Test parsing JSON from markdown code block."""
-        text = '''Here is the data:
+        text = """Here is the data:
 ```json
 {"name": "Alice", "age": 30}
 ```
-That's all.'''
+That's all."""
 
         result = JSONParser.parse(text)
         assert result.success
@@ -121,14 +121,14 @@ That's all.'''
 
     def test_extract_all(self):
         """Test extracting multiple JSON objects."""
-        text = '''First:
+        text = """First:
 ```json
 {"a": 1}
 ```
 Second:
 ```json
 {"b": 2}
-```'''
+```"""
 
         results = JSONParser.extract_all(text)
         assert len(results) >= 2  # Should find at least the objects
@@ -139,12 +139,12 @@ class TestCodeBlockParser:
 
     def test_parse_python_block(self):
         """Test parsing Python code block."""
-        text = '''Here's some code:
+        text = """Here's some code:
 ```python
 def hello():
     print("Hello!")
 ```
-That's it.'''
+That's it."""
 
         blocks = CodeBlockParser.parse(text)
         assert len(blocks) == 1
@@ -153,7 +153,7 @@ That's it.'''
 
     def test_parse_multiple_blocks(self):
         """Test parsing multiple code blocks."""
-        text = '''Python:
+        text = """Python:
 ```python
 x = 1
 ```
@@ -161,7 +161,7 @@ x = 1
 JavaScript:
 ```javascript
 const x = 1;
-```'''
+```"""
 
         blocks = CodeBlockParser.parse(text)
         assert len(blocks) == 2
@@ -170,9 +170,9 @@ const x = 1;
 
     def test_parse_no_language(self):
         """Test parsing block without language."""
-        text = '''```
+        text = """```
 some code
-```'''
+```"""
 
         blocks = CodeBlockParser.parse(text)
         assert len(blocks) == 1
@@ -180,12 +180,12 @@ some code
 
     def test_parse_first(self):
         """Test getting first code block."""
-        text = '''```python
+        text = """```python
 first
 ```
 ```javascript
 second
-```'''
+```"""
 
         block = CodeBlockParser.parse_first(text)
         assert block is not None
@@ -193,7 +193,7 @@ second
 
     def test_parse_by_language(self):
         """Test filtering by language."""
-        text = '''```python
+        text = """```python
 py1
 ```
 ```javascript
@@ -201,17 +201,17 @@ js
 ```
 ```python
 py2
-```'''
+```"""
 
         blocks = CodeBlockParser.parse_by_language(text, "python")
         assert len(blocks) == 2
 
     def test_extract_python(self):
         """Test Python extraction convenience method."""
-        text = '''```python
+        text = """```python
 def foo():
     pass
-```'''
+```"""
 
         code = CodeBlockParser.extract_python(text)
         assert len(code) == 1
@@ -219,12 +219,12 @@ def foo():
 
     def test_language_aliases(self):
         """Test language alias resolution."""
-        text = '''```py
+        text = """```py
 x = 1
 ```
 ```js
 const y = 2;
-```'''
+```"""
 
         blocks = CodeBlockParser.parse(text)
         assert blocks[0].language == "python"
@@ -245,9 +245,9 @@ class TestListParser:
 
     def test_parse_numbered_list(self):
         """Test parsing numbered list."""
-        text = '''1. First item
+        text = """1. First item
 2. Second item
-3. Third item'''
+3. Third item"""
 
         items = ListParser.parse(text)
         assert len(items) == 3
@@ -255,9 +255,9 @@ class TestListParser:
 
     def test_parse_bullet_list(self):
         """Test parsing bullet list."""
-        text = '''- Item one
+        text = """- Item one
 - Item two
-- Item three'''
+- Item three"""
 
         items = ListParser.parse(text)
         assert len(items) == 3
@@ -265,18 +265,18 @@ class TestListParser:
 
     def test_parse_asterisk_list(self):
         """Test parsing asterisk bullet list."""
-        text = '''* First
+        text = """* First
 * Second
-* Third'''
+* Third"""
 
         items = ListParser.parse(text)
         assert len(items) == 3
 
     def test_parse_lettered_list(self):
         """Test parsing lettered list."""
-        text = '''a) Option A
+        text = """a) Option A
 b) Option B
-c) Option C'''
+c) Option C"""
 
         items = ListParser.parse(text)
         assert len(items) == 3
@@ -293,10 +293,10 @@ class TestTableParser:
 
     def test_parse_markdown_table(self):
         """Test parsing markdown table."""
-        text = '''| Name | Age | City |
+        text = """| Name | Age | City |
 | --- | --- | --- |
 | Alice | 30 | NYC |
-| Bob | 25 | LA |'''
+| Bob | 25 | LA |"""
 
         table = TableParser.parse(text)
         assert table is not None
@@ -306,10 +306,10 @@ class TestTableParser:
 
     def test_table_to_dicts(self):
         """Test converting table to dictionaries."""
-        text = '''| Name | Score |
+        text = """| Name | Score |
 | --- | --- |
 | Alice | 95 |
-| Bob | 87 |'''
+| Bob | 87 |"""
 
         table = TableParser.parse(text)
         dicts = table.to_dicts()
@@ -320,10 +320,10 @@ class TestTableParser:
 
     def test_get_column(self):
         """Test getting a column by name."""
-        text = '''| Name | Score |
+        text = """| Name | Score |
 | --- | --- |
 | Alice | 95 |
-| Bob | 87 |'''
+| Bob | 87 |"""
 
         table = TableParser.parse(text)
         names = table.get_column("Name")
@@ -332,9 +332,9 @@ class TestTableParser:
 
     def test_get_column_not_found(self):
         """Test error on missing column."""
-        text = '''| A | B |
+        text = """| A | B |
 | --- | --- |
-| 1 | 2 |'''
+| 1 | 2 |"""
 
         table = TableParser.parse(text)
         with pytest.raises(KeyError):
@@ -347,7 +347,7 @@ class TestTableParser:
 
     def test_parse_all_tables(self):
         """Test parsing multiple tables."""
-        text = '''First table:
+        text = """First table:
 | A | B |
 | --- | --- |
 | 1 | 2 |
@@ -355,7 +355,7 @@ class TestTableParser:
 Second table:
 | X | Y |
 | --- | --- |
-| 3 | 4 |'''
+| 3 | 4 |"""
 
         tables = TableParser.parse_all(text)
         assert len(tables) == 2
@@ -415,12 +415,12 @@ class TestAnswerExtractor:
 
     def test_extract_choice_from_list(self):
         """Test extracting choice from list format."""
-        text = '''Looking at the options:
+        text = """Looking at the options:
 A) Wrong
 B) Correct
 C) Wrong
 
-After analysis, B is the answer.'''
+After analysis, B is the answer."""
 
         choice = AnswerExtractor.extract_choice(text)
         assert choice == "B"
@@ -451,46 +451,46 @@ class TestOutputDetector:
 
     def test_detect_code(self):
         """Test detecting code blocks."""
-        text = '''```python
+        text = """```python
 print("hello")
-```'''
+```"""
         assert OutputDetector.detect(text) == OutputFormat.CODE
 
     def test_detect_table(self):
         """Test detecting table."""
-        text = '''| A | B |
+        text = """| A | B |
 | --- | --- |
-| 1 | 2 |'''
+| 1 | 2 |"""
         assert OutputDetector.detect(text) == OutputFormat.TABLE
 
     def test_detect_list(self):
         """Test detecting list."""
-        text = '''Here are the items:
+        text = """Here are the items:
 - Item 1
 - Item 2
 - Item 3
-- Item 4'''
+- Item 4"""
         assert OutputDetector.detect(text) == OutputFormat.LIST
 
     def test_detect_xml(self):
         """Test detecting XML."""
-        text = '<root><item>value</item></root>'
+        text = "<root><item>value</item></root>"
         assert OutputDetector.detect(text) == OutputFormat.XML
 
     def test_detect_yaml(self):
         """Test detecting YAML."""
-        text = '''name: test
+        text = """name: test
 value: 123
 items:
   - one
-  - two'''
+  - two"""
         assert OutputDetector.detect(text) == OutputFormat.YAML
 
     def test_detect_markdown(self):
         """Test detecting markdown."""
-        text = '''# Header
+        text = """# Header
 
-This has **bold** and [links](http://example.com).'''
+This has **bold** and [links](http://example.com)."""
         assert OutputDetector.detect(text) == OutputFormat.MARKDOWN
 
     def test_detect_plain(self):
@@ -510,25 +510,25 @@ class TestConvenienceFunctions:
 
     def test_parse_code_function(self):
         """Test parse_code convenience function."""
-        text = '''```python
+        text = """```python
 x = 1
-```'''
+```"""
         blocks = parse_code(text)
         assert len(blocks) == 1
 
     def test_parse_list_function(self):
         """Test parse_list convenience function."""
-        text = '''- A
+        text = """- A
 - B
-- C'''
+- C"""
         items = parse_list(text)
         assert len(items) == 3
 
     def test_parse_table_function(self):
         """Test parse_table convenience function."""
-        text = '''| A | B |
+        text = """| A | B |
 | --- | --- |
-| 1 | 2 |'''
+| 1 | 2 |"""
         table = parse_table(text)
         assert table is not None
 
@@ -559,7 +559,7 @@ class TestEdgeCases:
 
     def test_mixed_content(self):
         """Test parsing mixed content."""
-        text = '''Here's some JSON:
+        text = """Here's some JSON:
 ```json
 {"result": "success"}
 ```
@@ -571,7 +571,7 @@ And a list:
 And a table:
 | Col |
 | --- |
-| Val |'''
+| Val |"""
 
         # Should be able to extract each format
         json_result = parse_json(text)
@@ -587,17 +587,17 @@ And a table:
         """Test recovering from slightly malformed JSON."""
         # Single quotes instead of double
         text = "{'key': 'value'}"
-        result = parse_json(text)
+        parse_json(text)
         # May or may not succeed depending on implementation
         # At minimum, shouldn't crash
 
     def test_nested_code_blocks(self):
         """Test handling nested-looking content."""
-        text = '''```python
+        text = """```python
 # This has backticks in a string
 s = "```"
 print(s)
-```'''
+```"""
 
         blocks = parse_code(text)
         assert len(blocks) == 1
@@ -608,20 +608,20 @@ class TestRealWorldExamples:
 
     def test_chain_of_thought_answer(self):
         """Test extracting answer from chain-of-thought response."""
-        text = '''Let me think through this step by step.
+        text = """Let me think through this step by step.
 
 1. First, we need to consider...
 2. Then, we calculate...
 3. Finally, we conclude...
 
-Therefore, the answer is: 42'''
+Therefore, the answer is: 42"""
 
         answer = extract_answer(text)
         assert answer == "42"
 
     def test_code_with_explanation(self):
         """Test parsing code with surrounding explanation."""
-        text = '''Here's how to solve this problem:
+        text = """Here's how to solve this problem:
 
 ```python
 def solution(n):
@@ -631,7 +631,7 @@ result = solution(21)
 print(result)  # Output: 42
 ```
 
-This function doubles the input value.'''
+This function doubles the input value."""
 
         blocks = parse_code(text)
         assert len(blocks) == 1
@@ -640,7 +640,7 @@ This function doubles the input value.'''
 
     def test_structured_api_response(self):
         """Test parsing structured API response."""
-        text = '''Based on the query, here's the API response:
+        text = """Based on the query, here's the API response:
 
 ```json
 {
@@ -658,7 +658,7 @@ This function doubles the input value.'''
 }
 ```
 
-The response contains 2 users.'''
+The response contains 2 users."""
 
         result = parse_json(text)
         assert result.success

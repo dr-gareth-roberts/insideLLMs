@@ -1,28 +1,25 @@
 """Tests for Semantic Caching module."""
 
-import json
-import pytest
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
+
+from insideLLMs.models import DummyModel
 from insideLLMs.semantic_cache import (
+    REDIS_AVAILABLE,
+    SemanticCache,
     SemanticCacheConfig,
     SemanticCacheEntry,
-    SemanticLookupResult,
-    SemanticCacheStats,
-    SimpleEmbedder,
-    cosine_similarity,
-    VectorCache,
-    SemanticCache,
     SemanticCacheModel,
+    SemanticCacheStats,
+    SemanticLookupResult,
+    SimpleEmbedder,
+    VectorCache,
+    cosine_similarity,
     create_semantic_cache,
     quick_semantic_cache,
     wrap_model_with_semantic_cache,
-    REDIS_AVAILABLE,
-    NUMPY_AVAILABLE,
 )
-from insideLLMs.models import DummyModel
-
 
 # =============================================================================
 # Test Configuration
@@ -244,6 +241,7 @@ class TestSimpleEmbedder:
     def test_embed_normalized(self):
         """Test embeddings are normalized."""
         import math
+
         embedder = SimpleEmbedder()
         embedding = embedder.embed("Test text for embedding")
 
@@ -424,6 +422,7 @@ class TestVectorCache:
 
     def test_with_custom_embedder(self):
         """Test with custom embedder."""
+
         def custom_embed(text: str) -> list:
             return [float(len(text) % 10) / 10] * 10
 
@@ -483,7 +482,9 @@ class TestSemanticCache:
         """Test semantic similarity get."""
         cache = SemanticCache()
 
-        cache.set("What is Python programming language used for?", "Python is a programming language")
+        cache.set(
+            "What is Python programming language used for?", "Python is a programming language"
+        )
         # Use the same prompt for exact match
         result = cache.get_similar("What is Python programming language used for?", threshold=0.3)
 
@@ -606,10 +607,10 @@ class TestSemanticCacheModel:
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        response1 = cached_model.chat(messages, temperature=0)
+        cached_model.chat(messages, temperature=0)
         assert model.chat.call_count == 1
 
-        response2 = cached_model.chat(messages, temperature=0)
+        cached_model.chat(messages, temperature=0)
         assert model.chat.call_count == 1  # Cached
 
     def test_attribute_delegation(self):
@@ -658,6 +659,7 @@ class TestQuickSemanticCache:
 
     def test_cache_miss(self):
         """Test when prompt not in cache."""
+
         def generator(prompt):
             return f"Generated for: {prompt}"
 
@@ -847,4 +849,3 @@ class TestEdgeCases:
         assert stats.entry_count == 10
         assert stats.hits == 5
         assert stats.misses == 3
-

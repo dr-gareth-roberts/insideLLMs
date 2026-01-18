@@ -1,42 +1,43 @@
 """Tests for rate limiting and retry module."""
 
-import pytest
-import time
-import asyncio
+import contextlib
 import threading
+import time
+
+import pytest
 
 from insideLLMs.rate_limiting import (
-    # Enums
-    RateLimitStrategy,
-    RetryStrategy,
+    CircuitBreaker,
+    CircuitBreakerState,
+    CircuitOpenError,
     CircuitState,
-    RequestPriority,
+    ConcurrencyLimiter,
     # Dataclasses
     RateLimitConfig,
-    RetryConfig,
+    RateLimitedExecutor,
     RateLimitState,
-    RetryResult,
-    CircuitBreakerState,
     RateLimitStats,
+    # Enums
+    RateLimitStrategy,
+    RequestPriority,
+    RequestQueue,
+    RetryConfig,
+    RetryHandler,
+    RetryResult,
+    RetryStrategy,
+    SlidingWindowRateLimiter,
     # Classes
     TokenBucketRateLimiter,
-    SlidingWindowRateLimiter,
-    RetryHandler,
-    CircuitBreaker,
-    CircuitOpenError,
-    RequestQueue,
-    ConcurrencyLimiter,
-    RateLimitedExecutor,
-    # Decorators
-    rate_limited,
-    with_retry,
     circuit_protected,
+    create_circuit_breaker,
+    create_executor,
     # Functions
     create_rate_limiter,
     create_retry_handler,
-    create_circuit_breaker,
-    create_executor,
     execute_with_backoff,
+    # Decorators
+    rate_limited,
+    with_retry,
 )
 
 
@@ -560,7 +561,7 @@ class TestRateLimitedExecutor:
     """Tests for RateLimitedExecutor."""
 
     def test_executor_creation(self):
-        executor = RateLimitedExecutor()
+        RateLimitedExecutor()
         # Should not raise
 
     def test_execute_with_rate_limiter(self):
@@ -846,10 +847,8 @@ class TestIntegration:
 
         # Trip the breaker
         for _ in range(2):
-            try:
+            with contextlib.suppress(BaseException):
                 breaker.execute(lambda: (_ for _ in ()).throw(ValueError("Fail")))
-            except:
-                pass
 
         # Verify it's open
         assert not breaker.can_execute()

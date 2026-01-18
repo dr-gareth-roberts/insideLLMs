@@ -12,7 +12,7 @@ Provides tools for:
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 
 class CalibrationMethod(Enum):
@@ -60,7 +60,7 @@ class CalibrationBin:
         """Calibration gap (|confidence - accuracy|)."""
         return abs(self.avg_confidence - self.avg_accuracy)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "bin_range": [self.bin_start, self.bin_end],
@@ -82,9 +82,9 @@ class CalibrationMetrics:
     underconfidence: float  # How much model underestimates
     brier_score: float  # Brier score (mean squared error)
     log_loss: float  # Log loss / cross-entropy
-    bins: List[CalibrationBin] = field(default_factory=list)
+    bins: list[CalibrationBin] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "ece": round(self.ece, 4),
@@ -123,10 +123,10 @@ class ConfidenceEstimate:
 
     value: float
     source: ConfidenceSource
-    raw_scores: Optional[List[float]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    raw_scores: Optional[list[float]] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "value": round(self.value, 4),
@@ -140,14 +140,14 @@ class ConfidenceEstimate:
 class CalibrationResult:
     """Result of calibration analysis."""
 
-    predictions: List[float]
-    confidences: List[float]
-    labels: List[int]
+    predictions: list[float]
+    confidences: list[float]
+    labels: list[int]
     metrics: CalibrationMetrics
-    reliability_diagram: Dict[str, List[float]]
-    recommendations: List[str]
+    reliability_diagram: dict[str, list[float]]
+    recommendations: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_samples": len(self.predictions),
@@ -166,8 +166,8 @@ class CalibrationAnalyzer:
 
     def analyze(
         self,
-        confidences: List[float],
-        correct: List[bool],
+        confidences: list[float],
+        correct: list[bool],
     ) -> CalibrationResult:
         """Analyze calibration from confidence scores and correctness.
 
@@ -210,9 +210,9 @@ class CalibrationAnalyzer:
 
     def _create_bins(
         self,
-        confidences: List[float],
-        labels: List[int],
-    ) -> List[CalibrationBin]:
+        confidences: list[float],
+        labels: list[int],
+    ) -> list[CalibrationBin]:
         """Create calibration bins."""
         bins = []
         bin_width = 1.0 / self.n_bins
@@ -242,9 +242,9 @@ class CalibrationAnalyzer:
 
     def _calculate_metrics(
         self,
-        confidences: List[float],
-        labels: List[int],
-        bins: List[CalibrationBin],
+        confidences: list[float],
+        labels: list[int],
+        bins: list[CalibrationBin],
     ) -> CalibrationMetrics:
         """Calculate calibration metrics."""
         n = len(confidences)
@@ -273,16 +273,23 @@ class CalibrationAnalyzer:
         underconfidence /= n if n > 0 else 1
 
         # Brier score
-        brier_score = sum(
-            (conf - label) ** 2 for conf, label in zip(confidences, labels)
-        ) / n if n > 0 else 0.0
+        brier_score = (
+            sum((conf - label) ** 2 for conf, label in zip(confidences, labels)) / n
+            if n > 0
+            else 0.0
+        )
 
         # Log loss (with clipping to avoid log(0))
         eps = 1e-15
-        log_loss = -sum(
-            label * math.log(max(conf, eps)) + (1 - label) * math.log(max(1 - conf, eps))
-            for conf, label in zip(confidences, labels)
-        ) / n if n > 0 else 0.0
+        log_loss = (
+            -sum(
+                label * math.log(max(conf, eps)) + (1 - label) * math.log(max(1 - conf, eps))
+                for conf, label in zip(confidences, labels)
+            )
+            / n
+            if n > 0
+            else 0.0
+        )
 
         return CalibrationMetrics(
             ece=ece,
@@ -297,8 +304,8 @@ class CalibrationAnalyzer:
 
     def _create_reliability_diagram(
         self,
-        bins: List[CalibrationBin],
-    ) -> Dict[str, List[float]]:
+        bins: list[CalibrationBin],
+    ) -> dict[str, list[float]]:
         """Create reliability diagram data."""
         return {
             "bin_centers": [(b.bin_start + b.bin_end) / 2 for b in bins],
@@ -311,7 +318,7 @@ class CalibrationAnalyzer:
     def _generate_recommendations(
         self,
         metrics: CalibrationMetrics,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate calibration recommendations."""
         recommendations = []
 
@@ -322,10 +329,14 @@ class CalibrationAnalyzer:
             recommendations.append("Model is significantly overconfident - increase temperature")
 
         if metrics.underconfidence > metrics.overconfidence * 2:
-            recommendations.append("Model is underconfident - decrease temperature or use Platt scaling")
+            recommendations.append(
+                "Model is underconfident - decrease temperature or use Platt scaling"
+            )
 
         if metrics.mce > 0.3:
-            recommendations.append("High maximum calibration error - check for outlier confidence bins")
+            recommendations.append(
+                "High maximum calibration error - check for outlier confidence bins"
+            )
 
         if metrics.brier_score > 0.25:
             recommendations.append("High Brier score suggests poor overall probability estimates")
@@ -346,8 +357,8 @@ class TemperatureScaler:
 
     def fit(
         self,
-        logits: List[float],
-        labels: List[int],
+        logits: list[float],
+        labels: list[int],
         n_iterations: int = 100,
         learning_rate: float = 0.01,
     ) -> float:
@@ -397,7 +408,7 @@ class TemperatureScaler:
         scaled_logit = logit / self.temperature
         return self._sigmoid(scaled_logit)
 
-    def scale_batch(self, confidences: List[float]) -> List[float]:
+    def scale_batch(self, confidences: list[float]) -> list[float]:
         """Scale multiple confidence scores."""
         return [self.scale(c) for c in confidences]
 
@@ -421,11 +432,11 @@ class PlattScaler:
 
     def fit(
         self,
-        scores: List[float],
-        labels: List[int],
+        scores: list[float],
+        labels: list[int],
         n_iterations: int = 100,
         learning_rate: float = 0.01,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Fit Platt scaling parameters.
 
         Args:
@@ -463,7 +474,7 @@ class PlattScaler:
         """Scale a score to calibrated probability."""
         return self._sigmoid(self.a * score + self.b)
 
-    def scale_batch(self, scores: List[float]) -> List[float]:
+    def scale_batch(self, scores: list[float]) -> list[float]:
         """Scale multiple scores."""
         return [self.scale(s) for s in scores]
 
@@ -482,14 +493,14 @@ class HistogramBinner:
     def __init__(self, n_bins: int = 10):
         """Initialize binner."""
         self.n_bins = n_bins
-        self.bin_accuracies: List[float] = []
+        self.bin_accuracies: list[float] = []
         self._fitted = False
 
     def fit(
         self,
-        confidences: List[float],
-        labels: List[int],
-    ) -> List[float]:
+        confidences: list[float],
+        labels: list[int],
+    ) -> list[float]:
         """Fit histogram binning.
 
         Args:
@@ -502,7 +513,7 @@ class HistogramBinner:
         if not confidences or len(confidences) != len(labels):
             raise ValueError("Invalid input")
 
-        bin_width = 1.0 / self.n_bins
+        1.0 / self.n_bins
         bin_sums = [0.0] * self.n_bins
         bin_counts = [0] * self.n_bins
 
@@ -527,7 +538,7 @@ class HistogramBinner:
         bin_idx = min(int(confidence * self.n_bins), self.n_bins - 1)
         return self.bin_accuracies[bin_idx]
 
-    def calibrate_batch(self, confidences: List[float]) -> List[float]:
+    def calibrate_batch(self, confidences: list[float]) -> list[float]:
         """Calibrate multiple confidence scores."""
         return [self.calibrate(c) for c in confidences]
 
@@ -554,7 +565,7 @@ class ConfidenceEstimator:
 
     def from_logprobs(
         self,
-        logprobs: List[float],
+        logprobs: list[float],
         aggregate: str = "mean",
     ) -> ConfidenceEstimate:
         """Estimate confidence from log probabilities.
@@ -592,7 +603,7 @@ class ConfidenceEstimator:
 
     def from_consistency(
         self,
-        responses: List[str],
+        responses: list[str],
         similarity_fn: Optional[Callable[[str, str], float]] = None,
     ) -> ConfidenceEstimate:
         """Estimate confidence from response consistency.
@@ -612,6 +623,7 @@ class ConfidenceEstimator:
 
         # Default similarity: exact match
         if similarity_fn is None:
+
             def similarity_fn(a: str, b: str) -> float:
                 return 1.0 if a.strip().lower() == b.strip().lower() else 0.0
 
@@ -662,12 +674,14 @@ class ConfidenceEstimator:
         return ConfidenceEstimate(
             value=value,
             source=ConfidenceSource.VERBALIZED,
-            metadata={"patterns_found": [p for p in self.verbalized_patterns if p in response_lower]},
+            metadata={
+                "patterns_found": [p for p in self.verbalized_patterns if p in response_lower]
+            },
         )
 
     def from_entropy(
         self,
-        token_probs: List[List[float]],
+        token_probs: list[list[float]],
     ) -> ConfidenceEstimate:
         """Estimate confidence from token probability entropy.
 
@@ -716,8 +730,8 @@ class Calibrator:
 
     def fit(
         self,
-        confidences: List[float],
-        labels: List[int],
+        confidences: list[float],
+        labels: list[int],
     ) -> None:
         """Fit calibration model.
 
@@ -727,10 +741,7 @@ class Calibrator:
         """
         if self.method == CalibrationMethod.TEMPERATURE_SCALING:
             # Convert confidences to logits
-            logits = [
-                math.log(c / (1 - c + 1e-15) + 1e-15)
-                for c in confidences
-            ]
+            logits = [math.log(c / (1 - c + 1e-15) + 1e-15) for c in confidences]
             self._scaler = TemperatureScaler()
             self._scaler.fit(logits, labels)
 
@@ -756,16 +767,17 @@ class Calibrator:
         if not self._fitted:
             raise RuntimeError("Must fit before calibrating")
 
-        if self.method == CalibrationMethod.TEMPERATURE_SCALING:
-            return self._scaler.scale(confidence)
-        elif self.method == CalibrationMethod.PLATT_SCALING:
+        if (
+            self.method == CalibrationMethod.TEMPERATURE_SCALING
+            or self.method == CalibrationMethod.PLATT_SCALING
+        ):
             return self._scaler.scale(confidence)
         elif self.method == CalibrationMethod.HISTOGRAM_BINNING:
             return self._scaler.calibrate(confidence)
 
         return confidence
 
-    def calibrate_batch(self, confidences: List[float]) -> List[float]:
+    def calibrate_batch(self, confidences: list[float]) -> list[float]:
         """Calibrate multiple confidence scores.
 
         Args:
@@ -779,8 +791,8 @@ class Calibrator:
 
 # Convenience functions
 def analyze_calibration(
-    confidences: List[float],
-    correct: List[bool],
+    confidences: list[float],
+    correct: list[bool],
     n_bins: int = 10,
 ) -> CalibrationResult:
     """Analyze model calibration.
@@ -798,8 +810,8 @@ def analyze_calibration(
 
 
 def calculate_ece(
-    confidences: List[float],
-    correct: List[bool],
+    confidences: list[float],
+    correct: list[bool],
     n_bins: int = 10,
 ) -> float:
     """Calculate Expected Calibration Error.
@@ -817,8 +829,8 @@ def calculate_ece(
 
 
 def calculate_brier_score(
-    confidences: List[float],
-    correct: List[bool],
+    confidences: list[float],
+    correct: list[bool],
 ) -> float:
     """Calculate Brier score.
 
@@ -837,9 +849,9 @@ def calculate_brier_score(
 
 
 def apply_temperature_scaling(
-    confidences: List[float],
+    confidences: list[float],
     temperature: float,
-) -> List[float]:
+) -> list[float]:
     """Apply temperature scaling to confidences.
 
     Args:
@@ -854,8 +866,8 @@ def apply_temperature_scaling(
 
 
 def fit_temperature(
-    confidences: List[float],
-    labels: List[int],
+    confidences: list[float],
+    labels: list[int],
 ) -> float:
     """Fit optimal temperature for calibration.
 
@@ -867,16 +879,13 @@ def fit_temperature(
         Optimal temperature
     """
     # Convert to logits
-    logits = [
-        math.log(c / (1 - c + 1e-15) + 1e-15)
-        for c in confidences
-    ]
+    logits = [math.log(c / (1 - c + 1e-15) + 1e-15) for c in confidences]
     scaler = TemperatureScaler()
     return scaler.fit(logits, labels)
 
 
 def estimate_confidence_from_consistency(
-    responses: List[str],
+    responses: list[str],
 ) -> float:
     """Estimate confidence from response consistency.
 
@@ -908,10 +917,10 @@ def estimate_confidence_from_verbalized(
 
 
 def calibrate_confidences(
-    confidences: List[float],
-    labels: List[int],
+    confidences: list[float],
+    labels: list[int],
     method: CalibrationMethod = CalibrationMethod.TEMPERATURE_SCALING,
-) -> List[float]:
+) -> list[float]:
     """Fit and apply calibration to confidences.
 
     Args:

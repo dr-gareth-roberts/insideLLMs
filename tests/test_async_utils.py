@@ -82,6 +82,7 @@ class TestMapAsync:
     @pytest.mark.asyncio
     async def test_basic_mapping(self):
         """Test basic async mapping."""
+
         async def double(x: int) -> int:
             return x * 2
 
@@ -95,6 +96,7 @@ class TestMapAsync:
     @pytest.mark.asyncio
     async def test_with_errors(self):
         """Test mapping with some failures."""
+
         async def maybe_fail(x: int) -> int:
             if x == 3:
                 raise ValueError("Three is bad")
@@ -151,6 +153,7 @@ class TestMapAsyncOrdered:
     @pytest.mark.asyncio
     async def test_ordered_results(self):
         """Test results are yielded in order."""
+
         async def process(x: int) -> int:
             # Simulate varying processing times
             await asyncio.sleep(0.01 * (5 - x))
@@ -159,7 +162,7 @@ class TestMapAsyncOrdered:
         items = [1, 2, 3, 4, 5]
         results = []
 
-        async for idx, result, error in map_async_ordered(process, items):
+        async for idx, result, _error in map_async_ordered(process, items):
             results.append((idx, result))
 
         # Should be in order despite varying completion times
@@ -187,6 +190,7 @@ class TestForEachAsync:
     @pytest.mark.asyncio
     async def test_collects_errors(self):
         """Test errors are collected."""
+
         async def sometimes_fail(x: int) -> None:
             if x % 2 == 0:
                 raise ValueError(f"Even: {x}")
@@ -285,6 +289,7 @@ class TestRateLimitedDecorator:
     @pytest.mark.asyncio
     async def test_rate_limited_decorator(self):
         """Test rate_limited decorator."""
+
         @rate_limited(rate=50, burst=5)
         async def limited_call():
             return "result"
@@ -300,6 +305,7 @@ class TestAsyncWorkerPool:
     @pytest.mark.asyncio
     async def test_worker_pool(self):
         """Test basic worker pool usage."""
+
         async def double(x: int) -> int:
             await asyncio.sleep(0.01)
             return x * 2
@@ -319,6 +325,7 @@ class TestAsyncWorkerPool:
     @pytest.mark.asyncio
     async def test_worker_pool_with_errors(self):
         """Test worker pool handles errors."""
+
         async def maybe_fail(x: int) -> int:
             if x == 2:
                 raise ValueError("Two is bad")
@@ -392,6 +399,7 @@ class TestFirstCompleted:
     @pytest.mark.asyncio
     async def test_returns_first(self):
         """Test returning first completed result."""
+
         async def fast():
             await asyncio.sleep(0.01)
             return "fast"
@@ -416,6 +424,7 @@ class TestRetryUntilSuccess:
     @pytest.mark.asyncio
     async def test_first_succeeds(self):
         """Test returning first success."""
+
         async def success():
             return "success"
 
@@ -428,6 +437,7 @@ class TestRetryUntilSuccess:
     @pytest.mark.asyncio
     async def test_fallback_on_failure(self):
         """Test fallback to second on first failure."""
+
         async def fails():
             raise ValueError("First fails")
 
@@ -440,6 +450,7 @@ class TestRetryUntilSuccess:
     @pytest.mark.asyncio
     async def test_all_fail_raises(self):
         """Test all failures raises last exception."""
+
         async def fail1():
             raise ValueError("First")
 

@@ -1,8 +1,8 @@
 """Tests for interactive visualization functions."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 from insideLLMs.types import (
     ExperimentResult,
@@ -13,10 +13,10 @@ from insideLLMs.types import (
     ResultStatus,
 )
 from insideLLMs.visualization import (
-    PLOTLY_AVAILABLE,
     IPYWIDGETS_AVAILABLE,
-    check_plotly_deps,
+    PLOTLY_AVAILABLE,
     check_ipywidgets_deps,
+    check_plotly_deps,
 )
 
 
@@ -82,9 +82,15 @@ def mock_experiments():
     return [
         create_mock_experiment("GPT-4", "LogicProbe", 0.90, 0.88, 0.92, 0.90, 120.0),
         create_mock_experiment("GPT-4", "BiasProbe", 0.85, 0.82, 0.88, 0.85, 130.0),
-        create_mock_experiment("Claude-3", "LogicProbe", 0.92, 0.91, 0.93, 0.92, 100.0, provider="anthropic"),
-        create_mock_experiment("Claude-3", "BiasProbe", 0.88, 0.86, 0.90, 0.88, 110.0, provider="anthropic"),
-        create_mock_experiment("Llama-2", "LogicProbe", 0.78, 0.75, 0.81, 0.78, 80.0, provider="meta"),
+        create_mock_experiment(
+            "Claude-3", "LogicProbe", 0.92, 0.91, 0.93, 0.92, 100.0, provider="anthropic"
+        ),
+        create_mock_experiment(
+            "Claude-3", "BiasProbe", 0.88, 0.86, 0.90, 0.88, 110.0, provider="anthropic"
+        ),
+        create_mock_experiment(
+            "Llama-2", "LogicProbe", 0.78, 0.75, 0.81, 0.78, 80.0, provider="meta"
+        ),
     ]
 
 
@@ -196,9 +202,7 @@ class TestInteractiveMetricRadar:
         """Test with custom metric selection."""
         from insideLLMs.visualization import interactive_metric_radar
 
-        fig = interactive_metric_radar(
-            mock_experiments, metrics=["accuracy", "precision"]
-        )
+        fig = interactive_metric_radar(mock_experiments, metrics=["accuracy", "precision"])
         assert fig is not None
 
 
@@ -248,9 +252,7 @@ class TestInteractiveHeatmap:
         """Test with different row/col configurations."""
         from insideLLMs.visualization import interactive_heatmap
 
-        fig = interactive_heatmap(
-            mock_experiments, row_key="probe", col_key="model"
-        )
+        fig = interactive_heatmap(mock_experiments, row_key="probe", col_key="model")
         assert fig is not None
 
     def test_custom_value_key(self, mock_experiments):
@@ -321,7 +323,7 @@ class TestCreateInteractiveDashboard:
         from insideLLMs.visualization import create_interactive_dashboard
 
         save_path = tmp_path / "dashboard.html"
-        fig = create_interactive_dashboard(mock_experiments, save_path=str(save_path))
+        create_interactive_dashboard(mock_experiments, save_path=str(save_path))
 
         assert save_path.exists()
         content = save_path.read_text()
@@ -337,9 +339,7 @@ class TestCreateInteractiveHtmlReport:
         from insideLLMs.visualization import create_interactive_html_report
 
         save_path = tmp_path / "report.html"
-        result_path = create_interactive_html_report(
-            mock_experiments, save_path=str(save_path)
-        )
+        result_path = create_interactive_html_report(mock_experiments, save_path=str(save_path))
 
         assert save_path.exists()
         assert result_path == str(save_path)

@@ -5,19 +5,16 @@ must follow, along with async variants for parallel execution.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Iterator
 from typing import (
     Any,
-    AsyncIterator,
-    Dict,
-    Iterator,
-    List,
     Optional,
     Protocol,
     TypedDict,
     runtime_checkable,
 )
 
-from insideLLMs.types import ModelInfo, ModelResponse, TokenUsage
+from insideLLMs.types import ModelInfo, ModelResponse
 
 
 class ChatMessage(TypedDict, total=False):
@@ -41,7 +38,7 @@ class ModelProtocol(Protocol):
         """Generate a response from the model given a prompt."""
         ...
 
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> dict[str, Any]:
         """Return model metadata/info as a dict."""
         ...
 
@@ -50,7 +47,7 @@ class ModelProtocol(Protocol):
 class ChatModelProtocol(ModelProtocol, Protocol):
     """Protocol for models that support multi-turn chat."""
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat."""
         ...
 
@@ -148,7 +145,7 @@ class Model(ABC):
             latency_ms=latency_ms,
         )
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -189,8 +186,7 @@ class Model(ABC):
             name=self.name,
             provider=self.__class__.__name__.replace("Model", ""),
             model_id=self.model_id,
-            supports_streaming=hasattr(self, "_supports_streaming")
-            and self._supports_streaming,
+            supports_streaming=hasattr(self, "_supports_streaming") and self._supports_streaming,
             supports_chat=hasattr(self, "_supports_chat") and self._supports_chat,
         )
 
@@ -248,7 +244,7 @@ class AsyncModel(Model):
             latency_ms=latency_ms,
         )
 
-    async def achat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    async def achat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Asynchronously engage in a multi-turn chat.
 
         Args:
@@ -305,7 +301,7 @@ class ModelWrapper:
         self._max_retries = max_retries
         self._retry_delay = retry_delay
         self._cache_responses = cache_responses
-        self._cache: Dict[str, str] = {}
+        self._cache: dict[str, str] = {}
 
     @property
     def name(self) -> str:

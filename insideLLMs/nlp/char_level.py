@@ -1,10 +1,10 @@
 import re
-from typing import List, Dict
 from collections import Counter
 
 # ===== Character-Level Operations =====
 
-def get_char_ngrams(text: str, n: int = 2) -> List[str]:
+
+def get_char_ngrams(text: str, n: int = 2) -> list[str]:
     """Generate character n-grams from text.
 
     Args:
@@ -14,9 +14,10 @@ def get_char_ngrams(text: str, n: int = 2) -> List[str]:
     Returns:
         List of character n-grams
     """
-    return [text[i:i+n] for i in range(len(text) - n + 1)]
+    return [text[i : i + n] for i in range(len(text) - n + 1)]
 
-def get_char_frequency(text: str) -> Dict[str, int]:
+
+def get_char_frequency(text: str) -> dict[str, int]:
     """Get character frequencies in text.
 
     Args:
@@ -26,6 +27,7 @@ def get_char_frequency(text: str) -> Dict[str, int]:
         Dictionary mapping characters to their frequencies
     """
     return dict(Counter(text))
+
 
 def to_uppercase(text: str) -> str:
     """Convert text to uppercase.
@@ -38,6 +40,7 @@ def to_uppercase(text: str) -> str:
     """
     return text.upper()
 
+
 def to_titlecase(text: str) -> str:
     """Convert text to title case.
 
@@ -49,6 +52,7 @@ def to_titlecase(text: str) -> str:
     """
     return text.title()
 
+
 def to_camelcase(text: str) -> str:
     """Convert text to camel case.
 
@@ -59,12 +63,13 @@ def to_camelcase(text: str) -> str:
         Camel case text
     """
     # Replace underscores with spaces, then split by spaces
-    words = text.replace('_', ' ').split()
+    words = text.replace("_", " ").split()
     if not words:
-        return ''
+        return ""
 
     # First word lowercase, rest title case
-    return words[0].lower() + ''.join(word.title() for word in words[1:])
+    return words[0].lower() + "".join(word.title() for word in words[1:])
+
 
 def to_snakecase(text: str) -> str:
     """Convert text to snake case.
@@ -76,11 +81,11 @@ def to_snakecase(text: str) -> str:
         Snake case text
     """
     # Replace spaces and hyphens with underscores
-    text = re.sub(r'[ -]', '_', text)
+    text = re.sub(r"[ -]", "_", text)
     # Handle camel case
-    text = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', text)
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", text)
     # Remove non-alphanumeric characters and convert to lowercase
-    text = re.sub(r'[^a-zA-Z0-9_]', '', text).lower()
+    text = re.sub(r"[^a-zA-Z0-9_]", "", text).lower()
     # Replace multiple underscores with a single one
-    text = re.sub(r'_+', '_', text)
+    text = re.sub(r"_+", "_", text)
     return text

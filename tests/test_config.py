@@ -1,6 +1,5 @@
 """Tests for configuration validation module."""
 
-import json
 import tempfile
 from pathlib import Path
 

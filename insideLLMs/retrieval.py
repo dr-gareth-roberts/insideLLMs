@@ -28,20 +28,13 @@ Example:
 import hashlib
 import math
 import re
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterator,
-    List,
     Optional,
     Protocol,
-    Sequence,
-    Tuple,
-    TypeVar,
     Union,
     runtime_checkable,
 )
@@ -67,9 +60,9 @@ class Document:
     """
 
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     id: Optional[str] = None
-    embedding: Optional[List[float]] = None
+    embedding: Optional[list[float]] = None
 
     def __post_init__(self):
         if self.id is None:
@@ -105,7 +98,7 @@ class EmbeddingModel(Protocol):
     can be used as an embedding model.
     """
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Embed a single text string.
 
         Args:
@@ -116,7 +109,7 @@ class EmbeddingModel(Protocol):
         """
         ...
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts.
 
         Args:
@@ -142,11 +135,11 @@ class SimpleEmbedding:
             dimension: Output embedding dimension.
         """
         self.dimension = dimension
-        self._vocab: Dict[str, int] = {}
-        self._idf: Dict[str, float] = {}
+        self._vocab: dict[str, int] = {}
+        self._idf: dict[str, float] = {}
         self._doc_count = 0
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization."""
         return re.findall(r"\b\w+\b", text.lower())
 
@@ -160,7 +153,7 @@ class SimpleEmbedding:
                 self._vocab[token] = len(self._vocab)
             self._idf[token] = self._idf.get(token, 0) + 1
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Create a simple embedding from text.
 
         Args:
@@ -174,7 +167,7 @@ class SimpleEmbedding:
             return [0.0] * self.dimension
 
         # Count token frequencies
-        tf: Dict[str, int] = {}
+        tf: dict[str, int] = {}
         for token in tokens:
             tf[token] = tf.get(token, 0) + 1
 
@@ -194,7 +187,7 @@ class SimpleEmbedding:
 
         return vector
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts.
 
         Args:
@@ -226,8 +219,8 @@ class VectorStore(Protocol):
 
     def add(
         self,
-        documents: List[Document],
-        embeddings: List[List[float]],
+        documents: list[Document],
+        embeddings: list[list[float]],
     ) -> None:
         """Add documents with their embeddings to the store.
 
@@ -239,10 +232,10 @@ class VectorStore(Protocol):
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int = 5,
-        filter: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filter: Optional[dict[str, Any]] = None,
+    ) -> list[RetrievalResult]:
         """Search for similar documents.
 
         Args:
@@ -255,7 +248,7 @@ class VectorStore(Protocol):
         """
         ...
 
-    def delete(self, ids: List[str]) -> None:
+    def delete(self, ids: list[str]) -> None:
         """Delete documents by ID.
 
         Args:
@@ -277,11 +270,11 @@ class InMemoryVectorStore:
 
     def __init__(self):
         """Initialize the in-memory store."""
-        self._documents: Dict[str, Document] = {}
-        self._embeddings: Dict[str, List[float]] = {}
+        self._documents: dict[str, Document] = {}
+        self._embeddings: dict[str, list[float]] = {}
 
     @staticmethod
-    def _cosine_similarity(a: List[float], b: List[float]) -> float:
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         dot_product = sum(x * y for x, y in zip(a, b))
         norm_a = math.sqrt(sum(x * x for x in a))
@@ -294,8 +287,8 @@ class InMemoryVectorStore:
 
     def add(
         self,
-        documents: List[Document],
-        embeddings: List[List[float]],
+        documents: list[Document],
+        embeddings: list[list[float]],
     ) -> None:
         """Add documents with embeddings.
 
@@ -313,10 +306,10 @@ class InMemoryVectorStore:
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int = 5,
-        filter: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filter: Optional[dict[str, Any]] = None,
+    ) -> list[RetrievalResult]:
         """Search for similar documents.
 
         Args:
@@ -332,10 +325,7 @@ class InMemoryVectorStore:
         for doc_id, doc in self._documents.items():
             # Apply filter if provided
             if filter:
-                match = all(
-                    doc.metadata.get(key) == value
-                    for key, value in filter.items()
-                )
+                match = all(doc.metadata.get(key) == value for key, value in filter.items())
                 if not match:
                     continue
 
@@ -352,7 +342,7 @@ class InMemoryVectorStore:
             for i, (doc, score) in enumerate(results[:k])
         ]
 
-    def delete(self, ids: List[str]) -> None:
+    def delete(self, ids: list[str]) -> None:
         """Delete documents by ID.
 
         Args:
@@ -403,14 +393,14 @@ class TextChunker:
     # Separators in order of preference
     SEPARATORS = [
         "\n\n",  # Paragraphs
-        "\n",    # Lines
-        ". ",    # Sentences
+        "\n",  # Lines
+        ". ",  # Sentences
         "! ",
         "? ",
         "; ",
-        ", ",    # Clauses
-        " ",     # Words
-        "",      # Characters
+        ", ",  # Clauses
+        " ",  # Words
+        "",  # Characters
     ]
 
     def __init__(self, config: Optional[ChunkingConfig] = None):
@@ -421,7 +411,7 @@ class TextChunker:
         """
         self.config = config or ChunkingConfig()
 
-    def _split_text(self, text: str, separators: List[str]) -> List[str]:
+    def _split_text(self, text: str, separators: list[str]) -> list[str]:
         """Recursively split text using separators."""
         if not separators:
             return [text]
@@ -463,7 +453,7 @@ class TextChunker:
 
         return result
 
-    def chunk(self, text: str) -> List[str]:
+    def chunk(self, text: str) -> list[str]:
         """Split text into chunks.
 
         Args:
@@ -511,9 +501,9 @@ class TextChunker:
 
     def chunk_documents(
         self,
-        documents: List[Document],
+        documents: list[Document],
         preserve_metadata: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Chunk multiple documents.
 
         Args:
@@ -574,10 +564,10 @@ class Retriever:
 
     def add_texts(
         self,
-        texts: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
+        texts: list[str],
+        metadatas: Optional[list[dict[str, Any]]] = None,
         chunk: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """Add texts to the retriever.
 
         Args:
@@ -590,18 +580,15 @@ class Retriever:
         """
         # Create documents
         metadatas = metadatas or [{}] * len(texts)
-        documents = [
-            Document(content=text, metadata=meta)
-            for text, meta in zip(texts, metadatas)
-        ]
+        documents = [Document(content=text, metadata=meta) for text, meta in zip(texts, metadatas)]
 
         return self.add_documents(documents, chunk=chunk)
 
     def add_documents(
         self,
-        documents: List[Document],
+        documents: list[Document],
         chunk: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """Add documents to the retriever.
 
         Args:
@@ -630,8 +617,8 @@ class Retriever:
         self,
         query: str,
         k: int = 5,
-        filter: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filter: Optional[dict[str, Any]] = None,
+    ) -> list[RetrievalResult]:
         """Retrieve documents relevant to a query.
 
         Args:
@@ -645,7 +632,7 @@ class Retriever:
         query_embedding = self.embedding_model.embed(query)
         return self.vector_store.search(query_embedding, k=k, filter=filter)
 
-    def delete(self, ids: List[str]) -> None:
+    def delete(self, ids: list[str]) -> None:
         """Delete documents by ID.
 
         Args:
@@ -685,7 +672,7 @@ class RAGResponse:
     """
 
     answer: str
-    sources: List[RetrievalResult]
+    sources: list[RetrievalResult]
     prompt: str
 
 
@@ -732,10 +719,10 @@ class RAGChain:
 
     def add_documents(
         self,
-        texts: Union[List[str], List[Document]],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
+        texts: Union[list[str], list[Document]],
+        metadatas: Optional[list[dict[str, Any]]] = None,
         chunk: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """Add documents to the RAG chain.
 
         Args:
@@ -751,7 +738,7 @@ class RAGChain:
         else:
             return self.retriever.add_texts(texts, metadatas, chunk=chunk)
 
-    def _format_context(self, results: List[RetrievalResult]) -> str:
+    def _format_context(self, results: list[RetrievalResult]) -> str:
         """Format retrieved documents into context string."""
         context_parts = []
         for i, result in enumerate(results, 1):
@@ -763,7 +750,7 @@ class RAGChain:
         self,
         question: str,
         k: Optional[int] = None,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[dict[str, Any]] = None,
         **model_kwargs: Any,
     ) -> RAGResponse:
         """Query the RAG chain.
@@ -805,7 +792,7 @@ class RAGChain:
         question: str,
         system_prompt: Optional[str] = None,
         k: Optional[int] = None,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[dict[str, Any]] = None,
         **model_kwargs: Any,
     ) -> RAGResponse:
         """Query using the model's chat interface.
@@ -861,7 +848,7 @@ class RAGChain:
 
 def create_rag_chain(
     model: "Model",
-    documents: Optional[List[str]] = None,
+    documents: Optional[list[str]] = None,
     embedding_model: Optional[EmbeddingModel] = None,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
@@ -882,10 +869,12 @@ def create_rag_chain(
     """
     embedding = embedding_model or SimpleEmbedding()
     store = InMemoryVectorStore()
-    chunker = TextChunker(ChunkingConfig(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-    ))
+    chunker = TextChunker(
+        ChunkingConfig(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+    )
     retriever = Retriever(embedding, store, chunker)
 
     chain = RAGChain(

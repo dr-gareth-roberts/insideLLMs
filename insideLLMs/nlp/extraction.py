@@ -1,11 +1,10 @@
 import re
 from collections import defaultdict
-from typing import Dict, List, Tuple
 
 from insideLLMs.nlp.dependencies import ensure_spacy
 
-
 # ===== Dependency Management =====
+
 
 def check_spacy(model_name: str = "en_core_web_sm"):
     """Ensure spaCy and the requested model are available."""
@@ -14,13 +13,14 @@ def check_spacy(model_name: str = "en_core_web_sm"):
 
 # ===== Pattern Matching and Extraction =====
 
-def extract_emails(text: str) -> List[str]:
+
+def extract_emails(text: str) -> list[str]:
     """Extract email addresses from text."""
     email_pattern = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
     return email_pattern.findall(text)
 
 
-def extract_phone_numbers(text: str, country: str = "us") -> List[str]:
+def extract_phone_numbers(text: str, country: str = "us") -> list[str]:
     """Extract phone numbers from text."""
     patterns = {
         "us": r"(?:\+?1[-\s]?)?(?:\(?[0-9]{3}\)?[-\s]?)?[0-9]{3}[-\s]?[0-9]{4}",
@@ -33,7 +33,7 @@ def extract_phone_numbers(text: str, country: str = "us") -> List[str]:
     return phone_pattern.findall(text)
 
 
-def extract_urls(text: str) -> List[str]:
+def extract_urls(text: str) -> list[str]:
     """Extract URLs from text."""
     url_pattern = re.compile(
         r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[^\s]*|"
@@ -42,19 +42,19 @@ def extract_urls(text: str) -> List[str]:
     return url_pattern.findall(text)
 
 
-def extract_hashtags(text: str) -> List[str]:
+def extract_hashtags(text: str) -> list[str]:
     """Extract hashtags from text."""
     hashtag_pattern = re.compile(r"#\w+")
     return hashtag_pattern.findall(text)
 
 
-def extract_mentions(text: str) -> List[str]:
+def extract_mentions(text: str) -> list[str]:
     """Extract mentions from text."""
     mention_pattern = re.compile(r"@\w+")
     return mention_pattern.findall(text)
 
 
-def extract_ip_addresses(text: str) -> List[str]:
+def extract_ip_addresses(text: str) -> list[str]:
     """Extract IP addresses from text."""
     ipv4_pattern = re.compile(
         r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
@@ -65,14 +65,17 @@ def extract_ip_addresses(text: str) -> List[str]:
 
 # ===== Named Entity Recognition =====
 
-def extract_named_entities(text: str, model_name: str = "en_core_web_sm") -> List[Tuple[str, str]]:
+
+def extract_named_entities(text: str, model_name: str = "en_core_web_sm") -> list[tuple[str, str]]:
     """Extract named entities from text using spaCy."""
     nlp = check_spacy(model_name)
     doc = nlp(text)
     return [(ent.text, ent.label_) for ent in doc.ents]
 
 
-def extract_entities_by_type(text: str, entity_types: List[str], model_name: str = "en_core_web_sm") -> Dict[str, List[str]]:
+def extract_entities_by_type(
+    text: str, entity_types: list[str], model_name: str = "en_core_web_sm"
+) -> dict[str, list[str]]:
     """Extract named entities of specific types from text."""
     entities = extract_named_entities(text, model_name)
     result = defaultdict(list)

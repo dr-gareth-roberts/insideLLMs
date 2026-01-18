@@ -13,9 +13,7 @@ from insideLLMs.probes import (
     InstructionFollowingProbe,
     LogicProbe,
     MultiStepTaskProbe,
-    Probe,
     ProbeCategory,
-    ScoredProbe,
 )
 from insideLLMs.types import ProbeResult, ResultStatus
 
@@ -249,13 +247,20 @@ class TestProbeScoring:
         probe = LogicProbe()
 
         results = [
-            ProbeResult(input="q1", output="The answer is 4", status=ResultStatus.SUCCESS, latency_ms=100),
-            ProbeResult(input="q2", output="First, let's think step by step...", status=ResultStatus.SUCCESS, latency_ms=150),
+            ProbeResult(
+                input="q1", output="The answer is 4", status=ResultStatus.SUCCESS, latency_ms=100
+            ),
+            ProbeResult(
+                input="q2",
+                output="First, let's think step by step...",
+                status=ResultStatus.SUCCESS,
+                latency_ms=150,
+            ),
             ProbeResult(input="q3", status=ResultStatus.ERROR, error="Failed"),
         ]
 
         score = probe.score(results)
-        assert score.error_rate == pytest.approx(1/3)
+        assert score.error_rate == pytest.approx(1 / 3)
         assert score.mean_latency_ms is not None
         assert "reasoning_rate" in score.custom_metrics
 
@@ -334,12 +339,12 @@ class TestCodeGenerationProbe:
         """Test code extraction from markdown code blocks."""
         probe = CodeGenerationProbe()
 
-        response = '''Here's the code:
+        response = """Here's the code:
 ```python
 def add(a, b):
     return a + b
 ```
-'''
+"""
         extracted = probe.extract_code(response)
         assert "def add" in extracted
         assert "return a + b" in extracted
@@ -432,8 +437,7 @@ class TestCodeExplanationProbe:
         """
 
         result = probe.evaluate_single(
-            explanation,
-            {"concepts": ["factorial", "recursion", "base case"]}
+            explanation, {"concepts": ["factorial", "recursion", "base case"]}
         )
 
         assert result.status == ResultStatus.SUCCESS
@@ -485,8 +489,7 @@ class TestCodeDebugProbe:
         """
 
         result = probe.evaluate_single(
-            response,
-            {"fix_patterns": ["if b == 0", "raise", "valueerror"]}
+            response, {"fix_patterns": ["if b == 0", "raise", "valueerror"]}
         )
 
         assert result.status == ResultStatus.SUCCESS
@@ -507,10 +510,7 @@ class TestInstructionFollowingProbe:
         model = DummyModel()
         probe = InstructionFollowingProbe()
 
-        result = probe.run(
-            model,
-            {"instruction": "List 3 colors", "format": "bullet_list"}
-        )
+        result = probe.run(model, {"instruction": "List 3 colors", "format": "bullet_list"})
         assert isinstance(result, str)
 
     def test_instruction_following_string_input(self):
@@ -555,8 +555,7 @@ class TestInstructionFollowingProbe:
 
         response = "- Red\n- Blue\n- Green"
         result = probe.evaluate_single(
-            response,
-            {"format": "bullet_list", "include_keywords": ["red", "blue"]}
+            response, {"format": "bullet_list", "include_keywords": ["red", "blue"]}
         )
 
         assert result.status == ResultStatus.SUCCESS
@@ -603,10 +602,7 @@ class TestMultiStepTaskProbe:
         """
 
         # Evaluate with reference steps
-        result = probe.evaluate_single(
-            response,
-            {"steps": ["read text", "extract names", "sort"]}
-        )
+        result = probe.evaluate_single(response, {"steps": ["read text", "extract names", "sort"]})
         assert result.metadata.get("score") is not None
         assert result.metadata["step_indicators_found"] >= 2
 
@@ -618,10 +614,7 @@ class TestMultiStepTaskProbe:
         response = """Step 1: First, I considered the initial requirements and analyzed the problem.
         Step 2: Then, I processed the data and computed the result carefully.
         The final answer is complete and verified."""
-        result = probe.evaluate_single(
-            response,
-            {"steps": ["first", "second"]}
-        )
+        result = probe.evaluate_single(response, {"steps": ["first", "second"]})
 
         # Check that we get a valid result with score
         assert result.metadata.get("score") is not None
@@ -639,20 +632,14 @@ class TestConstraintComplianceProbe:
     def test_constraint_probe_run(self):
         """Test running constraint compliance probe."""
         model = DummyModel()
-        probe = ConstraintComplianceProbe(
-            constraint_type="word_limit",
-            limit=50
-        )
+        probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=50)
 
         result = probe.run(model, {"task": "Describe a sunset"})
         assert isinstance(result, str)
 
     def test_word_count_constraint(self):
         """Test word count constraint checking."""
-        probe = ConstraintComplianceProbe(
-            constraint_type="word_limit",
-            limit=10
-        )
+        probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=10)
 
         response = "This is exactly five words."
         result = probe.evaluate_single(response, None)
@@ -661,10 +648,7 @@ class TestConstraintComplianceProbe:
 
     def test_word_count_violation(self):
         """Test word count constraint violation."""
-        probe = ConstraintComplianceProbe(
-            constraint_type="word_limit",
-            limit=3
-        )
+        probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=3)
 
         response = "This is exactly five words."
         result = probe.evaluate_single(response, None)
@@ -673,10 +657,7 @@ class TestConstraintComplianceProbe:
 
     def test_character_limit_constraint(self):
         """Test character limit constraint."""
-        probe = ConstraintComplianceProbe(
-            constraint_type="character_limit",
-            limit=50
-        )
+        probe = ConstraintComplianceProbe(constraint_type="character_limit", limit=50)
 
         response = "Short text."
         result = probe.evaluate_single(response, None)
@@ -685,10 +666,7 @@ class TestConstraintComplianceProbe:
 
     def test_sentence_limit_constraint(self):
         """Test sentence limit constraint."""
-        probe = ConstraintComplianceProbe(
-            constraint_type="sentence_limit",
-            limit=2
-        )
+        probe = ConstraintComplianceProbe(constraint_type="sentence_limit", limit=2)
 
         response = "First sentence. Second sentence."
         result = probe.evaluate_single(response, None)
@@ -698,7 +676,7 @@ class TestConstraintComplianceProbe:
         """Test evaluating with override limit."""
         probe = ConstraintComplianceProbe(
             constraint_type="word_limit",
-            limit=100  # Default limit
+            limit=100,  # Default limit
         )
 
         response = "Short response."

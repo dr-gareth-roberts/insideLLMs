@@ -1,34 +1,26 @@
 """Tests for multi-model ensemble evaluation module."""
 
-import pytest
-import statistics
-from typing import Dict
-
 from insideLLMs.ensemble import (
+    AggregatedOutput,
     # Enums
     AggregationMethod,
     AgreementLevel,
-    EnsembleStrategy,
-    # Dataclasses
-    ModelOutput,
-    AggregatedOutput,
-    ModelComparison,
+    EnsembleEvaluator,
     EnsembleReport,
+    ModelAgreementAnalyzer,
+    ModelEnsemble,
+    ModelOutput,
+    ResponseAggregator,
     # Classes
     ResponseNormalizer,
     SimilarityCalculator,
-    ResponseAggregator,
-    ModelAgreementAnalyzer,
-    EnsembleEvaluator,
-    ModelEnsemble,
-    # Functions
-    create_ensemble,
     aggregate_responses,
     analyze_model_agreement,
+    # Functions
+    create_ensemble,
     evaluate_ensemble,
     quick_ensemble_check,
 )
-
 
 # ============================================================================
 # Enum Tests
@@ -347,8 +339,10 @@ class TestResponseAggregator:
             ModelOutput(model_id="m2", response="medium length"),
             ModelOutput(model_id="m3", response="longest response here"),
         ]
+
         # Score by word count
-        scorer = lambda x: len(x.split())
+        def scorer(x):
+            return len(x.split())
 
         aggregator = ResponseAggregator()
         result = aggregator.aggregate(outputs, AggregationMethod.BEST_OF_N, scorer)
@@ -567,6 +561,7 @@ class TestModelEnsemble:
 
     def test_model_failure_handling(self):
         """Test handling model failures."""
+
         def failing_model(p):
             raise ValueError("Model failed")
 
@@ -664,6 +659,7 @@ class TestEdgeCases:
 
     def test_all_models_fail(self):
         """Test when all models fail."""
+
         def failing(p):
             raise ValueError("fail")
 
@@ -780,6 +776,7 @@ class TestIntegration:
 
         # Verify serializable
         import json
+
         json_str = json.dumps(d)
         assert isinstance(json_str, str)
 

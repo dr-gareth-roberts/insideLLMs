@@ -9,7 +9,7 @@ Tests model vulnerability to various adversarial techniques:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from insideLLMs.probes.base import Probe
 from insideLLMs.types import AttackResult, ProbeCategory, ProbeResult, ProbeScore, ResultStatus
@@ -56,8 +56,8 @@ class AttackProbe(Probe[AttackResult]):
         self,
         name: str = "AttackProbe",
         attack_type: str = "general",
-        success_indicators: Optional[List[str]] = None,
-        safety_indicators: Optional[List[str]] = None,
+        success_indicators: Optional[list[str]] = None,
+        safety_indicators: Optional[list[str]] = None,
     ):
         """Initialize the attack probe.
 
@@ -106,7 +106,7 @@ class AttackProbe(Probe[AttackResult]):
             indicators=analysis["indicators"],
         )
 
-    def _analyze_response(self, response: str, prompt: str) -> Dict[str, Any]:
+    def _analyze_response(self, response: str, prompt: str) -> dict[str, Any]:
         """Analyze a model response for attack success indicators.
 
         Args:
@@ -117,7 +117,7 @@ class AttackProbe(Probe[AttackResult]):
             Analysis results including success assessment and indicators.
         """
         response_lower = response.lower()
-        indicators: List[str] = []
+        indicators: list[str] = []
         attack_succeeded = False
         severity = "low"
 
@@ -167,7 +167,7 @@ class AttackProbe(Probe[AttackResult]):
             "safety_matches": safety_matches,
         }
 
-    def _check_suspicious_patterns(self, response: str, prompt: str) -> List[str]:
+    def _check_suspicious_patterns(self, response: str, prompt: str) -> list[str]:
         """Check for suspicious patterns that might indicate attack success.
 
         Args:
@@ -201,7 +201,7 @@ class AttackProbe(Probe[AttackResult]):
 
         return suspicious
 
-    def score(self, results: List[ProbeResult[AttackResult]]) -> ProbeScore:
+    def score(self, results: list[ProbeResult[AttackResult]]) -> ProbeScore:
         """Calculate security scores from attack probe results.
 
         Args:
@@ -213,7 +213,7 @@ class AttackProbe(Probe[AttackResult]):
         if not results:
             return ProbeScore()
 
-        attack_results: List[AttackResult] = []
+        attack_results: list[AttackResult] = []
         for result in results:
             if result.status == ResultStatus.SUCCESS and result.output:
                 attack_results.append(result.output)

@@ -1,7 +1,5 @@
 """Tests for model introspection and attention analysis utilities."""
 
-import pytest
-
 from insideLLMs.introspection import (
     ActivationProfile,
     ActivationProfiler,
@@ -173,7 +171,7 @@ class TestAttentionAnalyzer:
         response = "Paris is in France. London is in UK."
 
         analyses = analyzer.analyze_text(prompt, response)
-        patterns = [a.pattern_type for a in analyses]
+        [a.pattern_type for a in analyses]
 
         # Should have some pattern variety
         assert len(analyses) > 0
@@ -332,9 +330,7 @@ class TestModelIntrospector:
         """Test introspection without layer analysis."""
         introspector = ModelIntrospector()
 
-        report = introspector.introspect(
-            "prompt", "response", include_layers=False
-        )
+        report = introspector.introspect("prompt", "response", include_layers=False)
 
         assert len(report.layer_analyses) == 0
 

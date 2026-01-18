@@ -8,9 +8,8 @@ Provides tools for:
 - Fault tolerance and checkpointing
 """
 
+import contextlib
 import hashlib
-import json
-import os
 import pickle
 import queue
 import tempfile
@@ -19,11 +18,9 @@ import time
 from abc import ABC, abstractmethod
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from multiprocessing import Manager, Process, Queue
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -48,7 +45,7 @@ class Task:
     retries: int = 0
     max_retries: int = 3
     created_at: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __lt__(self, other: "Task") -> bool:
         """Compare tasks for priority queue ordering."""
@@ -58,7 +55,7 @@ class Task:
             return self.priority > other.priority
         return self.created_at < other.created_at
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -71,7 +68,7 @@ class Task:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+    def from_dict(cls, data: dict[str, Any]) -> "Task":
         """Create from dictionary."""
         return cls(**data)
 
@@ -88,7 +85,7 @@ class TaskResult:
     worker_id: Optional[str] = None
     completed_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "task_id": self.task_id,
@@ -140,7 +137,7 @@ class WorkQueue:
     def __init__(self, maxsize: int = 0):
         """Initialize the queue."""
         self._queue: queue.PriorityQueue = queue.PriorityQueue(maxsize)
-        self._pending: Dict[str, Task] = {}
+        self._pending: dict[str, Task] = {}
         self._lock = threading.Lock()
 
     def put(self, task: Task) -> None:
@@ -186,26 +183,24 @@ class ResultCollector:
 
     def __init__(self):
         """Initialize the collector."""
-        self._results: Dict[str, TaskResult] = {}
+        self._results: dict[str, TaskResult] = {}
         self._lock = threading.Lock()
-        self._callbacks: List[Callable[[TaskResult], None]] = []
+        self._callbacks: list[Callable[[TaskResult], None]] = []
 
     def add(self, result: TaskResult) -> None:
         """Add a result."""
         with self._lock:
             self._results[result.task_id] = result
         for callback in self._callbacks:
-            try:
+            with contextlib.suppress(Exception):
                 callback(result)
-            except Exception:
-                pass
 
     def get(self, task_id: str) -> Optional[TaskResult]:
         """Get a result by task ID."""
         with self._lock:
             return self._results.get(task_id)
 
-    def get_all(self) -> List[TaskResult]:
+    def get_all(self) -> list[TaskResult]:
         """Get all results."""
         with self._lock:
             return list(self._results.values())
@@ -326,7 +321,7 @@ class LocalDistributedExecutor:
         self.use_processes = use_processes
         self.work_queue = WorkQueue()
         self.result_collector = ResultCollector()
-        self._workers: List[LocalWorker] = []
+        self._workers: list[LocalWorker] = []
         self._started = False
 
     def start(self) -> None:
@@ -359,7 +354,7 @@ class LocalDistributedExecutor:
             self.start()
         self.work_queue.put(task)
 
-    def submit_batch(self, tasks: List[Task]) -> None:
+    def submit_batch(self, tasks: list[Task]) -> None:
         """Submit multiple tasks."""
         for task in tasks:
             self.submit(task)
@@ -368,10 +363,10 @@ class LocalDistributedExecutor:
         self,
         timeout: Optional[float] = None,
         poll_interval: float = 0.1,
-    ) -> List[TaskResult]:
+    ) -> list[TaskResult]:
         """Wait for all submitted tasks to complete."""
         start_time = time.time()
-        expected_count = self.work_queue.size + len(self._workers)  # Rough estimate
+        self.work_queue.size + len(self._workers)  # Rough estimate
 
         while self.work_queue.size > 0 or any(
             w.info.status == WorkerStatus.BUSY for w in self._workers
@@ -382,11 +377,11 @@ class LocalDistributedExecutor:
 
         return self.result_collector.get_all()
 
-    def get_results(self) -> List[TaskResult]:
+    def get_results(self) -> list[TaskResult]:
         """Get all collected results."""
         return self.result_collector.get_all()
 
-    def get_worker_info(self) -> List[WorkerInfo]:
+    def get_worker_info(self) -> list[WorkerInfo]:
         """Get information about all workers."""
         return [w.info for w in self._workers]
 
@@ -405,9 +400,9 @@ class CheckpointManager:
 
     def __init__(self, checkpoint_dir: Optional[str] = None):
         """Initialize checkpoint manager."""
-        self.checkpoint_dir = Path(
-            checkpoint_dir or tempfile.gettempdir()
-        ) / "insidellms_checkpoints"
+        self.checkpoint_dir = (
+            Path(checkpoint_dir or tempfile.gettempdir()) / "insidellms_checkpoints"
+        )
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_checkpoint_path(self, checkpoint_id: str) -> Path:
@@ -417,9 +412,9 @@ class CheckpointManager:
     def save(
         self,
         checkpoint_id: str,
-        pending_tasks: List[Task],
-        completed_results: List[TaskResult],
-        metadata: Optional[Dict[str, Any]] = None,
+        pending_tasks: list[Task],
+        completed_results: list[TaskResult],
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str:
         """Save a checkpoint.
 
@@ -446,9 +441,7 @@ class CheckpointManager:
 
         return str(path)
 
-    def load(
-        self, checkpoint_id: str
-    ) -> Tuple[List[Task], List[TaskResult], Dict[str, Any]]:
+    def load(self, checkpoint_id: str) -> tuple[list[Task], list[TaskResult], dict[str, Any]]:
         """Load a checkpoint.
 
         Args:
@@ -465,17 +458,13 @@ class CheckpointManager:
             data = pickle.load(f)
 
         pending_tasks = [Task.from_dict(t) for t in data["pending_tasks"]]
-        completed_results = [
-            TaskResult(**r) for r in data["completed_results"]
-        ]
+        completed_results = [TaskResult(**r) for r in data["completed_results"]]
 
         return pending_tasks, completed_results, data.get("metadata", {})
 
-    def list_checkpoints(self) -> List[str]:
+    def list_checkpoints(self) -> list[str]:
         """List all available checkpoints."""
-        return [
-            p.stem for p in self.checkpoint_dir.glob("*.checkpoint")
-        ]
+        return [p.stem for p in self.checkpoint_dir.glob("*.checkpoint")]
 
     def delete(self, checkpoint_id: str) -> None:
         """Delete a checkpoint."""
@@ -503,14 +492,14 @@ class ProcessPoolDistributedExecutor:
         self.func = func
         self.num_workers = num_workers
         self.checkpoint_manager = checkpoint_manager
-        self._pending_tasks: List[Task] = []
-        self._results: List[TaskResult] = []
+        self._pending_tasks: list[Task] = []
+        self._results: list[TaskResult] = []
 
     def submit(self, task: Task) -> None:
         """Submit a task."""
         self._pending_tasks.append(task)
 
-    def submit_batch(self, tasks: List[Task]) -> None:
+    def submit_batch(self, tasks: list[Task]) -> None:
         """Submit multiple tasks."""
         self._pending_tasks.extend(tasks)
 
@@ -519,7 +508,7 @@ class ProcessPoolDistributedExecutor:
         checkpoint_id: Optional[str] = None,
         checkpoint_interval: int = 100,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> List[TaskResult]:
+    ) -> list[TaskResult]:
         """Run all submitted tasks.
 
         Args:
@@ -574,12 +563,11 @@ class ProcessPoolDistributedExecutor:
                     and completed_count % checkpoint_interval == 0
                 ):
                     remaining = [
-                        t for t in self._pending_tasks
+                        t
+                        for t in self._pending_tasks
                         if t.id not in {r.task_id for r in self._results}
                     ]
-                    self.checkpoint_manager.save(
-                        checkpoint_id, remaining, self._results
-                    )
+                    self.checkpoint_manager.save(checkpoint_id, remaining, self._results)
 
         # Clear pending tasks
         self._pending_tasks.clear()
@@ -616,7 +604,7 @@ class MapReduceExecutor(Generic[T, R]):
     def __init__(
         self,
         mapper: Callable[[T], R],
-        reducer: Callable[[List[R]], Any],
+        reducer: Callable[[list[R]], Any],
         num_workers: int = 4,
     ):
         """Initialize the map-reduce executor.
@@ -630,7 +618,7 @@ class MapReduceExecutor(Generic[T, R]):
         self.reducer = reducer
         self.num_workers = num_workers
 
-    def execute(self, items: List[T]) -> Any:
+    def execute(self, items: list[T]) -> Any:
         """Execute map-reduce on items.
 
         Args:
@@ -648,7 +636,7 @@ class MapReduceExecutor(Generic[T, R]):
 
     def execute_with_partitions(
         self,
-        items: List[T],
+        items: list[T],
         partition_size: int = 100,
     ) -> Any:
         """Execute with partitioned reduce.
@@ -699,16 +687,14 @@ class DistributedExperimentRunner:
         self.model_func = model_func
         self.num_workers = num_workers
         self.use_processes = use_processes
-        self.checkpoint_manager = (
-            CheckpointManager(checkpoint_dir) if checkpoint_dir else None
-        )
+        self.checkpoint_manager = CheckpointManager(checkpoint_dir) if checkpoint_dir else None
 
     def run_prompts(
         self,
-        prompts: List[str],
+        prompts: list[str],
         checkpoint_id: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Run a list of prompts in parallel.
 
         Args:
@@ -753,21 +739,25 @@ class DistributedExperimentRunner:
         for task, prompt in zip(tasks, prompts):
             result = result_map.get(task.id)
             if result:
-                output.append({
-                    "prompt": prompt,
-                    "response": result.result if result.success else None,
-                    "success": result.success,
-                    "error": result.error,
-                    "latency_ms": result.latency_ms,
-                })
+                output.append(
+                    {
+                        "prompt": prompt,
+                        "response": result.result if result.success else None,
+                        "success": result.success,
+                        "error": result.error,
+                        "latency_ms": result.latency_ms,
+                    }
+                )
             else:
-                output.append({
-                    "prompt": prompt,
-                    "response": None,
-                    "success": False,
-                    "error": "Task not found",
-                    "latency_ms": 0,
-                })
+                output.append(
+                    {
+                        "prompt": prompt,
+                        "response": None,
+                        "success": False,
+                        "error": "Task not found",
+                        "latency_ms": 0,
+                    }
+                )
 
         return output
 
@@ -777,10 +767,10 @@ class DistributedExperimentRunner:
 
     def run_experiments(
         self,
-        experiments: List[Dict[str, Any]],
+        experiments: list[dict[str, Any]],
         prompt_key: str = "prompt",
         checkpoint_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Run experiments from a list of dictionaries.
 
         Args:
@@ -806,10 +796,10 @@ class DistributedExperimentRunner:
 
 def parallel_map(
     func: Callable[[T], R],
-    items: List[T],
+    items: list[T],
     num_workers: int = 4,
     use_processes: bool = False,
-) -> List[R]:
+) -> list[R]:
     """Simple parallel map function.
 
     Args:
@@ -828,11 +818,11 @@ def parallel_map(
 
 
 def batch_process(
-    func: Callable[[List[T]], List[R]],
-    items: List[T],
+    func: Callable[[list[T]], list[R]],
+    items: list[T],
     batch_size: int = 10,
     num_workers: int = 4,
-) -> List[R]:
+) -> list[R]:
     """Process items in batches with parallel batch execution.
 
     Args:
@@ -845,10 +835,7 @@ def batch_process(
         Flattened list of results.
     """
     # Create batches
-    batches = [
-        items[i : i + batch_size]
-        for i in range(0, len(items), batch_size)
-    ]
+    batches = [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
 
     # Process batches in parallel
     with ThreadPoolExecutor(max_workers=num_workers) as executor:

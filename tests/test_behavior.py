@@ -98,21 +98,19 @@ class TestPatternDetector:
 
         patterns = detector.detect_patterns(response)
 
-        uncertainty_patterns = [
-            p for p in patterns if p.pattern == BehaviorPattern.UNCERTAINTY
-        ]
+        uncertainty_patterns = [p for p in patterns if p.pattern == BehaviorPattern.UNCERTAINTY]
         assert len(uncertainty_patterns) > 0
 
     def test_detect_sycophancy(self):
         """Test sycophancy detection."""
         detector = PatternDetector()
-        response = "Great question! That's a fantastic point. I completely agree with your assessment."
+        response = (
+            "Great question! That's a fantastic point. I completely agree with your assessment."
+        )
 
         patterns = detector.detect_patterns(response)
 
-        sycophancy_patterns = [
-            p for p in patterns if p.pattern == BehaviorPattern.SYCOPHANCY
-        ]
+        sycophancy_patterns = [p for p in patterns if p.pattern == BehaviorPattern.SYCOPHANCY]
         assert len(sycophancy_patterns) > 0
 
     def test_detect_verbosity(self):
@@ -123,9 +121,7 @@ class TestPatternDetector:
 
         patterns = detector.detect_patterns(response)
 
-        verbosity_patterns = [
-            p for p in patterns if p.pattern == BehaviorPattern.VERBOSITY
-        ]
+        verbosity_patterns = [p for p in patterns if p.pattern == BehaviorPattern.VERBOSITY]
         assert len(verbosity_patterns) > 0
 
     def test_detect_repetition(self):
@@ -135,9 +131,7 @@ class TestPatternDetector:
 
         patterns = detector.detect_patterns(response)
 
-        repetition_patterns = [
-            p for p in patterns if p.pattern == BehaviorPattern.REPETITION
-        ]
+        repetition_patterns = [p for p in patterns if p.pattern == BehaviorPattern.REPETITION]
         assert len(repetition_patterns) > 0
 
     def test_no_patterns_in_neutral_response(self):
@@ -388,9 +382,7 @@ class TestSensitivityAnalyzer:
         analyzer = SensitivityAnalyzer()
 
         with pytest.raises(ValueError):
-            analyzer.analyze_sensitivity(
-                "prompt", "response", ["var1", "var2"], ["resp1"]
-            )
+            analyzer.analyze_sensitivity("prompt", "response", ["var1", "var2"], ["resp1"])
 
 
 class TestSensitivityResult:
@@ -574,9 +566,7 @@ class TestEdgeCases:
     def test_unicode_in_response(self):
         """Test with unicode characters."""
         detector = PatternDetector()
-        patterns = detector.detect_patterns(
-            "I think this answer might be correct. 日本語テスト 🎉"
-        )
+        patterns = detector.detect_patterns("I think this answer might be correct. 日本語テスト 🎉")
 
         # Should still detect hedging
         hedging = [p for p in patterns if p.pattern == BehaviorPattern.HEDGING]

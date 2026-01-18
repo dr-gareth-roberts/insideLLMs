@@ -12,6 +12,7 @@ from pathlib import Path
 # Check for dependencies
 try:
     import plotly
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -112,15 +113,15 @@ def interactive_latency_demo(experiments):
     from insideLLMs import interactive_latency_distribution
 
     # Box plot
-    fig = interactive_latency_distribution(experiments, chart_type="box")
+    interactive_latency_distribution(experiments, chart_type="box")
     print("Created box plot of latency distribution")
 
     # Violin plot
-    fig = interactive_latency_distribution(experiments, chart_type="violin")
+    interactive_latency_distribution(experiments, chart_type="violin")
     print("Created violin plot of latency distribution")
 
     # Histogram
-    fig = interactive_latency_distribution(experiments, chart_type="histogram")
+    interactive_latency_distribution(experiments, chart_type="histogram")
     print("Created histogram of latency distribution")
 
 
@@ -132,7 +133,7 @@ def interactive_radar_demo(experiments):
 
     from insideLLMs import interactive_metric_radar
 
-    fig = interactive_metric_radar(experiments)
+    interactive_metric_radar(experiments)
     print("Created radar chart showing all metrics")
     print("  - Each model is a different polygon")
     print("  - Metrics shown: accuracy, precision, recall, f1_score")
@@ -146,7 +147,7 @@ def interactive_heatmap_demo(experiments):
 
     from insideLLMs import interactive_heatmap
 
-    fig = interactive_heatmap(experiments, row_key="model", col_key="probe")
+    interactive_heatmap(experiments, row_key="model", col_key="probe")
     print("Created heatmap: models vs probes")
     print("  - Color intensity shows accuracy")
     print("  - Hover for exact values")
@@ -160,7 +161,7 @@ def interactive_scatter_demo(experiments):
 
     from insideLLMs import interactive_scatter_comparison
 
-    fig = interactive_scatter_comparison(
+    interactive_scatter_comparison(
         experiments,
         x_metric="accuracy",
         y_metric="mean_latency_ms",
@@ -227,7 +228,6 @@ def show_text_visualizations():
         text_bar_chart,
         text_histogram,
         text_summary_stats,
-        experiment_summary_text,
     )
 
     # Sample data

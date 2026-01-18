@@ -11,10 +11,9 @@ Provides tools for:
 
 import random
 import re
-import string
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 
 class AttackType(Enum):
@@ -49,10 +48,10 @@ class PerturbedText:
     original: str
     perturbed: str
     attack_type: AttackType
-    perturbation_positions: List[int] = field(default_factory=list)
+    perturbation_positions: list[int] = field(default_factory=list)
     severity: float = 0.0  # 0-1, how severe the perturbation is
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original": self.original,
@@ -77,7 +76,7 @@ class AttackResult:
     success: bool  # True if attack caused meaningful change
     severity: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "attack_type": self.attack_type.value,
@@ -97,15 +96,15 @@ class RobustnessReport:
     """Report on model robustness."""
 
     prompt: str
-    attack_results: List[AttackResult]
+    attack_results: list[AttackResult]
     overall_score: float  # 0-1, higher is more robust
     robustness_level: RobustnessLevel
-    vulnerabilities: List[AttackType]
-    recommendations: List[str] = field(default_factory=list)
+    vulnerabilities: list[AttackType]
+    recommendations: list[str] = field(default_factory=list)
 
-    def get_vulnerability_summary(self) -> Dict[AttackType, float]:
+    def get_vulnerability_summary(self) -> dict[AttackType, float]:
         """Get vulnerability by attack type."""
-        summary: Dict[AttackType, List[float]] = {}
+        summary: dict[AttackType, list[float]] = {}
         for result in self.attack_results:
             if result.attack_type not in summary:
                 summary[result.attack_type] = []
@@ -117,7 +116,7 @@ class RobustnessReport:
             for attack_type, scores in summary.items()
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt": self.prompt,
@@ -138,11 +137,11 @@ class VulnerabilityAssessment:
 
     attack_type: AttackType
     vulnerability_score: float  # 0-1, higher = more vulnerable
-    sample_attacks: List[PerturbedText]
+    sample_attacks: list[PerturbedText]
     description: str
     mitigation: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "attack_type": self.attack_type.value,
@@ -157,7 +156,7 @@ class TextPerturbator:
     """Generates text perturbations for testing robustness."""
 
     # Homoglyph mappings (characters that look similar)
-    HOMOGLYPHS: Dict[str, List[str]] = {
+    HOMOGLYPHS: dict[str, list[str]] = {
         "a": ["α", "а", "ä", "å"],
         "b": ["ḅ", "ь", "β"],
         "c": ["ċ", "с", "ç"],
@@ -200,7 +199,7 @@ class TextPerturbator:
     }
 
     # Keyboard adjacent characters for typos
-    KEYBOARD_ADJACENT: Dict[str, str] = {
+    KEYBOARD_ADJACENT: dict[str, str] = {
         "a": "sqwz",
         "b": "vghn",
         "c": "xdfv",
@@ -233,9 +232,7 @@ class TextPerturbator:
         """Initialize perturbator."""
         self.rng = random.Random(seed)
 
-    def perturb_typo(
-        self, text: str, num_typos: int = 1
-    ) -> PerturbedText:
+    def perturb_typo(self, text: str, num_typos: int = 1) -> PerturbedText:
         """Add realistic typos to text."""
         if not text:
             return PerturbedText(
@@ -249,10 +246,7 @@ class TextPerturbator:
         positions = []
 
         # Find positions we can modify (letters only)
-        valid_positions = [
-            i for i, c in enumerate(chars)
-            if c.lower() in self.KEYBOARD_ADJACENT
-        ]
+        valid_positions = [i for i, c in enumerate(chars) if c.lower() in self.KEYBOARD_ADJACENT]
 
         if not valid_positions:
             return PerturbedText(
@@ -287,9 +281,7 @@ class TextPerturbator:
             severity=min(severity, 1.0),
         )
 
-    def perturb_character_swap(
-        self, text: str, num_swaps: int = 1
-    ) -> PerturbedText:
+    def perturb_character_swap(self, text: str, num_swaps: int = 1) -> PerturbedText:
         """Swap adjacent characters."""
         if len(text) < 2:
             return PerturbedText(
@@ -304,8 +296,7 @@ class TextPerturbator:
 
         # Find valid swap positions (both chars are letters)
         valid_positions = [
-            i for i in range(len(chars) - 1)
-            if chars[i].isalpha() and chars[i + 1].isalpha()
+            i for i in range(len(chars) - 1) if chars[i].isalpha() and chars[i + 1].isalpha()
         ]
 
         if not valid_positions:
@@ -334,9 +325,7 @@ class TextPerturbator:
             severity=min(severity, 1.0),
         )
 
-    def perturb_homoglyph(
-        self, text: str, num_replacements: int = 1
-    ) -> PerturbedText:
+    def perturb_homoglyph(self, text: str, num_replacements: int = 1) -> PerturbedText:
         """Replace characters with homoglyphs."""
         if not text:
             return PerturbedText(
@@ -350,10 +339,7 @@ class TextPerturbator:
         positions = []
 
         # Find replaceable positions
-        valid_positions = [
-            i for i, c in enumerate(chars)
-            if c in self.HOMOGLYPHS
-        ]
+        valid_positions = [i for i, c in enumerate(chars) if c in self.HOMOGLYPHS]
 
         if not valid_positions:
             return PerturbedText(
@@ -384,9 +370,7 @@ class TextPerturbator:
             severity=min(severity, 1.0),
         )
 
-    def perturb_case(
-        self, text: str, mode: str = "random"
-    ) -> PerturbedText:
+    def perturb_case(self, text: str, mode: str = "random") -> PerturbedText:
         """Change case of characters."""
         if not text:
             return PerturbedText(
@@ -398,8 +382,7 @@ class TextPerturbator:
 
         if mode == "random":
             chars = [
-                c.upper() if self.rng.random() > 0.5 else c.lower()
-                if c.isalpha() else c
+                c.upper() if self.rng.random() > 0.5 else c.lower() if c.isalpha() else c
                 for c in text
             ]
             perturbed = "".join(chars)
@@ -409,8 +392,7 @@ class TextPerturbator:
             perturbed = text.lower()
         elif mode == "alternate":
             chars = [
-                c.upper() if i % 2 == 0 else c.lower()
-                if c.isalpha() else c
+                c.upper() if i % 2 == 0 else c.lower() if c.isalpha() else c
                 for i, c in enumerate(text)
             ]
             perturbed = "".join(chars)
@@ -428,9 +410,7 @@ class TextPerturbator:
             severity=severity,
         )
 
-    def perturb_whitespace(
-        self, text: str, mode: str = "extra"
-    ) -> PerturbedText:
+    def perturb_whitespace(self, text: str, mode: str = "extra") -> PerturbedText:
         """Manipulate whitespace."""
         if not text:
             return PerturbedText(
@@ -476,9 +456,7 @@ class TextPerturbator:
             severity=min(severity, 1.0),
         )
 
-    def perturb_delimiter_injection(
-        self, text: str, delimiter: str = "---"
-    ) -> PerturbedText:
+    def perturb_delimiter_injection(self, text: str, delimiter: str = "---") -> PerturbedText:
         """Inject delimiters that might confuse parsing."""
         injections = [
             f"\n{delimiter}\n",
@@ -540,7 +518,7 @@ class TextPerturbator:
         )
 
     def perturb_semantic_noise(
-        self, text: str, noise_words: Optional[List[str]] = None
+        self, text: str, noise_words: Optional[list[str]] = None
     ) -> PerturbedText:
         """Add semantically irrelevant noise words."""
         default_noise = [
@@ -579,9 +557,7 @@ class TextPerturbator:
             severity=min(severity, 1.0),
         )
 
-    def generate_all_perturbations(
-        self, text: str
-    ) -> List[PerturbedText]:
+    def generate_all_perturbations(self, text: str) -> list[PerturbedText]:
         """Generate perturbations using all attack types."""
         perturbations = [
             self.perturb_typo(text),
@@ -608,9 +584,7 @@ class RobustnessTester:
         self.similarity_threshold = similarity_threshold
         self.perturbator = TextPerturbator(seed=seed)
 
-    def _calculate_similarity(
-        self, text1: str, text2: str
-    ) -> float:
+    def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate similarity between two texts."""
         if not text1 and not text2:
             return 1.0
@@ -699,14 +673,14 @@ class RobustnessTester:
         self,
         text: str,
         model_fn: Callable[[str], str],
-        attack_types: Optional[List[AttackType]] = None,
+        attack_types: Optional[list[AttackType]] = None,
         num_iterations: int = 3,
     ) -> RobustnessReport:
         """Comprehensive robustness test."""
         if attack_types is None:
             attack_types = list(AttackType)
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
 
         # Run multiple iterations of each attack
         for attack_type in attack_types:
@@ -735,17 +709,14 @@ class RobustnessTester:
             level = RobustnessLevel.VERY_LOW
 
         # Identify vulnerabilities
-        vulnerability_rates: Dict[AttackType, float] = {}
+        vulnerability_rates: dict[AttackType, float] = {}
         for attack_type in attack_types:
             type_results = [r for r in results if r.attack_type == attack_type]
             if type_results:
                 success_rate = sum(1 for r in type_results if r.success) / len(type_results)
                 vulnerability_rates[attack_type] = success_rate
 
-        vulnerabilities = [
-            at for at, rate in vulnerability_rates.items()
-            if rate > 0.5
-        ]
+        vulnerabilities = [at for at, rate in vulnerability_rates.items() if rate > 0.5]
 
         # Generate recommendations
         recommendations = self._generate_recommendations(vulnerabilities)
@@ -759,37 +730,27 @@ class RobustnessTester:
             recommendations=recommendations,
         )
 
-    def _generate_recommendations(
-        self, vulnerabilities: List[AttackType]
-    ) -> List[str]:
+    def _generate_recommendations(self, vulnerabilities: list[AttackType]) -> list[str]:
         """Generate recommendations based on vulnerabilities."""
         recommendations = []
 
         for vuln in vulnerabilities:
             if vuln == AttackType.TYPO:
-                recommendations.append(
-                    "Consider normalizing input text before processing"
-                )
+                recommendations.append("Consider normalizing input text before processing")
             elif vuln == AttackType.HOMOGLYPH:
                 recommendations.append(
                     "Implement Unicode normalization to handle homoglyph attacks"
                 )
             elif vuln == AttackType.CASE_CHANGE:
-                recommendations.append(
-                    "Make processing case-insensitive where appropriate"
-                )
+                recommendations.append("Make processing case-insensitive where appropriate")
             elif vuln == AttackType.WHITESPACE:
-                recommendations.append(
-                    "Normalize whitespace in input processing"
-                )
+                recommendations.append("Normalize whitespace in input processing")
             elif vuln == AttackType.INSTRUCTION_INJECTION:
                 recommendations.append(
                     "Implement input sanitization to detect instruction injection"
                 )
             elif vuln == AttackType.DELIMITER_INJECTION:
-                recommendations.append(
-                    "Escape or sanitize delimiter characters in inputs"
-                )
+                recommendations.append("Escape or sanitize delimiter characters in inputs")
 
         return recommendations
 
@@ -801,12 +762,12 @@ class InputManipulationDetector:
         """Initialize detector."""
         self.perturbator = TextPerturbator()
 
-    def detect_homoglyphs(self, text: str) -> List[Tuple[int, str, str]]:
+    def detect_homoglyphs(self, text: str) -> list[tuple[int, str, str]]:
         """Detect homoglyph characters in text."""
         detections = []
 
         # Build reverse mapping
-        reverse_map: Dict[str, str] = {}
+        reverse_map: dict[str, str] = {}
         for original, homoglyphs in self.perturbator.HOMOGLYPHS.items():
             for homoglyph in homoglyphs:
                 reverse_map[homoglyph] = original
@@ -817,7 +778,7 @@ class InputManipulationDetector:
 
         return detections
 
-    def detect_zero_width(self, text: str) -> List[Tuple[int, str]]:
+    def detect_zero_width(self, text: str) -> list[tuple[int, str]]:
         """Detect zero-width characters."""
         zero_width_chars = [
             "\u200b",  # Zero-width space
@@ -834,7 +795,7 @@ class InputManipulationDetector:
 
         return detections
 
-    def detect_injection_patterns(self, text: str) -> List[Tuple[str, int]]:
+    def detect_injection_patterns(self, text: str) -> list[tuple[str, int]]:
         """Detect potential injection patterns."""
         patterns = [
             (r"ignore\s+(previous|all|above)", "instruction_override"),
@@ -856,7 +817,7 @@ class InputManipulationDetector:
 
         return detections
 
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, text: str) -> dict[str, Any]:
         """Analyze text for manipulation."""
         homoglyphs = self.detect_homoglyphs(text)
         zero_width = self.detect_zero_width(text)
@@ -895,7 +856,7 @@ class VulnerabilityScanner:
         self,
         prompt: str,
         model_fn: Callable[[str], str],
-    ) -> List[VulnerabilityAssessment]:
+    ) -> list[VulnerabilityAssessment]:
         """Scan for vulnerabilities."""
         assessments = []
 
@@ -1013,7 +974,7 @@ def perturb_text(
 def assess_robustness(
     prompt: str,
     model_fn: Callable[[str], str],
-    attack_types: Optional[List[AttackType]] = None,
+    attack_types: Optional[list[AttackType]] = None,
 ) -> RobustnessReport:
     """Assess robustness against adversarial attacks.
 
@@ -1029,7 +990,7 @@ def assess_robustness(
     return tester.test_robustness(prompt, model_fn, attack_types)
 
 
-def detect_manipulation(text: str) -> Dict[str, Any]:
+def detect_manipulation(text: str) -> dict[str, Any]:
     """Detect potential manipulation in text.
 
     Args:
@@ -1045,7 +1006,7 @@ def detect_manipulation(text: str) -> Dict[str, Any]:
 def scan_vulnerabilities(
     prompt: str,
     model_fn: Callable[[str], str],
-) -> List[VulnerabilityAssessment]:
+) -> list[VulnerabilityAssessment]:
     """Scan for vulnerabilities in prompt handling.
 
     Args:
@@ -1063,7 +1024,7 @@ def generate_adversarial_examples(
     text: str,
     num_examples: int = 10,
     seed: Optional[int] = None,
-) -> List[PerturbedText]:
+) -> list[PerturbedText]:
     """Generate adversarial examples for testing.
 
     Args:
@@ -1074,7 +1035,7 @@ def generate_adversarial_examples(
     Returns:
         List of perturbed text examples
     """
-    perturbator = TextPerturbator(seed=seed)
+    TextPerturbator(seed=seed)
     examples = []
 
     attack_types = list(AttackType)

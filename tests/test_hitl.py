@@ -1,47 +1,42 @@
 """Tests for Human-in-the-Loop (HITL) module."""
 
-import pytest
-import time
 import threading
-from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch
-from typing import Tuple, Optional
+import time
+from datetime import datetime
+from unittest.mock import Mock
 
 from insideLLMs.hitl import (
-    # Core types
-    FeedbackType,
-    ReviewStatus,
-    Priority,
-    Feedback,
-    ReviewItem,
     Annotation,
-    # Sessions
-    HITLSession,
-    InteractiveSession,
+    AnnotationCollector,
+    AnnotationWorkflow,
     # Workflows
     ApprovalWorkflow,
-    ReviewWorkflow,
-    AnnotationWorkflow,
-    # Queues
-    ReviewQueue,
-    PriorityReviewQueue,
-    # Validators
-    HumanValidator,
-    ConsensusValidator,
-    # Collectors
-    FeedbackCollector,
-    AnnotationCollector,
-    # Config
-    HITLConfig,
     # Input handlers
     CallbackInputHandler,
-    ConsoleInputHandler,
-    # Convenience
+    ConsensusValidator,
+    Feedback,
+    # Collectors
+    FeedbackCollector,
+    # Core types
+    FeedbackType,
+    # Config
+    HITLConfig,
+    # Sessions
+    HITLSession,
+    # Validators
+    HumanValidator,
+    InteractiveSession,
+    Priority,
+    PriorityReviewQueue,
+    ReviewItem,
+    # Queues
+    ReviewQueue,
+    ReviewStatus,
+    ReviewWorkflow,
+    collect_feedback,
     create_hitl_session,
     quick_review,
-    collect_feedback,
 )
-
 
 # =============================================================================
 # Test FeedbackType Enum
@@ -403,9 +398,7 @@ class TestCallbackInputHandler:
 
     def test_approval_callback(self):
         """Test approval via callback."""
-        handler = CallbackInputHandler(
-            approval_callback=lambda item: (True, "Looks good")
-        )
+        handler = CallbackInputHandler(approval_callback=lambda item: (True, "Looks good"))
         item = ReviewItem(prompt="test", response="response")
         approved, comment = handler.get_approval(item)
         assert approved is True
@@ -421,18 +414,14 @@ class TestCallbackInputHandler:
 
     def test_feedback_callback(self):
         """Test feedback via callback."""
-        handler = CallbackInputHandler(
-            feedback_callback=lambda item: Feedback(rating=0.8)
-        )
+        handler = CallbackInputHandler(feedback_callback=lambda item: Feedback(rating=0.8))
         item = ReviewItem(prompt="test", response="response")
         feedback = handler.get_feedback(item)
         assert feedback.rating == 0.8
 
     def test_edit_callback(self):
         """Test edit via callback."""
-        handler = CallbackInputHandler(
-            edit_callback=lambda item: "edited content"
-        )
+        handler = CallbackInputHandler(edit_callback=lambda item: "edited content")
         item = ReviewItem(prompt="test", response="original")
         edited = handler.get_edit(item)
         assert edited == "edited content"
@@ -466,9 +455,7 @@ class TestHITLSession:
         model = Mock()
         model.generate.return_value = "test response"
 
-        handler = CallbackInputHandler(
-            approval_callback=lambda item: (True, "Good")
-        )
+        handler = CallbackInputHandler(approval_callback=lambda item: (True, "Good"))
         session = HITLSession(model, input_handler=handler)
 
         response, item = session.generate_and_review("test prompt")
@@ -483,9 +470,7 @@ class TestHITLSession:
         model = Mock()
         model.generate.return_value = "test response"
 
-        handler = CallbackInputHandler(
-            approval_callback=lambda item: (False, "Needs work")
-        )
+        handler = CallbackInputHandler(approval_callback=lambda item: (False, "Needs work"))
         session = HITLSession(model, input_handler=handler)
 
         response, item = session.generate_and_review("test prompt")
@@ -525,9 +510,7 @@ class TestHITLSession:
         model = Mock()
         model.generate.return_value = "original"
 
-        handler = CallbackInputHandler(
-            edit_callback=lambda item: "edited"
-        )
+        handler = CallbackInputHandler(edit_callback=lambda item: "edited")
         session = HITLSession(model, input_handler=handler)
 
         original, edited = session.edit_response("prompt")
@@ -541,9 +524,7 @@ class TestHITLSession:
         model = Mock()
         model.generate.return_value = "original"
 
-        handler = CallbackInputHandler(
-            edit_callback=lambda item: "original"
-        )
+        handler = CallbackInputHandler(edit_callback=lambda item: "original")
         session = HITLSession(model, input_handler=handler)
 
         original, edited = session.edit_response("prompt")
@@ -569,6 +550,7 @@ class TestHITLSession:
 
         # Create handler that approves first, rejects second
         call_count = [0]
+
         def approval_callback(item):
             call_count[0] += 1
             return (call_count[0] == 1, None)
@@ -856,9 +838,7 @@ class TestHumanValidator:
 
     def test_validate_with_function(self):
         """Test validation with custom function."""
-        validator = HumanValidator(
-            validation_func=lambda p, r: len(r) > 5
-        )
+        validator = HumanValidator(validation_func=lambda p, r: len(r) > 5)
 
         is_valid, feedback = validator.validate("prompt", "long response")
         assert is_valid is True
@@ -868,9 +848,7 @@ class TestHumanValidator:
 
     def test_validate_with_handler(self):
         """Test validation with input handler."""
-        handler = CallbackInputHandler(
-            approval_callback=lambda item: (True, "Valid")
-        )
+        handler = CallbackInputHandler(approval_callback=lambda item: (True, "Valid"))
         validator = HumanValidator(input_handler=handler)
 
         is_valid, feedback = validator.validate("prompt", "response")
@@ -879,9 +857,7 @@ class TestHumanValidator:
 
     def test_validation_history(self):
         """Test validation history tracking."""
-        validator = HumanValidator(
-            validation_func=lambda p, r: True
-        )
+        validator = HumanValidator(validation_func=lambda p, r: True)
 
         validator.validate("p1", "r1")
         validator.validate("p2", "r2")
@@ -890,9 +866,7 @@ class TestHumanValidator:
 
     def test_accuracy(self):
         """Test accuracy calculation."""
-        validator = HumanValidator(
-            validation_func=lambda p, r: r == "valid"
-        )
+        validator = HumanValidator(validation_func=lambda p, r: r == "valid")
 
         validator.validate("p", "valid")
         validator.validate("p", "invalid")
@@ -1096,11 +1070,7 @@ class TestConvenienceFunctions:
 
     def test_quick_review(self):
         """Test quick review function."""
-        approved, comment = quick_review(
-            "prompt",
-            "response",
-            lambda item: (True, "Good")
-        )
+        approved, comment = quick_review("prompt", "response", lambda item: (True, "Good"))
 
         assert approved is True
         assert comment == "Good"
@@ -1112,10 +1082,7 @@ class TestConvenienceFunctions:
             ("prompt2", "response2"),
         ]
 
-        feedback_list = collect_feedback(
-            items,
-            lambda item: Feedback(rating=0.8)
-        )
+        feedback_list = collect_feedback(items, lambda item: Feedback(rating=0.8))
 
         assert len(feedback_list) == 2
         assert all(f.rating == 0.8 for f in feedback_list)
@@ -1189,7 +1156,7 @@ class TestThreadSafety:
         collector = FeedbackCollector()
 
         def add_feedback():
-            for i in range(50):
+            for _i in range(50):
                 collector.add_feedback("item1", Feedback(rating=0.5))
 
         threads = [

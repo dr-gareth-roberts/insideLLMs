@@ -4,8 +4,8 @@ import pytest
 
 from insideLLMs.registry import (
     NotFoundError,
-    Registry,
     RegistrationError,
+    Registry,
 )
 
 
@@ -190,6 +190,7 @@ class TestRegistry:
 
         class TestClass:
             """A test class."""
+
             pass
 
         registry.register("test", TestClass, value=10)

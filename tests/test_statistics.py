@@ -1,13 +1,9 @@
 """Tests for statistical analysis utilities."""
 
-import math
 import pytest
 
 from insideLLMs.statistics import (
-    AggregatedResults,
     ConfidenceInterval,
-    ComparisonResult,
-    DescriptiveStats,
     HypothesisTestResult,
     bootstrap_confidence_interval,
     calculate_kurtosis,
@@ -106,6 +102,7 @@ class TestBasicStatistics:
     def test_calculate_kurtosis_normal(self):
         """Test kurtosis approaches 0 for normal-like distribution."""
         import random
+
         random.seed(42)
         # Large sample from approximately normal distribution
         data = [random.gauss(0, 1) for _ in range(1000)]
@@ -336,7 +333,7 @@ class TestMultipleComparisons:
 
         # All p-values multiplied by 5
         assert corrected[0] == 0.025  # 0.005 * 5
-        assert corrected[1] == 0.10   # 0.02 * 5
+        assert corrected[1] == 0.10  # 0.02 * 5
         # Only first one significant at 0.05/5 = 0.01
         assert significant[0]  # 0.005 < 0.01
         assert not significant[1]  # 0.02 >= 0.01
@@ -344,9 +341,7 @@ class TestMultipleComparisons:
     def test_holm_correction(self):
         """Test Holm-Bonferroni correction."""
         p_values = [0.01, 0.04, 0.03, 0.02, 0.05]
-        corrected, significant = multiple_comparison_correction(
-            p_values, method="holm", alpha=0.05
-        )
+        corrected, significant = multiple_comparison_correction(p_values, method="holm", alpha=0.05)
 
         # Holm is less conservative than Bonferroni
         assert len(corrected) == 5

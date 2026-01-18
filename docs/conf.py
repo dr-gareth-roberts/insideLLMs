@@ -4,24 +4,24 @@ import os
 import sys
 
 # Add the project root to the path for autodoc
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
-project = 'insideLLMs'
-copyright = '2024, insideLLMs Contributors'
-author = 'insideLLMs Contributors'
-release = '0.1.0'
-version = '0.1.0'
+project = "insideLLMs"
+copyright = "2024, insideLLMs Contributors"
+author = "insideLLMs Contributors"
+release = "0.1.0"
+version = "0.1.0"
 
 # -- General configuration ---------------------------------------------------
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx_autodoc_typehints',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx_autodoc_typehints",
 ]
 
 # Generate autosummary even if no references
@@ -42,43 +42,43 @@ napoleon_use_rtype = True
 napoleon_type_aliases = None
 
 # Autodoc settings
-autodoc_member_order = 'groupwise'
-autodoc_typehints = 'both'
+autodoc_member_order = "groupwise"
+autodoc_typehints = "both"
 autodoc_default_options = {
-    'members': True,
-    'member-order': 'bysource',
-    'special-members': '__init__',
-    'undoc-members': True,
-    'exclude-members': '__weakref__',
-    'show-inheritance': True,
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
+    "show-inheritance": True,
 }
 
 # Intersphinx mapping for cross-references
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 # Add any paths that contain templates here
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns to ignore when looking for source files
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
-html_theme = 'furo'
-html_title = 'insideLLMs Documentation'
-html_static_path = ['_static']
+html_theme = "furo"
+html_title = "insideLLMs Documentation"
+html_static_path = ["_static"]
 
 # Theme options
 html_theme_options = {
-    'light_css_variables': {
-        'color-brand-primary': '#2563eb',
-        'color-brand-content': '#2563eb',
+    "light_css_variables": {
+        "color-brand-primary": "#2563eb",
+        "color-brand-content": "#2563eb",
     },
-    'dark_css_variables': {
-        'color-brand-primary': '#60a5fa',
-        'color-brand-content': '#60a5fa',
+    "dark_css_variables": {
+        "color-brand-primary": "#60a5fa",
+        "color-brand-content": "#60a5fa",
     },
 }
 

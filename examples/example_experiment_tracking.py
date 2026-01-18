@@ -9,19 +9,18 @@ import tempfile
 from pathlib import Path
 
 from insideLLMs import (
-    # Experiment tracking
-    LocalFileTracker,
-    MultiTracker,
-    TrackingConfig,
-    auto_track,
-    create_tracker,
     # Types for experiment results
     ExperimentResult,
+    # Experiment tracking
+    LocalFileTracker,
     ModelInfo,
+    MultiTracker,
     ProbeCategory,
     ProbeResult,
     ProbeScore,
     ResultStatus,
+    TrackingConfig,
+    auto_track,
 )
 
 
@@ -39,12 +38,14 @@ def basic_local_tracking():
         tracker.start_run(run_name="my-first-experiment")
 
         # Log parameters
-        tracker.log_params({
-            "model": "gpt-4",
-            "temperature": 0.7,
-            "max_tokens": 1000,
-            "probe": "LogicProbe",
-        })
+        tracker.log_params(
+            {
+                "model": "gpt-4",
+                "temperature": 0.7,
+                "max_tokens": 1000,
+                "probe": "LogicProbe",
+            }
+        )
 
         # Log metrics
         tracker.log_metrics({"accuracy": 0.85, "latency_ms": 150})

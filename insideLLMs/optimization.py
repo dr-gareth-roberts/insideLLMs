@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Optional
 
 
 class OptimizationStrategy(Enum):
@@ -34,15 +34,15 @@ class CompressionResult:
     original_tokens: int
     compressed_tokens: int
     compression_ratio: float
-    removed_elements: List[str] = field(default_factory=list)
-    preserved_elements: List[str] = field(default_factory=list)
+    removed_elements: list[str] = field(default_factory=list)
+    preserved_elements: list[str] = field(default_factory=list)
 
     @property
     def tokens_saved(self) -> int:
         """Number of tokens saved."""
         return self.original_tokens - self.compressed_tokens
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original_tokens": self.original_tokens,
@@ -59,14 +59,14 @@ class AblationResult:
     """Result of prompt ablation study."""
 
     original_prompt: str
-    components: List[str]
-    component_scores: Dict[str, float]
-    essential_components: List[str]
-    removable_components: List[str]
+    components: list[str]
+    component_scores: dict[str, float]
+    essential_components: list[str]
+    removable_components: list[str]
     minimal_prompt: str
-    importance_ranking: List[Tuple[str, float]]
+    importance_ranking: list[tuple[str, float]]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "num_components": len(self.components),
@@ -81,13 +81,13 @@ class AblationResult:
 class ExampleScore:
     """Score for a few-shot example."""
 
-    example: Dict[str, str]
+    example: dict[str, str]
     relevance_score: float
     diversity_score: float
     quality_score: float
     overall_score: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "relevance_score": self.relevance_score,
@@ -102,12 +102,12 @@ class ExampleSelectionResult:
     """Result of few-shot example selection."""
 
     query: str
-    selected_examples: List[Dict[str, str]]
-    example_scores: List[ExampleScore]
+    selected_examples: list[dict[str, str]]
+    example_scores: list[ExampleScore]
     coverage_score: float
     diversity_score: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "num_selected": len(self.selected_examples),
@@ -123,13 +123,13 @@ class OptimizationReport:
 
     original_prompt: str
     optimized_prompt: str
-    strategies_applied: List[OptimizationStrategy]
-    improvements: Dict[str, float]
-    suggestions: List[str]
+    strategies_applied: list[OptimizationStrategy]
+    improvements: dict[str, float]
+    suggestions: list[str]
     token_reduction: int
     estimated_quality_change: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "strategies_applied": [s.value for s in self.strategies_applied],
@@ -194,7 +194,7 @@ class PromptCompressor:
         self,
         prompt: str,
         target_reduction: float = 0.2,
-        preserve_keywords: Optional[Set[str]] = None,
+        preserve_keywords: Optional[set[str]] = None,
     ) -> CompressionResult:
         """Compress a prompt.
 
@@ -287,7 +287,7 @@ class InstructionOptimizer:
         "adequate",
     ]
 
-    def optimize(self, instruction: str) -> Tuple[str, List[str]]:
+    def optimize(self, instruction: str) -> tuple[str, list[str]]:
         """Optimize an instruction.
 
         Args:
@@ -322,7 +322,7 @@ class InstructionOptimizer:
 
         return optimized, changes
 
-    def analyze_clarity(self, instruction: str) -> Dict[str, Any]:
+    def analyze_clarity(self, instruction: str) -> dict[str, Any]:
         """Analyze instruction clarity.
 
         Args:
@@ -335,17 +335,14 @@ class InstructionOptimizer:
         score = 1.0
 
         # Check for weak verbs
-        weak_count = sum(
-            1 for v in self.WEAK_VERBS if v in instruction.lower()
-        )
+        weak_count = sum(1 for v in self.WEAK_VERBS if v in instruction.lower())
         if weak_count > 0:
             issues.append(f"Contains {weak_count} weak verbs")
             score -= weak_count * 0.1
 
         # Check for ambiguous terms
         ambiguous_count = sum(
-            1 for t in self.AMBIGUOUS_TERMS
-            if re.search(rf"\b{t}\b", instruction, re.IGNORECASE)
+            1 for t in self.AMBIGUOUS_TERMS if re.search(rf"\b{t}\b", instruction, re.IGNORECASE)
         )
         if ambiguous_count > 0:
             issues.append(f"Contains {ambiguous_count} ambiguous terms")
@@ -402,7 +399,7 @@ class FewShotSelector:
     def select(
         self,
         query: str,
-        examples: List[Dict[str, str]],
+        examples: list[dict[str, str]],
         n: int = 3,
         input_key: str = "input",
         output_key: str = "output",
@@ -431,19 +428,19 @@ class FewShotSelector:
         # Score each example
         scored_examples = []
         for example in examples:
-            relevance = self._calculate_relevance(
-                query, example.get(input_key, "")
-            )
+            relevance = self._calculate_relevance(query, example.get(input_key, ""))
             quality = self._calculate_quality(
                 example.get(input_key, ""),
                 example.get(output_key, ""),
             )
 
-            scored_examples.append({
-                "example": example,
-                "relevance": relevance,
-                "quality": quality,
-            })
+            scored_examples.append(
+                {
+                    "example": example,
+                    "relevance": relevance,
+                    "quality": quality,
+                }
+            )
 
         # Sort by relevance initially
         scored_examples.sort(key=lambda x: x["relevance"], reverse=True)
@@ -470,10 +467,9 @@ class FewShotSelector:
                         [s["example"].get(input_key, "") for s in selected],
                     )
 
-                    combined = (
-                        (1 - self.diversity_weight) * candidate["relevance"]
-                        + self.diversity_weight * diversity
-                    )
+                    combined = (1 - self.diversity_weight) * candidate[
+                        "relevance"
+                    ] + self.diversity_weight * diversity
 
                     if combined > best_score:
                         best_score = combined
@@ -486,11 +482,7 @@ class FewShotSelector:
             selected.append(best)
 
             diversity = best.get("diversity", 1.0) if i > 0 else 1.0
-            overall = (
-                0.4 * best["relevance"]
-                + 0.3 * diversity
-                + 0.3 * best["quality"]
-            )
+            overall = 0.4 * best["relevance"] + 0.3 * diversity + 0.3 * best["quality"]
 
             selected_scores.append(
                 ExampleScore(
@@ -503,9 +495,7 @@ class FewShotSelector:
             )
 
         # Calculate overall metrics
-        coverage = self._calculate_coverage(
-            query, [s["example"] for s in selected], input_key
-        )
+        coverage = self._calculate_coverage(query, [s["example"] for s in selected], input_key)
         avg_diversity = (
             sum(s.diversity_score for s in selected_scores) / len(selected_scores)
             if selected_scores
@@ -526,7 +516,23 @@ class FewShotSelector:
         example_words = set(example_input.lower().split())
 
         # Remove stop words
-        stop_words = {"the", "a", "an", "is", "are", "was", "were", "be", "to", "of", "and", "in", "that", "it", "for"}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "to",
+            "of",
+            "and",
+            "in",
+            "that",
+            "it",
+            "for",
+        }
         query_words -= stop_words
         example_words -= stop_words
 
@@ -536,9 +542,7 @@ class FewShotSelector:
         overlap = len(query_words & example_words)
         return overlap / len(query_words)
 
-    def _calculate_diversity(
-        self, candidate: str, selected: List[str]
-    ) -> float:
+    def _calculate_diversity(self, candidate: str, selected: list[str]) -> float:
         """Calculate diversity from already selected examples."""
         if not selected:
             return 1.0
@@ -582,12 +586,28 @@ class FewShotSelector:
     def _calculate_coverage(
         self,
         query: str,
-        examples: List[Dict[str, str]],
+        examples: list[dict[str, str]],
         input_key: str,
     ) -> float:
         """Calculate how well examples cover query concepts."""
         query_words = set(query.lower().split())
-        stop_words = {"the", "a", "an", "is", "are", "was", "were", "be", "to", "of", "and", "in", "that", "it", "for"}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "to",
+            "of",
+            "and",
+            "in",
+            "that",
+            "it",
+            "for",
+        }
         query_words -= stop_words
 
         if not query_words:
@@ -596,7 +616,7 @@ class FewShotSelector:
         covered = set()
         for example in examples:
             example_words = set(example.get(input_key, "").lower().split())
-            covered |= (query_words & example_words)
+            covered |= query_words & example_words
 
         return len(covered) / len(query_words)
 
@@ -675,10 +695,7 @@ class PromptAblator:
                 removable.append(component)
 
         # Create minimal prompt from essential components only
-        essential_full = [
-            c for c in components
-            if c[:50] + "..." in essential
-        ]
+        essential_full = [c for c in components if c[:50] + "..." in essential]
         minimal_prompt = component_delimiter.join(essential_full)
 
         return AblationResult(
@@ -730,10 +747,10 @@ class TokenBudgetOptimizer:
     def optimize(
         self,
         prompt: str,
-        examples: Optional[List[Dict[str, str]]] = None,
+        examples: Optional[list[dict[str, str]]] = None,
         system_prompt: Optional[str] = None,
         reserve_for_response: int = 500,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Optimize prompt to fit within token budget.
 
         Args:
@@ -750,9 +767,7 @@ class TokenBudgetOptimizer:
         # Estimate current usage
         prompt_tokens = self._estimate_tokens(prompt)
         system_tokens = self._estimate_tokens(system_prompt) if system_prompt else 0
-        example_tokens = sum(
-            self._estimate_tokens(str(e)) for e in (examples or [])
-        )
+        example_tokens = sum(self._estimate_tokens(str(e)) for e in (examples or []))
 
         total_tokens = prompt_tokens + system_tokens + example_tokens
         over_budget = total_tokens > available_tokens
@@ -775,9 +790,7 @@ class TokenBudgetOptimizer:
         compressed = self.compressor.compress(prompt, target_reduction=0.3)
         prompt = compressed.compressed
         prompt_tokens = compressed.compressed_tokens
-        result["actions_taken"].append(
-            f"Compressed prompt: saved {compressed.tokens_saved} tokens"
-        )
+        result["actions_taken"].append(f"Compressed prompt: saved {compressed.tokens_saved} tokens")
 
         # Strategy 2: Reduce examples if still over
         total_tokens = prompt_tokens + system_tokens + example_tokens
@@ -785,13 +798,9 @@ class TokenBudgetOptimizer:
             # Remove examples one by one
             while examples and total_tokens > available_tokens:
                 examples = examples[:-1]
-                example_tokens = sum(
-                    self._estimate_tokens(str(e)) for e in examples
-                )
+                example_tokens = sum(self._estimate_tokens(str(e)) for e in examples)
                 total_tokens = prompt_tokens + system_tokens + example_tokens
-            result["actions_taken"].append(
-                f"Reduced to {len(examples)} examples"
-            )
+            result["actions_taken"].append(f"Reduced to {len(examples)} examples")
 
         # Strategy 3: Truncate prompt if still over
         if total_tokens > available_tokens:
@@ -826,7 +835,7 @@ class PromptOptimizer:
     def optimize(
         self,
         prompt: str,
-        strategies: Optional[List[OptimizationStrategy]] = None,
+        strategies: Optional[list[OptimizationStrategy]] = None,
     ) -> OptimizationReport:
         """Optimize a prompt using specified strategies.
 
@@ -893,7 +902,7 @@ class PromptOptimizer:
             estimated_quality_change=quality_change,
         )
 
-    def _optimize_structure(self, prompt: str) -> Tuple[str, List[str]]:
+    def _optimize_structure(self, prompt: str) -> tuple[str, list[str]]:
         """Optimize prompt structure."""
         changes = []
         optimized = prompt
@@ -917,7 +926,7 @@ class PromptOptimizer:
 def compress_prompt(
     prompt: str,
     target_reduction: float = 0.2,
-    preserve_keywords: Optional[Set[str]] = None,
+    preserve_keywords: Optional[set[str]] = None,
 ) -> CompressionResult:
     """Compress a prompt.
 
@@ -933,7 +942,7 @@ def compress_prompt(
     return compressor.compress(prompt, target_reduction, preserve_keywords)
 
 
-def optimize_instruction(instruction: str) -> Tuple[str, List[str]]:
+def optimize_instruction(instruction: str) -> tuple[str, list[str]]:
     """Optimize an instruction.
 
     Args:
@@ -948,7 +957,7 @@ def optimize_instruction(instruction: str) -> Tuple[str, List[str]]:
 
 def select_examples(
     query: str,
-    examples: List[Dict[str, str]],
+    examples: list[dict[str, str]],
     n: int = 3,
     input_key: str = "input",
     output_key: str = "output",
@@ -990,7 +999,7 @@ def ablate_prompt(
 
 def optimize_prompt(
     prompt: str,
-    strategies: Optional[List[OptimizationStrategy]] = None,
+    strategies: Optional[list[OptimizationStrategy]] = None,
 ) -> OptimizationReport:
     """Optimize a prompt.
 
@@ -1008,10 +1017,10 @@ def optimize_prompt(
 def optimize_for_budget(
     prompt: str,
     max_tokens: int = 4096,
-    examples: Optional[List[Dict[str, str]]] = None,
+    examples: Optional[list[dict[str, str]]] = None,
     system_prompt: Optional[str] = None,
     reserve_for_response: int = 500,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Optimize prompt for token budget.
 
     Args:

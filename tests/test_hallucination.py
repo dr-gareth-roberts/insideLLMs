@@ -1,6 +1,5 @@
 """Tests for hallucination detection utilities."""
 
-import pytest
 from insideLLMs.hallucination import (
     AttributionChecker,
     ConsistencyCheck,
@@ -208,12 +207,14 @@ class TestHallucinationReport:
                 HallucinationFlag(
                     HallucinationType.FACTUAL_ERROR,
                     SeverityLevel.CRITICAL,
-                    "a", 0, 1, 0.9, "critical"
+                    "a",
+                    0,
+                    1,
+                    0.9,
+                    "critical",
                 ),
                 HallucinationFlag(
-                    HallucinationType.EXAGGERATION,
-                    SeverityLevel.LOW,
-                    "b", 1, 2, 0.3, "low"
+                    HallucinationType.EXAGGERATION, SeverityLevel.LOW, "b", 1, 2, 0.3, "low"
                 ),
             ],
             overall_score=0.5,
@@ -226,14 +227,10 @@ class TestHallucinationReport:
             text="test",
             flags=[
                 HallucinationFlag(
-                    HallucinationType.FACTUAL_ERROR,
-                    SeverityLevel.HIGH,
-                    "a", 0, 1, 0.9, "high conf"
+                    HallucinationType.FACTUAL_ERROR, SeverityLevel.HIGH, "a", 0, 1, 0.9, "high conf"
                 ),
                 HallucinationFlag(
-                    HallucinationType.EXAGGERATION,
-                    SeverityLevel.LOW,
-                    "b", 1, 2, 0.3, "low conf"
+                    HallucinationType.EXAGGERATION, SeverityLevel.LOW, "b", 1, 2, 0.3, "low conf"
                 ),
             ],
             overall_score=0.5,
@@ -256,7 +253,9 @@ class TestPatternBasedDetector:
         detector = PatternBasedDetector()
         text = "According to a study, 75% of people agree. In 2023, this was confirmed."
         flags = detector.detect(text)
-        unsupported = [f for f in flags if f.hallucination_type == HallucinationType.UNSUPPORTED_CLAIM]
+        unsupported = [
+            f for f in flags if f.hallucination_type == HallucinationType.UNSUPPORTED_CLAIM
+        ]
         assert len(unsupported) >= 1
 
     def test_no_flags_for_simple_text(self):
@@ -274,20 +273,24 @@ class TestConsistencyChecker:
     def test_consistent_responses(self):
         """Test checking consistent responses."""
         checker = ConsistencyChecker()
-        result = checker.check([
-            "Paris is the capital of France.",
-            "Paris is the capital of France.",
-        ])
+        result = checker.check(
+            [
+                "Paris is the capital of France.",
+                "Paris is the capital of France.",
+            ]
+        )
         # Identical responses should have high consistency
         assert result.overall_consistency >= 0.5
 
     def test_inconsistent_responses(self):
         """Test checking inconsistent responses."""
         checker = ConsistencyChecker()
-        result = checker.check([
-            "The answer is definitely yes.",
-            "The answer is definitely no.",
-        ])
+        result = checker.check(
+            [
+                "The answer is definitely yes.",
+                "The answer is definitely no.",
+            ]
+        )
         # Results may vary but inconsistencies should be detected
         assert len(result.inconsistent_claims) >= 0  # May or may not detect
 
@@ -299,6 +302,7 @@ class TestConsistencyChecker:
 
     def test_custom_similarity(self):
         """Test with custom similarity function."""
+
         def exact_match(a: str, b: str) -> float:
             return 1.0 if a == b else 0.0
 
@@ -329,6 +333,7 @@ class TestFactualityChecker:
 
     def test_custom_fact_checker(self):
         """Test with custom fact checker."""
+
         def always_true(claim: str) -> tuple:
             return (True, 1.0)
 
@@ -343,9 +348,7 @@ class TestHallucinationDetector:
     def test_detect_basic(self):
         """Test basic hallucination detection."""
         detector = HallucinationDetector()
-        report = detector.detect(
-            "According to studies, 99% of people definitely agree."
-        )
+        report = detector.detect("According to studies, 99% of people definitely agree.")
         assert isinstance(report, HallucinationReport)
         assert report.overall_score <= 1.0
 
@@ -423,9 +426,7 @@ class TestAttributionChecker:
     def test_unattributed_claims(self):
         """Test detecting unattributed claims."""
         checker = AttributionChecker()
-        result = checker.check(
-            "Studies show that 75% of people agree with this statement."
-        )
+        result = checker.check("Studies show that 75% of people agree with this statement.")
         # Should detect unattributed statistical claim
         assert "unattributed_claims" in result
 

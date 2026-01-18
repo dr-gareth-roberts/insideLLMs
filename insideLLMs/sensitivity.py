@@ -12,13 +12,13 @@ changes to prompts affect model outputs:
 
 from __future__ import annotations
 
-import re
 import random
+import re
 import string
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable
 
 
 class PerturbationType(Enum):
@@ -67,7 +67,7 @@ class Perturbation:
     change_description: str
     change_magnitude: float  # 0-1, how much changed
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original": self.original,
@@ -88,9 +88,9 @@ class OutputComparison:
     similarity_score: float  # 0-1
     semantic_similarity: float  # 0-1
     length_ratio: float
-    key_differences: List[str]
+    key_differences: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original_output": self.original_output[:200],
@@ -111,9 +111,9 @@ class SensitivityResult:
     output_comparison: OutputComparison
     sensitivity_score: float  # 0-1, higher = more sensitive
     is_robust: bool
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "perturbation": self.perturbation.to_dict(),
@@ -129,24 +129,22 @@ class SensitivityProfile:
     """Complete sensitivity profile for a prompt."""
 
     prompt: str
-    results: List[SensitivityResult]
+    results: list[SensitivityResult]
     overall_sensitivity: SensitivityLevel
     overall_score: float
-    by_perturbation_type: Dict[PerturbationType, float]
-    most_sensitive_to: List[PerturbationType]
-    most_robust_to: List[PerturbationType]
-    recommendations: List[str]
+    by_perturbation_type: dict[PerturbationType, float]
+    most_sensitive_to: list[PerturbationType]
+    most_robust_to: list[PerturbationType]
+    recommendations: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt": self.prompt[:200],
             "n_tests": len(self.results),
             "overall_sensitivity": self.overall_sensitivity.value,
             "overall_score": self.overall_score,
-            "by_perturbation_type": {
-                k.value: v for k, v in self.by_perturbation_type.items()
-            },
+            "by_perturbation_type": {k.value: v for k, v in self.by_perturbation_type.items()},
             "most_sensitive_to": [p.value for p in self.most_sensitive_to],
             "most_robust_to": [p.value for p in self.most_robust_to],
             "recommendations": self.recommendations,
@@ -157,14 +155,14 @@ class SensitivityProfile:
 class ComparativeSensitivity:
     """Compare sensitivity across multiple prompts or models."""
 
-    profiles: List[SensitivityProfile]
-    ranking: List[Tuple[str, float]]  # (identifier, sensitivity_score)
+    profiles: list[SensitivityProfile]
+    ranking: list[tuple[str, float]]  # (identifier, sensitivity_score)
     most_robust: str
     most_sensitive: str
-    common_sensitivities: List[PerturbationType]
-    divergent_sensitivities: List[PerturbationType]
+    common_sensitivities: list[PerturbationType]
+    divergent_sensitivities: list[PerturbationType]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_profiles": len(self.profiles),
@@ -179,7 +177,7 @@ class ComparativeSensitivity:
 class PromptPerturbator:
     """Generate perturbations of prompts."""
 
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: int | None = None):
         """Initialize perturbator.
 
         Args:
@@ -204,9 +202,9 @@ class PromptPerturbator:
     def perturb(
         self,
         prompt: str,
-        perturbation_types: Optional[List[PerturbationType]] = None,
+        perturbation_types: list[PerturbationType] | None = None,
         n_variations: int = 1,
-    ) -> List[Perturbation]:
+    ) -> list[Perturbation]:
         """Generate perturbations of a prompt.
 
         Args:
@@ -226,13 +224,15 @@ class PromptPerturbator:
                 perturbed = self._apply_perturbation(prompt, ptype)
                 if perturbed and perturbed != prompt:
                     magnitude = self._calculate_magnitude(prompt, perturbed)
-                    perturbations.append(Perturbation(
-                        original=prompt,
-                        perturbed=perturbed,
-                        perturbation_type=ptype,
-                        change_description=self._describe_change(ptype),
-                        change_magnitude=magnitude,
-                    ))
+                    perturbations.append(
+                        Perturbation(
+                            original=prompt,
+                            perturbed=perturbed,
+                            perturbation_type=ptype,
+                            change_description=self._describe_change(ptype),
+                            change_magnitude=magnitude,
+                        )
+                    )
 
         return perturbations
 
@@ -240,7 +240,7 @@ class PromptPerturbator:
         self,
         prompt: str,
         ptype: PerturbationType,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Apply a specific perturbation type."""
         methods = {
             PerturbationType.CASE_CHANGE: self._perturb_case,
@@ -369,11 +369,11 @@ class PromptPerturbator:
         if typo_type == "swap" and len(word) > 2:
             # Swap two adjacent characters
             idx = self._rng.randint(1, len(word) - 2)
-            word = word[:idx] + word[idx + 1] + word[idx] + word[idx + 2:]
+            word = word[:idx] + word[idx + 1] + word[idx] + word[idx + 2 :]
         elif typo_type == "delete" and len(word) > 3:
             # Delete a character
             idx = self._rng.randint(1, len(word) - 2)
-            word = word[:idx] + word[idx + 1:]
+            word = word[:idx] + word[idx + 1 :]
         elif typo_type == "double":
             # Double a character
             idx = self._rng.randint(1, len(word) - 1)
@@ -448,7 +448,7 @@ class OutputComparator:
 
     def __init__(
         self,
-        similarity_fn: Optional[Callable[[str, str], float]] = None,
+        similarity_fn: Callable[[str, str], float] | None = None,
     ):
         """Initialize comparator.
 
@@ -495,7 +495,11 @@ class OutputComparator:
         # Calculate length ratio
         len_orig = len(original)
         len_pert = len(perturbed)
-        length_ratio = min(len_orig, len_pert) / max(len_orig, len_pert) if max(len_orig, len_pert) > 0 else 1.0
+        length_ratio = (
+            min(len_orig, len_pert) / max(len_orig, len_pert)
+            if max(len_orig, len_pert) > 0
+            else 1.0
+        )
 
         # Determine change type
         change_type = self._classify_change(similarity, semantic_sim, length_ratio)
@@ -515,10 +519,11 @@ class OutputComparator:
 
     def _estimate_semantic_similarity(self, text1: str, text2: str) -> float:
         """Estimate semantic similarity (simplified)."""
+
         # Use n-gram overlap as proxy
-        def get_ngrams(text: str, n: int) -> Set[str]:
+        def get_ngrams(text: str, n: int) -> set[str]:
             words = text.lower().split()
-            return {" ".join(words[i:i+n]) for i in range(len(words) - n + 1)}
+            return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
 
         bigrams1 = get_ngrams(text1, 2)
         bigrams2 = get_ngrams(text2, 2)
@@ -561,7 +566,7 @@ class OutputComparator:
         return OutputChangeType.DIFFERENT_CONTENT
 
     @staticmethod
-    def _find_differences(text1: str, text2: str) -> List[str]:
+    def _find_differences(text1: str, text2: str) -> list[str]:
         """Find key differences between texts."""
         differences = []
 
@@ -588,8 +593,8 @@ class SensitivityAnalyzer:
 
     def __init__(
         self,
-        perturbator: Optional[PromptPerturbator] = None,
-        comparator: Optional[OutputComparator] = None,
+        perturbator: PromptPerturbator | None = None,
+        comparator: OutputComparator | None = None,
         robustness_threshold: float = 0.7,
     ):
         """Initialize analyzer.
@@ -607,7 +612,7 @@ class SensitivityAnalyzer:
         self,
         prompt: str,
         get_response: Callable[[str], str],
-        perturbation_types: Optional[List[PerturbationType]] = None,
+        perturbation_types: list[PerturbationType] | None = None,
         n_variations: int = 2,
     ) -> SensitivityProfile:
         """Analyze sensitivity of a prompt.
@@ -625,13 +630,11 @@ class SensitivityAnalyzer:
         original_response = get_response(prompt)
 
         # Generate perturbations
-        perturbations = self._perturbator.perturb(
-            prompt, perturbation_types, n_variations
-        )
+        perturbations = self._perturbator.perturb(prompt, perturbation_types, n_variations)
 
         # Test each perturbation
         results = []
-        type_scores: Dict[PerturbationType, List[float]] = defaultdict(list)
+        type_scores: dict[PerturbationType, list[float]] = defaultdict(list)
 
         for perturbation in perturbations:
             perturbed_response = get_response(perturbation.perturbed)
@@ -695,7 +698,7 @@ class SensitivityAnalyzer:
     def _generate_notes(
         perturbation: Perturbation,
         comparison: OutputComparison,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate notes for a result."""
         notes = []
 
@@ -714,26 +717,20 @@ class SensitivityAnalyzer:
 
     @staticmethod
     def _generate_recommendations(
-        by_type: Dict[PerturbationType, float],
+        by_type: dict[PerturbationType, float],
         overall: float,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate recommendations based on analysis."""
         recommendations = []
 
         if overall > 0.5:
-            recommendations.append(
-                "Consider making prompts more specific to reduce sensitivity"
-            )
+            recommendations.append("Consider making prompts more specific to reduce sensitivity")
 
         if by_type.get(PerturbationType.CASE_CHANGE, 0) > 0.3:
-            recommendations.append(
-                "Model is case-sensitive; ensure consistent casing in prompts"
-            )
+            recommendations.append("Model is case-sensitive; ensure consistent casing in prompts")
 
         if by_type.get(PerturbationType.TYPO, 0) > 0.3:
-            recommendations.append(
-                "Model is typo-sensitive; consider input validation"
-            )
+            recommendations.append("Model is typo-sensitive; consider input validation")
 
         if by_type.get(PerturbationType.INSTRUCTION_STYLE, 0) > 0.3:
             recommendations.append(
@@ -741,9 +738,7 @@ class SensitivityAnalyzer:
             )
 
         if by_type.get(PerturbationType.SYNONYM, 0) > 0.3:
-            recommendations.append(
-                "Model is sensitive to word choice; use precise terminology"
-            )
+            recommendations.append("Model is sensitive to word choice; use precise terminology")
 
         if not recommendations:
             recommendations.append("Prompt appears robust to common perturbations")
@@ -754,7 +749,7 @@ class SensitivityAnalyzer:
 class ComparativeSensitivityAnalyzer:
     """Compare sensitivity across prompts or models."""
 
-    def __init__(self, analyzer: Optional[SensitivityAnalyzer] = None):
+    def __init__(self, analyzer: SensitivityAnalyzer | None = None):
         """Initialize comparative analyzer.
 
         Args:
@@ -764,9 +759,9 @@ class ComparativeSensitivityAnalyzer:
 
     def compare_prompts(
         self,
-        prompts: List[str],
+        prompts: list[str],
         get_response: Callable[[str], str],
-        perturbation_types: Optional[List[PerturbationType]] = None,
+        perturbation_types: list[PerturbationType] | None = None,
     ) -> ComparativeSensitivity:
         """Compare sensitivity across multiple prompts.
 
@@ -780,9 +775,7 @@ class ComparativeSensitivityAnalyzer:
         """
         profiles = []
         for prompt in prompts:
-            profile = self._analyzer.analyze(
-                prompt, get_response, perturbation_types
-            )
+            profile = self._analyzer.analyze(prompt, get_response, perturbation_types)
             profiles.append(profile)
 
         return self._build_comparison(profiles, [p[:50] for p in prompts])
@@ -790,8 +783,8 @@ class ComparativeSensitivityAnalyzer:
     def compare_models(
         self,
         prompt: str,
-        model_responses: Dict[str, Callable[[str], str]],
-        perturbation_types: Optional[List[PerturbationType]] = None,
+        model_responses: dict[str, Callable[[str], str]],
+        perturbation_types: list[PerturbationType] | None = None,
     ) -> ComparativeSensitivity:
         """Compare sensitivity across multiple models.
 
@@ -807,9 +800,7 @@ class ComparativeSensitivityAnalyzer:
         identifiers = []
 
         for model_id, get_response in model_responses.items():
-            profile = self._analyzer.analyze(
-                prompt, get_response, perturbation_types
-            )
+            profile = self._analyzer.analyze(prompt, get_response, perturbation_types)
             profiles.append(profile)
             identifiers.append(model_id)
 
@@ -817,8 +808,8 @@ class ComparativeSensitivityAnalyzer:
 
     def _build_comparison(
         self,
-        profiles: List[SensitivityProfile],
-        identifiers: List[str],
+        profiles: list[SensitivityProfile],
+        identifiers: list[str],
     ) -> ComparativeSensitivity:
         """Build comparison from profiles."""
         # Rank by sensitivity
@@ -828,11 +819,10 @@ class ComparativeSensitivityAnalyzer:
         )
 
         # Find common sensitivities
-        all_sensitive: List[Set[PerturbationType]] = []
+        all_sensitive: list[set[PerturbationType]] = []
         for profile in profiles:
             sensitive = {
-                ptype for ptype, score in profile.by_perturbation_type.items()
-                if score > 0.3
+                ptype for ptype, score in profile.by_perturbation_type.items() if score > 0.3
             }
             all_sensitive.append(sensitive)
 
@@ -883,7 +873,7 @@ class FormatSensitivityTester:
         self,
         base_prompt: str,
         get_response: Callable[[str], str],
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Test how format instructions affect output.
 
         Args:
@@ -911,9 +901,7 @@ class FormatSensitivityTester:
             }
 
         # Calculate format adherence
-        adherence_scores = [
-            v["format_followed"] for v in results["variations"].values()
-        ]
+        adherence_scores = [v["format_followed"] for v in results["variations"].values()]
         results["format_adherence_rate"] = (
             sum(adherence_scores) / len(adherence_scores) if adherence_scores else 0
         )
@@ -944,7 +932,7 @@ class FormatSensitivityTester:
 def analyze_prompt_sensitivity(
     prompt: str,
     get_response: Callable[[str], str],
-    perturbation_types: Optional[List[PerturbationType]] = None,
+    perturbation_types: list[PerturbationType] | None = None,
 ) -> SensitivityProfile:
     """Analyze sensitivity of a prompt.
 
@@ -961,7 +949,7 @@ def analyze_prompt_sensitivity(
 
 
 def compare_prompt_sensitivity(
-    prompts: List[str],
+    prompts: list[str],
     get_response: Callable[[str], str],
 ) -> ComparativeSensitivity:
     """Compare sensitivity across prompts.
@@ -979,9 +967,9 @@ def compare_prompt_sensitivity(
 
 def generate_perturbations(
     prompt: str,
-    perturbation_types: Optional[List[PerturbationType]] = None,
+    perturbation_types: list[PerturbationType] | None = None,
     n_variations: int = 2,
-) -> List[Perturbation]:
+) -> list[Perturbation]:
     """Generate perturbations of a prompt.
 
     Args:
@@ -999,7 +987,7 @@ def generate_perturbations(
 def quick_sensitivity_check(
     prompt: str,
     get_response: Callable[[str], str],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Quick sensitivity check with basic perturbations.
 
     Args:
@@ -1030,7 +1018,7 @@ def quick_sensitivity_check(
 def check_format_sensitivity(
     prompt: str,
     get_response: Callable[[str], str],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check sensitivity to format instructions.
 
     Args:

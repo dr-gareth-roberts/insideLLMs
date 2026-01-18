@@ -9,7 +9,7 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 
 @dataclass
@@ -25,8 +25,8 @@ class TextProfile:
     avg_word_length: float = 0.0
     avg_sentence_length: float = 0.0
     lexical_diversity: float = 0.0
-    vocabulary: Set[str] = field(default_factory=set)
-    word_frequencies: Dict[str, int] = field(default_factory=dict)
+    vocabulary: set[str] = field(default_factory=set)
+    word_frequencies: dict[str, int] = field(default_factory=dict)
 
     @classmethod
     def from_text(cls, text: str) -> "TextProfile":
@@ -135,39 +135,125 @@ class TextAnalyzer:
 
     # Words indicating informal writing
     INFORMAL_WORDS = {
-        "gonna", "wanna", "gotta", "kinda", "sorta", "yeah", "yep", "nope",
-        "ok", "okay", "hey", "hi", "bye", "lol", "haha", "wow", "cool",
-        "awesome", "stuff", "things", "like", "really", "very", "just",
-        "actually", "basically", "literally", "totally", "pretty",
+        "gonna",
+        "wanna",
+        "gotta",
+        "kinda",
+        "sorta",
+        "yeah",
+        "yep",
+        "nope",
+        "ok",
+        "okay",
+        "hey",
+        "hi",
+        "bye",
+        "lol",
+        "haha",
+        "wow",
+        "cool",
+        "awesome",
+        "stuff",
+        "things",
+        "like",
+        "really",
+        "very",
+        "just",
+        "actually",
+        "basically",
+        "literally",
+        "totally",
+        "pretty",
     }
 
     # Words indicating formal writing
     FORMAL_WORDS = {
-        "therefore", "consequently", "furthermore", "moreover", "nevertheless",
-        "notwithstanding", "whereas", "hereby", "henceforth", "accordingly",
-        "subsequently", "aforementioned", "regarding", "concerning", "pursuant",
-        "herein", "therein", "wherein", "hereafter", "theretofore",
+        "therefore",
+        "consequently",
+        "furthermore",
+        "moreover",
+        "nevertheless",
+        "notwithstanding",
+        "whereas",
+        "hereby",
+        "henceforth",
+        "accordingly",
+        "subsequently",
+        "aforementioned",
+        "regarding",
+        "concerning",
+        "pursuant",
+        "herein",
+        "therein",
+        "wherein",
+        "hereafter",
+        "theretofore",
     }
 
     # Hedging words (uncertainty)
     HEDGE_WORDS = {
-        "maybe", "perhaps", "possibly", "might", "could", "may", "seem",
-        "appear", "suggest", "believe", "think", "assume", "suppose",
-        "probably", "likely", "unlikely", "uncertain", "unclear",
+        "maybe",
+        "perhaps",
+        "possibly",
+        "might",
+        "could",
+        "may",
+        "seem",
+        "appear",
+        "suggest",
+        "believe",
+        "think",
+        "assume",
+        "suppose",
+        "probably",
+        "likely",
+        "unlikely",
+        "uncertain",
+        "unclear",
     }
 
     # Confident words
     CONFIDENT_WORDS = {
-        "certainly", "definitely", "absolutely", "clearly", "obviously",
-        "undoubtedly", "surely", "precisely", "exactly", "always", "never",
-        "must", "will", "shall", "proven", "established", "confirmed",
+        "certainly",
+        "definitely",
+        "absolutely",
+        "clearly",
+        "obviously",
+        "undoubtedly",
+        "surely",
+        "precisely",
+        "exactly",
+        "always",
+        "never",
+        "must",
+        "will",
+        "shall",
+        "proven",
+        "established",
+        "confirmed",
     }
 
     # Subjective words
     SUBJECTIVE_WORDS = {
-        "beautiful", "ugly", "good", "bad", "best", "worst", "amazing",
-        "terrible", "wonderful", "horrible", "love", "hate", "feel",
-        "believe", "think", "opinion", "prefer", "favorite", "personally",
+        "beautiful",
+        "ugly",
+        "good",
+        "bad",
+        "best",
+        "worst",
+        "amazing",
+        "terrible",
+        "wonderful",
+        "horrible",
+        "love",
+        "hate",
+        "feel",
+        "believe",
+        "think",
+        "opinion",
+        "prefer",
+        "favorite",
+        "personally",
     }
 
     def __init__(self):
@@ -198,21 +284,24 @@ class TextAnalyzer:
         complex_words = sum(1 for w in words if self._count_syllables(w) >= 3)
 
         # Flesch Reading Ease
-        fre = 206.835 - 1.015 * (word_count / sentence_count) - 84.6 * (
-            syllable_count / word_count if word_count else 0
+        fre = (
+            206.835
+            - 1.015 * (word_count / sentence_count)
+            - 84.6 * (syllable_count / word_count if word_count else 0)
         )
         fre = max(0, min(100, fre))
 
         # Flesch-Kincaid Grade Level
-        fk_grade = 0.39 * (word_count / sentence_count) + 11.8 * (
-            syllable_count / word_count if word_count else 0
-        ) - 15.59
+        fk_grade = (
+            0.39 * (word_count / sentence_count)
+            + 11.8 * (syllable_count / word_count if word_count else 0)
+            - 15.59
+        )
         fk_grade = max(0, fk_grade)
 
         # Gunning Fog Index
         fog = 0.4 * (
-            (word_count / sentence_count)
-            + 100 * (complex_words / word_count if word_count else 0)
+            (word_count / sentence_count) + 100 * (complex_words / word_count if word_count else 0)
         )
         fog = max(0, fog)
 
@@ -227,9 +316,11 @@ class TextAnalyzer:
         cli = max(0, cli)
 
         # Automated Readability Index
-        ari = 4.71 * (char_count / word_count if word_count else 0) + 0.5 * (
-            word_count / sentence_count
-        ) - 21.43
+        ari = (
+            4.71 * (char_count / word_count if word_count else 0)
+            + 0.5 * (word_count / sentence_count)
+            - 21.43
+        )
         ari = max(0, ari)
 
         # Average grade level
@@ -340,10 +431,7 @@ class TextAnalyzer:
         hedge_count = len(words & self.HEDGE_WORDS)
         confident_count = len(words & self.CONFIDENT_WORDS)
         uncertainty_markers = hedge_count + confident_count
-        if uncertainty_markers > 0:
-            confidence = confident_count / uncertainty_markers
-        else:
-            confidence = 0.5
+        confidence = confident_count / uncertainty_markers if uncertainty_markers > 0 else 0.5
 
         # Subjectivity score
         subjective_count = len(words & self.SUBJECTIVE_WORDS)
@@ -355,10 +443,7 @@ class TextAnalyzer:
         pos_count = len(words & positive_words)
         neg_count = len(words & negative_words)
         total_sentiment = pos_count + neg_count
-        if total_sentiment > 0:
-            polarity = (pos_count - neg_count) / total_sentiment
-        else:
-            polarity = 0.0
+        polarity = (pos_count - neg_count) / total_sentiment if total_sentiment > 0 else 0.0
 
         return ToneAnalysis(
             formality_score=round(formality, 3),
@@ -367,9 +452,7 @@ class TextAnalyzer:
             sentiment_polarity=round(polarity, 3),
         )
 
-    def compare_texts(
-        self, text1: str, text2: str
-    ) -> Dict[str, Tuple[float, float, float]]:
+    def compare_texts(self, text1: str, text2: str) -> dict[str, tuple[float, float, float]]:
         """
         Compare two texts across multiple dimensions.
 
@@ -419,7 +502,7 @@ class TextAnalyzer:
 
     def vocabulary_overlap(
         self, text1: str, text2: str
-    ) -> Tuple[float, Set[str], Set[str], Set[str]]:
+    ) -> tuple[float, set[str], set[str], set[str]]:
         """
         Calculate vocabulary overlap between two texts.
 
@@ -477,7 +560,7 @@ class ResponseQualityScore:
         response: str,
         prompt: str,
         expected_length: Optional[int] = None,
-        required_keywords: Optional[List[str]] = None,
+        required_keywords: Optional[list[str]] = None,
     ) -> "ResponseQualityScore":
         """Calculate quality score for a response."""
         analyzer = TextAnalyzer()
@@ -489,9 +572,7 @@ class ResponseQualityScore:
         # Check for required keywords
         if required_keywords:
             response_lower = response.lower()
-            keyword_matches = sum(
-                1 for kw in required_keywords if kw.lower() in response_lower
-            )
+            keyword_matches = sum(1 for kw in required_keywords if kw.lower() in response_lower)
             keyword_score = keyword_matches / len(required_keywords)
             relevance = (relevance + keyword_score) / 2
 
@@ -521,9 +602,21 @@ class ResponseQualityScore:
 
         # Check for transition words
         connectors = {
-            "however", "therefore", "furthermore", "moreover", "additionally",
-            "consequently", "thus", "hence", "first", "second", "third",
-            "finally", "in conclusion", "to summarize", "for example",
+            "however",
+            "therefore",
+            "furthermore",
+            "moreover",
+            "additionally",
+            "consequently",
+            "thus",
+            "hence",
+            "first",
+            "second",
+            "third",
+            "finally",
+            "in conclusion",
+            "to summarize",
+            "for example",
         }
         response_lower = response.lower()
         connector_count = sum(1 for c in connectors if c in response_lower)
@@ -535,7 +628,7 @@ class ResponseQualityScore:
             coherence = 0.5 if response_words > 10 else 0.3
 
         # Conciseness: penalize excessive repetition and filler
-        profile = analyzer.profile(response)
+        analyzer.profile(response)
         word_list = re.findall(r"\b\w+\b", response.lower())
 
         # Check for repetition
@@ -555,12 +648,7 @@ class ResponseQualityScore:
         conciseness = max(0, conciseness)
 
         # Overall score (weighted average)
-        overall = (
-            relevance * 0.3
-            + completeness * 0.25
-            + coherence * 0.25
-            + conciseness * 0.2
-        )
+        overall = relevance * 0.3 + completeness * 0.25 + coherence * 0.25 + conciseness * 0.2
 
         return cls(
             relevance=round(relevance, 3),
@@ -571,7 +659,7 @@ class ResponseQualityScore:
         )
 
 
-def analyze_text(text: str) -> Dict:
+def analyze_text(text: str) -> dict:
     """
     Perform comprehensive text analysis.
 
@@ -590,17 +678,13 @@ def score_response(
     response: str,
     prompt: str,
     expected_length: Optional[int] = None,
-    required_keywords: Optional[List[str]] = None,
+    required_keywords: Optional[list[str]] = None,
 ) -> ResponseQualityScore:
     """Score the quality of an LLM response."""
-    return ResponseQualityScore.calculate(
-        response, prompt, expected_length, required_keywords
-    )
+    return ResponseQualityScore.calculate(response, prompt, expected_length, required_keywords)
 
 
-def compare_responses(
-    response1: str, response2: str, prompt: str
-) -> Dict[str, Dict]:
+def compare_responses(response1: str, response2: str, prompt: str) -> dict[str, dict]:
     """
     Compare two responses to the same prompt.
 

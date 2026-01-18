@@ -1,38 +1,37 @@
 """Tests for Structured Output Parsing with Pydantic integration."""
 
-import json
 import dataclasses
-import pytest
-from typing import List, Optional, Dict, Any, Union
+import json
+from typing import Any, Optional
 from unittest.mock import MagicMock
+
+import pytest
 
 # Import Pydantic if available
 try:
     from pydantic import BaseModel, Field
+
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
 
+from insideLLMs.models import DummyModel
 from insideLLMs.structured import (
-    StructuredOutputError,
-    SchemaGenerationError,
     ParsingError,
-    ValidationErrorWrapper,
-    extract_json,
-    parse_json,
-    parse_to_type,
-    get_json_schema,
-    dataclass_to_json_schema,
+    SchemaGenerationError,
     StructuredOutputConfig,
     StructuredOutputGenerator,
-    generate_structured,
-    create_structured_generator,
+    ValidationErrorWrapper,
     add_structured_method,
-    PYDANTIC_AVAILABLE as MODULE_PYDANTIC_AVAILABLE,
+    create_structured_generator,
+    dataclass_to_json_schema,
+    extract_json,
+    generate_structured,
+    get_json_schema,
+    parse_json,
+    parse_to_type,
 )
-from insideLLMs.models import DummyModel
-
 
 # =============================================================================
 # Test Fixtures
@@ -42,6 +41,7 @@ from insideLLMs.models import DummyModel
 @dataclasses.dataclass
 class PersonDataclass:
     """Test dataclass."""
+
     name: str
     age: int
     email: Optional[str] = None
@@ -50,6 +50,7 @@ class PersonDataclass:
 @dataclasses.dataclass
 class AddressDataclass:
     """Test nested dataclass."""
+
     street: str
     city: str
     country: str = "USA"
@@ -58,34 +59,40 @@ class AddressDataclass:
 @dataclasses.dataclass
 class PersonWithAddressDataclass:
     """Test dataclass with nested type."""
+
     name: str
     address: AddressDataclass
 
 
 if PYDANTIC_AVAILABLE:
+
     class PersonModel(BaseModel):
         """Test Pydantic model."""
+
         name: str
         age: int
         email: Optional[str] = None
 
     class AddressModel(BaseModel):
         """Test nested Pydantic model."""
+
         street: str
         city: str
         country: str = "USA"
 
     class PersonWithAddressModel(BaseModel):
         """Test Pydantic model with nested model."""
+
         name: str
         address: AddressModel
 
     class ItemModel(BaseModel):
         """Test model for lists."""
+
         id: int
         name: str
-        tags: List[str] = []
-        metadata: Dict[str, Any] = {}
+        tags: list[str] = []
+        metadata: dict[str, Any] = {}
 
 
 # =============================================================================
@@ -98,19 +105,19 @@ class TestExtractJson:
 
     def test_extract_from_code_block(self):
         """Test extracting JSON from markdown code block."""
-        text = '''Here is the result:
+        text = """Here is the result:
 ```json
 {"name": "John", "age": 30}
 ```
-That's all.'''
+That's all."""
         result = extract_json(text)
         assert json.loads(result) == {"name": "John", "age": 30}
 
     def test_extract_from_plain_code_block(self):
         """Test extracting JSON from plain code block."""
-        text = '''```
+        text = """```
 {"name": "Jane", "age": 25}
-```'''
+```"""
         result = extract_json(text)
         assert json.loads(result) == {"name": "Jane", "age": 25}
 
@@ -122,7 +129,7 @@ That's all.'''
 
     def test_extract_raw_json_array(self):
         """Test extracting raw JSON array."""
-        text = 'Here are the items: [1, 2, 3]'
+        text = "Here are the items: [1, 2, 3]"
         result = extract_json(text)
         assert json.loads(result) == [1, 2, 3]
 
@@ -134,7 +141,7 @@ That's all.'''
 
     def test_extract_multiline_json(self):
         """Test extracting multiline JSON."""
-        text = '''```json
+        text = """```json
 {
     "name": "Test",
     "items": [1, 2, 3],
@@ -142,7 +149,7 @@ That's all.'''
         "key": "value"
     }
 }
-```'''
+```"""
         result = extract_json(text)
         data = json.loads(result)
         assert data["name"] == "Test"
@@ -173,7 +180,7 @@ class TestParseJson:
 
     def test_parse_from_markdown(self):
         """Test parsing JSON from markdown."""
-        text = '```json\n[1, 2, 3]\n```'
+        text = "```json\n[1, 2, 3]\n```"
         result = parse_json(text)
         assert result == [1, 2, 3]
 
@@ -252,7 +259,7 @@ class TestGetJsonSchema:
         """Test schema for list type."""
         from insideLLMs.structured import _python_type_to_json_schema
 
-        schema = _python_type_to_json_schema(List[str])
+        schema = _python_type_to_json_schema(list[str])
         assert schema["type"] == "array"
         assert schema["items"]["type"] == "string"
 
@@ -260,7 +267,7 @@ class TestGetJsonSchema:
         """Test schema for dict type."""
         from insideLLMs.structured import _python_type_to_json_schema
 
-        schema = _python_type_to_json_schema(Dict[str, int])
+        schema = _python_type_to_json_schema(dict[str, int])
         assert schema["type"] == "object"
         assert schema["additionalProperties"]["type"] == "integer"
 
@@ -338,7 +345,7 @@ class TestParseToTypePydantic:
             "address": {
                 "street": "123 Main St",
                 "city": "Boston",
-            }
+            },
         }
         result = parse_to_type(data, PersonWithAddressModel)
 
@@ -427,9 +434,7 @@ class TestStructuredOutputGenerator:
         """Test prompt building with examples."""
         mock_model = MagicMock()
         config = StructuredOutputConfig(
-            examples=[
-                {"input": "Jane is 25", "output": {"name": "Jane", "age": 25}}
-            ]
+            examples=[{"input": "Jane is 25", "output": {"name": "Jane", "age": 25}}]
         )
         generator = StructuredOutputGenerator(mock_model, PersonDataclass, config)
         prompt = generator._build_prompt("Bob is 40")
@@ -451,7 +456,7 @@ class TestStructuredOutputGenerator:
 
     def test_generate_with_generate_model(self):
         """Test generation using generate-only model."""
-        mock_model = MagicMock(spec=['generate'])
+        mock_model = MagicMock(spec=["generate"])
         mock_model.generate = MagicMock(return_value='{"name": "Jane", "age": 25}')
 
         generator = StructuredOutputGenerator(mock_model, PersonDataclass)
@@ -464,9 +469,11 @@ class TestStructuredOutputGenerator:
     def test_generate_with_code_block_response(self):
         """Test generation handles markdown code blocks."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value='''```json
+        mock_model.chat = MagicMock(
+            return_value="""```json
 {"name": "Bob", "age": 40}
-```''')
+```"""
+        )
 
         generator = StructuredOutputGenerator(mock_model, PersonDataclass)
         result = generator.generate("Bob is 40")
@@ -478,11 +485,13 @@ class TestStructuredOutputGenerator:
         """Test that generator retries on parsing failure."""
         mock_model = MagicMock()
         # First two calls return invalid JSON, third succeeds
-        mock_model.chat = MagicMock(side_effect=[
-            "Invalid JSON",
-            "Still invalid",
-            '{"name": "Test", "age": 1}',
-        ])
+        mock_model.chat = MagicMock(
+            side_effect=[
+                "Invalid JSON",
+                "Still invalid",
+                '{"name": "Test", "age": 1}',
+            ]
+        )
 
         config = StructuredOutputConfig(max_retries=3)
         generator = StructuredOutputGenerator(mock_model, PersonDataclass, config)
@@ -507,10 +516,12 @@ class TestStructuredOutputGenerator:
     def test_generate_batch(self):
         """Test batch generation."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(side_effect=[
-            '{"name": "John", "age": 30}',
-            '{"name": "Jane", "age": 25}',
-        ])
+        mock_model.chat = MagicMock(
+            side_effect=[
+                '{"name": "John", "age": 30}',
+                '{"name": "Jane", "age": 25}',
+            ]
+        )
 
         generator = StructuredOutputGenerator(mock_model, PersonDataclass)
         results = generator.generate_batch(["John is 30", "Jane is 25"])
@@ -543,7 +554,7 @@ class TestGenerateStructured:
         mock_model = MagicMock()
         mock_model.chat = MagicMock(return_value='{"name": "Test", "age": 1}')
 
-        result = generate_structured(
+        generate_structured(
             mock_model,
             "Test",
             PersonDataclass,
@@ -564,7 +575,7 @@ class TestGenerateStructured:
             {"input": "Alice is 20", "output": {"name": "Alice", "age": 20}},
         ]
 
-        result = generate_structured(
+        generate_structured(
             mock_model,
             "New person is 99",
             PersonDataclass,
@@ -606,6 +617,7 @@ class TestAddStructuredMethod:
 
     def test_add_method_to_model(self):
         """Test adding structured method to model."""
+
         class MockModel:
             def chat(self, messages, **kwargs):
                 return '{"name": "Extended", "age": 99}'
@@ -632,6 +644,7 @@ class TestDummyModelIntegration:
 
     def test_with_json_dummy_model(self):
         """Test with a DummyModel that returns JSON."""
+
         class JSONDummyModel(DummyModel):
             def generate(self, prompt, **kwargs):
                 return '{"name": "Dummy", "age": 100}'
@@ -653,12 +666,16 @@ class TestPydanticIntegration:
     def test_complex_pydantic_model(self):
         """Test with complex Pydantic model."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "id": 1,
-            "name": "Test Item",
-            "tags": ["tag1", "tag2"],
-            "metadata": {"key": "value"}
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "id": 1,
+                    "name": "Test Item",
+                    "tags": ["tag1", "tag2"],
+                    "metadata": {"key": "value"},
+                }
+            )
+        )
 
         result = generate_structured(mock_model, "Item data", ItemModel)
 
@@ -670,14 +687,14 @@ class TestPydanticIntegration:
     def test_nested_pydantic_model(self):
         """Test with nested Pydantic model."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "name": "John",
-            "address": {
-                "street": "123 Main",
-                "city": "Boston",
-                "country": "USA"
-            }
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "name": "John",
+                    "address": {"street": "123 Main", "city": "Boston", "country": "USA"},
+                }
+            )
+        )
 
         result = generate_structured(mock_model, "Person data", PersonWithAddressModel)
 

@@ -16,16 +16,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
     Optional,
     Protocol,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
 )
 
 
@@ -49,14 +41,14 @@ class TokenStats:
     word_count: int
     avg_token_length: float
     tokens_per_word: float
-    token_frequencies: Dict[str, int] = field(default_factory=dict)
+    token_frequencies: dict[str, int] = field(default_factory=dict)
 
     @property
     def token_diversity(self) -> float:
         """Ratio of unique tokens to total tokens."""
         return self.unique_tokens / self.total_tokens if self.total_tokens > 0 else 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "total_tokens": self.total_tokens,
@@ -73,7 +65,7 @@ class TokenStats:
 class TokenDistribution:
     """Token frequency distribution analysis."""
 
-    frequencies: Dict[str, int]
+    frequencies: dict[str, int]
     total_tokens: int
 
     @property
@@ -81,11 +73,11 @@ class TokenDistribution:
         """Number of unique tokens."""
         return len(self.frequencies)
 
-    def top_tokens(self, n: int = 10) -> List[Tuple[str, int]]:
+    def top_tokens(self, n: int = 10) -> list[tuple[str, int]]:
         """Get top N most frequent tokens."""
         return sorted(self.frequencies.items(), key=lambda x: x[1], reverse=True)[:n]
 
-    def bottom_tokens(self, n: int = 10) -> List[Tuple[str, int]]:
+    def bottom_tokens(self, n: int = 10) -> list[tuple[str, int]]:
         """Get bottom N least frequent tokens."""
         return sorted(self.frequencies.items(), key=lambda x: x[1])[:n]
 
@@ -99,11 +91,11 @@ class TokenDistribution:
             return 0.0
         return self.frequencies.get(token, 0) / self.total_tokens
 
-    def tokens_above_frequency(self, min_freq: int) -> List[str]:
+    def tokens_above_frequency(self, min_freq: int) -> list[str]:
         """Get tokens with frequency above threshold."""
         return [t for t, f in self.frequencies.items() if f >= min_freq]
 
-    def hapax_legomena(self) -> List[str]:
+    def hapax_legomena(self) -> list[str]:
         """Get tokens that appear exactly once."""
         return [t for t, f in self.frequencies.items() if f == 1]
 
@@ -124,10 +116,10 @@ class TokenDistribution:
 class VocabCoverage:
     """Analysis of vocabulary coverage."""
 
-    text_vocab: Set[str]
-    reference_vocab: Set[str]
-    covered: Set[str]
-    uncovered: Set[str]
+    text_vocab: set[str]
+    reference_vocab: set[str]
+    covered: set[str]
+    uncovered: set[str]
 
     @property
     def coverage_ratio(self) -> float:
@@ -141,7 +133,7 @@ class VocabCoverage:
         """Out-of-vocabulary ratio."""
         return 1.0 - self.coverage_ratio
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text_vocab_size": len(self.text_vocab),
@@ -156,15 +148,15 @@ class VocabCoverage:
 class Tokenizer(Protocol):
     """Protocol for tokenizer implementations."""
 
-    def encode(self, text: str) -> List[int]:
+    def encode(self, text: str) -> list[int]:
         """Encode text to token IDs."""
         ...
 
-    def decode(self, tokens: List[int]) -> str:
+    def decode(self, tokens: list[int]) -> str:
         """Decode token IDs to text."""
         ...
 
-    def tokenize(self, text: str) -> List[str]:
+    def tokenize(self, text: str) -> list[str]:
         """Tokenize text to token strings."""
         ...
 
@@ -179,11 +171,11 @@ class SimpleTokenizer:
             lowercase: Whether to lowercase tokens.
         """
         self.lowercase = lowercase
-        self._vocab: Dict[str, int] = {}
-        self._id_to_token: Dict[int, str] = {}
+        self._vocab: dict[str, int] = {}
+        self._id_to_token: dict[int, str] = {}
         self._next_id = 0
 
-    def tokenize(self, text: str) -> List[str]:
+    def tokenize(self, text: str) -> list[str]:
         """Tokenize text to tokens.
 
         Args:
@@ -199,7 +191,7 @@ class SimpleTokenizer:
         tokens = re.findall(r"\b\w+\b|[^\w\s]", text)
         return tokens
 
-    def encode(self, text: str) -> List[int]:
+    def encode(self, text: str) -> list[int]:
         """Encode text to token IDs.
 
         Args:
@@ -218,7 +210,7 @@ class SimpleTokenizer:
             ids.append(self._vocab[token])
         return ids
 
-    def decode(self, tokens: List[int]) -> str:
+    def decode(self, tokens: list[int]) -> str:
         """Decode token IDs to text.
 
         Args:
@@ -264,9 +256,7 @@ class TokenEstimator:
         self.tokenizer_type = tokenizer_type
         self.chars_per_token = self.CHARS_PER_TOKEN.get(tokenizer_type, 4.0)
 
-    def estimate_tokens(
-        self, text: str, content_type: str = "prose"
-    ) -> int:
+    def estimate_tokens(self, text: str, content_type: str = "prose") -> int:
         """Estimate token count for text.
 
         Args:
@@ -324,7 +314,7 @@ class TokenEstimator:
         max_tokens: int,
         overlap_tokens: int = 0,
         content_type: str = "prose",
-    ) -> List[str]:
+    ) -> list[str]:
         """Split text into chunks that fit token limit.
 
         Args:
@@ -427,9 +417,7 @@ class TokenAnalyzer:
             total_tokens=len(tokens),
         )
 
-    def compare_distributions(
-        self, text1: str, text2: str
-    ) -> Dict[str, Any]:
+    def compare_distributions(self, text1: str, text2: str) -> dict[str, Any]:
         """Compare token distributions between two texts.
 
         Args:
@@ -452,12 +440,9 @@ class TokenAnalyzer:
         # Calculate cosine similarity of distributions
         common_tokens = shared
         if common_tokens:
-            dot_product = sum(
-                dist1.frequencies[t] * dist2.frequencies[t]
-                for t in common_tokens
-            )
-            mag1 = math.sqrt(sum(f ** 2 for f in dist1.frequencies.values()))
-            mag2 = math.sqrt(sum(f ** 2 for f in dist2.frequencies.values()))
+            dot_product = sum(dist1.frequencies[t] * dist2.frequencies[t] for t in common_tokens)
+            mag1 = math.sqrt(sum(f**2 for f in dist1.frequencies.values()))
+            mag2 = math.sqrt(sum(f**2 for f in dist2.frequencies.values()))
             cosine_sim = dot_product / (mag1 * mag2) if mag1 * mag2 > 0 else 0
         else:
             cosine_sim = 0.0
@@ -474,9 +459,7 @@ class TokenAnalyzer:
             "entropy_text2": dist2.entropy(),
         }
 
-    def analyze_vocabulary_coverage(
-        self, text: str, reference_vocab: Set[str]
-    ) -> VocabCoverage:
+    def analyze_vocabulary_coverage(self, text: str, reference_vocab: set[str]) -> VocabCoverage:
         """Analyze vocabulary coverage against reference.
 
         Args:
@@ -506,14 +489,14 @@ class EmbeddingSimilarity:
 
     similarity: float
     method: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class EmbeddingUtils:
     """Utilities for working with text embeddings."""
 
     @staticmethod
-    def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+    def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
         """Calculate cosine similarity between two vectors.
 
         Args:
@@ -527,8 +510,8 @@ class EmbeddingUtils:
             raise ValueError("Vectors must have same dimension")
 
         dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        mag1 = math.sqrt(sum(a ** 2 for a in vec1))
-        mag2 = math.sqrt(sum(b ** 2 for b in vec2))
+        mag1 = math.sqrt(sum(a**2 for a in vec1))
+        mag2 = math.sqrt(sum(b**2 for b in vec2))
 
         if mag1 == 0 or mag2 == 0:
             return 0.0
@@ -536,7 +519,7 @@ class EmbeddingUtils:
         return dot_product / (mag1 * mag2)
 
     @staticmethod
-    def euclidean_distance(vec1: List[float], vec2: List[float]) -> float:
+    def euclidean_distance(vec1: list[float], vec2: list[float]) -> float:
         """Calculate Euclidean distance between two vectors.
 
         Args:
@@ -552,7 +535,7 @@ class EmbeddingUtils:
         return math.sqrt(sum((a - b) ** 2 for a, b in zip(vec1, vec2)))
 
     @staticmethod
-    def manhattan_distance(vec1: List[float], vec2: List[float]) -> float:
+    def manhattan_distance(vec1: list[float], vec2: list[float]) -> float:
         """Calculate Manhattan distance between two vectors.
 
         Args:
@@ -568,7 +551,7 @@ class EmbeddingUtils:
         return sum(abs(a - b) for a, b in zip(vec1, vec2))
 
     @staticmethod
-    def normalize(vec: List[float]) -> List[float]:
+    def normalize(vec: list[float]) -> list[float]:
         """Normalize vector to unit length.
 
         Args:
@@ -577,13 +560,13 @@ class EmbeddingUtils:
         Returns:
             Normalized vector.
         """
-        magnitude = math.sqrt(sum(v ** 2 for v in vec))
+        magnitude = math.sqrt(sum(v**2 for v in vec))
         if magnitude == 0:
             return vec
         return [v / magnitude for v in vec]
 
     @staticmethod
-    def average_embeddings(embeddings: List[List[float]]) -> List[float]:
+    def average_embeddings(embeddings: list[list[float]]) -> list[float]:
         """Calculate average of multiple embeddings.
 
         Args:
@@ -607,10 +590,10 @@ class EmbeddingUtils:
 
     @staticmethod
     def find_most_similar(
-        query: List[float],
-        candidates: List[Tuple[str, List[float]]],
+        query: list[float],
+        candidates: list[tuple[str, list[float]]],
         top_k: int = 5,
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """Find most similar embeddings to query.
 
         Args:
@@ -684,7 +667,7 @@ class TokenBudget:
         """Release reserved tokens."""
         self.reserved_tokens = max(0, self.reserved_tokens - tokens)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "total_budget": self.total_budget,
@@ -791,6 +774,7 @@ class ContextWindowManager:
 
 # Convenience functions
 
+
 def estimate_tokens(
     text: str,
     tokenizer_type: TokenizerType = TokenizerType.GPT4,
@@ -841,7 +825,7 @@ def split_by_tokens(
     max_tokens: int,
     overlap_tokens: int = 0,
     tokenizer_type: TokenizerType = TokenizerType.GPT4,
-) -> List[str]:
+) -> list[str]:
     """Split text into chunks by token limit.
 
     Args:
@@ -857,7 +841,7 @@ def split_by_tokens(
     return estimator.split_to_chunks(text, max_tokens, overlap_tokens)
 
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     """Calculate cosine similarity between vectors.
 
     Args:

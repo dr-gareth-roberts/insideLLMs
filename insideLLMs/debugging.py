@@ -23,18 +23,19 @@ Example:
     >>> visualizer.render_timeline(trace)
 """
 
+import json
+import re
+import time
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-import json
-import time
-import traceback
-import re
+from typing import Any, Callable, Optional, Union
 
 
 class TraceEventType(Enum):
     """Types of trace events."""
+
     STEP_START = "step_start"
     STEP_END = "step_end"
     PROMPT_SENT = "prompt_sent"
@@ -52,6 +53,7 @@ class TraceEventType(Enum):
 
 class DebugLevel(Enum):
     """Debug verbosity levels."""
+
     MINIMAL = "minimal"  # Only errors
     BASIC = "basic"  # Steps and errors
     DETAILED = "detailed"  # All events
@@ -60,6 +62,7 @@ class DebugLevel(Enum):
 
 class IssueCategory(Enum):
     """Categories of detected issues."""
+
     PERFORMANCE = "performance"
     LOGIC_ERROR = "logic_error"
     DATA_QUALITY = "data_quality"
@@ -71,6 +74,7 @@ class IssueCategory(Enum):
 
 class IssueSeverity(Enum):
     """Severity levels for detected issues."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -80,16 +84,17 @@ class IssueSeverity(Enum):
 @dataclass
 class TraceEvent:
     """A single event in an execution trace."""
+
     event_type: TraceEventType
     timestamp: float
     step_id: Optional[str] = None
     step_name: Optional[str] = None
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     duration_ms: Optional[float] = None
     parent_event_id: Optional[str] = None
     event_id: str = field(default_factory=lambda: f"evt_{time.time_ns()}")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "event_id": self.event_id,
@@ -106,11 +111,12 @@ class TraceEvent:
 @dataclass
 class ExecutionTrace:
     """A complete execution trace."""
+
     trace_id: str
     start_time: float
     end_time: Optional[float] = None
-    events: List[TraceEvent] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    events: list[TraceEvent] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     final_result: Optional[Any] = None
     error: Optional[str] = None
 
@@ -126,15 +132,15 @@ class ExecutionTrace:
         """Number of events in trace."""
         return len(self.events)
 
-    def get_events_by_type(self, event_type: TraceEventType) -> List[TraceEvent]:
+    def get_events_by_type(self, event_type: TraceEventType) -> list[TraceEvent]:
         """Get all events of a specific type."""
         return [e for e in self.events if e.event_type == event_type]
 
-    def get_step_events(self, step_id: str) -> List[TraceEvent]:
+    def get_step_events(self, step_id: str) -> list[TraceEvent]:
         """Get all events for a specific step."""
         return [e for e in self.events if e.step_id == step_id]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "trace_id": self.trace_id,
@@ -152,16 +158,17 @@ class ExecutionTrace:
 @dataclass
 class DebugIssue:
     """A detected issue during debugging."""
+
     category: IssueCategory
     severity: IssueSeverity
     message: str
     step_id: Optional[str] = None
     step_name: Optional[str] = None
     suggestion: Optional[str] = None
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "category": self.category.value,
@@ -178,15 +185,16 @@ class DebugIssue:
 @dataclass
 class DebugBreakpoint:
     """A breakpoint in a prompt workflow."""
+
     breakpoint_id: str
     step_id: Optional[str] = None
     step_name: Optional[str] = None
-    condition: Optional[Callable[[Dict[str, Any]], bool]] = None
+    condition: Optional[Callable[[dict[str, Any]], bool]] = None
     on_variable: Optional[str] = None
     enabled: bool = True
     hit_count: int = 0
 
-    def should_break(self, context: Dict[str, Any]) -> bool:
+    def should_break(self, context: dict[str, Any]) -> bool:
         """Check if breakpoint should trigger."""
         if not self.enabled:
             return False
@@ -198,13 +206,14 @@ class DebugBreakpoint:
 @dataclass
 class VariableSnapshot:
     """A snapshot of variable state."""
+
     name: str
     value: Any
     timestamp: float
     step_id: Optional[str] = None
     operation: str = "set"  # set, read, modified
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -237,13 +246,13 @@ class PromptDebugger:
         self.auto_detect_issues = auto_detect_issues
 
         self._current_trace: Optional[ExecutionTrace] = None
-        self._breakpoints: Dict[str, DebugBreakpoint] = {}
-        self._variable_history: List[VariableSnapshot] = []
-        self._detected_issues: List[DebugIssue] = []
-        self._step_stack: List[str] = []
-        self._break_handler: Optional[Callable[[Dict[str, Any]], None]] = None
+        self._breakpoints: dict[str, DebugBreakpoint] = {}
+        self._variable_history: list[VariableSnapshot] = []
+        self._detected_issues: list[DebugIssue] = []
+        self._step_stack: list[str] = []
+        self._break_handler: Optional[Callable[[dict[str, Any]], None]] = None
 
-    def start_trace(self, metadata: Optional[Dict[str, Any]] = None) -> ExecutionTrace:
+    def start_trace(self, metadata: Optional[dict[str, Any]] = None) -> ExecutionTrace:
         """Start a new execution trace."""
         trace_id = f"trace_{time.time_ns()}"
         self._current_trace = ExecutionTrace(
@@ -277,7 +286,7 @@ class PromptDebugger:
         self._current_trace = None
         return trace
 
-    def trace(self, metadata: Optional[Dict[str, Any]] = None):
+    def trace(self, metadata: Optional[dict[str, Any]] = None):
         """Context manager for tracing."""
         return _TraceContext(self, metadata)
 
@@ -286,7 +295,7 @@ class PromptDebugger:
         event_type: TraceEventType,
         step_id: Optional[str] = None,
         step_name: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
         duration_ms: Optional[float] = None,
     ) -> Optional[TraceEvent]:
         """Log a trace event."""
@@ -400,8 +409,7 @@ class PromptDebugger:
         self._variable_history.append(snapshot)
 
         event_type = (
-            TraceEventType.VARIABLE_SET if operation == "set"
-            else TraceEventType.VARIABLE_READ
+            TraceEventType.VARIABLE_SET if operation == "set" else TraceEventType.VARIABLE_READ
         )
 
         return self.log_event(
@@ -458,7 +466,7 @@ class PromptDebugger:
         breakpoint_id: str,
         step_id: Optional[str] = None,
         step_name: Optional[str] = None,
-        condition: Optional[Callable[[Dict[str, Any]], bool]] = None,
+        condition: Optional[Callable[[dict[str, Any]], bool]] = None,
         on_variable: Optional[str] = None,
     ) -> DebugBreakpoint:
         """Add a breakpoint."""
@@ -481,12 +489,12 @@ class PromptDebugger:
 
     def set_break_handler(
         self,
-        handler: Callable[[Dict[str, Any]], None],
+        handler: Callable[[dict[str, Any]], None],
     ) -> None:
         """Set handler called when breakpoint is hit."""
         self._break_handler = handler
 
-    def get_variable_history(self, name: Optional[str] = None) -> List[VariableSnapshot]:
+    def get_variable_history(self, name: Optional[str] = None) -> list[VariableSnapshot]:
         """Get variable history, optionally filtered by name."""
         if name is None:
             return list(self._variable_history)
@@ -496,7 +504,7 @@ class PromptDebugger:
         self,
         severity: Optional[IssueSeverity] = None,
         category: Optional[IssueCategory] = None,
-    ) -> List[DebugIssue]:
+    ) -> list[DebugIssue]:
         """Get detected issues with optional filtering."""
         issues = self._detected_issues
         if severity:
@@ -517,9 +525,12 @@ class PromptDebugger:
             should_break = False
 
             # Check step match
-            if bp.step_id and event.step_id == bp.step_id:
-                should_break = bp.should_break(context)
-            elif bp.step_name and event.step_name == bp.step_name:
+            if (
+                bp.step_id
+                and event.step_id == bp.step_id
+                or bp.step_name
+                and event.step_name == bp.step_name
+            ):
                 should_break = bp.should_break(context)
             # Check variable match
             elif bp.on_variable and event.event_type == TraceEventType.VARIABLE_SET:
@@ -541,42 +552,48 @@ class PromptDebugger:
         # Check for slow steps
         for event in trace.get_events_by_type(TraceEventType.STEP_END):
             if event.duration_ms and event.duration_ms > 5000:  # 5 seconds
-                self._detected_issues.append(DebugIssue(
-                    category=IssueCategory.PERFORMANCE,
-                    severity=IssueSeverity.WARNING,
-                    message=f"Step '{event.step_name}' took {event.duration_ms:.0f}ms",
-                    step_id=event.step_id,
-                    step_name=event.step_name,
-                    suggestion="Consider optimizing this step or adding caching",
-                ))
+                self._detected_issues.append(
+                    DebugIssue(
+                        category=IssueCategory.PERFORMANCE,
+                        severity=IssueSeverity.WARNING,
+                        message=f"Step '{event.step_name}' took {event.duration_ms:.0f}ms",
+                        step_id=event.step_id,
+                        step_name=event.step_name,
+                        suggestion="Consider optimizing this step or adding caching",
+                    )
+                )
 
         # Check for retry events
         retries = trace.get_events_by_type(TraceEventType.RETRY)
         if len(retries) > 3:
-            self._detected_issues.append(DebugIssue(
-                category=IssueCategory.API_ERROR,
-                severity=IssueSeverity.WARNING,
-                message=f"High retry count: {len(retries)} retries",
-                suggestion="Check API rate limits or network stability",
-            ))
+            self._detected_issues.append(
+                DebugIssue(
+                    category=IssueCategory.API_ERROR,
+                    severity=IssueSeverity.WARNING,
+                    message=f"High retry count: {len(retries)} retries",
+                    suggestion="Check API rate limits or network stability",
+                )
+            )
 
         # Check for long prompts
         for event in trace.get_events_by_type(TraceEventType.PROMPT_SENT):
             prompt_length = event.data.get("prompt_length", 0)
             if prompt_length > 10000:
-                self._detected_issues.append(DebugIssue(
-                    category=IssueCategory.PROMPT_ISSUE,
-                    severity=IssueSeverity.INFO,
-                    message=f"Long prompt ({prompt_length} chars)",
-                    step_id=event.step_id,
-                    suggestion="Consider using prompt compression",
-                ))
+                self._detected_issues.append(
+                    DebugIssue(
+                        category=IssueCategory.PROMPT_ISSUE,
+                        severity=IssueSeverity.INFO,
+                        message=f"Long prompt ({prompt_length} chars)",
+                        step_id=event.step_id,
+                        suggestion="Consider using prompt compression",
+                    )
+                )
 
 
 class _TraceContext:
     """Context manager for tracing."""
 
-    def __init__(self, debugger: PromptDebugger, metadata: Optional[Dict[str, Any]]):
+    def __init__(self, debugger: PromptDebugger, metadata: Optional[dict[str, Any]]):
         self.debugger = debugger
         self.metadata = metadata
         self.trace: Optional[ExecutionTrace] = None
@@ -607,7 +624,9 @@ class TraceVisualizer:
         lines = []
         lines.append("=" * self.width)
         lines.append(f"EXECUTION TRACE: {trace.trace_id}")
-        lines.append(f"Duration: {trace.duration_ms:.2f}ms" if trace.duration_ms else "Duration: N/A")
+        lines.append(
+            f"Duration: {trace.duration_ms:.2f}ms" if trace.duration_ms else "Duration: N/A"
+        )
         lines.append("=" * self.width)
 
         # Group events by step
@@ -625,7 +644,9 @@ class TraceVisualizer:
 
             elif event.event_type == TraceEventType.STEP_END:
                 status = "✓" if event.data.get("success", True) else "✗"
-                lines.append(f"[{elapsed:8.1f}ms] {status} END: {event.step_name} ({event.duration_ms:.1f}ms)")
+                lines.append(
+                    f"[{elapsed:8.1f}ms] {status} END: {event.step_name} ({event.duration_ms:.1f}ms)"
+                )
 
             elif event.event_type == TraceEventType.PROMPT_SENT:
                 prompt_len = event.data.get("prompt_length", 0)
@@ -703,7 +724,9 @@ class TraceVisualizer:
             event_counts[event_type] = event_counts.get(event_type, 0) + 1
 
         lines.append(f"Total Events: {trace.event_count}")
-        lines.append(f"Duration: {trace.duration_ms:.2f}ms" if trace.duration_ms else "Duration: N/A")
+        lines.append(
+            f"Duration: {trace.duration_ms:.2f}ms" if trace.duration_ms else "Duration: N/A"
+        )
 
         lines.append("\nEvent Breakdown:")
         for event_type, count in sorted(event_counts.items()):
@@ -749,7 +772,7 @@ class TraceVisualizer:
                 )
 
         # Render each step
-        for step_id, (end_time, duration, name) in step_ends.items():
+        for step_id, (_end_time, duration, name) in step_ends.items():
             if step_id not in step_starts:
                 continue
 
@@ -772,11 +795,12 @@ class PromptFlowAnalyzer:
 
     def __init__(self):
         """Initialize analyzer."""
-        self._patterns: List[Tuple[str, Callable[[ExecutionTrace], bool], str]] = []
+        self._patterns: list[tuple[str, Callable[[ExecutionTrace], bool], str]] = []
         self._setup_default_patterns()
 
     def _setup_default_patterns(self) -> None:
         """Set up default analysis patterns."""
+
         # Empty response pattern
         def check_empty_response(trace: ExecutionTrace) -> bool:
             for event in trace.get_events_by_type(TraceEventType.RESPONSE_RECEIVED):
@@ -784,11 +808,13 @@ class PromptFlowAnalyzer:
                     return True
             return False
 
-        self._patterns.append((
-            "empty_response",
-            check_empty_response,
-            "Empty response received - check prompt clarity",
-        ))
+        self._patterns.append(
+            (
+                "empty_response",
+                check_empty_response,
+                "Empty response received - check prompt clarity",
+            )
+        )
 
         # High latency pattern
         def check_high_latency(trace: ExecutionTrace) -> bool:
@@ -797,21 +823,25 @@ class PromptFlowAnalyzer:
                     return True
             return False
 
-        self._patterns.append((
-            "high_latency",
-            check_high_latency,
-            "High latency detected - consider timeout handling",
-        ))
+        self._patterns.append(
+            (
+                "high_latency",
+                check_high_latency,
+                "High latency detected - consider timeout handling",
+            )
+        )
 
         # Multiple errors pattern
         def check_multiple_errors(trace: ExecutionTrace) -> bool:
             return len(trace.get_events_by_type(TraceEventType.ERROR_OCCURRED)) > 2
 
-        self._patterns.append((
-            "multiple_errors",
-            check_multiple_errors,
-            "Multiple errors in trace - review error handling",
-        ))
+        self._patterns.append(
+            (
+                "multiple_errors",
+                check_multiple_errors,
+                "Multiple errors in trace - review error handling",
+            )
+        )
 
     def add_pattern(
         self,
@@ -822,23 +852,25 @@ class PromptFlowAnalyzer:
         """Add a custom analysis pattern."""
         self._patterns.append((name, check, suggestion))
 
-    def analyze(self, trace: ExecutionTrace) -> List[Dict[str, str]]:
+    def analyze(self, trace: ExecutionTrace) -> list[dict[str, str]]:
         """Analyze trace for patterns."""
         findings = []
 
         for name, check, suggestion in self._patterns:
             try:
                 if check(trace):
-                    findings.append({
-                        "pattern": name,
-                        "suggestion": suggestion,
-                    })
+                    findings.append(
+                        {
+                            "pattern": name,
+                            "suggestion": suggestion,
+                        }
+                    )
             except Exception:
                 pass  # Skip failing patterns
 
         return findings
 
-    def get_bottlenecks(self, trace: ExecutionTrace) -> List[Dict[str, Any]]:
+    def get_bottlenecks(self, trace: ExecutionTrace) -> list[dict[str, Any]]:
         """Identify bottlenecks in the trace."""
         bottlenecks = []
 
@@ -857,12 +889,14 @@ class PromptFlowAnalyzer:
         # Find steps significantly slower than average
         for event in step_events:
             if event.duration_ms and event.duration_ms > avg_duration * 2:
-                bottlenecks.append({
-                    "step_name": event.step_name,
-                    "step_id": event.step_id,
-                    "duration_ms": event.duration_ms,
-                    "slowdown_factor": event.duration_ms / avg_duration,
-                })
+                bottlenecks.append(
+                    {
+                        "step_name": event.step_name,
+                        "step_id": event.step_id,
+                        "duration_ms": event.duration_ms,
+                        "slowdown_factor": event.duration_ms / avg_duration,
+                    }
+                )
 
         return sorted(bottlenecks, key=lambda x: -x["duration_ms"])
 
@@ -870,10 +904,11 @@ class PromptFlowAnalyzer:
 @dataclass
 class DebugSession:
     """An interactive debug session."""
+
     session_id: str
     debugger: PromptDebugger
-    traces: List[ExecutionTrace] = field(default_factory=list)
-    notes: List[str] = field(default_factory=list)
+    traces: list[ExecutionTrace] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
 
     def add_trace(self, trace: ExecutionTrace) -> None:
@@ -884,11 +919,11 @@ class DebugSession:
         """Add a note to the session."""
         self.notes.append(f"[{datetime.now().isoformat()}] {note}")
 
-    def get_all_issues(self) -> List[DebugIssue]:
+    def get_all_issues(self) -> list[DebugIssue]:
         """Get all issues from all traces."""
         return self.debugger.get_issues()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "session_id": self.session_id,
@@ -906,7 +941,7 @@ class TraceComparator:
         self,
         trace1: ExecutionTrace,
         trace2: ExecutionTrace,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compare two traces."""
         comparison = {
             "duration_diff_ms": None,
@@ -944,8 +979,14 @@ class TraceComparator:
             comparison["step_comparisons"].append(step_comp)
 
         # Compare errors
-        errors1 = {e.data.get("error", ""): e for e in trace1.get_events_by_type(TraceEventType.ERROR_OCCURRED)}
-        errors2 = {e.data.get("error", ""): e for e in trace2.get_events_by_type(TraceEventType.ERROR_OCCURRED)}
+        errors1 = {
+            e.data.get("error", ""): e
+            for e in trace1.get_events_by_type(TraceEventType.ERROR_OCCURRED)
+        }
+        errors2 = {
+            e.data.get("error", ""): e
+            for e in trace2.get_events_by_type(TraceEventType.ERROR_OCCURRED)
+        }
 
         comparison["new_errors_in_trace2"] = list(set(errors2.keys()) - set(errors1.keys()))
         comparison["resolved_errors"] = list(set(errors1.keys()) - set(errors2.keys()))
@@ -990,7 +1031,9 @@ class TraceExporter:
         for event in trace.events:
             elapsed = (event.timestamp - trace.start_time) * 1000
             details = ", ".join(f"{k}={str(v)[:30]}" for k, v in list(event.data.items())[:3])
-            lines.append(f"| {elapsed:.1f} | {event.event_type.value} | {event.step_name or '-'} | {details} |")
+            lines.append(
+                f"| {elapsed:.1f} | {event.event_type.value} | {event.step_name or '-'} | {details} |"
+            )
 
         return "\n".join(lines)
 
@@ -1000,16 +1043,18 @@ class TraceExporter:
 
         events = []
         for evt_data in data.get("events", []):
-            events.append(TraceEvent(
-                event_type=TraceEventType(evt_data["event_type"]),
-                timestamp=evt_data["timestamp"],
-                step_id=evt_data.get("step_id"),
-                step_name=evt_data.get("step_name"),
-                data=evt_data.get("data", {}),
-                duration_ms=evt_data.get("duration_ms"),
-                parent_event_id=evt_data.get("parent_event_id"),
-                event_id=evt_data.get("event_id", f"evt_{time.time_ns()}"),
-            ))
+            events.append(
+                TraceEvent(
+                    event_type=TraceEventType(evt_data["event_type"]),
+                    timestamp=evt_data["timestamp"],
+                    step_id=evt_data.get("step_id"),
+                    step_name=evt_data.get("step_name"),
+                    data=evt_data.get("data", {}),
+                    duration_ms=evt_data.get("duration_ms"),
+                    parent_event_id=evt_data.get("parent_event_id"),
+                    event_id=evt_data.get("event_id", f"evt_{time.time_ns()}"),
+                )
+            )
 
         return ExecutionTrace(
             trace_id=data["trace_id"],
@@ -1032,7 +1077,7 @@ class PromptInspector:
             (r"\{[^}]+\}", "Unsubstituted template variable detected"),
         ]
 
-    def inspect(self, prompt: str) -> Dict[str, Any]:
+    def inspect(self, prompt: str) -> dict[str, Any]:
         """Inspect a prompt for potential issues."""
         result = {
             "length": len(prompt),
@@ -1057,7 +1102,12 @@ class PromptInspector:
 
         # Check for instructions
         instruction_patterns = [
-            "you are", "you will", "your task", "please", "write", "generate",
+            "you are",
+            "you will",
+            "your task",
+            "please",
+            "write",
+            "generate",
         ]
         has_instruction = any(p in prompt.lower() for p in instruction_patterns)
         if not has_instruction and len(prompt) > 100:
@@ -1065,7 +1115,7 @@ class PromptInspector:
 
         return result
 
-    def diff_prompts(self, prompt1: str, prompt2: str) -> Dict[str, Any]:
+    def diff_prompts(self, prompt1: str, prompt2: str) -> dict[str, Any]:
         """Compare two prompts."""
         words1 = set(prompt1.lower().split())
         words2 = set(prompt2.lower().split())
@@ -1133,7 +1183,7 @@ def export_trace(
         return exporter.to_json(trace)
 
 
-def analyze_trace(trace: ExecutionTrace) -> Dict[str, Any]:
+def analyze_trace(trace: ExecutionTrace) -> dict[str, Any]:
     """Analyze a trace for issues and patterns."""
     analyzer = PromptFlowAnalyzer()
 
@@ -1143,7 +1193,7 @@ def analyze_trace(trace: ExecutionTrace) -> Dict[str, Any]:
     }
 
 
-def inspect_prompt(prompt: str) -> Dict[str, Any]:
+def inspect_prompt(prompt: str) -> dict[str, Any]:
     """Inspect a prompt for issues."""
     inspector = PromptInspector()
     return inspector.inspect(prompt)
@@ -1152,7 +1202,7 @@ def inspect_prompt(prompt: str) -> Dict[str, Any]:
 def compare_traces(
     trace1: ExecutionTrace,
     trace2: ExecutionTrace,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compare two execution traces."""
     comparator = TraceComparator()
     return comparator.compare(trace1, trace2)
@@ -1162,7 +1212,7 @@ def quick_debug(
     func: Callable,
     *args,
     **kwargs,
-) -> Tuple[Any, ExecutionTrace]:
+) -> tuple[Any, ExecutionTrace]:
     """Quick debug wrapper for a function."""
     debugger = create_debugger()
 

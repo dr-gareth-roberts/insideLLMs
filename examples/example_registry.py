@@ -7,16 +7,18 @@ This example demonstrates how to use the plugin registry system:
 4. Using decorator-based registration
 """
 
+from collections.abc import Iterator
+from typing import Any
+
 from insideLLMs import (
     Model,
     Probe,
+    ensure_builtins_registered,
     model_registry,
     probe_registry,
-    ensure_builtins_registered,
 )
 from insideLLMs.models.base import ChatMessage
 from insideLLMs.types import ProbeCategory
-from typing import Iterator, List, Any
 
 
 def list_available_items():
@@ -76,7 +78,7 @@ def register_custom_model():
         def generate(self, prompt: str, **kwargs: Any) -> str:
             return f"{self.prefix} {prompt}"
 
-        def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+        def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
             last = messages[-1]["content"] if messages else ""
             return f"{self.prefix} {last}"
 
@@ -140,7 +142,7 @@ def decorator_registration():
         def generate(self, prompt: str, **kwargs: Any) -> str:
             return prompt.upper()
 
-        def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+        def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
             return messages[-1]["content"].upper() if messages else ""
 
         def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:

@@ -8,16 +8,16 @@ affect model behavior and internal representations, including:
 - Representation space analysis
 """
 
+import math
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-import math
-import re
-from collections import defaultdict
+from typing import Any, Callable, Optional, Union
 
 
 class SteeringMethod(Enum):
     """Methods for steering model behavior."""
+
     PROMPT_PREFIX = "prompt_prefix"
     PROMPT_SUFFIX = "prompt_suffix"
     SYSTEM_MESSAGE = "system_message"
@@ -29,6 +29,7 @@ class SteeringMethod(Enum):
 
 class ActivationLayer(Enum):
     """Types of activation layers to analyze."""
+
     INPUT_EMBEDDING = "input_embedding"
     ATTENTION = "attention"
     MLP = "mlp"
@@ -39,6 +40,7 @@ class ActivationLayer(Enum):
 
 class RepresentationSpace(Enum):
     """Types of representation spaces."""
+
     TOKEN = "token"
     SEQUENCE = "sequence"
     SEMANTIC = "semantic"
@@ -47,6 +49,7 @@ class RepresentationSpace(Enum):
 
 class SteeringStrength(Enum):
     """Strength levels for steering interventions."""
+
     MINIMAL = "minimal"
     LIGHT = "light"
     MODERATE = "moderate"
@@ -57,15 +60,16 @@ class SteeringStrength(Enum):
 @dataclass
 class SteeringVector:
     """A vector that can be used to steer model behavior."""
+
     name: str
-    direction: List[float]
+    direction: list[float]
     magnitude: float
     source: str  # How the vector was derived
     target_behavior: str
     layer: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "direction": self.direction,
@@ -77,7 +81,7 @@ class SteeringVector:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SteeringVector":
+    def from_dict(cls, data: dict[str, Any]) -> "SteeringVector":
         return cls(
             name=data["name"],
             direction=data["direction"],
@@ -92,14 +96,15 @@ class SteeringVector:
 @dataclass
 class ActivationPattern:
     """Pattern of activations extracted from model inference."""
+
     prompt: str
     layer: str
-    activations: List[float]
-    token_positions: List[int]
-    attention_weights: Optional[List[List[float]]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    activations: list[float]
+    token_positions: list[int]
+    attention_weights: Optional[list[list[float]]] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "prompt": self.prompt,
             "layer": self.layer,
@@ -128,17 +133,18 @@ class ActivationPattern:
 @dataclass
 class SteeringExperiment:
     """Results from a steering experiment."""
+
     original_prompt: str
     steering_method: SteeringMethod
-    steering_config: Dict[str, Any]
+    steering_config: dict[str, Any]
     original_output: str
     steered_output: str
     behavioral_shift: float  # 0-1 measure of how much behavior changed
     direction_alignment: float  # How well the shift aligned with intended direction
-    side_effects: List[str]  # Unintended behavioral changes
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    side_effects: list[str]  # Unintended behavioral changes
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "original_prompt": self.original_prompt,
             "steering_method": self.steering_method.value,
@@ -155,12 +161,13 @@ class SteeringExperiment:
 @dataclass
 class ContrastPair:
     """A pair of prompts designed to elicit contrasting behaviors."""
+
     positive_prompt: str
     negative_prompt: str
     target_dimension: str  # e.g., "formality", "helpfulness", "verbosity"
     expected_difference: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "positive_prompt": self.positive_prompt,
             "negative_prompt": self.negative_prompt,
@@ -172,20 +179,20 @@ class ContrastPair:
 @dataclass
 class SteeringReport:
     """Comprehensive report on steering analysis."""
-    experiments: List[SteeringExperiment]
-    vectors_extracted: List[SteeringVector]
-    effective_methods: List[Tuple[SteeringMethod, float]]  # Method and effectiveness
-    behavioral_dimensions: Dict[str, float]  # Dimension name -> controllability
-    recommendations: List[str]
-    metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    experiments: list[SteeringExperiment]
+    vectors_extracted: list[SteeringVector]
+    effective_methods: list[tuple[SteeringMethod, float]]  # Method and effectiveness
+    behavioral_dimensions: dict[str, float]  # Dimension name -> controllability
+    recommendations: list[str]
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "experiments": [e.to_dict() for e in self.experiments],
             "vectors_extracted": [v.to_dict() for v in self.vectors_extracted],
             "effective_methods": [
-                {"method": m.value, "effectiveness": e}
-                for m, e in self.effective_methods
+                {"method": m.value, "effectiveness": e} for m, e in self.effective_methods
             ],
             "behavioral_dimensions": self.behavioral_dimensions,
             "recommendations": self.recommendations,
@@ -205,12 +212,12 @@ class SteeringVectorExtractor:
 
     def __init__(self, normalize: bool = True):
         self.normalize = normalize
-        self.extracted_vectors: List[SteeringVector] = []
+        self.extracted_vectors: list[SteeringVector] = []
 
     def extract_from_contrast_pair(
         self,
-        positive_activations: List[float],
-        negative_activations: List[float],
+        positive_activations: list[float],
+        negative_activations: list[float],
         name: str,
         target_behavior: str,
         layer: Optional[str] = None,
@@ -220,12 +227,10 @@ class SteeringVectorExtractor:
             raise ValueError("Activation lists must have the same length")
 
         # Compute difference vector
-        direction = [
-            p - n for p, n in zip(positive_activations, negative_activations)
-        ]
+        direction = [p - n for p, n in zip(positive_activations, negative_activations)]
 
         # Calculate magnitude
-        magnitude = math.sqrt(sum(x ** 2 for x in direction))
+        magnitude = math.sqrt(sum(x**2 for x in direction))
 
         # Normalize if requested
         if self.normalize and magnitude > 0:
@@ -245,8 +250,8 @@ class SteeringVectorExtractor:
 
     def extract_from_examples(
         self,
-        positive_examples: List[List[float]],
-        negative_examples: List[List[float]],
+        positive_examples: list[list[float]],
+        negative_examples: list[list[float]],
         name: str,
         target_behavior: str,
         layer: Optional[str] = None,
@@ -258,24 +263,20 @@ class SteeringVectorExtractor:
         # Average positive activations
         dim = len(positive_examples[0])
         pos_mean = [
-            sum(ex[i] for ex in positive_examples) / len(positive_examples)
-            for i in range(dim)
+            sum(ex[i] for ex in positive_examples) / len(positive_examples) for i in range(dim)
         ]
 
         # Average negative activations
         neg_mean = [
-            sum(ex[i] for ex in negative_examples) / len(negative_examples)
-            for i in range(dim)
+            sum(ex[i] for ex in negative_examples) / len(negative_examples) for i in range(dim)
         ]
 
-        return self.extract_from_contrast_pair(
-            pos_mean, neg_mean, name, target_behavior, layer
-        )
+        return self.extract_from_contrast_pair(pos_mean, neg_mean, name, target_behavior, layer)
 
     def combine_vectors(
         self,
-        vectors: List[SteeringVector],
-        weights: Optional[List[float]] = None,
+        vectors: list[SteeringVector],
+        weights: Optional[list[float]] = None,
         name: str = "combined",
     ) -> SteeringVector:
         """Combine multiple steering vectors with optional weights."""
@@ -301,7 +302,7 @@ class SteeringVectorExtractor:
                 combined[i] += w * v.direction[i]
 
         # Calculate new magnitude
-        magnitude = math.sqrt(sum(x ** 2 for x in combined))
+        magnitude = math.sqrt(sum(x**2 for x in combined))
 
         # Normalize if needed
         if self.normalize and magnitude > 0:
@@ -321,7 +322,7 @@ class PromptSteerer:
     """Apply steering through prompt manipulation."""
 
     def __init__(self):
-        self.steering_templates: Dict[str, str] = {
+        self.steering_templates: dict[str, str] = {
             "formal": "Please respond in a formal, professional tone.",
             "casual": "Feel free to be casual and friendly in your response.",
             "concise": "Please be brief and to the point.",
@@ -352,14 +353,14 @@ class PromptSteerer:
         self,
         prompt: str,
         system_message: str,
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Return system message and user prompt separately."""
         return system_message, prompt
 
     def steer_with_few_shot(
         self,
         prompt: str,
-        examples: List[Tuple[str, str]],  # List of (input, output) pairs
+        examples: list[tuple[str, str]],  # List of (input, output) pairs
     ) -> str:
         """Steer using few-shot examples."""
         few_shot_text = ""
@@ -372,8 +373,8 @@ class PromptSteerer:
         self,
         prompt: str,
         method: SteeringMethod,
-        config: Dict[str, Any],
-    ) -> Union[str, Tuple[str, str]]:
+        config: dict[str, Any],
+    ) -> Union[str, tuple[str, str]]:
         """Apply steering based on method and configuration."""
         if method == SteeringMethod.PROMPT_PREFIX:
             instruction = config.get("instruction", "")
@@ -437,15 +438,15 @@ class ActivationAnalyzer:
     """Analyze activation patterns from model inference."""
 
     def __init__(self):
-        self.patterns: List[ActivationPattern] = []
+        self.patterns: list[ActivationPattern] = []
 
     def record_pattern(
         self,
         prompt: str,
         layer: str,
-        activations: List[float],
-        token_positions: Optional[List[int]] = None,
-        attention_weights: Optional[List[List[float]]] = None,
+        activations: list[float],
+        token_positions: Optional[list[int]] = None,
+        attention_weights: Optional[list[list[float]]] = None,
     ) -> ActivationPattern:
         """Record an activation pattern."""
         if token_positions is None:
@@ -466,7 +467,7 @@ class ActivationAnalyzer:
         self,
         pattern1: ActivationPattern,
         pattern2: ActivationPattern,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compare two activation patterns."""
         # Ensure same dimension
         min_len = min(len(pattern1.activations), len(pattern2.activations))
@@ -475,8 +476,8 @@ class ActivationAnalyzer:
 
         # Cosine similarity
         dot_product = sum(a * b for a, b in zip(act1, act2))
-        norm1 = math.sqrt(sum(a ** 2 for a in act1))
-        norm2 = math.sqrt(sum(b ** 2 for b in act2))
+        norm1 = math.sqrt(sum(a**2 for a in act1))
+        norm2 = math.sqrt(sum(b**2 for b in act2))
 
         cosine_sim = dot_product / (norm1 * norm2) if norm1 > 0 and norm2 > 0 else 0.0
 
@@ -493,7 +494,7 @@ class ActivationAnalyzer:
             "correlation": self._pearson_correlation(act1, act2),
         }
 
-    def _pearson_correlation(self, x: List[float], y: List[float]) -> float:
+    def _pearson_correlation(self, x: list[float], y: list[float]) -> float:
         """Calculate Pearson correlation coefficient."""
         if len(x) < 2:
             return 0.0
@@ -515,7 +516,7 @@ class ActivationAnalyzer:
         self,
         pattern: ActivationPattern,
         threshold: float = 2.0,  # Standard deviations above mean
-    ) -> List[int]:
+    ) -> list[int]:
         """Find positions with unusually high activations."""
         if not pattern.activations:
             return []
@@ -535,9 +536,9 @@ class ActivationAnalyzer:
 
     def cluster_patterns(
         self,
-        patterns: List[ActivationPattern],
+        patterns: list[ActivationPattern],
         n_clusters: int = 3,
-    ) -> Dict[int, List[ActivationPattern]]:
+    ) -> dict[int, list[ActivationPattern]]:
         """Simple k-means-like clustering of patterns."""
         if not patterns or n_clusters <= 0:
             return {}
@@ -553,7 +554,7 @@ class ActivationAnalyzer:
             while len(c) < max_len:
                 c.append(0.0)
 
-        clusters: Dict[int, List[ActivationPattern]] = defaultdict(list)
+        clusters: dict[int, list[ActivationPattern]] = defaultdict(list)
 
         # Assign patterns to nearest centroid
         for pattern in patterns:
@@ -580,7 +581,7 @@ class BehavioralShiftMeasurer:
     """Measure behavioral shifts from steering interventions."""
 
     def __init__(self):
-        self.dimension_keywords: Dict[str, Dict[str, List[str]]] = {
+        self.dimension_keywords: dict[str, dict[str, list[str]]] = {
             "formality": {
                 "formal": ["therefore", "thus", "consequently", "moreover", "furthermore"],
                 "informal": ["yeah", "gonna", "kinda", "stuff", "like"],
@@ -610,9 +611,7 @@ class BehavioralShiftMeasurer:
             return self._measure_length_shift(original_output, steered_output)
 
         elif dimension in self.dimension_keywords:
-            return self._measure_keyword_shift(
-                original_output, steered_output, dimension
-            )
+            return self._measure_keyword_shift(original_output, steered_output, dimension)
 
         else:
             # Generic similarity-based measurement
@@ -658,7 +657,9 @@ class BehavioralShiftMeasurer:
 
         # Calculate shift
         orig_score = (orig_pos - orig_neg) / max(1, len(positive_keys) + len(negative_keys))
-        steered_score = (steered_pos - steered_neg) / max(1, len(positive_keys) + len(negative_keys))
+        steered_score = (steered_pos - steered_neg) / max(
+            1, len(positive_keys) + len(negative_keys)
+        )
 
         return steered_score - orig_score
 
@@ -688,7 +689,7 @@ class BehavioralShiftMeasurer:
         original_output: str,
         steered_output: str,
         target_dimension: str,
-    ) -> List[str]:
+    ) -> list[str]:
         """Detect unintended side effects of steering."""
         side_effects = []
 
@@ -699,9 +700,7 @@ class BehavioralShiftMeasurer:
 
             shift = abs(self.measure_shift(original_output, steered_output, dimension))
             if shift > 0.3:  # Threshold for significant side effect
-                side_effects.append(
-                    f"Unintended shift in {dimension}: {shift:.2f}"
-                )
+                side_effects.append(f"Unintended shift in {dimension}: {shift:.2f}")
 
         # Check for dramatic length changes
         length_shift = self._measure_length_shift(original_output, steered_output)
@@ -721,7 +720,7 @@ class SteeringExperimenter:
         self.model_fn = model_fn
         self.steerer = PromptSteerer()
         self.measurer = BehavioralShiftMeasurer()
-        self.experiments: List[SteeringExperiment] = []
+        self.experiments: list[SteeringExperiment] = []
 
     def set_model(self, model_fn: Callable[[str], str]) -> None:
         """Set the model function for experiments."""
@@ -731,7 +730,7 @@ class SteeringExperimenter:
         self,
         prompt: str,
         method: SteeringMethod,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         target_dimension: str = "generic",
     ) -> SteeringExperiment:
         """Run a single steering experiment."""
@@ -784,8 +783,8 @@ class SteeringExperimenter:
         self,
         prompt: str,
         target_dimension: str,
-        methods: Optional[List[SteeringMethod]] = None,
-    ) -> List[SteeringExperiment]:
+        methods: Optional[list[SteeringMethod]] = None,
+    ) -> list[SteeringExperiment]:
         """Compare different steering methods on the same prompt."""
         if methods is None:
             methods = [
@@ -813,25 +812,23 @@ class SteeringExperimenter:
             else:
                 config = {"instruction": instruction}
 
-            experiment = self.run_experiment(
-                prompt, method, config, target_dimension
-            )
+            experiment = self.run_experiment(prompt, method, config, target_dimension)
             results.append(experiment)
 
         return results
 
     def analyze_steerability(
         self,
-        prompts: List[str],
-        dimensions: Optional[List[str]] = None,
+        prompts: list[str],
+        dimensions: Optional[list[str]] = None,
     ) -> SteeringReport:
         """Analyze overall model steerability."""
         if dimensions is None:
             dimensions = ["formality", "length", "sentiment", "confidence"]
 
         all_experiments = []
-        method_scores: Dict[SteeringMethod, List[float]] = defaultdict(list)
-        dimension_scores: Dict[str, List[float]] = defaultdict(list)
+        method_scores: dict[SteeringMethod, list[float]] = defaultdict(list)
+        dimension_scores: dict[str, list[float]] = defaultdict(list)
 
         for prompt in prompts:
             for dimension in dimensions:
@@ -870,10 +867,10 @@ class SteeringExperimenter:
 
     def _generate_recommendations(
         self,
-        effective_methods: List[Tuple[SteeringMethod, float]],
-        behavioral_dimensions: Dict[str, float],
-        experiments: List[SteeringExperiment],
-    ) -> List[str]:
+        effective_methods: list[tuple[SteeringMethod, float]],
+        behavioral_dimensions: dict[str, float],
+        experiments: list[SteeringExperiment],
+    ) -> list[str]:
         """Generate recommendations based on analysis."""
         recommendations = []
 
@@ -881,21 +878,17 @@ class SteeringExperimenter:
         if effective_methods:
             best_method, best_score = effective_methods[0]
             recommendations.append(
-                f"Most effective steering method: {best_method.value} "
-                f"(avg shift: {best_score:.2f})"
+                f"Most effective steering method: {best_method.value} (avg shift: {best_score:.2f})"
             )
 
         # Most/least controllable dimensions
         if behavioral_dimensions:
-            sorted_dims = sorted(
-                behavioral_dimensions.items(), key=lambda x: x[1], reverse=True
-            )
+            sorted_dims = sorted(behavioral_dimensions.items(), key=lambda x: x[1], reverse=True)
             most_controllable = sorted_dims[0]
             least_controllable = sorted_dims[-1]
 
             recommendations.append(
-                f"Most controllable dimension: {most_controllable[0]} "
-                f"({most_controllable[1]:.2f})"
+                f"Most controllable dimension: {most_controllable[0]} ({most_controllable[1]:.2f})"
             )
             recommendations.append(
                 f"Least controllable dimension: {least_controllable[0]} "
@@ -919,20 +912,20 @@ class RepresentationAnalyzer:
     """Analyze model representation spaces."""
 
     def __init__(self):
-        self.representations: Dict[str, List[float]] = {}
+        self.representations: dict[str, list[float]] = {}
 
     def store_representation(
         self,
         key: str,
-        representation: List[float],
+        representation: list[float],
     ) -> None:
         """Store a representation for later analysis."""
         self.representations[key] = representation
 
     def compute_similarity_matrix(
         self,
-        keys: Optional[List[str]] = None,
-    ) -> List[List[float]]:
+        keys: Optional[list[str]] = None,
+    ) -> list[list[float]]:
         """Compute pairwise similarity matrix."""
         if keys is None:
             keys = list(self.representations.keys())
@@ -956,8 +949,8 @@ class RepresentationAnalyzer:
 
     def _cosine_similarity(
         self,
-        vec1: List[float],
-        vec2: List[float],
+        vec1: list[float],
+        vec2: list[float],
     ) -> float:
         """Compute cosine similarity between two vectors."""
         if not vec1 or not vec2:
@@ -968,8 +961,8 @@ class RepresentationAnalyzer:
         v2 = vec2[:min_len]
 
         dot = sum(a * b for a, b in zip(v1, v2))
-        norm1 = math.sqrt(sum(a ** 2 for a in v1))
-        norm2 = math.sqrt(sum(b ** 2 for b in v2))
+        norm1 = math.sqrt(sum(a**2 for a in v1))
+        norm2 = math.sqrt(sum(b**2 for b in v2))
 
         return dot / (norm1 * norm2) if norm1 > 0 and norm2 > 0 else 0.0
 
@@ -977,7 +970,7 @@ class RepresentationAnalyzer:
         self,
         query_key: str,
         top_k: int = 5,
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """Find most similar representations to a query."""
         if query_key not in self.representations:
             return []
@@ -996,8 +989,8 @@ class RepresentationAnalyzer:
 
     def project_to_2d(
         self,
-        keys: Optional[List[str]] = None,
-    ) -> List[Tuple[str, float, float]]:
+        keys: Optional[list[str]] = None,
+    ) -> list[tuple[str, float, float]]:
         """Simple 2D projection using first two principal directions."""
         if keys is None:
             keys = list(self.representations.keys())
@@ -1023,9 +1016,10 @@ class RepresentationAnalyzer:
 
 # Convenience functions
 
+
 def extract_steering_vector(
-    positive_activations: List[float],
-    negative_activations: List[float],
+    positive_activations: list[float],
+    negative_activations: list[float],
     name: str,
     target_behavior: str,
     normalize: bool = True,
@@ -1045,16 +1039,14 @@ def create_contrast_pair(
 ) -> ContrastPair:
     """Create a contrast pair for steering analysis."""
     steerer = PromptSteerer()
-    return steerer.create_contrast_pair(
-        base_prompt, dimension, positive_style, negative_style
-    )
+    return steerer.create_contrast_pair(base_prompt, dimension, positive_style, negative_style)
 
 
 def apply_prompt_steering(
     prompt: str,
     method: SteeringMethod,
-    config: Dict[str, Any],
-) -> Union[str, Tuple[str, str]]:
+    config: dict[str, Any],
+) -> Union[str, tuple[str, str]]:
     """Apply prompt-based steering."""
     steerer = PromptSteerer()
     return steerer.apply_steering(prompt, method, config)
@@ -1071,8 +1063,8 @@ def measure_behavioral_shift(
 
 
 def analyze_activation_patterns(
-    patterns: List[ActivationPattern],
-) -> Dict[str, Any]:
+    patterns: list[ActivationPattern],
+) -> dict[str, Any]:
     """Analyze a list of activation patterns."""
     analyzer = ActivationAnalyzer()
 
@@ -1096,9 +1088,11 @@ def analyze_activation_patterns(
         "num_patterns": len(patterns),
         "mean_activation_avg": sum(mean_activations) / len(mean_activations),
         "mean_activation_std": math.sqrt(
-            sum((m - sum(mean_activations) / len(mean_activations)) ** 2
-                for m in mean_activations) / len(mean_activations)
-        ) if len(mean_activations) > 1 else 0.0,
+            sum((m - sum(mean_activations) / len(mean_activations)) ** 2 for m in mean_activations)
+            / len(mean_activations)
+        )
+        if len(mean_activations) > 1
+        else 0.0,
         "variance_avg": sum(variances) / len(variances),
         "num_clusters": len(clusters),
         "salient_positions": list(set(all_salient)),
@@ -1107,8 +1101,8 @@ def analyze_activation_patterns(
 
 def quick_steering_analysis(
     model_fn: Callable[[str], str],
-    test_prompts: List[str],
-    dimensions: Optional[List[str]] = None,
+    test_prompts: list[str],
+    dimensions: Optional[list[str]] = None,
 ) -> SteeringReport:
     """Quick analysis of model steerability."""
     experimenter = SteeringExperimenter(model_fn=model_fn)

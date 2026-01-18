@@ -5,8 +5,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-import pytest
-
 from insideLLMs.results import (
     _escape_markdown_cell,
     _format_number,
@@ -18,7 +16,6 @@ from insideLLMs.results import (
     results_to_csv,
     results_to_markdown,
     save_results_csv,
-    save_results_html,
     save_results_json,
     save_results_markdown,
 )
@@ -246,9 +243,7 @@ class TestComparisonToMarkdown:
                 model_info=ModelInfo(name="Model1", provider="P1", model_id="m1"),
                 probe_name="probe1",
                 probe_category=ProbeCategory.LOGIC,
-                results=[
-                    ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS)
-                ],
+                results=[ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS)],
                 score=ProbeScore(accuracy=0.9),
             ),
             ExperimentResult(
@@ -256,9 +251,7 @@ class TestComparisonToMarkdown:
                 model_info=ModelInfo(name="Model2", provider="P2", model_id="m2"),
                 probe_name="probe1",
                 probe_category=ProbeCategory.LOGIC,
-                results=[
-                    ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS)
-                ],
+                results=[ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS)],
                 score=ProbeScore(accuracy=0.8),
             ),
         ]

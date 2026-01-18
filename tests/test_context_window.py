@@ -1,37 +1,32 @@
 """Tests for context window management module."""
 
-import pytest
-from datetime import datetime, timedelta
-
 from insideLLMs.context_window import (
-    # Enums
-    TruncationStrategy,
-    ContentType,
     CompressionMethod,
-    PriorityLevel,
-    # Dataclasses
-    TokenBudget,
-    ContextBlock,
-    TruncationResult,
     CompressionResult,
-    ContextWindowState,
-    # Classes
-    TokenCounter,
-    ContextTruncator,
+    ContentType,
+    ContextBlock,
     ContextCompressor,
+    ContextTruncator,
     ContextWindow,
     ConversationManager,
+    PriorityLevel,
     SlidingWindowManager,
+    # Dataclasses
+    TokenBudget,
+    TokenCounter,
+    TruncationResult,
+    # Enums
+    TruncationStrategy,
+    compress_context,
+    create_budget,
+    create_context_window,
+    create_conversation_manager,
+    create_sliding_window,
+    estimate_context_tokens,
     # Functions
     estimate_tokens,
     find_semantic_boundaries,
-    create_context_window,
-    estimate_context_tokens,
     truncate_context,
-    compress_context,
-    create_budget,
-    create_conversation_manager,
-    create_sliding_window,
 )
 
 
@@ -320,10 +315,7 @@ class TestContextTruncator:
     def test_truncator_semantic_strategy(self):
         truncator = ContextTruncator()
         blocks = [
-            ContextBlock(
-                "First sentence. Second sentence. Third sentence.",
-                ContentType.USER
-            ),
+            ContextBlock("First sentence. Second sentence. Third sentence.", ContentType.USER),
         ]
 
         result = truncator.truncate(blocks, 15, TruncationStrategy.SEMANTIC)
@@ -359,9 +351,7 @@ class TestContextCompressor:
         compressor = ContextCompressor()
         blocks = [ContextBlock("Test content", ContentType.USER)]
 
-        result_blocks, result = compressor.compress(
-            blocks, method=CompressionMethod.NONE
-        )
+        result_blocks, result = compressor.compress(blocks, method=CompressionMethod.NONE)
 
         assert result.compression_ratio == 1.0
         assert result.blocks_compressed == 0
@@ -706,11 +696,7 @@ class TestConversationManager:
 
     def test_conversation_manager_with_metadata(self):
         manager = ConversationManager()
-        turn = manager.add_turn(
-            "user",
-            "Hello",
-            metadata={"source": "web"}
-        )
+        turn = manager.add_turn("user", "Hello", metadata={"source": "web"})
 
         assert turn["metadata"]["source"] == "web"
 
@@ -808,9 +794,7 @@ class TestConvenienceFunctions:
         assert window.max_tokens == 50000
 
     def test_create_context_window_with_strategy(self):
-        window = create_context_window(
-            strategy=TruncationStrategy.SEMANTIC
-        )
+        window = create_context_window(strategy=TruncationStrategy.SEMANTIC)
         assert window.default_strategy == TruncationStrategy.SEMANTIC
 
     def test_estimate_context_tokens(self):

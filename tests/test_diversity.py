@@ -1,6 +1,5 @@
 """Tests for diversity and creativity metrics."""
 
-import pytest
 from insideLLMs.diversity import (
     CreativityAnalyzer,
     CreativityDimension,
@@ -244,6 +243,7 @@ class TestLexicalDiversityAnalyzer:
 
     def test_custom_tokenizer(self):
         """Test with custom tokenizer."""
+
         def char_tokenize(text: str) -> list:
             return list(text.replace(" ", ""))
 
@@ -387,6 +387,7 @@ class TestOutputVariabilityAnalyzer:
 
     def test_custom_similarity(self):
         """Test with custom similarity function."""
+
         def always_half(a: str, b: str) -> float:
             return 0.5
 

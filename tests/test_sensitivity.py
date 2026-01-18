@@ -1,33 +1,29 @@
 """Tests for prompt sensitivity analysis module."""
 
-import pytest
-from typing import Dict
-
 from insideLLMs.sensitivity import (
-    # Enums
-    PerturbationType,
-    SensitivityLevel,
-    OutputChangeType,
-    # Dataclasses
-    Perturbation,
-    OutputComparison,
-    SensitivityResult,
-    SensitivityProfile,
     ComparativeSensitivity,
-    # Classes
-    PromptPerturbator,
-    OutputComparator,
-    SensitivityAnalyzer,
     ComparativeSensitivityAnalyzer,
     FormatSensitivityTester,
+    OutputChangeType,
+    OutputComparator,
+    OutputComparison,
+    # Dataclasses
+    Perturbation,
+    # Enums
+    PerturbationType,
+    # Classes
+    PromptPerturbator,
+    SensitivityAnalyzer,
+    SensitivityLevel,
+    SensitivityProfile,
+    SensitivityResult,
     # Functions
     analyze_prompt_sensitivity,
+    check_format_sensitivity,
     compare_prompt_sensitivity,
     generate_perturbations,
     quick_sensitivity_check,
-    check_format_sensitivity,
 )
-
 
 # ============================================================================
 # Enum Tests
@@ -262,8 +258,10 @@ class TestPromptPerturbator:
         # Should find "explain" -> synonym
         assert len(perturbations) >= 1
         if perturbations:
-            assert "explain" not in perturbations[0].perturbed.lower() or \
-                   perturbations[0].perturbed != perturbations[0].original
+            assert (
+                "explain" not in perturbations[0].perturbed.lower()
+                or perturbations[0].perturbed != perturbations[0].original
+            )
 
     def test_typo_perturbation(self):
         """Test typo introduction."""
@@ -397,6 +395,7 @@ class TestOutputComparator:
 
     def test_custom_similarity_function(self):
         """Test with custom similarity function."""
+
         def always_half(t1: str, t2: str) -> float:
             return 0.5
 
@@ -415,6 +414,7 @@ class TestSensitivityAnalyzer:
 
     def test_analyze_robust_prompt(self):
         """Test analyzing a robust prompt."""
+
         # Mock response that ignores case changes
         def get_response(prompt: str) -> str:
             return "The answer is always the same"
@@ -464,6 +464,7 @@ class TestSensitivityAnalyzer:
 
     def test_custom_robustness_threshold(self):
         """Test custom robustness threshold."""
+
         def get_response(prompt: str) -> str:
             return f"Response to: {prompt[:10]}"
 
@@ -480,6 +481,7 @@ class TestSensitivityAnalyzer:
 
     def test_recommendations_generated(self):
         """Test that recommendations are generated."""
+
         def get_response(prompt: str) -> str:
             return "Standard response"
 
@@ -495,6 +497,7 @@ class TestSensitivityAnalyzer:
 
     def test_by_perturbation_type_scores(self):
         """Test scores by perturbation type."""
+
         def get_response(prompt: str) -> str:
             return "Response"
 
@@ -519,6 +522,7 @@ class TestComparativeSensitivityAnalyzer:
 
     def test_compare_prompts(self):
         """Test comparing multiple prompts."""
+
         def get_response(prompt: str) -> str:
             return f"Response: {len(prompt)}"
 
@@ -535,6 +539,7 @@ class TestComparativeSensitivityAnalyzer:
 
     def test_compare_models(self):
         """Test comparing multiple models."""
+
         def model_a(prompt: str) -> str:
             return "Model A always says this"
 
@@ -553,6 +558,7 @@ class TestComparativeSensitivityAnalyzer:
 
     def test_ranking_order(self):
         """Test that ranking is ordered correctly."""
+
         def get_response(prompt: str) -> str:
             return "Same"
 
@@ -578,6 +584,7 @@ class TestFormatSensitivityTester:
 
     def test_format_sensitivity(self):
         """Test format sensitivity testing."""
+
         def get_response(prompt: str) -> str:
             if "JSON" in prompt:
                 return '{"key": "value"}'
@@ -601,6 +608,7 @@ class TestFormatSensitivityTester:
 
     def test_format_detection(self):
         """Test format detection logic."""
+
         def get_response(prompt: str) -> str:
             if "JSON" in prompt:
                 return '{"result": 42}'
@@ -623,6 +631,7 @@ class TestConvenienceFunctions:
 
     def test_analyze_prompt_sensitivity(self):
         """Test analyze_prompt_sensitivity function."""
+
         def get_response(prompt: str) -> str:
             return "Response"
 
@@ -636,6 +645,7 @@ class TestConvenienceFunctions:
 
     def test_compare_prompt_sensitivity(self):
         """Test compare_prompt_sensitivity function."""
+
         def get_response(prompt: str) -> str:
             return "Response"
 
@@ -659,6 +669,7 @@ class TestConvenienceFunctions:
 
     def test_quick_sensitivity_check(self):
         """Test quick_sensitivity_check function."""
+
         def get_response(prompt: str) -> str:
             return "Quick response"
 
@@ -671,6 +682,7 @@ class TestConvenienceFunctions:
 
     def test_check_format_sensitivity(self):
         """Test check_format_sensitivity function."""
+
         def get_response(prompt: str) -> str:
             return "Response"
 
@@ -755,7 +767,7 @@ class TestIntegration:
     def test_full_sensitivity_workflow(self):
         """Test complete sensitivity analysis workflow."""
         # Setup mock model
-        responses: Dict[str, str] = {}
+        responses: dict[str, str] = {}
 
         def mock_model(prompt: str) -> str:
             if prompt not in responses:
@@ -765,7 +777,7 @@ class TestIntegration:
 
         # Generate perturbations
         prompt = "Explain the concept of machine learning"
-        perturbations = generate_perturbations(
+        generate_perturbations(
             prompt,
             [PerturbationType.CASE_CHANGE, PerturbationType.SYNONYM],
             n_variations=2,
@@ -787,6 +799,7 @@ class TestIntegration:
 
     def test_model_comparison_workflow(self):
         """Test comparing multiple models."""
+
         def consistent_model(prompt: str) -> str:
             return "Always the same response"
 
@@ -809,6 +822,7 @@ class TestIntegration:
 
     def test_serialization_roundtrip(self):
         """Test that all results can be serialized."""
+
         def get_response(prompt: str) -> str:
             return "Test response"
 
@@ -823,6 +837,7 @@ class TestIntegration:
 
         # Verify serializable
         import json
+
         json_str = json.dumps(d)
         assert isinstance(json_str, str)
 

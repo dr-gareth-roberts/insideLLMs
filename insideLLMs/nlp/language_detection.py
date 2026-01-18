@@ -12,8 +12,8 @@ def check_nltk():
 def detect_language_by_stopwords(text: str) -> str:
     """Detect language based on stopword frequency across a few common languages."""
     check_nltk()
-    from nltk.tokenize import word_tokenize
     from nltk.corpus import stopwords
+    from nltk.tokenize import word_tokenize
 
     languages = ["english", "spanish", "french", "german", "italian", "portuguese", "dutch"]
     language_codes = {
@@ -37,7 +37,7 @@ def detect_language_by_stopwords(text: str) -> str:
             current_stopwords = set(stopwords.words(lang))
             count = sum(1 for token in tokens if token in current_stopwords)
             language_scores[lang] = count / len(tokens)
-        except IOError:
+        except OSError:
             language_scores[lang] = 0
 
     if not language_scores or all(score == 0 for score in language_scores.values()):
@@ -69,7 +69,7 @@ def detect_language_by_char_ngrams(text: str) -> str:
     if len(text_cleaned) < 20:
         return "unknown"
 
-    trigrams = [text_cleaned[i:i + 3] for i in range(len(text_cleaned) - 2)]
+    trigrams = [text_cleaned[i : i + 3] for i in range(len(text_cleaned) - 2)]
     if not trigrams:
         return "unknown"
 

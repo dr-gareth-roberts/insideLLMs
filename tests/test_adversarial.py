@@ -1,7 +1,5 @@
 """Tests for adversarial testing and robustness analysis utilities."""
 
-import pytest
-
 from insideLLMs.adversarial import (
     AttackResult,
     AttackType,
@@ -543,6 +541,7 @@ class TestConvenienceFunctions:
 
     def test_assess_robustness(self):
         """Test assess_robustness function."""
+
         def model_fn(text):
             return "Response"
 
@@ -564,6 +563,7 @@ class TestConvenienceFunctions:
 
     def test_scan_vulnerabilities(self):
         """Test scan_vulnerabilities function."""
+
         def model_fn(text):
             return text
 

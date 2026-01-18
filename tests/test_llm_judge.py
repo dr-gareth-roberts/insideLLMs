@@ -1,22 +1,22 @@
 """Tests for LLM-as-a-Judge evaluation framework."""
 
 import json
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from insideLLMs.evaluation import (
-    JudgeCriterion,
-    JudgeResult,
-    JudgeModel,
-    JudgeEvaluator,
-    create_judge,
-    create_evaluator,
-    HELPFULNESS_CRITERIA,
     ACCURACY_CRITERIA,
-    SAFETY_CRITERIA,
     CODE_QUALITY_CRITERIA,
     DEFAULT_JUDGE_SYSTEM_PROMPT,
-    DEFAULT_JUDGE_TEMPLATE,
+    HELPFULNESS_CRITERIA,
+    SAFETY_CRITERIA,
+    JudgeCriterion,
+    JudgeEvaluator,
+    JudgeModel,
+    JudgeResult,
+    create_evaluator,
+    create_judge,
 )
 from insideLLMs.models import DummyModel
 
@@ -134,9 +134,7 @@ class TestJudgeModel:
     def test_initialization_custom(self):
         """Test JudgeModel initialization with custom parameters."""
         mock_model = MagicMock()
-        custom_criteria = [
-            JudgeCriterion(name="custom", description="Custom test")
-        ]
+        custom_criteria = [JudgeCriterion(name="custom", description="Custom test")]
         judge = JudgeModel(
             judge_model=mock_model,
             criteria=custom_criteria,
@@ -182,7 +180,7 @@ class TestJudgeModel:
         mock_model = MagicMock()
         judge = JudgeModel(judge_model=mock_model)
 
-        response = '''Here is my evaluation:
+        response = """Here is my evaluation:
 
 ```json
 {
@@ -193,7 +191,7 @@ class TestJudgeModel:
     "overall_score": 4
 }
 ```
-'''
+"""
         parsed = judge._parse_judge_response(response)
         assert "criteria_scores" in parsed
         assert parsed["criteria_scores"]["helpfulness"]["score"] == 4
@@ -252,15 +250,19 @@ class TestJudgeModel:
     def test_evaluate_with_chat_model(self):
         """Test evaluation using a model with chat support."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "criteria_scores": {
-                "helpfulness": {"score": 4, "reasoning": "Good"},
-                "completeness": {"score": 5, "reasoning": "Complete"},
-                "clarity": {"score": 4, "reasoning": "Clear"},
-            },
-            "overall_reasoning": "Good response overall",
-            "overall_score": 4.3
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_scores": {
+                        "helpfulness": {"score": 4, "reasoning": "Good"},
+                        "completeness": {"score": 5, "reasoning": "Complete"},
+                        "clarity": {"score": 4, "reasoning": "Clear"},
+                    },
+                    "overall_reasoning": "Good response overall",
+                    "overall_score": 4.3,
+                }
+            )
+        )
 
         judge = JudgeModel(judge_model=mock_model)
         result = judge.evaluate(
@@ -275,16 +277,20 @@ class TestJudgeModel:
 
     def test_evaluate_with_generate_model(self):
         """Test evaluation using a model without chat support."""
-        mock_model = MagicMock(spec=['generate'])
-        mock_model.generate = MagicMock(return_value=json.dumps({
-            "criteria_scores": {
-                "helpfulness": 4,
-                "completeness": 5,
-                "clarity": 4,
-            },
-            "overall_reasoning": "Good response",
-            "overall_score": 4.3
-        }))
+        mock_model = MagicMock(spec=["generate"])
+        mock_model.generate = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_scores": {
+                        "helpfulness": 4,
+                        "completeness": 5,
+                        "clarity": 4,
+                    },
+                    "overall_reasoning": "Good response",
+                    "overall_score": 4.3,
+                }
+            )
+        )
 
         judge = JudgeModel(judge_model=mock_model)
         result = judge.evaluate(
@@ -298,16 +304,19 @@ class TestJudgeModel:
     def test_evaluate_with_reference(self):
         """Test evaluation with reference answer."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "criteria_scores": {"helpfulness": 5},
-            "overall_reasoning": "Matches reference",
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_scores": {"helpfulness": 5},
+                    "overall_reasoning": "Matches reference",
+                }
+            )
+        )
 
         judge = JudgeModel(
-            judge_model=mock_model,
-            criteria=[JudgeCriterion(name="helpfulness", description="")]
+            judge_model=mock_model, criteria=[JudgeCriterion(name="helpfulness", description="")]
         )
-        result = judge.evaluate(
+        judge.evaluate(
             prompt="What is 2+2?",
             response="4",
             reference="The answer is 4.",
@@ -337,14 +346,17 @@ class TestJudgeModel:
     def test_evaluate_batch(self):
         """Test batch evaluation."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "criteria_scores": {"helpfulness": 4},
-            "overall_reasoning": "OK",
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_scores": {"helpfulness": 4},
+                    "overall_reasoning": "OK",
+                }
+            )
+        )
 
         judge = JudgeModel(
-            judge_model=mock_model,
-            criteria=[JudgeCriterion(name="helpfulness", description="")]
+            judge_model=mock_model, criteria=[JudgeCriterion(name="helpfulness", description="")]
         )
         results = judge.evaluate_batch(
             prompts=["Q1", "Q2"],
@@ -358,17 +370,20 @@ class TestJudgeModel:
     def test_compare(self):
         """Test pairwise comparison."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "criteria_comparison": {
-                "helpfulness": {"winner": "A", "reasoning": "More helpful"}
-            },
-            "overall_winner": "A",
-            "overall_reasoning": "A is better",
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_comparison": {
+                        "helpfulness": {"winner": "A", "reasoning": "More helpful"}
+                    },
+                    "overall_winner": "A",
+                    "overall_reasoning": "A is better",
+                }
+            )
+        )
 
         judge = JudgeModel(
-            judge_model=mock_model,
-            criteria=[JudgeCriterion(name="helpfulness", description="")]
+            judge_model=mock_model, criteria=[JudgeCriterion(name="helpfulness", description="")]
         )
         result = judge.compare(
             prompt="What is 2+2?",
@@ -413,14 +428,17 @@ class TestJudgeEvaluator:
     def test_evaluate(self):
         """Test JudgeEvaluator.evaluate()."""
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(return_value=json.dumps({
-            "criteria_scores": {"helpfulness": 4},
-            "overall_reasoning": "Good",
-        }))
+        mock_model.chat = MagicMock(
+            return_value=json.dumps(
+                {
+                    "criteria_scores": {"helpfulness": 4},
+                    "overall_reasoning": "Good",
+                }
+            )
+        )
 
         judge = JudgeModel(
-            judge_model=mock_model,
-            criteria=[JudgeCriterion(name="helpfulness", description="")]
+            judge_model=mock_model, criteria=[JudgeCriterion(name="helpfulness", description="")]
         )
         evaluator = JudgeEvaluator(judge)
 
@@ -488,18 +506,21 @@ class TestIntegrationWithDummyModel:
 
     def test_judge_with_dummy_model(self):
         """Test JudgeModel with actual DummyModel."""
+
         # Create a DummyModel that returns valid JSON
         class JSONDummyModel(DummyModel):
             def generate(self, prompt, **kwargs):
-                return json.dumps({
-                    "criteria_scores": {
-                        "helpfulness": {"score": 4, "reasoning": "Helpful"},
-                        "completeness": {"score": 3, "reasoning": "Partial"},
-                        "clarity": {"score": 5, "reasoning": "Clear"},
-                    },
-                    "overall_reasoning": "Good response",
-                    "overall_score": 4.0
-                })
+                return json.dumps(
+                    {
+                        "criteria_scores": {
+                            "helpfulness": {"score": 4, "reasoning": "Helpful"},
+                            "completeness": {"score": 3, "reasoning": "Partial"},
+                            "clarity": {"score": 5, "reasoning": "Clear"},
+                        },
+                        "overall_reasoning": "Good response",
+                        "overall_score": 4.0,
+                    }
+                )
 
             def chat(self, messages, **kwargs):
                 return self.generate(messages[-1]["content"])

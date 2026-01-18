@@ -10,7 +10,6 @@ Provides tools for:
 
 import asyncio
 import time
-from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -18,16 +17,8 @@ from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
-    Generic,
-    Iterator,
-    List,
     Optional,
     Protocol,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
 )
 
 
@@ -50,9 +41,9 @@ class ExperimentConfig:
     name: str
     prompt: str
     model_id: str
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    tags: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     priority: int = 0  # Higher = higher priority
 
 
@@ -67,7 +58,7 @@ class ExperimentRun:
     error: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    metrics: Dict[str, float] = field(default_factory=dict)
+    metrics: dict[str, float] = field(default_factory=dict)
 
     @property
     def duration_ms(self) -> float:
@@ -91,7 +82,7 @@ class BatchResult:
     """Results from a batch of experiments."""
 
     batch_id: str
-    runs: List[ExperimentRun]
+    runs: list[ExperimentRun]
     started_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
 
@@ -119,25 +110,25 @@ class BatchResult:
             return 0.0
         return sum(r.latency_ms for r in completed_runs) / len(completed_runs)
 
-    def get_by_status(self, status: ExperimentStatus) -> List[ExperimentRun]:
+    def get_by_status(self, status: ExperimentStatus) -> list[ExperimentRun]:
         """Get runs with a specific status."""
         return [r for r in self.runs if r.status == status]
 
-    def get_by_tag(self, tag: str) -> List[ExperimentRun]:
+    def get_by_tag(self, tag: str) -> list[ExperimentRun]:
         """Get runs with a specific tag."""
         return [r for r in self.runs if tag in r.config.tags]
 
-    def get_by_model(self, model_id: str) -> List[ExperimentRun]:
+    def get_by_model(self, model_id: str) -> list[ExperimentRun]:
         """Get runs for a specific model."""
         return [r for r in self.runs if r.config.model_id == model_id]
 
-    def aggregate_metrics(self) -> Dict[str, Dict[str, float]]:
+    def aggregate_metrics(self) -> dict[str, dict[str, float]]:
         """Aggregate metrics across all completed runs."""
         completed = self.get_by_status(ExperimentStatus.COMPLETED)
         if not completed:
             return {}
 
-        all_metrics: Dict[str, List[float]] = {}
+        all_metrics: dict[str, list[float]] = {}
         for run in completed:
             for name, value in run.metrics.items():
                 if name not in all_metrics:
@@ -184,7 +175,7 @@ class MetricsCalculator(Protocol):
         prompt: str,
         response: str,
         config: ExperimentConfig,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate metrics for a response."""
         ...
 
@@ -194,9 +185,9 @@ class ExperimentQueue:
 
     def __init__(self):
         """Initialize the queue."""
-        self._pending: List[ExperimentConfig] = []
-        self._running: Dict[str, ExperimentConfig] = {}
-        self._completed: List[ExperimentRun] = []
+        self._pending: list[ExperimentConfig] = []
+        self._running: dict[str, ExperimentConfig] = {}
+        self._completed: list[ExperimentRun] = []
 
     def add(self, config: ExperimentConfig) -> None:
         """Add an experiment to the queue."""
@@ -204,7 +195,7 @@ class ExperimentQueue:
         # Sort by priority (higher priority first)
         self._pending.sort(key=lambda x: -x.priority)
 
-    def add_batch(self, configs: List[ExperimentConfig]) -> None:
+    def add_batch(self, configs: list[ExperimentConfig]) -> None:
         """Add multiple experiments."""
         for config in configs:
             self.add(config)
@@ -239,7 +230,7 @@ class ExperimentQueue:
         """Check if queue is empty."""
         return len(self._pending) == 0 and len(self._running) == 0
 
-    def get_results(self) -> List[ExperimentRun]:
+    def get_results(self) -> list[ExperimentRun]:
         """Get all completed runs."""
         return list(self._completed)
 
@@ -283,9 +274,7 @@ class BatchRunner:
         self._progress_callback = callback
         return self
 
-    def _execute_single(
-        self, config: ExperimentConfig, retry_count: int = 0
-    ) -> ExperimentRun:
+    def _execute_single(self, config: ExperimentConfig, retry_count: int = 0) -> ExperimentRun:
         """Execute a single experiment."""
         run = ExperimentRun(config=config, status=ExperimentStatus.RUNNING)
         run.started_at = datetime.now()
@@ -299,9 +288,7 @@ class BatchRunner:
 
             # Calculate metrics if calculator provided
             if self.metrics_calculator and response:
-                run.metrics = self.metrics_calculator(
-                    config.prompt, response, config
-                )
+                run.metrics = self.metrics_calculator(config.prompt, response, config)
 
         except Exception as e:
             run.error = str(e)
@@ -315,7 +302,7 @@ class BatchRunner:
         return run
 
     def run_sequential(
-        self, configs: List[ExperimentConfig], batch_id: Optional[str] = None
+        self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
     ) -> BatchResult:
         """Run experiments sequentially.
 
@@ -342,7 +329,7 @@ class BatchRunner:
         return result
 
     def run_parallel(
-        self, configs: List[ExperimentConfig], batch_id: Optional[str] = None
+        self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
     ) -> BatchResult:
         """Run experiments in parallel.
 
@@ -359,10 +346,7 @@ class BatchRunner:
         completed = 0
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = {
-                executor.submit(self._execute_single, config): config
-                for config in configs
-            }
+            futures = {executor.submit(self._execute_single, config): config for config in configs}
 
             for future in as_completed(futures):
                 run = future.result()
@@ -378,7 +362,7 @@ class BatchRunner:
 
     def run(
         self,
-        configs: List[ExperimentConfig],
+        configs: list[ExperimentConfig],
         batch_id: Optional[str] = None,
         parallel: bool = False,
     ) -> BatchResult:
@@ -440,9 +424,7 @@ class AsyncBatchRunner:
             run.status = ExperimentStatus.COMPLETED
 
             if self.metrics_calculator and response:
-                run.metrics = self.metrics_calculator(
-                    config.prompt, response, config
-                )
+                run.metrics = self.metrics_calculator(config.prompt, response, config)
 
         except Exception as e:
             run.error = str(e)
@@ -455,7 +437,7 @@ class AsyncBatchRunner:
         return run
 
     async def run(
-        self, configs: List[ExperimentConfig], batch_id: Optional[str] = None
+        self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
     ) -> BatchResult:
         """Run experiments asynchronously.
 
@@ -482,11 +464,11 @@ class ExperimentGrid:
     """Define a grid of experiments from parameter combinations."""
 
     base_prompt: str
-    model_ids: List[str]
-    parameters: Dict[str, List[Any]] = field(default_factory=dict)
+    model_ids: list[str]
+    parameters: dict[str, list[Any]] = field(default_factory=dict)
     name_template: str = "exp_{index}"
 
-    def generate(self) -> List[ExperimentConfig]:
+    def generate(self) -> list[ExperimentConfig]:
         """Generate all experiment configurations."""
         import itertools
 
@@ -508,9 +490,7 @@ class ExperimentGrid:
 
                 config = ExperimentConfig(
                     id=f"grid_{index}",
-                    name=self.name_template.format(
-                        index=index, model=model_id, **params
-                    ),
+                    name=self.name_template.format(index=index, model=model_id, **params),
                     prompt=self.base_prompt,
                     model_id=model_id,
                     parameters=params,
@@ -530,9 +510,7 @@ class ExperimentGrid:
         import itertools
 
         if self.parameters:
-            param_count = len(list(
-                itertools.product(*self.parameters.values())
-            ))
+            param_count = len(list(itertools.product(*self.parameters.values())))
         else:
             param_count = 1
         return len(self.model_ids) * param_count
@@ -542,12 +520,12 @@ class ExperimentGrid:
 class ComparisonExperiment:
     """Experiment comparing multiple prompts on the same inputs."""
 
-    prompts: Dict[str, str]  # name -> prompt
+    prompts: dict[str, str]  # name -> prompt
     model_id: str
-    inputs: List[str]  # Input values to substitute
+    inputs: list[str]  # Input values to substitute
     input_placeholder: str = "{input}"
 
-    def generate(self) -> List[ExperimentConfig]:
+    def generate(self) -> list[ExperimentConfig]:
         """Generate experiment configurations."""
         configs = []
         index = 0
@@ -583,12 +561,10 @@ class ExperimentOrchestrator:
             executor: Function to execute prompts.
         """
         self.executor = executor
-        self._batches: Dict[str, BatchResult] = {}
+        self._batches: dict[str, BatchResult] = {}
         self._metrics_calculator: Optional[MetricsCalculator] = None
 
-    def set_metrics_calculator(
-        self, calculator: MetricsCalculator
-    ) -> "ExperimentOrchestrator":
+    def set_metrics_calculator(self, calculator: MetricsCalculator) -> "ExperimentOrchestrator":
         """Set the metrics calculator.
 
         Args:
@@ -654,7 +630,7 @@ class ExperimentOrchestrator:
 
     def run_configs(
         self,
-        configs: List[ExperimentConfig],
+        configs: list[ExperimentConfig],
         parallel: bool = False,
         max_workers: int = 1,
         batch_id: Optional[str] = None,
@@ -683,13 +659,13 @@ class ExperimentOrchestrator:
         """Get batch results by ID."""
         return self._batches.get(batch_id)
 
-    def list_batches(self) -> List[str]:
+    def list_batches(self) -> list[str]:
         """List all batch IDs."""
         return list(self._batches.keys())
 
-    def aggregate_all(self) -> Dict[str, Dict[str, float]]:
+    def aggregate_all(self) -> dict[str, dict[str, float]]:
         """Aggregate metrics across all batches."""
-        all_metrics: Dict[str, List[float]] = {}
+        all_metrics: dict[str, list[float]] = {}
 
         for batch in self._batches.values():
             for run in batch.get_by_status(ExperimentStatus.COMPLETED):
@@ -726,34 +702,42 @@ class ExperimentOrchestrator:
             total_completed += batch.completed
             total_failed += batch.failed
 
-            lines.extend([
-                f"## Batch: {batch_id}",
-                "",
-                f"- Total runs: {batch.total}",
-                f"- Completed: {batch.completed}",
-                f"- Failed: {batch.failed}",
-                f"- Success rate: {batch.success_rate:.1%}",
-                f"- Avg latency: {batch.avg_latency_ms:.1f}ms",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"## Batch: {batch_id}",
+                    "",
+                    f"- Total runs: {batch.total}",
+                    f"- Completed: {batch.completed}",
+                    f"- Failed: {batch.failed}",
+                    f"- Success rate: {batch.success_rate:.1%}",
+                    f"- Avg latency: {batch.avg_latency_ms:.1f}ms",
+                    "",
+                ]
+            )
 
-        lines.extend([
-            "## Summary",
-            "",
-            f"- Total experiments: {total_runs}",
-            f"- Total completed: {total_completed}",
-            f"- Total failed: {total_failed}",
-            f"- Overall success rate: {total_completed/total_runs:.1%}" if total_runs else "- Overall success rate: N/A",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Summary",
+                "",
+                f"- Total experiments: {total_runs}",
+                f"- Total completed: {total_completed}",
+                f"- Total failed: {total_failed}",
+                f"- Overall success rate: {total_completed / total_runs:.1%}"
+                if total_runs
+                else "- Overall success rate: N/A",
+                "",
+            ]
+        )
 
         # Add aggregate metrics
         agg = self.aggregate_all()
         if agg:
-            lines.extend([
-                "## Aggregate Metrics",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Aggregate Metrics",
+                    "",
+                ]
+            )
             for metric, stats in agg.items():
                 lines.append(
                     f"- **{metric}**: mean={stats['mean']:.3f}, "
@@ -764,10 +748,10 @@ class ExperimentOrchestrator:
 
 
 def create_experiment_configs(
-    prompts: List[str],
+    prompts: list[str],
     model_id: str,
     prefix: str = "exp",
-) -> List[ExperimentConfig]:
+) -> list[ExperimentConfig]:
     """Create experiment configs from a list of prompts.
 
     Args:
@@ -790,7 +774,7 @@ def create_experiment_configs(
 
 
 def run_quick_batch(
-    prompts: List[str],
+    prompts: list[str],
     executor: ModelExecutor,
     model_id: str = "default",
 ) -> BatchResult:

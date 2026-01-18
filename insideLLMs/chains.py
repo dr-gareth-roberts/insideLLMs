@@ -9,25 +9,21 @@ This module provides tools for building complex multi-step LLM workflows:
 - Workflow composition and reuse
 """
 
+import re
+import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import (
-    Any, Awaitable, Callable, Dict, Generic, List, Optional,
-    Tuple, TypeVar, Union
-)
-from datetime import datetime
-import time
-import re
-from abc import ABC, abstractmethod
+from typing import Any, Callable, Optional, TypeVar
 
-
-T = TypeVar('T')
-InputT = TypeVar('InputT')
-OutputT = TypeVar('OutputT')
+T = TypeVar("T")
+InputT = TypeVar("InputT")
+OutputT = TypeVar("OutputT")
 
 
 class ChainStatus(Enum):
     """Status of a chain execution."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -38,6 +34,7 @@ class ChainStatus(Enum):
 
 class StepType(Enum):
     """Types of chain steps."""
+
     LLM_CALL = "llm_call"
     TRANSFORM = "transform"
     CONDITION = "condition"
@@ -50,6 +47,7 @@ class StepType(Enum):
 
 class RouterStrategy(Enum):
     """Strategies for routing in conditional chains."""
+
     KEYWORD = "keyword"
     REGEX = "regex"
     CLASSIFIER = "classifier"
@@ -59,6 +57,7 @@ class RouterStrategy(Enum):
 @dataclass
 class StepResult:
     """Result from a single chain step."""
+
     step_name: str
     step_type: StepType
     status: ChainStatus
@@ -67,9 +66,9 @@ class StepResult:
     start_time: float
     end_time: float
     error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "step_name": self.step_name,
             "step_type": self.step_type.value,
@@ -95,8 +94,9 @@ class StepResult:
 @dataclass
 class ChainState:
     """State maintained across chain execution."""
-    variables: Dict[str, Any] = field(default_factory=dict)
-    step_results: List[StepResult] = field(default_factory=list)
+
+    variables: dict[str, Any] = field(default_factory=dict)
+    step_results: list[StepResult] = field(default_factory=list)
     current_step: int = 0
     start_time: Optional[float] = None
     end_time: Optional[float] = None
@@ -117,19 +117,22 @@ class ChainState:
                 return result.output_data
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "variables": {k: str(v)[:200] for k, v in self.variables.items()},
             "step_count": len(self.step_results),
             "current_step": self.current_step,
             "status": self.status.value,
-            "duration": (self.end_time - self.start_time) if self.end_time and self.start_time else None,
+            "duration": (self.end_time - self.start_time)
+            if self.end_time and self.start_time
+            else None,
         }
 
 
 @dataclass
 class ChainResult:
     """Result from a complete chain execution."""
+
     chain_name: str
     status: ChainStatus
     final_output: Any
@@ -138,9 +141,9 @@ class ChainResult:
     successful_steps: int
     failed_steps: int
     total_duration: float
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "chain_name": self.chain_name,
             "status": self.status.value,
@@ -171,7 +174,7 @@ class ChainStep(ABC):
         """Execute the step."""
         pass
 
-    def validate_input(self, input_data: Any) -> Tuple[bool, Optional[str]]:
+    def validate_input(self, input_data: Any) -> tuple[bool, Optional[str]]:
         """Validate input data. Override for custom validation."""
         return True, None
 
@@ -237,7 +240,7 @@ class ValidatorStep(ChainStep):
     def __init__(
         self,
         name: str,
-        validator_fn: Callable[[Any], Tuple[bool, Optional[str]]],
+        validator_fn: Callable[[Any], tuple[bool, Optional[str]]],
         on_failure: str = "fail",  # "fail", "skip", "retry"
         description: str = "",
     ):
@@ -297,7 +300,7 @@ class RouterStep(ChainStep):
     def __init__(
         self,
         name: str,
-        routes: Dict[str, ChainStep],
+        routes: dict[str, ChainStep],
         strategy: RouterStrategy = RouterStrategy.KEYWORD,
         default_route: Optional[str] = None,
         classifier_fn: Optional[Callable[[Any], str]] = None,
@@ -324,10 +327,12 @@ class RouterStep(ChainStep):
                 if re.search(route_key, input_str, re.IGNORECASE):
                     return route_key
 
-        elif self.strategy == RouterStrategy.CLASSIFIER and self.classifier_fn:
-            return self.classifier_fn(input_data)
-
-        elif self.strategy == RouterStrategy.CUSTOM and self.classifier_fn:
+        elif (
+            self.strategy == RouterStrategy.CLASSIFIER
+            and self.classifier_fn
+            or self.strategy == RouterStrategy.CUSTOM
+            and self.classifier_fn
+        ):
             return self.classifier_fn(input_data)
 
         return self.default_route or list(self.routes.keys())[0]
@@ -389,8 +394,8 @@ class ParallelStep(ChainStep):
     def __init__(
         self,
         name: str,
-        steps: List[ChainStep],
-        aggregator: Optional[Callable[[List[Any]], Any]] = None,
+        steps: list[ChainStep],
+        aggregator: Optional[Callable[[list[Any]], Any]] = None,
         description: str = "",
     ):
         super().__init__(name, description)
@@ -433,10 +438,10 @@ class Chain:
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self.steps: List[ChainStep] = []
+        self.steps: list[ChainStep] = []
         self.error_handler: Optional[Callable[[Exception, ChainState], Any]] = None
-        self.pre_hooks: List[Callable[[Any, ChainState], Any]] = []
-        self.post_hooks: List[Callable[[Any, ChainState], Any]] = []
+        self.pre_hooks: list[Callable[[Any, ChainState], Any]] = []
+        self.post_hooks: list[Callable[[Any, ChainState], Any]] = []
 
     def add_step(self, step: ChainStep) -> "Chain":
         """Add a step to the chain."""
@@ -466,7 +471,7 @@ class Chain:
     def add_validator(
         self,
         name: str,
-        validator_fn: Callable[[Any], Tuple[bool, Optional[str]]],
+        validator_fn: Callable[[Any], tuple[bool, Optional[str]]],
         on_failure: str = "fail",
     ) -> "Chain":
         """Add a validation step."""
@@ -487,7 +492,7 @@ class Chain:
     def add_router(
         self,
         name: str,
-        routes: Dict[str, ChainStep],
+        routes: dict[str, ChainStep],
         strategy: RouterStrategy = RouterStrategy.KEYWORD,
         default_route: Optional[str] = None,
     ) -> "Chain":
@@ -509,8 +514,8 @@ class Chain:
     def add_parallel(
         self,
         name: str,
-        steps: List[ChainStep],
-        aggregator: Optional[Callable[[List[Any]], Any]] = None,
+        steps: list[ChainStep],
+        aggregator: Optional[Callable[[list[Any]], Any]] = None,
     ) -> "Chain":
         """Add parallel execution step."""
         step = ParallelStep(name, steps, aggregator)
@@ -686,7 +691,7 @@ class ChainBuilder:
     def validate(
         self,
         name: str,
-        validator_fn: Callable[[Any], Tuple[bool, Optional[str]]],
+        validator_fn: Callable[[Any], tuple[bool, Optional[str]]],
         on_failure: str = "fail",
     ) -> "ChainBuilder":
         """Add validation step."""
@@ -707,7 +712,7 @@ class ChainBuilder:
     def route(
         self,
         name: str,
-        routes: Dict[str, ChainStep],
+        routes: dict[str, ChainStep],
         strategy: RouterStrategy = RouterStrategy.KEYWORD,
         default_route: Optional[str] = None,
     ) -> "ChainBuilder":
@@ -729,8 +734,8 @@ class ChainBuilder:
     def parallel(
         self,
         name: str,
-        steps: List[ChainStep],
-        aggregator: Optional[Callable[[List[Any]], Any]] = None,
+        steps: list[ChainStep],
+        aggregator: Optional[Callable[[list[Any]], Any]] = None,
     ) -> "ChainBuilder":
         """Add parallel step."""
         self.chain.add_parallel(name, steps, aggregator)
@@ -765,7 +770,7 @@ class ChainRegistry:
     """Registry for reusable chains."""
 
     def __init__(self):
-        self.chains: Dict[str, Chain] = {}
+        self.chains: dict[str, Chain] = {}
 
     def register(self, chain: Chain) -> None:
         """Register a chain."""
@@ -775,7 +780,7 @@ class ChainRegistry:
         """Get a chain by name."""
         return self.chains.get(name)
 
-    def list_chains(self) -> List[str]:
+    def list_chains(self) -> list[str]:
         """List all registered chain names."""
         return list(self.chains.keys())
 
@@ -812,7 +817,7 @@ class WorkflowTemplate:
     @staticmethod
     def extract_and_validate(
         model_fn: Callable[[str], str],
-        validator_fn: Callable[[Any], Tuple[bool, Optional[str]]],
+        validator_fn: Callable[[Any], tuple[bool, Optional[str]]],
         name: str = "extract_and_validate",
     ) -> Chain:
         """Create an extract-then-validate chain."""
@@ -854,13 +859,12 @@ class WorkflowTemplate:
     @staticmethod
     def classify_and_route(
         model_fn: Callable[[str], str],
-        routes: Dict[str, str],  # route_name -> prompt_template
+        routes: dict[str, str],  # route_name -> prompt_template
         name: str = "classify_and_route",
     ) -> Chain:
         """Create a classification-based routing chain."""
         route_steps = {
-            route: LLMStep(route, template, model_fn)
-            for route, template in routes.items()
+            route: LLMStep(route, template, model_fn) for route, template in routes.items()
         }
 
         return (
@@ -871,6 +875,7 @@ class WorkflowTemplate:
 
 
 # Convenience functions
+
 
 def create_chain(name: str, model_fn: Optional[Callable[[str], str]] = None) -> ChainBuilder:
     """Create a new chain builder."""
@@ -897,7 +902,7 @@ def create_transform_step(
 
 def create_validator_step(
     name: str,
-    validator_fn: Callable[[Any], Tuple[bool, Optional[str]]],
+    validator_fn: Callable[[Any], tuple[bool, Optional[str]]],
     on_failure: str = "fail",
 ) -> ValidatorStep:
     """Create a validator step."""
@@ -914,7 +919,7 @@ def run_chain(
 
 
 def simple_chain(
-    steps: List[Callable[[Any], Any]],
+    steps: list[Callable[[Any], Any]],
     name: str = "simple_chain",
 ) -> Chain:
     """Create a simple chain from a list of functions."""
@@ -929,7 +934,7 @@ def simple_chain(
 
 
 def sequential_llm_chain(
-    prompts: List[str],
+    prompts: list[str],
     model_fn: Callable[[str], str],
     name: str = "sequential_llm",
 ) -> Chain:

@@ -1,45 +1,45 @@
 """Tests for the prompt debugging and trace visualization module."""
 
 import json
-import pytest
 import time
-from unittest.mock import Mock
+
+import pytest
 
 from insideLLMs.debugging import (
-    # Enums
-    TraceEventType,
+    DebugBreakpoint,
+    DebugIssue,
     DebugLevel,
+    DebugSession,
+    ExecutionTrace,
     IssueCategory,
     IssueSeverity,
-    # Dataclasses
-    TraceEvent,
-    ExecutionTrace,
-    DebugIssue,
-    DebugBreakpoint,
-    VariableSnapshot,
-    DebugSession,
     # Classes
     PromptDebugger,
-    TraceVisualizer,
     PromptFlowAnalyzer,
-    TraceComparator,
-    TraceExporter,
     PromptInspector,
+    TraceComparator,
+    # Dataclasses
+    TraceEvent,
+    # Enums
+    TraceEventType,
+    TraceExporter,
+    TraceVisualizer,
+    VariableSnapshot,
+    analyze_trace,
+    compare_traces,
     # Functions
     create_debugger,
     create_visualizer,
-    render_trace,
     export_trace,
-    analyze_trace,
     inspect_prompt,
-    compare_traces,
     quick_debug,
+    render_trace,
 )
-
 
 # =============================================================================
 # TraceEventType Enum Tests
 # =============================================================================
+
 
 class TestTraceEventType:
     """Tests for TraceEventType enum."""
@@ -99,6 +99,7 @@ class TestIssueSeverity:
 # TraceEvent Tests
 # =============================================================================
 
+
 class TestTraceEvent:
     """Tests for TraceEvent dataclass."""
 
@@ -150,6 +151,7 @@ class TestTraceEvent:
 # ExecutionTrace Tests
 # =============================================================================
 
+
 class TestExecutionTrace:
     """Tests for ExecutionTrace dataclass."""
 
@@ -189,14 +191,18 @@ class TestExecutionTrace:
             trace_id="test",
             start_time=time.time(),
         )
-        trace.events.append(TraceEvent(
-            event_type=TraceEventType.STEP_START,
-            timestamp=time.time(),
-        ))
-        trace.events.append(TraceEvent(
-            event_type=TraceEventType.STEP_END,
-            timestamp=time.time(),
-        ))
+        trace.events.append(
+            TraceEvent(
+                event_type=TraceEventType.STEP_START,
+                timestamp=time.time(),
+            )
+        )
+        trace.events.append(
+            TraceEvent(
+                event_type=TraceEventType.STEP_END,
+                timestamp=time.time(),
+            )
+        )
 
         assert trace.event_count == 2
 
@@ -234,10 +240,12 @@ class TestExecutionTrace:
             end_time=1001.0,
             metadata={"key": "value"},
         )
-        trace.events.append(TraceEvent(
-            event_type=TraceEventType.STEP_START,
-            timestamp=1000.5,
-        ))
+        trace.events.append(
+            TraceEvent(
+                event_type=TraceEventType.STEP_START,
+                timestamp=1000.5,
+            )
+        )
 
         d = trace.to_dict()
 
@@ -250,6 +258,7 @@ class TestExecutionTrace:
 # =============================================================================
 # DebugIssue Tests
 # =============================================================================
+
 
 class TestDebugIssue:
     """Tests for DebugIssue dataclass."""
@@ -297,6 +306,7 @@ class TestDebugIssue:
 # DebugBreakpoint Tests
 # =============================================================================
 
+
 class TestDebugBreakpoint:
     """Tests for DebugBreakpoint dataclass."""
 
@@ -314,7 +324,10 @@ class TestDebugBreakpoint:
 
     def test_breakpoint_with_condition(self):
         """Test breakpoint with condition."""
-        condition = lambda ctx: ctx.get("x", 0) > 10
+
+        def condition(ctx):
+            return ctx.get("x", 0) > 10
+
         bp = DebugBreakpoint(
             breakpoint_id="bp_1",
             condition=condition,
@@ -336,6 +349,7 @@ class TestDebugBreakpoint:
 # =============================================================================
 # VariableSnapshot Tests
 # =============================================================================
+
 
 class TestVariableSnapshot:
     """Tests for VariableSnapshot dataclass."""
@@ -371,6 +385,7 @@ class TestVariableSnapshot:
 # =============================================================================
 # PromptDebugger Tests
 # =============================================================================
+
 
 class TestPromptDebugger:
     """Tests for PromptDebugger class."""
@@ -641,6 +656,7 @@ class TestPromptDebugger:
 # TraceVisualizer Tests
 # =============================================================================
 
+
 class TestTraceVisualizer:
     """Tests for TraceVisualizer class."""
 
@@ -767,6 +783,7 @@ class TestTraceVisualizer:
 # PromptFlowAnalyzer Tests
 # =============================================================================
 
+
 class TestPromptFlowAnalyzer:
     """Tests for PromptFlowAnalyzer class."""
 
@@ -870,6 +887,7 @@ class TestPromptFlowAnalyzer:
 # DebugSession Tests
 # =============================================================================
 
+
 class TestDebugSession:
     """Tests for DebugSession dataclass."""
 
@@ -919,6 +937,7 @@ class TestDebugSession:
 # =============================================================================
 # TraceComparator Tests
 # =============================================================================
+
 
 class TestTraceComparator:
     """Tests for TraceComparator class."""
@@ -983,6 +1002,7 @@ class TestTraceComparator:
 # =============================================================================
 # TraceExporter Tests
 # =============================================================================
+
 
 class TestTraceExporter:
     """Tests for TraceExporter class."""
@@ -1059,6 +1079,7 @@ class TestTraceExporter:
 # PromptInspector Tests
 # =============================================================================
 
+
 class TestPromptInspector:
     """Tests for PromptInspector class."""
 
@@ -1121,6 +1142,7 @@ class TestPromptInspector:
 # =============================================================================
 # Convenience Functions Tests
 # =============================================================================
+
 
 class TestConvenienceFunctions:
     """Tests for convenience functions."""
@@ -1229,6 +1251,7 @@ class TestConvenienceFunctions:
 
     def test_quick_debug_function(self):
         """Test quick_debug function."""
+
         def simple_func(x):
             return x * 2
 
@@ -1239,6 +1262,7 @@ class TestConvenienceFunctions:
 
     def test_quick_debug_with_error(self):
         """Test quick_debug with error."""
+
         def failing_func():
             raise ValueError("Test error")
 
@@ -1249,6 +1273,7 @@ class TestConvenienceFunctions:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestDebuggerIntegration:
     """Integration tests for debugging workflow."""

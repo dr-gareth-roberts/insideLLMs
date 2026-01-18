@@ -2,10 +2,11 @@
 
 import asyncio
 import time
-from unittest.mock import MagicMock, patch
 
 import pytest
 
+from insideLLMs.exceptions import RateLimitError
+from insideLLMs.exceptions import TimeoutError as ModelTimeoutError
 from insideLLMs.retry import (
     BackoffStrategy,
     CircuitBreaker,
@@ -14,16 +15,13 @@ from insideLLMs.retry import (
     CircuitState,
     RetryConfig,
     RetryExhaustedError,
-    RetryResult,
     execute_with_retry,
-    execute_with_retry_async,
     retry,
     retry_async,
     retry_with_fallback,
     with_timeout,
     with_timeout_async,
 )
-from insideLLMs.exceptions import RateLimitError, TimeoutError as ModelTimeoutError
 
 
 class TestRetryConfig:
@@ -261,6 +259,7 @@ class TestRetryAsync:
     @pytest.mark.asyncio
     async def test_async_exhausted(self):
         """Test async retry exhaustion."""
+
         @retry_async(max_retries=2, initial_delay=0.01)
         async def async_always_fails():
             raise ConnectionError("Always fails")
@@ -283,7 +282,7 @@ class TestCircuitBreaker:
         config = CircuitBreakerConfig(failure_threshold=3, reset_timeout=0.1)
         circuit = CircuitBreaker(config=config)
 
-        for i in range(3):
+        for _i in range(3):
             with pytest.raises(ValueError):
                 circuit.execute(lambda: (_ for _ in ()).throw(ValueError("fail")))
 
@@ -342,9 +341,7 @@ class TestCircuitBreaker:
 
     def test_decorator_usage(self):
         """Test using circuit breaker as decorator."""
-        circuit = CircuitBreaker(
-            config=CircuitBreakerConfig(failure_threshold=2)
-        )
+        circuit = CircuitBreaker(config=CircuitBreakerConfig(failure_threshold=2))
         call_count = 0
 
         @circuit
@@ -443,6 +440,7 @@ class TestWithTimeout:
 
     def test_completes_within_timeout(self):
         """Test function that completes within timeout."""
+
         def fast_func():
             return "fast"
 
@@ -451,6 +449,7 @@ class TestWithTimeout:
 
     def test_raises_on_timeout(self):
         """Test timeout raises ModelTimeoutError."""
+
         def slow_func():
             time.sleep(2)
             return "slow"
@@ -460,6 +459,7 @@ class TestWithTimeout:
 
     def test_propagates_exceptions(self):
         """Test exceptions are propagated."""
+
         def error_func():
             raise ValueError("Test error")
 
@@ -469,6 +469,7 @@ class TestWithTimeout:
     @pytest.mark.asyncio
     async def test_async_timeout_success(self):
         """Test async timeout with successful completion."""
+
         async def async_fast():
             return "async fast"
 
@@ -478,6 +479,7 @@ class TestWithTimeout:
     @pytest.mark.asyncio
     async def test_async_timeout_exceeded(self):
         """Test async timeout raises on timeout."""
+
         async def async_slow():
             await asyncio.sleep(2)
             return "async slow"
@@ -521,6 +523,7 @@ class TestRetryExhaustedError:
 
     def test_contains_history(self):
         """Test error contains retry history."""
+
         @retry(max_retries=2, initial_delay=0.01)
         def always_fails():
             raise ConnectionError("Failed")

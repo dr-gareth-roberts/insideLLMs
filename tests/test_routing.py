@@ -1,25 +1,22 @@
 """Tests for Semantic Model Routing module."""
 
-import pytest
 from unittest.mock import MagicMock
 
+from insideLLMs.models import DummyModel
 from insideLLMs.routing import (
-    RouterConfig,
-    RoutingStrategy,
-    RouteStatus,
-    RouteMatch,
-    RoutingResult,
-    RouteStats,
-    Route,
-    SemanticRouter,
-    SemanticMatcher,
-    ModelPool,
     IntentClassifier,
+    ModelPool,
+    Route,
+    RouteMatch,
+    RouterConfig,
+    RouteStats,
+    RouteStatus,
+    RoutingStrategy,
+    SemanticMatcher,
+    SemanticRouter,
     create_router,
     quick_route,
 )
-from insideLLMs.models import DummyModel
-
 
 # =============================================================================
 # Test Configuration
@@ -247,6 +244,7 @@ class TestSemanticMatcher:
 
     def test_with_custom_embedder(self):
         """Test with custom embedder."""
+
         def mock_embedder(text: str) -> list:
             return [1.0, 0.0, 0.0]
 
@@ -303,11 +301,13 @@ class TestSemanticRouter:
     def test_match_single_route(self):
         """Test matching with single route."""
         router = SemanticRouter()
-        router.add_route(Route(
-            name="code",
-            model=DummyModel(),
-            patterns=["code", "program"],
-        ))
+        router.add_route(
+            Route(
+                name="code",
+                model=DummyModel(),
+                patterns=["code", "program"],
+            )
+        )
 
         matches = router.match("Write some code")
 
@@ -317,16 +317,20 @@ class TestSemanticRouter:
     def test_match_multiple_routes(self):
         """Test matching with multiple routes."""
         router = SemanticRouter()
-        router.add_route(Route(
-            name="code",
-            model=DummyModel(),
-            patterns=["code", "program"],
-        ))
-        router.add_route(Route(
-            name="python",
-            model=DummyModel(),
-            patterns=["python", "code"],
-        ))
+        router.add_route(
+            Route(
+                name="code",
+                model=DummyModel(),
+                patterns=["code", "program"],
+            )
+        )
+        router.add_route(
+            Route(
+                name="python",
+                model=DummyModel(),
+                patterns=["python", "code"],
+            )
+        )
 
         matches = router.match("Write Python code")
 
@@ -383,11 +387,13 @@ class TestSemanticRouter:
         model.generate.return_value = "Response"
 
         router = SemanticRouter()
-        router.add_route(Route(
-            name="test",
-            model=model,
-            patterns=["test"],
-        ))
+        router.add_route(
+            Route(
+                name="test",
+                model=model,
+                patterns=["test"],
+            )
+        )
 
         result = router.route("Test query")
 
@@ -654,4 +660,3 @@ class TestEdgeCases:
         matches, _, _ = route.matches("这是一个测试")
 
         assert matches is True
-

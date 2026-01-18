@@ -1,57 +1,66 @@
 """Example script to demonstrate usage of NLP utilities."""
+
 from insideLLMs.nlp import (
+    calculate_avg_sentence_length,
+    calculate_avg_word_length,
+    calculate_lexical_diversity,
+    calculate_readability_flesch_kincaid,
     # Text cleaning and normalization
-    clean_text, remove_html_tags, remove_urls, remove_punctuation,
-    remove_emojis, remove_numbers, normalize_contractions, replace_repeated_chars,
-
-    # Tokenization and segmentation
-    simple_tokenize, nltk_tokenize, segment_sentences, get_ngrams,
-    remove_stopwords, stem_words, lemmatize_words,
-
-    # Character-level operations
-    get_char_ngrams, get_char_frequency, to_uppercase, to_titlecase,
-    to_camelcase, to_snakecase,
-
+    clean_text,
+    # Text similarity
+    cosine_similarity_texts,
+    count_sentences,
+    count_words,
+    decode_base64,
+    detect_language_by_char_ngrams,
+    # Text encoding/decoding
+    encode_base64,
     # Pattern matching and extraction
-    extract_emails, extract_phone_numbers, extract_urls, extract_hashtags,
-    extract_mentions, extract_ip_addresses,
-
-    # Text transformation
-    truncate_text, pad_text, mask_pii, replace_words,
-
-    # Feature extraction
-    create_bow, create_tfidf, extract_pos_tags,
-
-    # Text statistics and metrics
-    count_words, count_sentences, calculate_avg_word_length,
-    calculate_avg_sentence_length, calculate_lexical_diversity,
-    calculate_readability_flesch_kincaid, get_word_frequencies,
-
+    extract_emails,
+    extract_entities_by_type,
+    extract_hashtags,
+    extract_keywords_textrank,
+    # Keyword extraction
+    extract_keywords_tfidf,
+    extract_mentions,
+    # Named entity recognition
+    extract_named_entities,
+    extract_phone_numbers,
+    extract_urls,
+    get_char_frequency,
+    # Character-level operations
+    get_char_ngrams,
+    get_ngrams,
+    get_word_frequencies,
+    html_decode,
+    html_encode,
+    jaccard_similarity,
+    jaro_similarity,
+    jaro_winkler_similarity,
+    lemmatize_words,
+    levenshtein_distance,
+    mask_pii,
+    nltk_tokenize,
+    pad_text,
+    remove_stopwords,
+    segment_sentences,
+    semantic_similarity_word_embeddings,
     # Basic text classification
     sentiment_analysis_basic,
-
-    # Named entity recognition
-    extract_named_entities, extract_entities_by_type,
-
-    # Keyword extraction
-    extract_keywords_tfidf, extract_keywords_textrank,
-
-    # Text similarity
-    cosine_similarity_texts, jaccard_similarity, levenshtein_distance,
-    jaro_similarity, jaro_winkler_similarity, hamming_distance,
-    longest_common_subsequence, semantic_similarity_word_embeddings,
-
+    simple_tokenize,
     # Text chunking and splitting
-    split_by_char_count, split_by_word_count, split_by_sentence,
-    sliding_window_chunks,
-
-    # Language detection
-    detect_language_by_stopwords, detect_language_by_char_ngrams,
-
-    # Text encoding/decoding
-    encode_base64, decode_base64, url_encode, url_decode,
-    html_encode, html_decode
+    split_by_char_count,
+    split_by_sentence,
+    stem_words,
+    to_camelcase,
+    to_snakecase,
+    to_titlecase,
+    to_uppercase,
+    truncate_text,
+    url_decode,
+    url_encode,
 )
+
 
 def main():
     # Sample text for demonstration
@@ -117,12 +126,16 @@ def main():
     print(f"Lexical diversity: {calculate_lexical_diversity(cleaned_text):.2f}")
 
     try:
-        print(f"Readability (Flesch-Kincaid Grade Level): {calculate_readability_flesch_kincaid(cleaned_text):.2f}")
+        print(
+            f"Readability (Flesch-Kincaid Grade Level): {calculate_readability_flesch_kincaid(cleaned_text):.2f}"
+        )
     except ImportError as e:
         print(f"Readability calculation skipped: {e}")
 
     word_freq = get_word_frequencies(cleaned_text)
-    print(f"Top 5 most frequent words: {sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]}")
+    print(
+        f"Top 5 most frequent words: {sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]}"
+    )
 
     # Basic text classification
     print("\n4. Basic Text Classification:")
@@ -138,7 +151,7 @@ def main():
         entities = extract_named_entities(cleaned_text)
         print(f"Named entities: {entities}")
 
-        org_entities = extract_entities_by_type(cleaned_text, ['ORG'])
+        org_entities = extract_entities_by_type(cleaned_text, ["ORG"])
         print(f"Organizations: {org_entities}")
     except ImportError as e:
         print(f"Named entity recognition skipped: {e}")
@@ -217,7 +230,9 @@ def main():
 
     # Text chunking and splitting
     print("\n11. Text Chunking and Splitting:")
-    chunk_text = "This is the first sentence. This is the second sentence. This is the third sentence."
+    chunk_text = (
+        "This is the first sentence. This is the second sentence. This is the third sentence."
+    )
     print(f"Split by character count: {split_by_char_count(chunk_text, 20, overlap=5)}")
     print(f"Split by sentence: {split_by_sentence(chunk_text, 2)}")
 
@@ -252,6 +267,7 @@ def main():
     print("\nNote: Some functions may be skipped if the required packages are not installed.")
     print("To install all dependencies, run: pip install nltk spacy scikit-learn gensim")
     print("For spaCy models, run: python -m spacy download en_core_web_sm")
+
 
 if __name__ == "__main__":
     main()

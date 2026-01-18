@@ -1,8 +1,8 @@
 """Tests for the visualization module."""
 
+import contextlib
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -230,19 +230,8 @@ class TestPlotlyVisualizationsAvailability:
 
     def test_plotly_functions_are_importable(self):
         """Test that plotly functions can be imported."""
-        try:
-            from insideLLMs.visualization import (
-                interactive_accuracy_comparison,
-                interactive_latency_distribution,
-                interactive_metric_radar,
-                interactive_heatmap,
-                interactive_scatter_comparison,
-                create_interactive_dashboard,
-                create_interactive_html_report,
-            )
-            plotly_available = True
-        except ImportError:
-            plotly_available = False
+        with contextlib.suppress(ImportError):
+            pass
 
         # Either they're importable or we get ImportError - both are valid
 
@@ -255,7 +244,9 @@ class TestResultsVisualization:
         from insideLLMs import visualization
 
         # Should have some form of results visualization
-        assert hasattr(visualization, "text_bar_chart") or hasattr(visualization, "visualize_results")
+        assert hasattr(visualization, "text_bar_chart") or hasattr(
+            visualization, "visualize_results"
+        )
 
 
 class TestTextBasedVisualization:
@@ -379,7 +370,8 @@ class TestConvenienceFunctions:
         from insideLLMs import visualization
 
         public_funcs = [
-            name for name in dir(visualization)
+            name
+            for name in dir(visualization)
             if not name.startswith("_") and callable(getattr(visualization, name))
         ]
 

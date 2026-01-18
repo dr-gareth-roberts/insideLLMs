@@ -4,7 +4,7 @@ This module defines the exception hierarchy for the library,
 providing clear error types for different failure modes.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class InsideLLMsError(Exception):
@@ -13,7 +13,7 @@ class InsideLLMsError(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -27,8 +27,10 @@ class InsideLLMsError(Exception):
 
 # Model-related errors
 
+
 class ModelError(InsideLLMsError):
     """Base exception for model-related errors."""
+
     pass
 
 
@@ -122,8 +124,10 @@ class TimeoutError(ModelError):
 
 # Probe-related errors
 
+
 class ProbeError(InsideLLMsError):
     """Base exception for probe-related errors."""
+
     pass
 
 
@@ -168,8 +172,10 @@ class ProbeExecutionError(ProbeError):
 
 # Dataset-related errors
 
+
 class DatasetError(InsideLLMsError):
     """Base exception for dataset-related errors."""
+
     pass
 
 
@@ -212,8 +218,10 @@ class DatasetValidationError(DatasetError):
 
 # Configuration errors
 
+
 class ConfigurationError(InsideLLMsError):
     """Base exception for configuration errors."""
+
     pass
 
 
@@ -249,8 +257,10 @@ class ConfigParseError(ConfigurationError):
 
 # Cache errors
 
+
 class CacheError(InsideLLMsError):
     """Base exception for cache errors."""
+
     pass
 
 
@@ -273,8 +283,10 @@ class CacheCorruptionError(CacheError):
 
 # Evaluation errors
 
+
 class EvaluationError(InsideLLMsError):
     """Base exception for evaluation errors."""
+
     pass
 
 
@@ -307,8 +319,10 @@ class EvaluationFailedError(EvaluationError):
 
 # Registry errors
 
+
 class RegistryError(InsideLLMsError):
     """Base exception for registry errors."""
+
     pass
 
 
@@ -333,6 +347,7 @@ class NotRegisteredError(RegistryError):
 
 
 # Utility functions
+
 
 def wrap_exception(
     error: Exception,
@@ -388,8 +403,9 @@ def get_retry_delay(error: Exception, attempt: int = 1) -> float:
 
     # Exponential backoff with jitter
     import random
+
     base_delay = 1.0
     max_delay = 60.0
-    delay = min(base_delay * (2 ** attempt), max_delay)
+    delay = min(base_delay * (2**attempt), max_delay)
     jitter = random.uniform(0, delay * 0.1)
     return delay + jitter

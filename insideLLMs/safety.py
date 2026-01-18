@@ -12,7 +12,8 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Tuple
+from re import Pattern
+from typing import Any, Optional
 
 
 class SafetyCategory(Enum):
@@ -49,7 +50,7 @@ class SafetyFlag:
     description: str
     matched_text: Optional[str] = None
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -59,11 +60,11 @@ class SafetyReport:
     text: str
     is_safe: bool
     overall_risk: RiskLevel
-    flags: List[SafetyFlag] = field(default_factory=list)
-    scores: Dict[str, float] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    flags: list[SafetyFlag] = field(default_factory=list)
+    scores: dict[str, float] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def get_flags_by_category(self, category: SafetyCategory) -> List[SafetyFlag]:
+    def get_flags_by_category(self, category: SafetyCategory) -> list[SafetyFlag]:
         """Get flags for a specific category."""
         return [f for f in self.flags if f.category == category]
 
@@ -78,7 +79,7 @@ class SafetyReport:
                     return flag
         return self.flags[0] if self.flags else None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "is_safe": self.is_safe,
@@ -113,10 +114,10 @@ class PIIReport:
 
     text: str
     has_pii: bool
-    matches: List[PIIMatch] = field(default_factory=list)
+    matches: list[PIIMatch] = field(default_factory=list)
     masked_text: Optional[str] = None
 
-    def get_by_type(self, pii_type: str) -> List[PIIMatch]:
+    def get_by_type(self, pii_type: str) -> list[PIIMatch]:
         """Get matches of a specific type."""
         return [m for m in self.matches if m.pii_type == pii_type]
 
@@ -156,7 +157,7 @@ class PIIDetector:
         "zip_code": "[ZIP]",
     }
 
-    def __init__(self, patterns: Optional[Dict[str, Pattern]] = None):
+    def __init__(self, patterns: Optional[dict[str, Pattern]] = None):
         """Initialize detector with optional custom patterns."""
         self.patterns = patterns or self.PATTERNS.copy()
 
@@ -184,12 +185,14 @@ class PIIDetector:
 
         for pii_type, pattern in self.patterns.items():
             for match in pattern.finditer(text):
-                matches.append(PIIMatch(
-                    pii_type=pii_type,
-                    value=match.group(),
-                    start=match.start(),
-                    end=match.end(),
-                ))
+                matches.append(
+                    PIIMatch(
+                        pii_type=pii_type,
+                        value=match.group(),
+                        start=match.start(),
+                        end=match.end(),
+                    )
+                )
 
         # Sort by position
         matches.sort(key=lambda m: m.start)
@@ -200,7 +203,7 @@ class PIIDetector:
             matches=matches,
         )
 
-    def mask(self, text: str, types: Optional[List[str]] = None) -> str:
+    def mask(self, text: str, types: Optional[list[str]] = None) -> str:
         """Mask PII in text.
 
         Args:
@@ -212,9 +215,7 @@ class PIIDetector:
         """
         result = text
         patterns_to_use = (
-            {k: v for k, v in self.patterns.items() if k in types}
-            if types
-            else self.patterns
+            {k: v for k, v in self.patterns.items() if k in types} if types else self.patterns
         )
 
         for pii_type, pattern in patterns_to_use.items():
@@ -243,7 +244,10 @@ class ToxicityAnalyzer:
     # Word lists for basic detection (intentionally limited for safety)
     # In production, use ML-based classifiers
     PROFANITY_INDICATORS = {
-        "damn", "hell", "crap", "suck",
+        "damn",
+        "hell",
+        "crap",
+        "suck",
     }
 
     THREAT_PATTERNS = [
@@ -258,7 +262,7 @@ class ToxicityAnalyzer:
 
     def __init__(self):
         """Initialize the analyzer."""
-        self._custom_patterns: List[Tuple[str, Pattern, RiskLevel]] = []
+        self._custom_patterns: list[tuple[str, Pattern, RiskLevel]] = []
 
     def add_pattern(
         self, name: str, pattern: str, risk_level: RiskLevel = RiskLevel.MEDIUM
@@ -272,7 +276,7 @@ class ToxicityAnalyzer:
         """
         self._custom_patterns.append((name, re.compile(pattern, re.I), risk_level))
 
-    def analyze(self, text: str) -> List[SafetyFlag]:
+    def analyze(self, text: str) -> list[SafetyFlag]:
         """Analyze text for toxicity.
 
         Args:
@@ -288,51 +292,59 @@ class ToxicityAnalyzer:
         # Check profanity
         profanity_found = words & self.PROFANITY_INDICATORS
         if profanity_found:
-            flags.append(SafetyFlag(
-                category=SafetyCategory.TOXICITY,
-                risk_level=RiskLevel.LOW,
-                description="Contains mild profanity",
-                matched_text=", ".join(profanity_found),
-                confidence=0.7,
-            ))
+            flags.append(
+                SafetyFlag(
+                    category=SafetyCategory.TOXICITY,
+                    risk_level=RiskLevel.LOW,
+                    description="Contains mild profanity",
+                    matched_text=", ".join(profanity_found),
+                    confidence=0.7,
+                )
+            )
 
         # Check threat patterns
         for pattern in self.THREAT_PATTERNS:
             match = pattern.search(text)
             if match:
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.VIOLENCE,
-                    risk_level=RiskLevel.HIGH,
-                    description="Contains potential threat language",
-                    matched_text=match.group(),
-                    confidence=0.8,
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.VIOLENCE,
+                        risk_level=RiskLevel.HIGH,
+                        description="Contains potential threat language",
+                        matched_text=match.group(),
+                        confidence=0.8,
+                    )
+                )
                 break
 
         # Check harassment patterns
         for pattern in self.HARASSMENT_PATTERNS:
             match = pattern.search(text)
             if match:
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.TOXICITY,
-                    risk_level=RiskLevel.MEDIUM,
-                    description="Contains potential harassment",
-                    matched_text=match.group(),
-                    confidence=0.7,
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.TOXICITY,
+                        risk_level=RiskLevel.MEDIUM,
+                        description="Contains potential harassment",
+                        matched_text=match.group(),
+                        confidence=0.7,
+                    )
+                )
                 break
 
         # Check custom patterns
         for name, pattern, risk_level in self._custom_patterns:
             match = pattern.search(text)
             if match:
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.TOXICITY,
-                    risk_level=risk_level,
-                    description=f"Matched custom pattern: {name}",
-                    matched_text=match.group(),
-                    confidence=0.9,
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.TOXICITY,
+                        risk_level=risk_level,
+                        description=f"Matched custom pattern: {name}",
+                        matched_text=match.group(),
+                        confidence=0.9,
+                    )
+                )
 
         return flags
 
@@ -342,9 +354,18 @@ class HallucinationDetector:
 
     # Phrases that may indicate uncertainty or fabrication
     UNCERTAINTY_PHRASES = [
-        "i think", "i believe", "i'm not sure", "i'm not certain",
-        "i assume", "i suppose", "might be", "could be",
-        "possibly", "perhaps", "probably", "likely",
+        "i think",
+        "i believe",
+        "i'm not sure",
+        "i'm not certain",
+        "i assume",
+        "i suppose",
+        "might be",
+        "could be",
+        "possibly",
+        "perhaps",
+        "probably",
+        "likely",
     ]
 
     CONFIDENT_FALSE_INDICATORS = [
@@ -376,7 +397,7 @@ class HallucinationDetector:
         """Initialize the detector."""
         pass
 
-    def analyze(self, text: str, context: Optional[str] = None) -> Dict[str, Any]:
+    def analyze(self, text: str, context: Optional[str] = None) -> dict[str, Any]:
         """Analyze text for hallucination indicators.
 
         Args:
@@ -389,15 +410,11 @@ class HallucinationDetector:
         text_lower = text.lower()
 
         # Count uncertainty indicators
-        uncertainty_count = sum(
-            1 for phrase in self.UNCERTAINTY_PHRASES
-            if phrase in text_lower
-        )
+        uncertainty_count = sum(1 for phrase in self.UNCERTAINTY_PHRASES if phrase in text_lower)
 
         # Count overconfident phrases
         overconfidence_count = sum(
-            1 for phrase in self.CONFIDENT_FALSE_INDICATORS
-            if phrase in text_lower
+            1 for phrase in self.CONFIDENT_FALSE_INDICATORS if phrase in text_lower
         )
 
         # Count vague citations
@@ -433,7 +450,7 @@ class HallucinationDetector:
             },
         }
 
-    def get_risk_level(self, analysis: Dict[str, Any]) -> RiskLevel:
+    def get_risk_level(self, analysis: dict[str, Any]) -> RiskLevel:
         """Get risk level from analysis."""
         score = analysis.get("risk_score", 0)
         if score < 0.2:
@@ -451,7 +468,18 @@ class BiasDetector:
     # Gender-related terms for balance checking
     GENDER_TERMS = {
         "male": {"he", "him", "his", "man", "men", "boy", "boys", "male", "father", "son"},
-        "female": {"she", "her", "hers", "woman", "women", "girl", "girls", "female", "mother", "daughter"},
+        "female": {
+            "she",
+            "her",
+            "hers",
+            "woman",
+            "women",
+            "girl",
+            "girls",
+            "female",
+            "mother",
+            "daughter",
+        },
     }
 
     # Stereotyping patterns
@@ -463,8 +491,16 @@ class BiasDetector:
 
     # Absolutes that may indicate bias
     ABSOLUTE_TERMS = {
-        "always", "never", "all", "none", "every", "ever",
-        "everyone", "nobody", "completely", "absolutely",
+        "always",
+        "never",
+        "all",
+        "none",
+        "every",
+        "ever",
+        "everyone",
+        "nobody",
+        "completely",
+        "absolutely",
     }
 
     # Multi-word absolutes to check separately
@@ -476,7 +512,7 @@ class BiasDetector:
         """Initialize the detector."""
         pass
 
-    def analyze_gender_balance(self, text: str) -> Dict[str, Any]:
+    def analyze_gender_balance(self, text: str) -> dict[str, Any]:
         """Analyze gender representation balance.
 
         Args:
@@ -504,7 +540,7 @@ class BiasDetector:
             "is_balanced": 0.3 <= balance <= 0.7 if total > 2 else True,
         }
 
-    def analyze_stereotypes(self, text: str) -> List[str]:
+    def analyze_stereotypes(self, text: str) -> list[str]:
         """Detect potential stereotyping language.
 
         Args:
@@ -523,7 +559,7 @@ class BiasDetector:
                     matches.extend([" ".join(f) for f in found])
         return matches
 
-    def analyze_absolutes(self, text: str) -> Dict[str, Any]:
+    def analyze_absolutes(self, text: str) -> dict[str, Any]:
         """Analyze use of absolute language.
 
         Args:
@@ -552,7 +588,7 @@ class BiasDetector:
             "absolute_ratio": absolute_count / len(words) if words else 0,
         }
 
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, text: str) -> dict[str, Any]:
         """Comprehensive bias analysis.
 
         Args:
@@ -618,19 +654,21 @@ class ContentSafetyAnalyzer:
         Returns:
             Comprehensive safety report.
         """
-        flags: List[SafetyFlag] = []
-        scores: Dict[str, float] = {}
+        flags: list[SafetyFlag] = []
+        scores: dict[str, float] = {}
 
         # PII detection
         if check_pii:
             pii_report = self.pii_detector.detect(text)
             if pii_report.has_pii:
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.PII_EXPOSURE,
-                    risk_level=RiskLevel.HIGH,
-                    description=f"Found {len(pii_report.matches)} PII items",
-                    metadata={"pii_types": list(set(m.pii_type for m in pii_report.matches))},
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.PII_EXPOSURE,
+                        risk_level=RiskLevel.HIGH,
+                        description=f"Found {len(pii_report.matches)} PII items",
+                        metadata={"pii_types": list({m.pii_type for m in pii_report.matches})},
+                    )
+                )
             scores["pii_count"] = len(pii_report.matches)
 
         # Toxicity analysis
@@ -644,29 +682,33 @@ class ContentSafetyAnalyzer:
             hallucination_analysis = self.hallucination_detector.analyze(text)
             risk_level = self.hallucination_detector.get_risk_level(hallucination_analysis)
             if risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.MISINFORMATION,
-                    risk_level=risk_level,
-                    description="High hallucination risk indicators",
-                    confidence=hallucination_analysis["risk_score"],
-                    metadata=hallucination_analysis["indicators"],
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.MISINFORMATION,
+                        risk_level=risk_level,
+                        description="High hallucination risk indicators",
+                        confidence=hallucination_analysis["risk_score"],
+                        metadata=hallucination_analysis["indicators"],
+                    )
+                )
             scores["hallucination_risk"] = hallucination_analysis["risk_score"]
 
         # Bias detection
         if check_bias:
             bias_analysis = self.bias_detector.analyze(text)
             if bias_analysis["has_potential_bias"]:
-                flags.append(SafetyFlag(
-                    category=SafetyCategory.TOXICITY,
-                    risk_level=RiskLevel.MEDIUM,
-                    description="Potential bias detected",
-                    confidence=bias_analysis["bias_score"],
-                    metadata={
-                        "gender_balanced": bias_analysis["gender_balance"]["is_balanced"],
-                        "stereotypes_found": len(bias_analysis["stereotypes"]) > 0,
-                    },
-                ))
+                flags.append(
+                    SafetyFlag(
+                        category=SafetyCategory.TOXICITY,
+                        risk_level=RiskLevel.MEDIUM,
+                        description="Potential bias detected",
+                        confidence=bias_analysis["bias_score"],
+                        metadata={
+                            "gender_balanced": bias_analysis["gender_balance"]["is_balanced"],
+                            "stereotypes_found": len(bias_analysis["stereotypes"]) > 0,
+                        },
+                    )
+                )
             scores["bias_score"] = bias_analysis["bias_score"]
 
         # Determine overall risk
@@ -692,7 +734,7 @@ class ContentSafetyAnalyzer:
         )
 
 
-def quick_safety_check(text: str) -> Tuple[bool, RiskLevel, List[str]]:
+def quick_safety_check(text: str) -> tuple[bool, RiskLevel, list[str]]:
     """Quick safety check for text.
 
     Args:
@@ -721,7 +763,7 @@ def mask_pii(text: str) -> str:
     return detector.mask(text)
 
 
-def detect_pii(text: str) -> List[Dict[str, Any]]:
+def detect_pii(text: str) -> list[dict[str, Any]]:
     """Quick function to detect PII in text.
 
     Args:

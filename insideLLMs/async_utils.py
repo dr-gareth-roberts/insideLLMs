@@ -12,26 +12,16 @@ import asyncio
 import functools
 import time
 from collections import deque
+from collections.abc import AsyncGenerator, Awaitable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import (
     Any,
-    AsyncGenerator,
-    AsyncIterator,
-    Awaitable,
     Callable,
-    Dict,
     Generic,
-    Iterable,
-    List,
     Optional,
-    Sequence,
-    Tuple,
     TypeVar,
-    Union,
 )
-
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -50,8 +40,8 @@ class BatchResult(Generic[T]):
         elapsed_time: Total processing time in seconds.
     """
 
-    results: List[Optional[T]]
-    errors: List[Tuple[int, Exception]]
+    results: list[Optional[T]]
+    errors: list[tuple[int, Exception]]
     total: int
     succeeded: int
     failed: int
@@ -106,8 +96,8 @@ async def map_async(
     """
     start_time = time.perf_counter()
     semaphore = asyncio.Semaphore(max_concurrency)
-    results: List[Optional[R]] = [None] * len(items)
-    errors: List[Tuple[int, Exception]] = []
+    results: list[Optional[R]] = [None] * len(items)
+    errors: list[tuple[int, Exception]] = []
     completed = 0
 
     async def process_item(index: int, item: T) -> None:
@@ -124,10 +114,7 @@ async def map_async(
             if on_progress:
                 on_progress(completed, len(items))
 
-    tasks = [
-        asyncio.create_task(process_item(i, item))
-        for i, item in enumerate(items)
-    ]
+    tasks = [asyncio.create_task(process_item(i, item)) for i, item in enumerate(items)]
 
     await asyncio.gather(*tasks)
 
@@ -148,7 +135,7 @@ async def map_async_ordered(
     func: Callable[[T], Awaitable[R]],
     items: Sequence[T],
     max_concurrency: int = 10,
-) -> AsyncGenerator[Tuple[int, Optional[R], Optional[Exception]], None]:
+) -> AsyncGenerator[tuple[int, Optional[R], Optional[Exception]], None]:
     """Apply async function and yield results as they complete, with order.
 
     Args:
@@ -167,9 +154,9 @@ async def map_async_ordered(
                 print(f"Item {idx}: {result}")
     """
     semaphore = asyncio.Semaphore(max_concurrency)
-    pending: Dict[int, asyncio.Task] = {}
+    pending: dict[int, asyncio.Task] = {}
 
-    async def process_item(index: int, item: T) -> Tuple[int, Optional[R], Optional[Exception]]:
+    async def process_item(index: int, item: T) -> tuple[int, Optional[R], Optional[Exception]]:
         async with semaphore:
             try:
                 result = await func(item)
@@ -184,7 +171,7 @@ async def map_async_ordered(
 
     # Yield results as they complete
     next_to_yield = 0
-    completed: Dict[int, Tuple[int, Optional[R], Optional[Exception]]] = {}
+    completed: dict[int, tuple[int, Optional[R], Optional[Exception]]] = {}
 
     while pending or completed:
         if next_to_yield in completed:
@@ -211,7 +198,7 @@ async def for_each_async(
     items: Iterable[T],
     max_concurrency: int = 10,
     stop_on_error: bool = False,
-) -> List[Exception]:
+) -> list[Exception]:
     """Execute async function for each item, discarding results.
 
     Args:
@@ -229,7 +216,7 @@ async def for_each_async(
             print(f"{len(errors)} saves failed")
     """
     semaphore = asyncio.Semaphore(max_concurrency)
-    errors: List[Exception] = []
+    errors: list[Exception] = []
     stop_flag = asyncio.Event()
 
     async def process_item(item: T) -> None:
@@ -251,6 +238,7 @@ async def for_each_async(
 
 
 # Rate Limiting
+
 
 @dataclass
 class RateLimiter:
@@ -298,6 +286,7 @@ class RateLimiter:
 
     def __call__(self, func: Callable) -> Callable:
         """Use rate limiter as a decorator."""
+
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             await self.acquire()
@@ -374,6 +363,7 @@ def rate_limited(
 
 # Async Queue Processing
 
+
 class AsyncWorkerPool(Generic[T, R]):
     """Pool of async workers for processing a queue.
 
@@ -398,13 +388,13 @@ class AsyncWorkerPool(Generic[T, R]):
         self.worker_func = worker_func
         self.num_workers = num_workers
         self._queue: asyncio.Queue[Optional[T]] = asyncio.Queue(max_queue_size)
-        self._results: List[Tuple[int, Optional[R], Optional[Exception]]] = []
-        self._workers: List[asyncio.Task] = []
+        self._results: list[tuple[int, Optional[R], Optional[Exception]]] = []
+        self._workers: list[asyncio.Task] = []
         self._counter = 0
         self._lock = asyncio.Lock()
 
     @property
-    def results(self) -> List[Tuple[int, Optional[R], Optional[Exception]]]:
+    def results(self) -> list[tuple[int, Optional[R], Optional[Exception]]]:
         """Get all results."""
         return sorted(self._results, key=lambda x: x[0])
 
@@ -434,10 +424,7 @@ class AsyncWorkerPool(Generic[T, R]):
 
     async def __aenter__(self) -> "AsyncWorkerPool[T, R]":
         """Start workers."""
-        self._workers = [
-            asyncio.create_task(self._worker())
-            for _ in range(self.num_workers)
-        ]
+        self._workers = [asyncio.create_task(self._worker()) for _ in range(self.num_workers)]
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -454,6 +441,7 @@ class AsyncWorkerPool(Generic[T, R]):
 
 
 # Progress Tracking
+
 
 @dataclass
 class AsyncProgress:
@@ -523,10 +511,11 @@ class AsyncProgress:
 
 # Utility Functions
 
+
 async def gather_with_limit(
     coros: Sequence[Awaitable[T]],
     limit: int,
-) -> List[T]:
+) -> list[T]:
     """Gather coroutines with a concurrency limit.
 
     Args:
@@ -680,6 +669,7 @@ def run_async(coro: Awaitable[T]) -> T:
         loop = asyncio.get_running_loop()
         # If we're already in an async context, we can't use run_until_complete
         import nest_asyncio
+
         nest_asyncio.apply()
         return loop.run_until_complete(coro)
     except RuntimeError:

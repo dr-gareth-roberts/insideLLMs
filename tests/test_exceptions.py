@@ -1,10 +1,8 @@
 """Tests for custom exceptions."""
 
-import pytest
-
 from insideLLMs.exceptions import (
-    APIError,
     AlreadyRegisteredError,
+    APIError,
     CacheCorruptionError,
     CacheError,
     CacheMissError,
@@ -12,7 +10,6 @@ from insideLLMs.exceptions import (
     ConfigParseError,
     ConfigurationError,
     ConfigValidationError,
-    DatasetError,
     DatasetFormatError,
     DatasetNotFoundError,
     DatasetValidationError,
@@ -30,7 +27,6 @@ from insideLLMs.exceptions import (
     ProbeNotFoundError,
     ProbeValidationError,
     RateLimitError,
-    RegistryError,
     TimeoutError,
     get_retry_delay,
     is_retryable,

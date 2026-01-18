@@ -16,30 +16,22 @@ import random
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from enum import Enum
 from typing import (
     Any,
     Callable,
-    Collection,
-    Generator,
     Generic,
     Optional,
-    Set,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
 )
 
 from insideLLMs.exceptions import (
     InsideLLMsError,
     RateLimitError,
-    TimeoutError as ModelTimeoutError,
-    is_retryable,
-    get_retry_delay,
 )
-
+from insideLLMs.exceptions import (
+    TimeoutError as ModelTimeoutError,
+)
 
 logger = logging.getLogger("insideLLMs.retry")
 
@@ -79,7 +71,7 @@ class RetryConfig:
     jitter: bool = True
     jitter_factor: float = 0.1
     strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL
-    retryable_exceptions: Tuple[Type[Exception], ...] = (
+    retryable_exceptions: tuple[type[Exception], ...] = (
         RateLimitError,
         ModelTimeoutError,
         ConnectionError,
@@ -177,7 +169,7 @@ def retry(
     max_retries: Optional[int] = None,
     initial_delay: Optional[float] = None,
     max_delay: Optional[float] = None,
-    retryable_exceptions: Optional[Tuple[Type[Exception], ...]] = None,
+    retryable_exceptions: Optional[tuple[type[Exception], ...]] = None,
     on_retry: Optional[Callable[[Exception, int, float], None]] = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator to add retry logic to a function.
@@ -228,7 +220,7 @@ def retry_async(
     max_retries: Optional[int] = None,
     initial_delay: Optional[float] = None,
     max_delay: Optional[float] = None,
-    retryable_exceptions: Optional[Tuple[Type[Exception], ...]] = None,
+    retryable_exceptions: Optional[tuple[type[Exception], ...]] = None,
     on_retry: Optional[Callable[[Exception, int, float], None]] = None,
 ) -> Callable:
     """Async version of retry decorator.
@@ -295,16 +287,17 @@ def execute_with_retry(
             else:
                 delay = config.calculate_delay(attempt)
 
-            history.append({
-                "attempt": attempt,
-                "exception_type": type(e).__name__,
-                "exception_message": str(e),
-                "delay": delay,
-            })
+            history.append(
+                {
+                    "attempt": attempt,
+                    "exception_type": type(e).__name__,
+                    "exception_message": str(e),
+                    "delay": delay,
+                }
+            )
 
             logger.warning(
-                f"Attempt {attempt} failed: {type(e).__name__}: {e}. "
-                f"Retrying in {delay:.2f}s..."
+                f"Attempt {attempt} failed: {type(e).__name__}: {e}. Retrying in {delay:.2f}s..."
             )
 
             if config.on_retry:
@@ -313,7 +306,7 @@ def execute_with_retry(
             time.sleep(delay)
             total_delay += delay
 
-        except Exception as e:
+        except Exception:
             # Non-retryable exception
             raise
 
@@ -352,16 +345,17 @@ async def execute_with_retry_async(
             else:
                 delay = config.calculate_delay(attempt)
 
-            history.append({
-                "attempt": attempt,
-                "exception_type": type(e).__name__,
-                "exception_message": str(e),
-                "delay": delay,
-            })
+            history.append(
+                {
+                    "attempt": attempt,
+                    "exception_type": type(e).__name__,
+                    "exception_message": str(e),
+                    "delay": delay,
+                }
+            )
 
             logger.warning(
-                f"Attempt {attempt} failed: {type(e).__name__}: {e}. "
-                f"Retrying in {delay:.2f}s..."
+                f"Attempt {attempt} failed: {type(e).__name__}: {e}. Retrying in {delay:.2f}s..."
             )
 
             if config.on_retry:
@@ -382,6 +376,7 @@ async def execute_with_retry_async(
 
 
 # Circuit Breaker Pattern
+
 
 class CircuitState(Enum):
     """Circuit breaker states."""
@@ -413,8 +408,7 @@ class CircuitBreakerOpen(InsideLLMsError):
 
     def __init__(self, circuit_name: str, time_until_reset: float):
         super().__init__(
-            f"Circuit breaker '{circuit_name}' is open. "
-            f"Try again in {time_until_reset:.1f}s",
+            f"Circuit breaker '{circuit_name}' is open. Try again in {time_until_reset:.1f}s",
             {"circuit_name": circuit_name, "time_until_reset": time_until_reset},
         )
 
@@ -471,13 +465,12 @@ class CircuitBreaker:
 
     def _check_state_transition(self) -> None:
         """Check if state should transition."""
-        if self._state == CircuitState.OPEN:
-            if self._last_failure_time is not None:
-                elapsed = time.time() - self._last_failure_time
-                if elapsed >= self.config.reset_timeout:
-                    logger.info(f"Circuit '{self.name}' transitioning to HALF_OPEN")
-                    self._state = CircuitState.HALF_OPEN
-                    self._half_open_calls = 0
+        if self._state == CircuitState.OPEN and self._last_failure_time is not None:
+            elapsed = time.time() - self._last_failure_time
+            if elapsed >= self.config.reset_timeout:
+                logger.info(f"Circuit '{self.name}' transitioning to HALF_OPEN")
+                self._state = CircuitState.HALF_OPEN
+                self._half_open_calls = 0
 
     def _record_success(self) -> None:
         """Record a successful call."""
@@ -504,6 +497,7 @@ class CircuitBreaker:
 
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
         """Use circuit breaker as a decorator."""
+
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             return self.execute(func, *args, **kwargs)
@@ -527,9 +521,8 @@ class CircuitBreaker:
         self._check_state_transition()
 
         if self._state == CircuitState.OPEN:
-            time_until_reset = (
-                self.config.reset_timeout -
-                (time.time() - (self._last_failure_time or 0))
+            time_until_reset = self.config.reset_timeout - (
+                time.time() - (self._last_failure_time or 0)
             )
             raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
 
@@ -543,7 +536,7 @@ class CircuitBreaker:
             self._record_success()
             return result
 
-        except Exception as e:
+        except Exception:
             self._record_failure()
             raise
 
@@ -553,9 +546,8 @@ class CircuitBreaker:
         self._check_state_transition()
 
         if self._state == CircuitState.OPEN:
-            time_until_reset = (
-                self.config.reset_timeout -
-                (time.time() - (self._last_failure_time or 0))
+            time_until_reset = self.config.reset_timeout - (
+                time.time() - (self._last_failure_time or 0)
             )
             raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
 
@@ -580,6 +572,7 @@ class CircuitBreaker:
 
 
 # Retry with fallback
+
 
 def retry_with_fallback(
     primary_func: Callable[..., T],
@@ -620,6 +613,7 @@ def retry_with_fallback(
 
 
 # Utility functions
+
 
 def with_timeout(
     timeout: float,

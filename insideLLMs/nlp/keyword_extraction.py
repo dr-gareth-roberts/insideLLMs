@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import List
 
 from insideLLMs.nlp.dependencies import ensure_nltk, ensure_sklearn
 
-
 # ===== Dependency Management =====
+
 
 def check_nltk():
     """Ensure NLTK and required resources are available."""
@@ -18,7 +17,8 @@ def check_sklearn():
 
 # ===== Helper functions =====
 
-def segment_sentences_for_keyword(text: str) -> List[str]:
+
+def segment_sentences_for_keyword(text: str) -> list[str]:
     """Split text into sentences using NLTK."""
     check_nltk()
     from nltk.tokenize import sent_tokenize
@@ -26,7 +26,7 @@ def segment_sentences_for_keyword(text: str) -> List[str]:
     return sent_tokenize(text)
 
 
-def nltk_tokenize_for_keyword(text: str) -> List[str]:
+def nltk_tokenize_for_keyword(text: str) -> list[str]:
     """Tokenize text using NLTK's word_tokenize."""
     check_nltk()
     from nltk.tokenize import word_tokenize
@@ -34,7 +34,7 @@ def nltk_tokenize_for_keyword(text: str) -> List[str]:
     return word_tokenize(text)
 
 
-def remove_stopwords_for_keyword(tokens: List[str], language: str = "english") -> List[str]:
+def remove_stopwords_for_keyword(tokens: list[str], language: str = "english") -> list[str]:
     """Remove stopwords from a list of tokens."""
     check_nltk()
     from nltk.corpus import stopwords
@@ -45,7 +45,8 @@ def remove_stopwords_for_keyword(tokens: List[str], language: str = "english") -
 
 # ===== Keyword Extraction =====
 
-def extract_keywords_tfidf(text: str, num_keywords: int = 5) -> List[str]:
+
+def extract_keywords_tfidf(text: str, num_keywords: int = 5) -> list[str]:
     """Extract keywords from text using TF-IDF."""
     check_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -73,7 +74,7 @@ def extract_keywords_tfidf(text: str, num_keywords: int = 5) -> List[str]:
     return [word for word, _ in sorted_words[:num_keywords]]
 
 
-def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int = 4) -> List[str]:
+def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int = 4) -> list[str]:
     """Extract keywords from text using a simple TextRank implementation."""
     check_nltk()
 
@@ -97,7 +98,7 @@ def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int
     if not graph:
         return []
 
-    ranks = {node: 1.0 for node in graph}
+    ranks = dict.fromkeys(graph, 1.0)
     num_iterations = 10
     damping = 0.85
 

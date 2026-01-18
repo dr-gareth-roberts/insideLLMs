@@ -33,12 +33,8 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
     Generic,
-    List,
     Optional,
-    Type,
     TypeVar,
     Union,
     get_args,
@@ -51,6 +47,7 @@ if TYPE_CHECKING:
 # Try to import Pydantic
 try:
     from pydantic import BaseModel, ValidationError
+
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
@@ -67,11 +64,13 @@ T = TypeVar("T")
 
 class StructuredOutputError(Exception):
     """Base exception for structured output errors."""
+
     pass
 
 
 class SchemaGenerationError(StructuredOutputError):
     """Error generating JSON schema from model."""
+
     pass
 
 
@@ -98,7 +97,7 @@ class ValidationErrorWrapper(StructuredOutputError):
 # =============================================================================
 
 
-def _python_type_to_json_schema(python_type: Any) -> Dict[str, Any]:
+def _python_type_to_json_schema(python_type: Any) -> dict[str, Any]:
     """Convert Python type annotation to JSON schema.
 
     Args:
@@ -127,14 +126,14 @@ def _python_type_to_json_schema(python_type: Any) -> Dict[str, Any]:
     origin = get_origin(python_type)
     args = get_args(python_type)
 
-    if origin is list or origin is List:
+    if origin is list or origin is list:
         item_type = args[0] if args else Any
         return {
             "type": "array",
             "items": _python_type_to_json_schema(item_type),
         }
 
-    if origin is dict or origin is Dict:
+    if origin is dict or origin is dict:
         value_type = args[1] if len(args) > 1 else Any
         return {
             "type": "object",
@@ -159,7 +158,7 @@ def _python_type_to_json_schema(python_type: Any) -> Dict[str, Any]:
     return {}
 
 
-def pydantic_to_json_schema(model: Type["BaseModel"]) -> Dict[str, Any]:
+def pydantic_to_json_schema(model: type["BaseModel"]) -> dict[str, Any]:
     """Convert Pydantic model to JSON schema.
 
     Args:
@@ -169,7 +168,9 @@ def pydantic_to_json_schema(model: Type["BaseModel"]) -> Dict[str, Any]:
         JSON schema dictionary.
     """
     if not PYDANTIC_AVAILABLE:
-        raise ImportError("Pydantic is required for structured outputs. Install with: pip install pydantic")
+        raise ImportError(
+            "Pydantic is required for structured outputs. Install with: pip install pydantic"
+        )
 
     # Use Pydantic's built-in schema generation
     try:
@@ -185,7 +186,7 @@ def pydantic_to_json_schema(model: Type["BaseModel"]) -> Dict[str, Any]:
         raise SchemaGenerationError(f"Failed to generate schema for {model}: {e}")
 
 
-def dataclass_to_json_schema(dc: type) -> Dict[str, Any]:
+def dataclass_to_json_schema(dc: type) -> dict[str, Any]:
     """Convert dataclass to JSON schema.
 
     Args:
@@ -220,7 +221,7 @@ def dataclass_to_json_schema(dc: type) -> Dict[str, Any]:
     return schema
 
 
-def get_json_schema(output_type: type) -> Dict[str, Any]:
+def get_json_schema(output_type: type) -> dict[str, Any]:
     """Get JSON schema for any supported type.
 
     Args:
@@ -294,7 +295,7 @@ def extract_json(text: str) -> str:
     except json.JSONDecodeError:
         pass
 
-    raise ParsingError(f"Could not extract valid JSON from output", text)
+    raise ParsingError("Could not extract valid JSON from output", text)
 
 
 def parse_json(text: str) -> Any:
@@ -315,7 +316,7 @@ def parse_json(text: str) -> Any:
 # =============================================================================
 
 
-def parse_to_type(data: Any, output_type: Type[T]) -> T:
+def parse_to_type(data: Any, output_type: type[T]) -> T:
     """Parse data into the specified type.
 
     Args:
@@ -338,9 +339,7 @@ def parse_to_type(data: Any, output_type: Type[T]) -> T:
                 return output_type.parse_obj(data)
         except ValidationError as e:
             raise ValidationErrorWrapper(
-                f"Validation failed for {output_type.__name__}",
-                e,
-                str(data)
+                f"Validation failed for {output_type.__name__}", e, str(data)
             )
 
     elif dataclasses.is_dataclass(output_type):
@@ -350,10 +349,7 @@ def parse_to_type(data: Any, output_type: Type[T]) -> T:
         except TypeError as e:
             raise ParsingError(f"Failed to create {output_type.__name__}: {e}", str(data))
 
-    elif output_type in (dict, Dict):
-        return data
-
-    elif output_type in (list, List):
+    elif output_type in (dict, dict) or output_type in (list, list):
         return data
 
     elif output_type in (str, int, float, bool):
@@ -427,7 +423,7 @@ class StructuredOutputConfig:
     temperature: float = 0.0
     include_schema_in_prompt: bool = True
     instructions: str = ""
-    examples: Optional[List[Dict[str, Any]]] = None
+    examples: Optional[list[dict[str, Any]]] = None
 
 
 class StructuredOutputGenerator(Generic[T]):
@@ -439,7 +435,7 @@ class StructuredOutputGenerator(Generic[T]):
     def __init__(
         self,
         model: "Model",
-        output_type: Type[T],
+        output_type: type[T],
         config: Optional[StructuredOutputConfig] = None,
     ):
         """Initialize the generator.
@@ -508,16 +504,12 @@ class StructuredOutputGenerator(Generic[T]):
                         {"role": "user", "content": prompt},
                     ]
                     response = self.model.chat(
-                        messages,
-                        temperature=self.config.temperature,
-                        **model_kwargs
+                        messages, temperature=self.config.temperature, **model_kwargs
                     )
                 else:
                     full_prompt = f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}"
                     response = self.model.generate(
-                        full_prompt,
-                        temperature=self.config.temperature,
-                        **model_kwargs
+                        full_prompt, temperature=self.config.temperature, **model_kwargs
                     )
 
                 # Parse response
@@ -539,9 +531,9 @@ class StructuredOutputGenerator(Generic[T]):
 
     def generate_batch(
         self,
-        inputs: List[str],
+        inputs: list[str],
         **model_kwargs: Any,
-    ) -> List[T]:
+    ) -> list[T]:
         """Generate structured outputs for multiple inputs.
 
         Args:
@@ -562,10 +554,10 @@ class StructuredOutputGenerator(Generic[T]):
 def generate_structured(
     model: "Model",
     input_text: str,
-    output_type: Type[T],
+    output_type: type[T],
     instructions: str = "",
     max_retries: int = 3,
-    examples: Optional[List[Dict[str, Any]]] = None,
+    examples: Optional[list[dict[str, Any]]] = None,
     **model_kwargs: Any,
 ) -> T:
     """Generate structured output from a model.
@@ -602,9 +594,9 @@ def generate_structured(
 
 def create_structured_generator(
     model: "Model",
-    output_type: Type[T],
+    output_type: type[T],
     instructions: str = "",
-    examples: Optional[List[Dict[str, Any]]] = None,
+    examples: Optional[list[dict[str, Any]]] = None,
     max_retries: int = 3,
 ) -> StructuredOutputGenerator[T]:
     """Create a reusable structured output generator.
@@ -652,9 +644,10 @@ def add_structured_method(model: "Model") -> "Model":
         >>> model = add_structured_method(OpenAIModel())
         >>> person = model.generate_structured("John is 30", Person)
     """
+
     def generate_structured_method(
         input_text: str,
-        output_type: Type[T],
+        output_type: type[T],
         instructions: str = "",
         max_retries: int = 3,
         **kwargs: Any,
@@ -691,11 +684,11 @@ class StructuredResult(Generic[T]):
 
     data: T
     raw_response: str
-    schema: Dict[str, Any]
+    schema: dict[str, Any]
     prompt: str
     model_name: str = "unknown"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result data to dictionary.
 
         Returns:
@@ -734,13 +727,15 @@ class StructuredResult(Generic[T]):
         """
         data_dict = self.to_dict()
 
-        def dict_to_html_table(d: Dict, level: int = 0) -> str:
+        def dict_to_html_table(d: dict, level: int = 0) -> str:
             rows = []
             indent = "  " * level
             for key, value in d.items():
                 if isinstance(value, dict):
                     nested = dict_to_html_table(value, level + 1)
-                    rows.append(f"{indent}<tr><td><strong>{key}</strong></td><td>{nested}</td></tr>")
+                    rows.append(
+                        f"{indent}<tr><td><strong>{key}</strong></td><td>{nested}</td></tr>"
+                    )
                 elif isinstance(value, list):
                     items = "<ul>" + "".join(f"<li>{v}</li>" for v in value) + "</ul>"
                     rows.append(f"{indent}<tr><td><strong>{key}</strong></td><td>{items}</td></tr>")
@@ -774,7 +769,7 @@ class StructuredResult(Generic[T]):
     </div>
     <div class="metadata">
         <p><strong>Model:</strong> {self.model_name}</p>
-        <p><strong>Schema Fields:</strong> {', '.join(self.schema.get('properties', {}).keys())}</p>
+        <p><strong>Schema Fields:</strong> {", ".join(self.schema.get("properties", {}).keys())}</p>
     </div>
 </body>
 </html>"""
@@ -787,7 +782,7 @@ class StructuredResult(Generic[T]):
         """
         data_dict = self.to_dict()
 
-        def dict_to_md(d: Dict, level: int = 0) -> str:
+        def dict_to_md(d: dict, level: int = 0) -> str:
             lines = []
             indent = "  " * level
             for key, value in d.items():
@@ -834,7 +829,7 @@ class StructuredResult(Generic[T]):
 
 def quick_extract(
     text: str,
-    output_type: Type[T],
+    output_type: type[T],
     model_name: str = "gpt-4",
     provider: str = "openai",
     api_key: Optional[str] = None,
@@ -892,8 +887,7 @@ def quick_extract(
         raw_response = model.chat(messages, temperature=0.0)
     else:
         raw_response = model.generate(
-            f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}",
-            temperature=0.0
+            f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}", temperature=0.0
         )
 
     # Parse
@@ -930,22 +924,28 @@ def _create_model_from_name(
 
     if provider == "openai":
         from insideLLMs.models import OpenAIModel
+
         return OpenAIModel(model_name=model_name, api_key=api_key, **kwargs)
 
     elif provider == "anthropic":
         from insideLLMs.models import AnthropicModel
+
         return AnthropicModel(model_name=model_name, api_key=api_key, **kwargs)
 
     elif provider == "huggingface":
         from insideLLMs.models import HuggingFaceModel
+
         return HuggingFaceModel(model_name=model_name, **kwargs)
 
     elif provider == "dummy":
         from insideLLMs.models import DummyModel
+
         return DummyModel(name=model_name)
 
     else:
-        raise ValueError(f"Unknown provider: {provider}. Supported: openai, anthropic, huggingface, dummy")
+        raise ValueError(
+            f"Unknown provider: {provider}. Supported: openai, anthropic, huggingface, dummy"
+        )
 
 
 # =============================================================================
@@ -954,12 +954,12 @@ def _create_model_from_name(
 
 
 def batch_extract(
-    texts: List[str],
-    output_type: Type[T],
+    texts: list[str],
+    output_type: type[T],
     model: "Model",
     instructions: str = "",
     show_progress: bool = True,
-) -> List[StructuredResult[T]]:
+) -> list[StructuredResult[T]]:
     """Extract structured data from multiple texts.
 
     Args:
@@ -998,30 +998,33 @@ def batch_extract(
                 raw_response = model.chat(messages, temperature=0.0)
             else:
                 raw_response = model.generate(
-                    f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}",
-                    temperature=0.0
+                    f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}", temperature=0.0
                 )
 
             data = parse_json(raw_response)
             parsed = parse_to_type(data, output_type)
 
-            results.append(StructuredResult(
-                data=parsed,
-                raw_response=raw_response,
-                schema=schema,
-                prompt=prompt,
-                model_name=getattr(model, "name", "unknown"),
-            ))
+            results.append(
+                StructuredResult(
+                    data=parsed,
+                    raw_response=raw_response,
+                    schema=schema,
+                    prompt=prompt,
+                    model_name=getattr(model, "name", "unknown"),
+                )
+            )
 
         except Exception as e:
             # Create error result
-            results.append(StructuredResult(
-                data=None,
-                raw_response=str(e),
-                schema=schema,
-                prompt=text,
-                model_name=getattr(model, "name", "unknown"),
-            ))
+            results.append(
+                StructuredResult(
+                    data=None,
+                    raw_response=str(e),
+                    schema=schema,
+                    prompt=text,
+                    model_name=getattr(model, "name", "unknown"),
+                )
+            )
 
     if show_progress:
         print(f"Processed {len(texts)} texts.       ")
@@ -1029,7 +1032,7 @@ def batch_extract(
     return results
 
 
-def results_to_dataframe(results: List[StructuredResult]) -> Any:
+def results_to_dataframe(results: list[StructuredResult]) -> Any:
     """Convert list of StructuredResults to pandas DataFrame.
 
     Args:
@@ -1044,7 +1047,9 @@ def results_to_dataframe(results: List[StructuredResult]) -> Any:
     try:
         import pandas as pd
     except ImportError:
-        raise ImportError("pandas is required for DataFrame export. Install with: pip install pandas")
+        raise ImportError(
+            "pandas is required for DataFrame export. Install with: pip install pandas"
+        )
 
     rows = []
     for r in results:
@@ -1056,7 +1061,7 @@ def results_to_dataframe(results: List[StructuredResult]) -> Any:
 
 
 def results_to_html_report(
-    results: List[StructuredResult],
+    results: list[StructuredResult],
     title: str = "Extraction Results",
 ) -> str:
     """Generate HTML report from multiple results.

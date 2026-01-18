@@ -11,7 +11,9 @@ from insideLLMs.visualization import create_html_report
 def test_run_experiment_from_config_uses_relative_dataset(tmp_path):
     dataset_path = tmp_path / "prompts.jsonl"
     # Store a JSON string so the probe receives a plain string prompt
-    dataset_path.write_text(json.dumps("If A then B. A is true; what about B?") + "\n", encoding="utf-8")
+    dataset_path.write_text(
+        json.dumps("If A then B. A is true; what about B?") + "\n", encoding="utf-8"
+    )
 
     config = {
         "model": {"type": "dummy", "args": {"name": "DummyModel"}},

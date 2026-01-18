@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 
 class ReasoningType(Enum):
@@ -60,9 +60,9 @@ class ReasoningStep:
     step_type: StepType = StepType.INFERENCE
     confidence: float = 0.5
     supports_conclusion: bool = True
-    depends_on: List[int] = field(default_factory=list)
+    depends_on: list[int] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "content": self.content,
@@ -78,7 +78,7 @@ class ReasoningStep:
 class ReasoningChain:
     """A complete chain of reasoning."""
 
-    steps: List[ReasoningStep]
+    steps: list[ReasoningStep]
     conclusion: Optional[str] = None
     reasoning_type: ReasoningType = ReasoningType.DEDUCTIVE
     is_valid: bool = True
@@ -91,15 +91,15 @@ class ReasoningChain:
                 return step
         return None
 
-    def get_premises(self) -> List[ReasoningStep]:
+    def get_premises(self) -> list[ReasoningStep]:
         """Get all premise steps."""
         return [s for s in self.steps if s.step_type == StepType.PREMISE]
 
-    def get_inferences(self) -> List[ReasoningStep]:
+    def get_inferences(self) -> list[ReasoningStep]:
         """Get all inference steps."""
         return [s for s in self.steps if s.step_type == StepType.INFERENCE]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "num_steps": len(self.steps),
@@ -119,19 +119,21 @@ class ChainAnalysis:
     logical_validity: float
     coherence_score: float
     completeness_score: float
-    step_quality_scores: List[float]
-    identified_fallacies: List[str]
-    missing_steps: List[str]
+    step_quality_scores: list[float]
+    identified_fallacies: list[str]
+    missing_steps: list[str]
     overall_quality: ReasoningQuality
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "chain": self.chain.to_dict(),
             "logical_validity": self.logical_validity,
             "coherence_score": self.coherence_score,
             "completeness_score": self.completeness_score,
-            "avg_step_quality": sum(self.step_quality_scores) / len(self.step_quality_scores) if self.step_quality_scores else 0,
+            "avg_step_quality": sum(self.step_quality_scores) / len(self.step_quality_scores)
+            if self.step_quality_scores
+            else 0,
             "num_fallacies": len(self.identified_fallacies),
             "identified_fallacies": self.identified_fallacies,
             "missing_steps": self.missing_steps,
@@ -150,9 +152,9 @@ class CoTEvaluation:
     reasoning_score: float
     step_accuracy: float
     explanation_quality: float
-    improvements: List[str] = field(default_factory=list)
+    improvements: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt": self.prompt[:100] + "..." if len(self.prompt) > 100 else self.prompt,
@@ -172,12 +174,12 @@ class ReasoningReport:
     total_evaluations: int
     avg_reasoning_score: float
     avg_step_accuracy: float
-    reasoning_type_breakdown: Dict[str, float]
-    common_fallacies: List[Tuple[str, int]]
-    quality_distribution: Dict[str, int]
-    recommendations: List[str]
+    reasoning_type_breakdown: dict[str, float]
+    common_fallacies: list[tuple[str, int]]
+    quality_distribution: dict[str, int]
+    recommendations: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "total_evaluations": self.total_evaluations,
@@ -209,17 +211,14 @@ class ReasoningExtractor:
     def extract(self, text: str) -> ReasoningChain:
         """Extract reasoning chain from text."""
         steps = []
-        text_lower = text.lower()
+        text.lower()
 
         # Try numbered step patterns
         for pattern in self.STEP_PATTERNS:
             matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
             if matches and len(matches) >= 2:
                 for i, match in enumerate(matches):
-                    if isinstance(match, tuple):
-                        content = match[-1].strip()
-                    else:
-                        content = match.strip()
+                    content = match[-1].strip() if isinstance(match, tuple) else match.strip()
 
                     if content and len(content) > 5:
                         step_type = self._classify_step(content)
@@ -253,9 +252,9 @@ class ReasoningExtractor:
             completeness=completeness,
         )
 
-    def _extract_from_sentences(self, text: str) -> List[ReasoningStep]:
+    def _extract_from_sentences(self, text: str) -> list[ReasoningStep]:
         """Extract steps from sentences."""
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         steps = []
 
         for i, sentence in enumerate(sentences):
@@ -329,7 +328,7 @@ class ReasoningExtractor:
                 return match.group(1).strip()
 
         # Return last sentence if no explicit conclusion
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        sentences = [s.strip() for s in text.split(".") if s.strip()]
         if sentences:
             return sentences[-1]
 
@@ -340,24 +339,27 @@ class ReasoningExtractor:
         text_lower = text.lower()
 
         # Mathematical reasoning
-        if any(op in text for op in ['+', '-', '*', '/', '=']) or \
-           any(word in text_lower for word in ['calculate', 'compute', 'sum', 'multiply']):
+        if any(op in text for op in ["+", "-", "*", "/", "="]) or any(
+            word in text_lower for word in ["calculate", "compute", "sum", "multiply"]
+        ):
             return ReasoningType.MATHEMATICAL
 
         # Causal reasoning
-        if any(word in text_lower for word in ['because', 'cause', 'effect', 'leads to', 'results in']):
+        if any(
+            word in text_lower for word in ["because", "cause", "effect", "leads to", "results in"]
+        ):
             return ReasoningType.CAUSAL
 
         # Temporal reasoning
-        if any(word in text_lower for word in ['before', 'after', 'then', 'when', 'during']):
+        if any(word in text_lower for word in ["before", "after", "then", "when", "during"]):
             return ReasoningType.TEMPORAL
 
         # Analogical reasoning
-        if any(word in text_lower for word in ['like', 'similar to', 'just as', 'analogous']):
+        if any(word in text_lower for word in ["like", "similar to", "just as", "analogous"]):
             return ReasoningType.ANALOGICAL
 
         # Inductive reasoning
-        if any(word in text_lower for word in ['generally', 'usually', 'most', 'pattern']):
+        if any(word in text_lower for word in ["generally", "usually", "most", "pattern"]):
             return ReasoningType.INDUCTIVE
 
         # Default to deductive
@@ -365,7 +367,7 @@ class ReasoningExtractor:
 
     def _calculate_completeness(
         self,
-        steps: List[ReasoningStep],
+        steps: list[ReasoningStep],
         conclusion: Optional[str],
     ) -> float:
         """Calculate completeness of reasoning chain."""
@@ -517,7 +519,7 @@ class ReasoningAnalyzer:
 
         return min(1.0, max(0.0, score))
 
-    def _identify_fallacies(self, chain: ReasoningChain) -> List[str]:
+    def _identify_fallacies(self, chain: ReasoningChain) -> list[str]:
         """Identify logical fallacies in the chain."""
         fallacies = []
         full_text = " ".join(s.content.lower() for s in chain.steps)
@@ -530,7 +532,7 @@ class ReasoningAnalyzer:
 
         return list(set(fallacies))
 
-    def _identify_missing_steps(self, chain: ReasoningChain) -> List[str]:
+    def _identify_missing_steps(self, chain: ReasoningChain) -> list[str]:
         """Identify potentially missing steps."""
         missing = []
 
@@ -592,13 +594,17 @@ class CoTEvaluator:
 
         # Calculate reasoning score
         reasoning_score = (
-            analysis.logical_validity * 0.4 +
-            analysis.coherence_score * 0.3 +
-            analysis.completeness_score * 0.3
+            analysis.logical_validity * 0.4
+            + analysis.coherence_score * 0.3
+            + analysis.completeness_score * 0.3
         )
 
         # Calculate step accuracy
-        step_accuracy = sum(analysis.step_quality_scores) / len(analysis.step_quality_scores) if analysis.step_quality_scores else 0.0
+        step_accuracy = (
+            sum(analysis.step_quality_scores) / len(analysis.step_quality_scores)
+            if analysis.step_quality_scores
+            else 0.0
+        )
 
         # Calculate explanation quality
         explanation_quality = self._assess_explanation_quality(response, chain)
@@ -619,21 +625,23 @@ class CoTEvaluator:
 
     def evaluate_batch(
         self,
-        prompts: List[str],
-        responses: List[str],
-        expected_answers: Optional[List[str]] = None,
-    ) -> List[CoTEvaluation]:
+        prompts: list[str],
+        responses: list[str],
+        expected_answers: Optional[list[str]] = None,
+    ) -> list[CoTEvaluation]:
         """Evaluate multiple CoT responses."""
         results = []
         for i, (prompt, response) in enumerate(zip(prompts, responses)):
-            expected = expected_answers[i] if expected_answers and i < len(expected_answers) else None
+            expected = (
+                expected_answers[i] if expected_answers and i < len(expected_answers) else None
+            )
             result = self.evaluate(prompt, response, expected)
             results.append(result)
         return results
 
     def generate_report(
         self,
-        evaluations: List[CoTEvaluation],
+        evaluations: list[CoTEvaluation],
     ) -> ReasoningReport:
         """Generate report from evaluations."""
         if not evaluations:
@@ -652,18 +660,15 @@ class CoTEvaluator:
         avg_step_acc = sum(e.step_accuracy for e in evaluations) / len(evaluations)
 
         # Reasoning type breakdown
-        type_counts: Dict[str, int] = {}
+        type_counts: dict[str, int] = {}
         for e in evaluations:
             rt = e.chain.reasoning_type.value
             type_counts[rt] = type_counts.get(rt, 0) + 1
 
-        type_breakdown = {
-            k: v / len(evaluations)
-            for k, v in type_counts.items()
-        }
+        type_breakdown = {k: v / len(evaluations) for k, v in type_counts.items()}
 
         # Common fallacies
-        fallacy_counts: Dict[str, int] = {}
+        fallacy_counts: dict[str, int] = {}
         for e in evaluations:
             analysis = self.analyzer.analyze(e.chain)
             for f in analysis.identified_fallacies:
@@ -676,7 +681,7 @@ class CoTEvaluator:
         )[:5]
 
         # Quality distribution
-        quality_dist: Dict[str, int] = {}
+        quality_dist: dict[str, int] = {}
         for e in evaluations:
             analysis = self.analyzer.analyze(e.chain)
             q = analysis.overall_quality.value
@@ -735,7 +740,7 @@ class CoTEvaluator:
 
         return min(1.0, quality)
 
-    def _suggest_improvements(self, analysis: ChainAnalysis) -> List[str]:
+    def _suggest_improvements(self, analysis: ChainAnalysis) -> list[str]:
         """Suggest improvements based on analysis."""
         improvements = []
 
@@ -749,7 +754,9 @@ class CoTEvaluator:
             improvements.append("Add missing steps to complete the reasoning chain")
 
         if analysis.identified_fallacies:
-            improvements.append(f"Address logical fallacies: {', '.join(analysis.identified_fallacies)}")
+            improvements.append(
+                f"Address logical fallacies: {', '.join(analysis.identified_fallacies)}"
+            )
 
         if analysis.missing_steps:
             improvements.append("Fill in identified gaps in reasoning")
@@ -760,8 +767,8 @@ class CoTEvaluator:
         self,
         avg_reasoning: float,
         avg_step_acc: float,
-        fallacies: List[Tuple[str, int]],
-    ) -> List[str]:
+        fallacies: list[tuple[str, int]],
+    ) -> list[str]:
         """Generate recommendations for improvement."""
         recommendations = []
 
@@ -799,10 +806,7 @@ class CoTPromptGenerator:
         custom_template: Optional[str] = None,
     ) -> str:
         """Generate a CoT prompt."""
-        if custom_template:
-            template = custom_template
-        else:
-            template = self.TEMPLATES.get(style, self.TEMPLATES["standard"])
+        template = custom_template or self.TEMPLATES.get(style, self.TEMPLATES["standard"])
 
         return template.format(question=question)
 
@@ -810,7 +814,7 @@ class CoTPromptGenerator:
         self,
         question: str,
         num_variations: int = 3,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate multiple CoT prompt variations."""
         variations = []
         styles = list(self.TEMPLATES.keys())

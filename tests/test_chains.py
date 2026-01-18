@@ -1,29 +1,29 @@
 """Tests for the chains module."""
 
 import pytest
+
 from insideLLMs.chains import (
-    # Enums
-    ChainStatus,
-    StepType,
-    RouterStrategy,
-    # Dataclasses
-    StepResult,
-    ChainState,
-    ChainResult,
-    # Step classes
-    ChainStep,
-    LLMStep,
-    TransformStep,
-    ValidatorStep,
-    ConditionalStep,
-    RouterStep,
-    LoopStep,
-    ParallelStep,
-    SubchainStep,
     # Chain classes
     Chain,
     ChainBuilder,
     ChainRegistry,
+    ChainResult,
+    ChainState,
+    # Enums
+    ChainStatus,
+    # Step classes
+    ConditionalStep,
+    LLMStep,
+    LoopStep,
+    ParallelStep,
+    RouterStep,
+    RouterStrategy,
+    # Dataclasses
+    StepResult,
+    StepType,
+    SubchainStep,
+    TransformStep,
+    ValidatorStep,
     WorkflowTemplate,
     # Convenience functions
     create_chain,
@@ -31,14 +31,14 @@ from insideLLMs.chains import (
     create_transform_step,
     create_validator_step,
     run_chain,
-    simple_chain,
     sequential_llm_chain,
+    simple_chain,
 )
-
 
 # ============================================================================
 # Enum Tests
 # ============================================================================
+
 
 class TestChainEnums:
     """Test chain-related enums."""
@@ -67,6 +67,7 @@ class TestChainEnums:
 # ============================================================================
 # Dataclass Tests
 # ============================================================================
+
 
 class TestStepResult:
     """Test StepResult dataclass."""
@@ -142,20 +143,16 @@ class TestChainState:
     def test_get_last_output(self):
         state = ChainState()
         state.step_results = [
-            StepResult("s1", StepType.TRANSFORM, ChainStatus.COMPLETED,
-                       "", "output1", 0, 1),
-            StepResult("s2", StepType.TRANSFORM, ChainStatus.COMPLETED,
-                       "", "output2", 1, 2),
+            StepResult("s1", StepType.TRANSFORM, ChainStatus.COMPLETED, "", "output1", 0, 1),
+            StepResult("s2", StepType.TRANSFORM, ChainStatus.COMPLETED, "", "output2", 1, 2),
         ]
         assert state.get_last_output() == "output2"
 
     def test_get_last_output_with_failed(self):
         state = ChainState()
         state.step_results = [
-            StepResult("s1", StepType.TRANSFORM, ChainStatus.COMPLETED,
-                       "", "output1", 0, 1),
-            StepResult("s2", StepType.TRANSFORM, ChainStatus.FAILED,
-                       "", None, 1, 2),
+            StepResult("s1", StepType.TRANSFORM, ChainStatus.COMPLETED, "", "output1", 0, 1),
+            StepResult("s2", StepType.TRANSFORM, ChainStatus.FAILED, "", None, 1, 2),
         ]
         assert state.get_last_output() == "output1"
 
@@ -198,6 +195,7 @@ class TestChainResult:
 # ============================================================================
 # Step Tests
 # ============================================================================
+
 
 class TestLLMStep:
     """Test LLMStep class."""
@@ -400,7 +398,8 @@ class TestRouterStep:
             return "a" if x.startswith("A") else "b"
 
         step = RouterStep(
-            "router", routes,
+            "router",
+            routes,
             RouterStrategy.CUSTOM,
             classifier_fn=classifier,
         )
@@ -415,7 +414,8 @@ class TestRouterStep:
             "default": TransformStep("d", lambda x, s: "Default"),
         }
         step = RouterStep(
-            "router", routes,
+            "router",
+            routes,
             RouterStrategy.KEYWORD,
             default_route="default",
         )
@@ -520,6 +520,7 @@ class TestSubchainStep:
 # Chain Tests
 # ============================================================================
 
+
 class TestChain:
     """Test Chain class."""
 
@@ -556,7 +557,7 @@ class TestChain:
     def test_chain_failure(self):
         chain = Chain("failing")
         chain.add_step(TransformStep("ok", lambda x, s: x))
-        chain.add_step(TransformStep("fail", lambda x, s: 1/0))  # Will fail
+        chain.add_step(TransformStep("fail", lambda x, s: 1 / 0))  # Will fail
 
         result = chain.run("input")
 
@@ -566,7 +567,7 @@ class TestChain:
 
     def test_error_handler(self):
         chain = Chain("with_handler")
-        chain.add_step(TransformStep("fail", lambda x, s: 1/0))
+        chain.add_step(TransformStep("fail", lambda x, s: 1 / 0))
 
         def handler(e, state):
             return "recovered"
@@ -603,6 +604,7 @@ class TestChain:
 # ============================================================================
 # ChainBuilder Tests
 # ============================================================================
+
 
 class TestChainBuilder:
     """Test ChainBuilder class."""
@@ -674,6 +676,7 @@ class TestChainBuilder:
 # ChainRegistry Tests
 # ============================================================================
 
+
 class TestChainRegistry:
     """Test ChainRegistry class."""
 
@@ -710,6 +713,7 @@ class TestChainRegistry:
 # ============================================================================
 # WorkflowTemplate Tests
 # ============================================================================
+
 
 class TestWorkflowTemplate:
     """Test WorkflowTemplate class."""
@@ -760,6 +764,7 @@ class TestWorkflowTemplate:
 # Convenience Function Tests
 # ============================================================================
 
+
 class TestConvenienceFunctions:
     """Test module-level convenience functions."""
 
@@ -800,10 +805,12 @@ class TestConvenienceFunctions:
         assert result.final_output == "input"
 
     def test_simple_chain(self):
-        chain = simple_chain([
-            str.upper,
-            lambda x: x + "!",
-        ])
+        chain = simple_chain(
+            [
+                str.upper,
+                lambda x: x + "!",
+            ]
+        )
 
         result = chain.run("hello")
         assert result.final_output == "HELLO!"
@@ -825,6 +832,7 @@ class TestConvenienceFunctions:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for chain workflows."""
@@ -892,6 +900,7 @@ class TestIntegration:
 # Edge Cases
 # ============================================================================
 
+
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
@@ -927,11 +936,13 @@ class TestEdgeCases:
 
     def test_validation_error_info(self):
         chain = Chain("validation_test")
-        chain.add_step(ValidatorStep(
-            "must_be_long",
-            lambda x: (len(x) > 100, "Input must be longer than 100 characters"),
-            on_failure="fail",
-        ))
+        chain.add_step(
+            ValidatorStep(
+                "must_be_long",
+                lambda x: (len(x) > 100, "Input must be longer than 100 characters"),
+                on_failure="fail",
+            )
+        )
 
         result = chain.run("short")
         assert not result.success

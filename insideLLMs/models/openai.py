@@ -1,16 +1,23 @@
 import os
-from typing import Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Optional
 
-from openai import OpenAI, APIError, RateLimitError as OpenAIRateLimitError, APITimeoutError
+from openai import APIError, APITimeoutError, OpenAI
+from openai import RateLimitError as OpenAIRateLimitError
 
+from insideLLMs.exceptions import (
+    APIError as InsideLLMsAPIError,
+)
 from insideLLMs.exceptions import (
     ModelGenerationError,
     ModelInitializationError,
     RateLimitError,
-    TimeoutError as InsideLLMsTimeoutError,
-    APIError as InsideLLMsAPIError,
 )
-from .base import Model, ChatMessage
+from insideLLMs.exceptions import (
+    TimeoutError as InsideLLMsTimeoutError,
+)
+
+from .base import ChatMessage, Model
 
 
 class OpenAIModel(Model):
@@ -73,7 +80,7 @@ class OpenAIModel(Model):
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except APITimeoutError as e:
+        except APITimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -92,7 +99,7 @@ class OpenAIModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: List[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
         try:
             response = self._client.chat.completions.create(
                 model=self.model_name,
@@ -105,7 +112,7 @@ class OpenAIModel(Model):
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except APITimeoutError as e:
+        except APITimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -142,7 +149,7 @@ class OpenAIModel(Model):
                 model_id=self.model_name,
                 retry_after=getattr(e, "retry_after", None),
             )
-        except APITimeoutError as e:
+        except APITimeoutError:
             raise InsideLLMsTimeoutError(
                 model_id=self.model_name,
                 timeout_seconds=self._timeout,
@@ -163,13 +170,13 @@ class OpenAIModel(Model):
 
     def info(self):
         base_info = super().info()
-        base_info.extra.update({
-            "model_name": self.model_name,
-            "description": (
-                "OpenAI GPT model via API. Requires OPENAI_API_KEY env variable."
-            ),
-            "base_url": self._base_url,
-            "organization": self._organization,
-            "project": self._project,
-        })
+        base_info.extra.update(
+            {
+                "model_name": self.model_name,
+                "description": ("OpenAI GPT model via API. Requires OPENAI_API_KEY env variable."),
+                "base_url": self._base_url,
+                "organization": self._organization,
+                "project": self._project,
+            }
+        )
         return base_info

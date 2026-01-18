@@ -14,10 +14,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable
 
 
 class CapabilityCategory(Enum):
@@ -118,9 +117,9 @@ class CapabilityScore:
     score: float  # 0-1
     level: CapabilityLevel
     confidence: float
-    evidence: List[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "category": self.category.value,
@@ -139,10 +138,10 @@ class LimitationReport:
     limitation_type: LimitationType
     severity: float  # 0-1
     frequency: float  # How often observed
-    examples: List[str]
-    mitigation_suggestions: List[str]
+    examples: list[str]
+    mitigation_suggestions: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "type": self.limitation_type.value,
@@ -158,13 +157,13 @@ class SkillProfile:
     """Profile of skills in a category."""
 
     category: CapabilityCategory
-    skills: Dict[SkillType, CapabilityScore]
+    skills: dict[SkillType, CapabilityScore]
     overall_level: CapabilityLevel
     overall_score: float
-    strengths: List[SkillType]
-    weaknesses: List[SkillType]
+    strengths: list[SkillType]
+    weaknesses: list[SkillType]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "category": self.category.value,
@@ -183,26 +182,22 @@ class ModelFingerprint:
     model_id: str
     version: str
     fingerprint_hash: str
-    category_scores: Dict[CapabilityCategory, float]
-    skill_profiles: Dict[CapabilityCategory, SkillProfile]
-    limitations: List[LimitationReport]
-    top_capabilities: List[Tuple[SkillType, float]]
-    main_limitations: List[LimitationType]
+    category_scores: dict[CapabilityCategory, float]
+    skill_profiles: dict[CapabilityCategory, SkillProfile]
+    limitations: list[LimitationReport]
+    top_capabilities: list[tuple[SkillType, float]]
+    main_limitations: list[LimitationType]
     overall_capability_score: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def capability_signature(self) -> str:
         """Get a compact capability signature."""
-        scores = sorted(
-            self.category_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        scores = sorted(self.category_scores.items(), key=lambda x: x[1], reverse=True)
         parts = [f"{cat.value[:3]}:{score:.2f}" for cat, score in scores[:5]]
         return "|".join(parts)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
@@ -228,15 +223,15 @@ class FingerprintComparison:
     model_a_id: str
     model_b_id: str
     similarity_score: float
-    category_differences: Dict[CapabilityCategory, float]
-    skill_differences: Dict[SkillType, float]
-    model_a_advantages: List[SkillType]
-    model_b_advantages: List[SkillType]
-    shared_strengths: List[SkillType]
-    shared_weaknesses: List[SkillType]
+    category_differences: dict[CapabilityCategory, float]
+    skill_differences: dict[SkillType, float]
+    model_a_advantages: list[SkillType]
+    model_b_advantages: list[SkillType]
+    shared_strengths: list[SkillType]
+    shared_weaknesses: list[SkillType]
 
     @property
-    def winner(self) -> Optional[str]:
+    def winner(self) -> str | None:
         """Get overall better model, if clear."""
         a_wins = len(self.model_a_advantages)
         b_wins = len(self.model_b_advantages)
@@ -246,18 +241,14 @@ class FingerprintComparison:
             return self.model_b_id
         return None  # Too close to call
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_a_id": self.model_a_id,
             "model_b_id": self.model_b_id,
             "similarity_score": self.similarity_score,
-            "category_differences": {
-                k.value: v for k, v in self.category_differences.items()
-            },
-            "skill_differences": {
-                k.value: v for k, v in self.skill_differences.items()
-            },
+            "category_differences": {k.value: v for k, v in self.category_differences.items()},
+            "skill_differences": {k.value: v for k, v in self.skill_differences.items()},
             "model_a_advantages": [s.value for s in self.model_a_advantages],
             "model_b_advantages": [s.value for s in self.model_b_advantages],
             "shared_strengths": [s.value for s in self.shared_strengths],
@@ -289,7 +280,7 @@ class CapabilityProbe:
         self.name = name
         self.description = description
 
-    def generate_test(self) -> Tuple[str, Any]:
+    def generate_test(self) -> tuple[str, Any]:
         """Generate a test prompt and expected answer.
 
         Returns:
@@ -322,7 +313,7 @@ class ReasoningProbe(CapabilityProbe):
             description=f"Tests {skill.value} capability",
         )
 
-    def generate_test(self) -> Tuple[str, Any]:
+    def generate_test(self) -> tuple[str, Any]:
         """Generate reasoning test."""
         if self.skill == SkillType.LOGICAL_DEDUCTION:
             return (
@@ -359,7 +350,7 @@ class SkillAssessor:
 
     def __init__(
         self,
-        evaluator: Optional[Callable[[str, str], float]] = None,
+        evaluator: Callable[[str, str], float] | None = None,
     ):
         """Initialize assessor.
 
@@ -367,7 +358,7 @@ class SkillAssessor:
             evaluator: Optional custom evaluation function
         """
         self._evaluator = evaluator or self._default_evaluator
-        self._probes: Dict[SkillType, List[CapabilityProbe]] = {}
+        self._probes: dict[SkillType, list[CapabilityProbe]] = {}
 
     @staticmethod
     def _default_evaluator(response: str, expected: str) -> float:
@@ -400,7 +391,7 @@ class SkillAssessor:
     def assess_skill(
         self,
         skill: SkillType,
-        responses: List[Tuple[str, Any]],
+        responses: list[tuple[str, Any]],
     ) -> CapabilityScore:
         """Assess a skill based on responses.
 
@@ -503,7 +494,7 @@ class LimitationDetector:
 
     def __init__(self):
         """Initialize detector."""
-        self._patterns: Dict[LimitationType, List[Callable[[str], bool]]] = {
+        self._patterns: dict[LimitationType, list[Callable[[str], bool]]] = {
             LimitationType.REPETITIVE_OUTPUT: [self._check_repetition],
             LimitationType.FORMAT_INCONSISTENT: [self._check_format],
             LimitationType.HALLUCINATION_PRONE: [self._check_hallucination_markers],
@@ -517,8 +508,8 @@ class LimitationDetector:
             return False
         # Check for repeated phrases
         for i in range(len(words) - 3):
-            phrase = " ".join(words[i:i+3])
-            remaining = " ".join(words[i+3:])
+            phrase = " ".join(words[i : i + 3])
+            remaining = " ".join(words[i + 3 :])
             if phrase in remaining:
                 return True
         return False
@@ -528,7 +519,7 @@ class LimitationDetector:
         """Check for format inconsistencies."""
         # Simple heuristic: inconsistent list markers
         lines = response.split("\n")
-        markers_found: Set[str] = set()
+        markers_found: set[str] = set()
         for line in lines:
             line = line.strip()
             if line.startswith("- "):
@@ -557,8 +548,8 @@ class LimitationDetector:
 
     def detect(
         self,
-        responses: List[str],
-    ) -> List[LimitationReport]:
+        responses: list[str],
+    ) -> list[LimitationReport]:
         """Detect limitations from responses.
 
         Args:
@@ -585,18 +576,20 @@ class LimitationDetector:
                 frequency = detected_count / len(responses)
                 severity = min(1.0, frequency * 2)  # Higher frequency = higher severity
 
-                reports.append(LimitationReport(
-                    limitation_type=limitation_type,
-                    severity=severity,
-                    frequency=frequency,
-                    examples=examples,
-                    mitigation_suggestions=self._get_mitigations(limitation_type),
-                ))
+                reports.append(
+                    LimitationReport(
+                        limitation_type=limitation_type,
+                        severity=severity,
+                        frequency=frequency,
+                        examples=examples,
+                        mitigation_suggestions=self._get_mitigations(limitation_type),
+                    )
+                )
 
         return reports
 
     @staticmethod
-    def _get_mitigations(limitation: LimitationType) -> List[str]:
+    def _get_mitigations(limitation: LimitationType) -> list[str]:
         """Get mitigation suggestions for a limitation."""
         mitigations = {
             LimitationType.REPETITIVE_OUTPUT: [
@@ -638,7 +631,7 @@ class CapabilityProfiler:
 
     def __init__(
         self,
-        skill_assessor: Optional[SkillAssessor] = None,
+        skill_assessor: SkillAssessor | None = None,
     ):
         """Initialize profiler.
 
@@ -650,7 +643,7 @@ class CapabilityProfiler:
     def profile_category(
         self,
         category: CapabilityCategory,
-        skill_results: Dict[SkillType, List[Tuple[str, Any]]],
+        skill_results: dict[SkillType, list[tuple[str, Any]]],
     ) -> SkillProfile:
         """Build profile for a category.
 
@@ -682,11 +675,7 @@ class CapabilityProfiler:
         overall_level = self._score_to_level(overall_score)
 
         # Identify strengths and weaknesses
-        sorted_skills = sorted(
-            skill_scores.items(),
-            key=lambda x: x[1].score,
-            reverse=True
-        )
+        sorted_skills = sorted(skill_scores.items(), key=lambda x: x[1].score, reverse=True)
         strengths = [s for s, score in sorted_skills if score.score >= 0.7][:3]
         weaknesses = [s for s, score in sorted_skills if score.score < 0.4][:3]
 
@@ -774,8 +763,8 @@ class FingerprintGenerator:
 
     def __init__(
         self,
-        profiler: Optional[CapabilityProfiler] = None,
-        limitation_detector: Optional[LimitationDetector] = None,
+        profiler: CapabilityProfiler | None = None,
+        limitation_detector: LimitationDetector | None = None,
     ):
         """Initialize generator.
 
@@ -789,10 +778,10 @@ class FingerprintGenerator:
     def generate(
         self,
         model_id: str,
-        skill_results: Dict[SkillType, List[Tuple[str, Any]]],
-        responses: List[str],
+        skill_results: dict[SkillType, list[tuple[str, Any]]],
+        responses: list[str],
         version: str = "1.0",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ModelFingerprint:
         """Generate fingerprint for a model.
 
@@ -835,9 +824,7 @@ class FingerprintGenerator:
             overall_score = 0.0
 
         # Generate fingerprint hash
-        fingerprint_hash = self._generate_hash(
-            model_id, category_scores, top_capabilities
-        )
+        fingerprint_hash = self._generate_hash(model_id, category_scores, top_capabilities)
 
         return ModelFingerprint(
             model_id=model_id,
@@ -855,8 +842,8 @@ class FingerprintGenerator:
     @staticmethod
     def _generate_hash(
         model_id: str,
-        category_scores: Dict[CapabilityCategory, float],
-        top_capabilities: List[Tuple[SkillType, float]],
+        category_scores: dict[CapabilityCategory, float],
+        top_capabilities: list[tuple[SkillType, float]],
     ) -> str:
         """Generate unique hash for fingerprint."""
         data = {
@@ -894,7 +881,7 @@ class FingerprintComparator:
 
         # Calculate skill differences
         skill_diffs = {}
-        all_skills: Set[SkillType] = set()
+        all_skills: set[SkillType] = set()
         for profile in fingerprint_a.skill_profiles.values():
             all_skills.update(profile.skills.keys())
         for profile in fingerprint_b.skill_profiles.values():
@@ -954,8 +941,8 @@ class FingerprintComparator:
 
 def create_fingerprint(
     model_id: str,
-    skill_results: Dict[SkillType, List[Tuple[str, Any]]],
-    responses: List[str],
+    skill_results: dict[SkillType, list[tuple[str, Any]]],
+    responses: list[str],
     version: str = "1.0",
 ) -> ModelFingerprint:
     """Create a model fingerprint.
@@ -991,8 +978,8 @@ def compare_fingerprints(
 
 
 def quick_capability_assessment(
-    responses: Dict[str, Tuple[str, Any]],
-) -> Dict[str, Any]:
+    responses: dict[str, tuple[str, Any]],
+) -> dict[str, Any]:
     """Quick capability assessment from responses.
 
     Args:
@@ -1019,10 +1006,7 @@ def quick_capability_assessment(
         }
 
     # Calculate overall
-    if results:
-        overall = sum(r["score"] for r in results.values()) / len(results)
-    else:
-        overall = 0.0
+    overall = sum(r["score"] for r in results.values()) / len(results) if results else 0.0
 
     return {
         "skills": results,
@@ -1032,8 +1016,8 @@ def quick_capability_assessment(
 
 
 def detect_limitations(
-    responses: List[str],
-) -> List[Dict[str, Any]]:
+    responses: list[str],
+) -> list[dict[str, Any]]:
     """Detect limitations from responses.
 
     Args:
