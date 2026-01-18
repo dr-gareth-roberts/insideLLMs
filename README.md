@@ -88,14 +88,14 @@ save_results_json(results, "evaluation_results.json")
 from insideLLMs.models import OpenAIModel, AnthropicModel, HuggingFaceModel
 
 # OpenAI
-gpt4 = OpenAIModel("gpt-4-turbo")
+gpt4 = OpenAIModel("gpt-4.1")
 
 # Anthropic
-claude = AnthropicModel("claude-3-opus-20240229")
+claude = AnthropicModel("claude-4.5-opus")
 
 # Local models
 from insideLLMs.models import OllamaModel, LlamaCppModel
-llama = OllamaModel("llama2")
+llama = OllamaModel("llama-3.3-70b")
 ```
 
 ---
@@ -490,10 +490,4 @@ pytest  # Run 3,098 tests
 
 ## License
 
-MIT License - Copyright (c) 2024 Dr Gareth Roberts
-
----
-
-<p align="center">
-  <strong>Built for teams who take LLM quality seriously.</strong>
-</p>
+MIT License - Copyright (c) 2026 Dr Gareth Roberts
