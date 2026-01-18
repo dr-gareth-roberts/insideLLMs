@@ -10,10 +10,14 @@ The project uses `pyproject.toml` for dependency management and can be installed
 - **Base package**: `pip install .`
 - **With NLP utilities**: `pip install .[nlp]` (Installs `nltk`, `spacy`, `scikit-learn`, `gensim`)
 - **With Visualization**: `pip install .[visualization]` (Installs `matplotlib`, `pandas`, `seaborn`)
-- **All optional dependencies**: `pip install .[nlp,visualization]`
+- **All optional dependencies**: `pip install .[all]`
 
 #### Development Environment
-For development, install the dependencies from `requirements-dev.txt`:
+For development, it is recommended to install the package in editable mode with all dependencies:
+```bash
+pip install -e .[all]
+```
+Alternatively, you can install the development dependencies from `requirements-dev.txt`:
 ```bash
 pip install -r requirements-dev.txt
 ```
@@ -30,6 +34,10 @@ pytest
 To run tests with output:
 ```bash
 pytest -s
+```
+If you haven't installed the package in editable mode, you may need to set `PYTHONPATH` to the current directory:
+```bash
+PYTHONPATH=. pytest
 ```
 
 #### Adding New Tests
@@ -53,19 +61,25 @@ def test_logic_probe_with_dummy_model():
     
     # Verify the output contains the expected dummy model prefix and the problem text
     assert "[DummyModel]" in result
-    assert "Solve this logic problem: If A then B. A is true. What is B?" in result
+    # Note: LogicProbe wraps the problem text in its own template
+    assert "If A then B. A is true. What is B?" in result
 ```
 
 ### Additional Development Information
 
 #### Code Style
 - **Naming**: Follow PEP 8 (snake_case for functions/variables, PascalCase for classes).
-- **Type Hints**: Use type hints for all new function signatures to improve maintainability.
-- **Docstrings**: Provide docstrings for all public classes and methods.
-- **Registries**: The project uses a registry pattern for models, probes, and datasets in `insideLLMs/__init__.py`. When adding new core components, consider registering them if applicable.
+- **Type Hints**: Use type hints for all new function signatures to improve maintainability and support static analysis.
+- **Docstrings**: Provide Google-style docstrings for all public classes and methods.
+- **Linting & Formatting**: The project uses `ruff`, `black`, `isort`, and `mypy`. Configuration for these tools is maintained in `pyproject.toml`.
+
+#### Registries
+The project uses a registry pattern for models, probes, and datasets (see `insideLLMs/registry.py`).
+- **Registration**: New components can be registered using decorators (e.g., `@model_registry.register_decorator("name")`) or by adding them to `register_builtins()` in `insideLLMs/registry.py`.
+- **Lookup**: Components can be retrieved by name using `model_registry.get("name")` or `probe_registry.get("name")`.
 
 #### NLP Utilities
-Many NLP utilities in `insideLLMs.nlp` (like `nltk_tokenize` or `spacy_tokenize`) have optional dependencies. Always use the provided check functions (e.g., `check_nltk()`) or handle `ImportError` when implementing new features that depend on these libraries.
+Many NLP utilities in `insideLLMs.nlp` have optional dependencies. Always use the provided check functions (e.g., `check_nltk()`) or handle `ImportError` when implementing new features that depend on external NLP libraries.
 
 #### Model Implementation
-All new models should inherit from `insideLLMs.models.base.Model` and implement the `generate` and `chat` methods.
+All new models should inherit from `insideLLMs.models.base.Model` and implement the `generate` and `chat` methods. For asynchronous support, inherit from `insideLLMs.models.base.AsyncModel` and implement `agenerate` and `achat`.

@@ -6,6 +6,19 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ## 📚 Documentation Files
 
+### [ARCHITECTURE.md](ARCHITECTURE.md)
+**Architecture and execution flow diagrams** for the core runtime.
+
+**Contents:**
+- High-level component map
+- ProbeRunner and config execution flows
+- Benchmarking flow
+- Extension points and supporting subsystems
+
+**Best for:** Understanding how modules interact, onboarding contributors, system-level reasoning
+
+---
+
 ### [API_REFERENCE.md](API_REFERENCE.md) (51 KB, 2,123 lines)
 **Comprehensive API documentation** covering all public interfaces.
 
@@ -77,6 +90,9 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
+
+#### **Understand the architecture and runtime flows**
+→ [ARCHITECTURE.md](ARCHITECTURE.md)
 
 #### **Understand the type system**
 → [API_REFERENCE.md - Type Definitions](API_REFERENCE.md#type-definitions)
@@ -191,4 +207,3 @@ If you find errors or have suggestions for improving the documentation:
 
 **Last Updated:** January 17, 2026  
 **Version:** 0.1.0
-

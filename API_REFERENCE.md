@@ -7,6 +7,10 @@ This document provides comprehensive API documentation for the core public inter
 
 ---
 
+For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
 ## Table of Contents
 
 1. [Core Model Classes](#core-model-classes)
@@ -2795,5 +2799,4 @@ print(f"Passed: {results.passed_count}/{results.total_count}")
 
 **Last Updated:** January 17, 2026
 **Version:** 0.1.0
-
 
