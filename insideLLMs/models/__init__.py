@@ -3,17 +3,15 @@
 This module provides a unified interface for interacting with different
 LLM providers including OpenAI, Anthropic, HuggingFace, Google Gemini,
 Cohere, and local models (Ollama, llama.cpp, vLLM).
+
+Heavy dependencies (like HuggingFace transformers) are lazily loaded
+to keep import times fast.
 """
 
 from typing import Any, Dict, Iterator, List
 
-from insideLLMs.models.anthropic import AnthropicModel
+# Import lightweight core components directly
 from insideLLMs.models.base import AsyncModel, ChatMessage, Model, ModelProtocol, ModelWrapper
-from insideLLMs.models.cohere import CohereModel
-from insideLLMs.models.gemini import GeminiModel
-from insideLLMs.models.huggingface import HuggingFaceModel
-from insideLLMs.models.local import LlamaCppModel, OllamaModel, VLLMModel
-from insideLLMs.models.openai import OpenAIModel
 from insideLLMs.types import ModelInfo
 
 
@@ -114,6 +112,28 @@ class DummyModel(Model):
         )
 
 
+# Lazy loading for heavy model implementations
+_LAZY_MODEL_IMPORTS = {
+    "OpenAIModel": "insideLLMs.models.openai",
+    "AnthropicModel": "insideLLMs.models.anthropic",
+    "HuggingFaceModel": "insideLLMs.models.huggingface",
+    "GeminiModel": "insideLLMs.models.gemini",
+    "CohereModel": "insideLLMs.models.cohere",
+    "LlamaCppModel": "insideLLMs.models.local",
+    "OllamaModel": "insideLLMs.models.local",
+    "VLLMModel": "insideLLMs.models.local",
+}
+
+
+def __getattr__(name: str):
+    """Lazy load model classes to avoid importing heavy dependencies upfront."""
+    if name in _LAZY_MODEL_IMPORTS:
+        import importlib
+        module = importlib.import_module(_LAZY_MODEL_IMPORTS[name])
+        return getattr(module, name)
+    raise AttributeError(f"module 'insideLLMs.models' has no attribute '{name}'")
+
+
 __all__ = [
     # Base classes
     "Model",
@@ -121,13 +141,13 @@ __all__ = [
     "ModelProtocol",
     "ModelWrapper",
     "ChatMessage",
-    # API Provider implementations
+    # API Provider implementations (lazy loaded)
     "OpenAIModel",
     "AnthropicModel",
     "HuggingFaceModel",
     "GeminiModel",
     "CohereModel",
-    # Local model implementations
+    # Local model implementations (lazy loaded)
     "LlamaCppModel",
     "OllamaModel",
     "VLLMModel",

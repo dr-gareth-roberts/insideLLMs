@@ -120,9 +120,13 @@ from insideLLMs.exceptions import (
 # =============================================================================
 from insideLLMs.registry import (
     Registry,
+    ensure_builtins_registered,
     model_registry,
     probe_registry,
 )
+
+# Auto-register built-in models, probes, and datasets
+ensure_builtins_registered()
 
 # =============================================================================
 # Public API
@@ -170,6 +174,7 @@ __all__ = [
     "ProbeError",
     # Registry
     "Registry",
+    "ensure_builtins_registered",
     "model_registry",
     "probe_registry",
 ]
