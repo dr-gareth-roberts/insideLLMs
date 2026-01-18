@@ -65,9 +65,7 @@ class TestExperimentRun:
 
     def test_basic_creation(self):
         """Test basic run creation."""
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
         run = ExperimentRun(config=config)
 
         assert run.status == ExperimentStatus.PENDING
@@ -76,9 +74,7 @@ class TestExperimentRun:
 
     def test_completed_run(self):
         """Test completed run."""
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
         run = ExperimentRun(
             config=config,
             status=ExperimentStatus.COMPLETED,
@@ -91,9 +87,7 @@ class TestExperimentRun:
 
     def test_duration_calculation(self):
         """Test duration from latency."""
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
         run = ExperimentRun(config=config, latency_ms=200.0)
 
         assert run.duration_ms == 200.0
@@ -206,9 +200,7 @@ class TestExperimentQueue:
     def test_add_and_next(self):
         """Test adding and getting from queue."""
         queue = ExperimentQueue()
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
 
         queue.add(config)
         assert queue.pending_count == 1
@@ -222,12 +214,8 @@ class TestExperimentQueue:
         """Test priority-based ordering."""
         queue = ExperimentQueue()
 
-        low = ExperimentConfig(
-            id="low", name="Low", prompt="P", model_id="m", priority=0
-        )
-        high = ExperimentConfig(
-            id="high", name="High", prompt="P", model_id="m", priority=10
-        )
+        low = ExperimentConfig(id="low", name="Low", prompt="P", model_id="m", priority=0)
+        high = ExperimentConfig(id="high", name="High", prompt="P", model_id="m", priority=10)
 
         queue.add(low)
         queue.add(high)
@@ -239,9 +227,7 @@ class TestExperimentQueue:
     def test_complete(self):
         """Test completing an experiment."""
         queue = ExperimentQueue()
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
 
         queue.add(config)
         queue.next()
@@ -257,9 +243,7 @@ class TestExperimentQueue:
         queue = ExperimentQueue()
         assert queue.is_empty()
 
-        config = ExperimentConfig(
-            id="exp1", name="Test", prompt="Hello", model_id="model"
-        )
+        config = ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="model")
         queue.add(config)
         assert not queue.is_empty()
 
@@ -269,6 +253,7 @@ class TestBatchRunner:
 
     def test_run_sequential(self):
         """Test sequential execution."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return f"Response to: {prompt}"
 
@@ -286,6 +271,7 @@ class TestBatchRunner:
 
     def test_run_with_metrics(self):
         """Test running with metrics calculator."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return "Response"
 
@@ -296,9 +282,7 @@ class TestBatchRunner:
             executor=mock_executor,
             metrics_calculator=mock_metrics,
         )
-        configs = [
-            ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="m")
-        ]
+        configs = [ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="m")]
 
         result = runner.run(configs)
 
@@ -306,13 +290,12 @@ class TestBatchRunner:
 
     def test_run_with_error(self):
         """Test handling errors."""
+
         def failing_executor(prompt: str, **kwargs) -> str:
             raise ValueError("Test error")
 
         runner = BatchRunner(executor=failing_executor)
-        configs = [
-            ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="m")
-        ]
+        configs = [ExperimentConfig(id="exp1", name="Test", prompt="Hello", model_id="m")]
 
         result = runner.run(configs)
 
@@ -418,6 +401,7 @@ class TestExperimentOrchestrator:
 
     def test_run_grid(self):
         """Test running a grid experiment."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return "Response"
 
@@ -434,6 +418,7 @@ class TestExperimentOrchestrator:
 
     def test_run_comparison(self):
         """Test running a comparison experiment."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return "Response"
 
@@ -450,6 +435,7 @@ class TestExperimentOrchestrator:
 
     def test_generate_report(self):
         """Test report generation."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return "Response"
 
@@ -477,6 +463,7 @@ class TestUtilityFunctions:
 
     def test_run_quick_batch(self):
         """Test quick batch execution."""
+
         def mock_executor(prompt: str, **kwargs) -> str:
             return f"Response to {prompt}"
 
@@ -492,6 +479,7 @@ class TestAsyncBatchRunner:
     @pytest.mark.asyncio
     async def test_async_run(self):
         """Test async execution."""
+
         async def mock_executor(prompt: str, **kwargs) -> str:
             return f"Response to: {prompt}"
 

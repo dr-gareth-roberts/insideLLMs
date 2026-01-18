@@ -3,6 +3,7 @@
 import time
 
 import pytest
+
 from insideLLMs.latency import (
     LatencyMeasurement,
     LatencyMetric,
@@ -595,6 +596,7 @@ class TestConvenienceFunctions:
 
     def test_measure_latency(self):
         """Test measure_latency function."""
+
         def slow_func():
             time.sleep(0.01)
 
@@ -635,7 +637,11 @@ class TestConvenienceFunctions:
         assert result["latency"]["mean_ms"] == 200
         assert result["throughput"] is not None
         assert result["performance_level"] in [
-            "excellent", "good", "acceptable", "poor", "critical"
+            "excellent",
+            "good",
+            "acceptable",
+            "poor",
+            "critical",
         ]
 
     def test_quick_performance_check_empty(self):

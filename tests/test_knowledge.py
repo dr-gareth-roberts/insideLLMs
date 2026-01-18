@@ -1,7 +1,5 @@
 """Tests for knowledge probing and fact verification utilities."""
 
-import pytest
-
 from insideLLMs.knowledge import (
     Claim,
     ClaimExtractor,
@@ -391,8 +389,12 @@ class TestKnowledgeProber:
         """Test report generation."""
         prober = KnowledgeProber()
 
-        probe1 = prober.add_probe("Q1", expected_answer="A1", category=KnowledgeCategory.FACTUAL, difficulty=0.2)
-        probe2 = prober.add_probe("Q2", expected_answer="A2", category=KnowledgeCategory.CONCEPTUAL, difficulty=0.8)
+        probe1 = prober.add_probe(
+            "Q1", expected_answer="A1", category=KnowledgeCategory.FACTUAL, difficulty=0.2
+        )
+        probe2 = prober.add_probe(
+            "Q2", expected_answer="A2", category=KnowledgeCategory.CONCEPTUAL, difficulty=0.8
+        )
 
         results = [
             ProbeResult(probe=probe1, response="A1", is_correct=True, confidence_expressed=0.8),
@@ -579,6 +581,7 @@ class TestConvenienceFunctions:
 
     def test_probe_knowledge(self):
         """Test probe_knowledge function."""
+
         def model_fn(q):
             return "Some answer"
 
@@ -593,6 +596,7 @@ class TestConvenienceFunctions:
 
     def test_check_consistency_function(self):
         """Test check_consistency function."""
+
         def model_fn(q):
             return "Consistent answer"
 

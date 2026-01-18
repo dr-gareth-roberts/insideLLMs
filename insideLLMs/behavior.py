@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 
 class BehaviorPattern(Enum):
@@ -36,10 +36,10 @@ class PatternMatch:
 
     pattern: BehaviorPattern
     confidence: float  # 0-1
-    evidence: List[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
     location: Optional[str] = None  # Where in response
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "pattern": self.pattern.value,
@@ -53,16 +53,16 @@ class PatternMatch:
 class ConsistencyReport:
     """Report on response consistency across multiple outputs."""
 
-    responses: List[str]
+    responses: list[str]
     prompt: str
     consistency_score: float  # 0-1, higher = more consistent
     variance_score: float  # 0-1, higher = more variance
-    common_elements: List[str] = field(default_factory=list)
-    divergent_elements: List[str] = field(default_factory=list)
+    common_elements: list[str] = field(default_factory=list)
+    divergent_elements: list[str] = field(default_factory=list)
     semantic_clusters: int = 1
     dominant_response_type: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt": self.prompt,
@@ -89,10 +89,10 @@ class BehaviorFingerprint:
     verbosity_score: float
     formality_score: float
     confidence_score: float
-    common_phrases: List[Tuple[str, int]] = field(default_factory=list)
-    pattern_frequencies: Dict[str, float] = field(default_factory=dict)
+    common_phrases: list[tuple[str, int]] = field(default_factory=list)
+    pattern_frequencies: dict[str, float] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
@@ -108,7 +108,7 @@ class BehaviorFingerprint:
             "pattern_frequencies": self.pattern_frequencies,
         }
 
-    def compare_to(self, other: "BehaviorFingerprint") -> Dict[str, float]:
+    def compare_to(self, other: "BehaviorFingerprint") -> dict[str, float]:
         """Compare fingerprints and return differences."""
         return {
             "avg_response_length_diff": self.avg_response_length - other.avg_response_length,
@@ -125,14 +125,14 @@ class SensitivityResult:
     """Result of sensitivity analysis on prompt variations."""
 
     original_prompt: str
-    variations: List[str]
+    variations: list[str]
     original_response: str
-    variation_responses: List[str]
+    variation_responses: list[str]
     sensitivity_score: float  # 0-1, higher = more sensitive
-    stable_elements: List[str] = field(default_factory=list)
-    sensitive_elements: List[str] = field(default_factory=list)
+    stable_elements: list[str] = field(default_factory=list)
+    sensitive_elements: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original_prompt": self.original_prompt,
@@ -210,7 +210,7 @@ class PatternDetector:
         "what a thoughtful",
     ]
 
-    def detect_patterns(self, response: str) -> List[PatternMatch]:
+    def detect_patterns(self, response: str) -> list[PatternMatch]:
         """Detect behavior patterns in a response.
 
         Args:
@@ -353,7 +353,7 @@ class PatternDetector:
             return None
 
         # Find repeated n-grams (3-5 words)
-        ngrams: Dict[str, int] = {}
+        ngrams: dict[str, int] = {}
         for n in range(3, 6):
             for i in range(len(words) - n + 1):
                 ngram = " ".join(words[i : i + n])
@@ -394,9 +394,7 @@ class PatternDetector:
             evidence=found[:3],
         )
 
-    def _detect_overconfidence(
-        self, response_lower: str, response: str
-    ) -> Optional[PatternMatch]:
+    def _detect_overconfidence(self, response_lower: str, response: str) -> Optional[PatternMatch]:
         """Detect potentially overconfident responses."""
         evidence = []
 
@@ -427,8 +425,7 @@ class PatternDetector:
         # Check for lack of citations/sources with factual claims
         has_numbers = bool(re.search(r"\d+%|\d+\.\d+", response))
         has_citations = any(
-            c in response_lower
-            for c in ["according to", "research shows", "study", "source"]
+            c in response_lower for c in ["according to", "research shows", "study", "source"]
         )
 
         if has_numbers and not has_citations:
@@ -449,7 +446,7 @@ class PatternDetector:
 class ConsistencyAnalyzer:
     """Analyze consistency across multiple responses."""
 
-    def analyze(self, prompt: str, responses: List[str]) -> ConsistencyReport:
+    def analyze(self, prompt: str, responses: list[str]) -> ConsistencyReport:
         """Analyze consistency across responses.
 
         Args:
@@ -476,22 +473,20 @@ class ConsistencyAnalyzer:
             )
 
         # Extract key elements from each response
-        all_elements: List[Set[str]] = []
+        all_elements: list[set[str]] = []
         for response in responses:
             elements = self._extract_key_elements(response)
             all_elements.append(elements)
 
         # Find common elements (appear in majority)
         threshold = len(responses) // 2 + 1
-        element_counts: Dict[str, int] = {}
+        element_counts: dict[str, int] = {}
         for elements in all_elements:
             for elem in elements:
                 element_counts[elem] = element_counts.get(elem, 0) + 1
 
         common_elements = [e for e, c in element_counts.items() if c >= threshold]
-        divergent_elements = [
-            e for e, c in element_counts.items() if c < threshold and c > 0
-        ]
+        divergent_elements = [e for e, c in element_counts.items() if c < threshold and c > 0]
 
         # Calculate Jaccard similarity between all pairs
         similarities = []
@@ -506,11 +501,9 @@ class ConsistencyAnalyzer:
         lengths = [len(r.split()) for r in responses]
         avg_length = sum(lengths) / len(lengths)
         length_variance = (
-            sum((l - avg_length) ** 2 for l in lengths) / len(lengths)
-            if len(lengths) > 1
-            else 0
+            sum((l - avg_length) ** 2 for l in lengths) / len(lengths) if len(lengths) > 1 else 0
         )
-        normalized_length_variance = min(1.0, length_variance / (avg_length**2 + 1))
+        min(1.0, length_variance / (avg_length**2 + 1))
 
         # Determine dominant response type
         dominant_type = self._classify_response_type(responses[0])
@@ -526,7 +519,7 @@ class ConsistencyAnalyzer:
             dominant_response_type=dominant_type,
         )
 
-    def _extract_key_elements(self, response: str) -> Set[str]:
+    def _extract_key_elements(self, response: str) -> set[str]:
         """Extract key elements from a response."""
         elements = set()
 
@@ -552,7 +545,7 @@ class ConsistencyAnalyzer:
 
         return elements
 
-    def _jaccard_similarity(self, set1: Set[str], set2: Set[str]) -> float:
+    def _jaccard_similarity(self, set1: set[str], set2: set[str]) -> float:
         """Calculate Jaccard similarity between two sets."""
         if not set1 and not set2:
             return 1.0
@@ -560,9 +553,7 @@ class ConsistencyAnalyzer:
         union = len(set1 | set2)
         return intersection / union if union > 0 else 0
 
-    def _estimate_clusters(
-        self, similarities: List[float], num_responses: int
-    ) -> int:
+    def _estimate_clusters(self, similarities: list[float], num_responses: int) -> int:
         """Estimate number of semantic clusters."""
         if num_responses <= 2:
             return 1
@@ -583,16 +574,10 @@ class ConsistencyAnalyzer:
         """Classify the response type."""
         response_lower = response.lower()
 
-        if any(
-            r in response_lower
-            for r in ["i cannot", "i can't", "unable to", "i won't"]
-        ):
+        if any(r in response_lower for r in ["i cannot", "i can't", "unable to", "i won't"]):
             return "refusal"
 
-        if any(
-            r in response_lower
-            for r in ["i don't know", "not sure", "uncertain"]
-        ):
+        if any(r in response_lower for r in ["i don't know", "not sure", "uncertain"]):
             return "uncertain"
 
         if "```" in response:
@@ -614,9 +599,7 @@ class BehaviorProfiler:
         """Initialize profiler."""
         self.pattern_detector = PatternDetector()
 
-    def create_fingerprint(
-        self, model_id: str, responses: List[str]
-    ) -> BehaviorFingerprint:
+    def create_fingerprint(self, model_id: str, responses: list[str]) -> BehaviorFingerprint:
         """Create a behavioral fingerprint from responses.
 
         Args:
@@ -647,7 +630,7 @@ class BehaviorProfiler:
         avg_sentences = sum(sentence_counts) / len(sentence_counts)
 
         # Detect patterns across all responses
-        pattern_counts: Dict[str, int] = {}
+        pattern_counts: dict[str, int] = {}
         total_patterns = 0
 
         for response in responses:
@@ -667,8 +650,8 @@ class BehaviorProfiler:
         # Calculate confidence score (inverse of uncertainty + hedging)
         uncertainty_freq = pattern_counts.get("uncertainty", 0) / sample_size
         overconfidence_freq = pattern_counts.get("overconfidence", 0) / sample_size
-        confidence_score = 0.5 + (overconfidence_freq * 0.3) - (
-            (hedging_freq + uncertainty_freq) * 0.2
+        confidence_score = (
+            0.5 + (overconfidence_freq * 0.3) - ((hedging_freq + uncertainty_freq) * 0.2)
         )
         confidence_score = max(0.0, min(1.0, confidence_score))
 
@@ -679,9 +662,7 @@ class BehaviorProfiler:
         common_phrases = self._find_common_phrases(responses)
 
         # Pattern frequencies
-        pattern_freqs = {
-            p: count / sample_size for p, count in pattern_counts.items()
-        }
+        pattern_freqs = {p: count / sample_size for p, count in pattern_counts.items()}
 
         return BehaviorFingerprint(
             model_id=model_id,
@@ -697,7 +678,7 @@ class BehaviorProfiler:
             pattern_frequencies=pattern_freqs,
         )
 
-    def _calculate_formality(self, responses: List[str]) -> float:
+    def _calculate_formality(self, responses: list[str]) -> float:
         """Calculate average formality of responses."""
         informal_markers = [
             "gonna",
@@ -733,9 +714,7 @@ class BehaviorProfiler:
 
         for response in responses:
             response_lower = response.lower()
-            informal_count += sum(
-                1 for m in informal_markers if m in response_lower
-            )
+            informal_count += sum(1 for m in informal_markers if m in response_lower)
             formal_count += sum(1 for m in formal_markers if m in response_lower)
 
         total = informal_count + formal_count
@@ -745,10 +724,10 @@ class BehaviorProfiler:
         return formal_count / total
 
     def _find_common_phrases(
-        self, responses: List[str], min_count: int = 2, top_n: int = 10
-    ) -> List[Tuple[str, int]]:
+        self, responses: list[str], min_count: int = 2, top_n: int = 10
+    ) -> list[tuple[str, int]]:
         """Find commonly repeated phrases across responses."""
-        phrase_counts: Dict[str, int] = {}
+        phrase_counts: dict[str, int] = {}
 
         for response in responses:
             words = response.lower().split()
@@ -757,18 +736,11 @@ class BehaviorProfiler:
                 for i in range(len(words) - n + 1):
                     phrase = " ".join(words[i : i + n])
                     # Filter out very common phrases
-                    if not any(
-                        stop in phrase
-                        for stop in ["the ", " a ", " an ", " is ", " are "]
-                    ):
+                    if not any(stop in phrase for stop in ["the ", " a ", " an ", " is ", " are "]):
                         phrase_counts[phrase] = phrase_counts.get(phrase, 0) + 1
 
         # Filter and sort
-        common = [
-            (phrase, count)
-            for phrase, count in phrase_counts.items()
-            if count >= min_count
-        ]
+        common = [(phrase, count) for phrase, count in phrase_counts.items() if count >= min_count]
         common.sort(key=lambda x: x[1], reverse=True)
 
         return common[:top_n]
@@ -785,8 +757,8 @@ class SensitivityAnalyzer:
         self,
         original_prompt: str,
         original_response: str,
-        variations: List[str],
-        variation_responses: List[str],
+        variations: list[str],
+        variation_responses: list[str],
     ) -> SensitivityResult:
         """Analyze sensitivity to prompt variations.
 
@@ -800,9 +772,7 @@ class SensitivityAnalyzer:
             Sensitivity analysis result.
         """
         if len(variations) != len(variation_responses):
-            raise ValueError(
-                "Number of variations must match number of variation responses"
-            )
+            raise ValueError("Number of variations must match number of variation responses")
 
         all_responses = [original_response] + variation_responses
 
@@ -819,9 +789,7 @@ class SensitivityAnalyzer:
         sensitive_elements = []
 
         for elem in original_elements:
-            in_variations = sum(
-                1 for r in variation_responses if elem.lower() in r.lower()
-            )
+            in_variations = sum(1 for r in variation_responses if elem.lower() in r.lower())
             ratio = in_variations / len(variation_responses) if variation_responses else 0
 
             if ratio >= 0.7:
@@ -839,7 +807,7 @@ class SensitivityAnalyzer:
             sensitive_elements=sensitive_elements[:10],
         )
 
-    def _extract_answer_elements(self, response: str) -> List[str]:
+    def _extract_answer_elements(self, response: str) -> list[str]:
         """Extract key answer elements from response."""
         elements = []
 
@@ -865,8 +833,8 @@ class SensitivityAnalyzer:
 class CalibrationResult:
     """Result of calibration assessment."""
 
-    confidence_levels: List[float]
-    accuracy_at_levels: List[float]
+    confidence_levels: list[float]
+    accuracy_at_levels: list[float]
     expected_calibration_error: float
     overconfidence_score: float
     underconfidence_score: float
@@ -875,7 +843,7 @@ class CalibrationResult:
         """Check if model is well calibrated."""
         return self.expected_calibration_error < threshold
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "confidence_levels": self.confidence_levels,
@@ -892,9 +860,9 @@ class CalibrationAssessor:
 
     def assess(
         self,
-        predictions: List[str],
-        ground_truths: List[str],
-        confidences: List[float],
+        predictions: list[str],
+        ground_truths: list[str],
+        confidences: list[float],
         num_bins: int = 10,
     ) -> CalibrationResult:
         """Assess calibration from predictions and confidences.
@@ -912,10 +880,7 @@ class CalibrationAssessor:
             raise ValueError("All lists must have the same length")
 
         # Determine correctness
-        correct = [
-            self._is_correct(pred, truth)
-            for pred, truth in zip(predictions, ground_truths)
-        ]
+        correct = [self._is_correct(pred, truth) for pred, truth in zip(predictions, ground_truths)]
 
         # Bin by confidence and calculate ECE in one pass
         bin_edges = [i / num_bins for i in range(num_bins + 1)]
@@ -974,16 +939,13 @@ class CalibrationAssessor:
             return True
 
         # Contains match
-        if truth_normalized in pred_normalized:
-            return True
-
-        return False
+        return truth_normalized in pred_normalized
 
 
 # Convenience functions
 
 
-def detect_patterns(response: str) -> List[PatternMatch]:
+def detect_patterns(response: str) -> list[PatternMatch]:
     """Detect behavior patterns in a response.
 
     Args:
@@ -996,7 +958,7 @@ def detect_patterns(response: str) -> List[PatternMatch]:
     return detector.detect_patterns(response)
 
 
-def analyze_consistency(prompt: str, responses: List[str]) -> ConsistencyReport:
+def analyze_consistency(prompt: str, responses: list[str]) -> ConsistencyReport:
     """Analyze consistency across multiple responses.
 
     Args:
@@ -1010,9 +972,7 @@ def analyze_consistency(prompt: str, responses: List[str]) -> ConsistencyReport:
     return analyzer.analyze(prompt, responses)
 
 
-def create_behavior_fingerprint(
-    model_id: str, responses: List[str]
-) -> BehaviorFingerprint:
+def create_behavior_fingerprint(model_id: str, responses: list[str]) -> BehaviorFingerprint:
     """Create behavioral fingerprint from responses.
 
     Args:
@@ -1029,8 +989,8 @@ def create_behavior_fingerprint(
 def analyze_sensitivity(
     original_prompt: str,
     original_response: str,
-    variations: List[str],
-    variation_responses: List[str],
+    variations: list[str],
+    variation_responses: list[str],
 ) -> SensitivityResult:
     """Analyze sensitivity to prompt variations.
 
@@ -1050,9 +1010,9 @@ def analyze_sensitivity(
 
 
 def assess_calibration(
-    predictions: List[str],
-    ground_truths: List[str],
-    confidences: List[float],
+    predictions: list[str],
+    ground_truths: list[str],
+    confidences: list[float],
 ) -> CalibrationResult:
     """Assess model calibration.
 

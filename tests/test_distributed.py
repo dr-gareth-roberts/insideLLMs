@@ -2,8 +2,6 @@
 
 import tempfile
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -289,7 +287,7 @@ class TestLocalDistributedExecutor:
         )
 
         executor = LocalDistributedExecutor(
-            executor=FunctionExecutor(lambda x: x ** 2),
+            executor=FunctionExecutor(lambda x: x**2),
             num_workers=4,
         )
 
@@ -302,7 +300,7 @@ class TestLocalDistributedExecutor:
         assert len(results) == 10
         results_by_id = {r.task_id: r.result for r in results}
         for i in range(10):
-            assert results_by_id[f"task_{i}"] == i ** 2
+            assert results_by_id[f"task_{i}"] == i**2
 
 
 class TestCheckpointManager:
@@ -476,7 +474,7 @@ class TestParallelMap:
         from insideLLMs.distributed import parallel_map
 
         results = parallel_map(
-            func=lambda x: x ** 2,
+            func=lambda x: x**2,
             items=[1, 2, 3, 4, 5],
             num_workers=2,
         )

@@ -116,13 +116,7 @@ class TestPromptBuilder:
 
     def test_fluent_api(self):
         """Test fluent API chaining."""
-        messages = (
-            PromptBuilder()
-            .system("Be helpful.")
-            .user("Hi!")
-            .assistant("Hello!")
-            .build()
-        )
+        messages = PromptBuilder().system("Be helpful.").user("Hi!").assistant("Hello!").build()
         assert len(messages) == 3
 
     def test_with_context(self):
@@ -140,12 +134,7 @@ class TestPromptBuilder:
 
     def test_to_string(self):
         """Test string conversion."""
-        result = (
-            PromptBuilder()
-            .system("Be helpful.")
-            .user("Hello!")
-            .to_string()
-        )
+        result = PromptBuilder().system("Be helpful.").user("Hello!").to_string()
         assert "System: Be helpful." in result
         assert "User: Hello!" in result
 
@@ -369,11 +358,7 @@ class TestPromptValidator:
     def test_custom_rule(self):
         """Test custom validation rule."""
         validator = PromptValidator()
-        validator.add_rule(
-            "max_length",
-            lambda p: len(p) <= 10,
-            "Prompt too long"
-        )
+        validator.add_rule("max_length", lambda p: len(p) <= 10, "Prompt too long")
 
         valid, errors = validator.validate("Short")
         assert valid
@@ -385,9 +370,7 @@ class TestPromptValidator:
     def test_rule_chaining(self):
         """Test chaining validation rules."""
         validator = (
-            PromptValidator()
-            .add_rule("not_empty", lambda p: len(p) > 0)
-            .require_variables("name")
+            PromptValidator().add_rule("not_empty", lambda p: len(p) > 0).require_variables("name")
         )
 
         valid, errors = validator.validate("")
@@ -453,9 +436,7 @@ class TestUtilityFunctions:
         assert valid
         assert len(missing) == 0
 
-        valid, missing = validate_template_variables(
-            template, {"name": "Alice"}
-        )
+        valid, missing = validate_template_variables(template, {"name": "Alice"})
         assert not valid
         assert "place" in missing
 

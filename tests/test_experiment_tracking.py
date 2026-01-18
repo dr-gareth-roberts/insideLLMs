@@ -1,11 +1,16 @@
 """Tests for experiment tracking integrations."""
 
-import json
-import pytest
-from pathlib import Path
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import pytest
+
+from insideLLMs.experiment_tracking import (
+    LocalFileTracker,
+    MultiTracker,
+    TrackingConfig,
+    auto_track,
+    create_tracker,
+)
 from insideLLMs.types import (
     ExperimentResult,
     ModelInfo,
@@ -13,14 +18,6 @@ from insideLLMs.types import (
     ProbeResult,
     ProbeScore,
     ResultStatus,
-)
-from insideLLMs.experiment_tracking import (
-    ExperimentTracker,
-    LocalFileTracker,
-    MultiTracker,
-    TrackingConfig,
-    create_tracker,
-    auto_track,
 )
 
 
@@ -352,6 +349,7 @@ class TestWandBTracker:
         """Test that WandBTracker raises error when wandb not installed."""
         with patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", False):
             from insideLLMs.experiment_tracking import WandBTracker
+
             with pytest.raises(ImportError, match="wandb is required"):
                 WandBTracker(project="test")
 
@@ -363,6 +361,7 @@ class TestMLflowTracker:
         """Test that MLflowTracker raises error when mlflow not installed."""
         with patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", False):
             from insideLLMs.experiment_tracking import MLflowTracker
+
             with pytest.raises(ImportError, match="mlflow is required"):
                 MLflowTracker()
 
@@ -374,5 +373,6 @@ class TestTensorBoardTracker:
         """Test that TensorBoardTracker raises error when not installed."""
         with patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", False):
             from insideLLMs.experiment_tracking import TensorBoardTracker
+
             with pytest.raises(ImportError, match="tensorboard"):
                 TensorBoardTracker()

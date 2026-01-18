@@ -26,7 +26,7 @@ Example:
 
 import functools
 import logging
-import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -34,12 +34,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterator,
-    List,
     Optional,
     TypeVar,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -47,12 +43,13 @@ if TYPE_CHECKING:
 
 # Try to import OpenTelemetry
 try:
-    from opentelemetry import trace, metrics
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+    from opentelemetry import metrics, trace
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
     from opentelemetry.semconv.resource import ResourceAttributes
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -94,7 +91,7 @@ class TracingConfig:
     log_prompts: bool = False
     log_responses: bool = False
     sample_rate: float = 1.0
-    custom_attributes: Dict[str, str] = field(default_factory=dict)
+    custom_attributes: dict[str, str] = field(default_factory=dict)
 
 
 # =============================================================================
@@ -132,9 +129,9 @@ class CallRecord:
     completion_tokens: int = 0
     prompt_length: int = 0
     response_length: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_name": self.model_name,
@@ -166,9 +163,9 @@ class TelemetryCollector:
         Args:
             max_records: Maximum number of records to keep.
         """
-        self.records: List[CallRecord] = []
+        self.records: list[CallRecord] = []
         self.max_records = max_records
-        self._callbacks: List[Callable[[CallRecord], None]] = []
+        self._callbacks: list[Callable[[CallRecord], None]] = []
 
     def record(self, call: CallRecord) -> None:
         """Record a call.
@@ -180,7 +177,7 @@ class TelemetryCollector:
 
         # Trim if over limit
         if len(self.records) > self.max_records:
-            self.records = self.records[-self.max_records:]
+            self.records = self.records[-self.max_records :]
 
         # Notify callbacks
         for callback in self._callbacks:
@@ -202,7 +199,7 @@ class TelemetryCollector:
         model_name: Optional[str] = None,
         operation: Optional[str] = None,
         since: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get aggregate statistics.
 
         Args:
@@ -244,7 +241,9 @@ class TelemetryCollector:
             "min_latency_ms": min(latencies),
             "max_latency_ms": max(latencies),
             "p50_latency_ms": sorted(latencies)[len(latencies) // 2],
-            "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if len(latencies) >= 20 else max(latencies),
+            "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)]
+            if len(latencies) >= 20
+            else max(latencies),
             "total_tokens": tokens,
             "avg_tokens_per_call": tokens / total,
         }
@@ -253,7 +252,7 @@ class TelemetryCollector:
         self,
         limit: int = 100,
         model_name: Optional[str] = None,
-    ) -> List[CallRecord]:
+    ) -> list[CallRecord]:
         """Get recent records.
 
         Args:
@@ -279,6 +278,7 @@ class TelemetryCollector:
             JSON string of all records.
         """
         import json
+
         return json.dumps([r.to_dict() for r in self.records], indent=2)
 
 
@@ -334,6 +334,7 @@ def estimate_tokens(text: str, model: str = "gpt-4") -> int:
     # Try tiktoken if available (more accurate)
     try:
         import tiktoken
+
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
@@ -357,8 +358,8 @@ def trace_call(
     operation: str,
     prompt: str = "",
     collector: Optional[TelemetryCollector] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Iterator[Dict[str, Any]]:
+    metadata: Optional[dict[str, Any]] = None,
+) -> Iterator[dict[str, Any]]:
     """Context manager for tracing a model call.
 
     Args:
@@ -380,7 +381,7 @@ def trace_call(
     metadata = metadata or {}
 
     start_time = datetime.now()
-    ctx: Dict[str, Any] = {
+    ctx: dict[str, Any] = {
         "response": "",
         "error": None,
         "success": True,
@@ -471,7 +472,7 @@ class TracedModel:
             ctx["response"] = response if self._config.log_responses else ""
             return response
 
-    def chat(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
+    def chat(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
         """Chat with tracing.
 
         Args:
@@ -592,21 +593,22 @@ def setup_otel_tracing(config: TracingConfig) -> None:
             "Install with: pip install opentelemetry-api opentelemetry-sdk"
         )
 
-    resource = Resource.create({
-        ResourceAttributes.SERVICE_NAME: config.service_name,
-        **config.custom_attributes,
-    })
+    resource = Resource.create(
+        {
+            ResourceAttributes.SERVICE_NAME: config.service_name,
+            **config.custom_attributes,
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
     if config.console_export:
-        provider.add_span_processor(
-            BatchSpanProcessor(ConsoleSpanExporter())
-        )
+        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     if config.jaeger_endpoint:
         try:
             from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+
             exporter = JaegerExporter(
                 collector_endpoint=config.jaeger_endpoint,
             )
@@ -617,6 +619,7 @@ def setup_otel_tracing(config: TracingConfig) -> None:
     if config.otlp_endpoint:
         try:
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
             exporter = OTLPSpanExporter(endpoint=config.otlp_endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))
         except ImportError:
@@ -681,7 +684,7 @@ class OTelTracedModel:
                 span.record_exception(e)
                 raise
 
-    def chat(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
+    def chat(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
         """Chat with OpenTelemetry tracing."""
         if not hasattr(self._model, "chat"):
             raise NotImplementedError("Model does not support chat")
@@ -734,6 +737,7 @@ def trace_function(
         ... def my_function(x):
         ...     return x * 2
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
@@ -770,6 +774,7 @@ def trace_function(
                 collector.record(record)
 
         return wrapper
+
     return decorator
 
 

@@ -7,9 +7,9 @@ This module provides tools for visualizing:
 - Rich plots with matplotlib (optional)
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
-from insideLLMs.types import ExperimentResult, ProbeScore
+from insideLLMs.types import ExperimentResult
 
 try:
     import matplotlib.pyplot as plt
@@ -37,7 +37,7 @@ except ImportError:
 
 try:
     import ipywidgets as widgets
-    from IPython.display import display, HTML
+    from IPython.display import HTML, display
 
     IPYWIDGETS_AVAILABLE = True
 except ImportError:
@@ -57,8 +57,7 @@ def check_plotly_deps() -> None:
     """Check if Plotly dependencies are available."""
     if not PLOTLY_AVAILABLE:
         raise ImportError(
-            "Plotly dependencies not installed. "
-            "Please install with: pip install plotly"
+            "Plotly dependencies not installed. Please install with: pip install plotly"
         )
     # Plotly express requires pandas for DataFrame operations
     if not MATPLOTLIB_AVAILABLE:
@@ -78,8 +77,7 @@ def check_ipywidgets_deps() -> None:
     """Check if ipywidgets dependencies are available."""
     if not IPYWIDGETS_AVAILABLE:
         raise ImportError(
-            "ipywidgets dependencies not installed. "
-            "Please install with: pip install ipywidgets"
+            "ipywidgets dependencies not installed. Please install with: pip install ipywidgets"
         )
 
 
@@ -87,8 +85,8 @@ def check_ipywidgets_deps() -> None:
 
 
 def text_bar_chart(
-    labels: List[str],
-    values: List[float],
+    labels: list[str],
+    values: list[float],
     title: str = "",
     width: int = 50,
     show_values: bool = True,
@@ -133,7 +131,7 @@ def text_bar_chart(
 
 
 def text_histogram(
-    values: List[float],
+    values: list[float],
     bins: int = 10,
     title: str = "",
     width: int = 40,
@@ -184,9 +182,9 @@ def text_histogram(
 
 
 def text_comparison_table(
-    rows: List[str],
-    cols: List[str],
-    values: List[List[Any]],
+    rows: list[str],
+    cols: list[str],
+    values: list[list[Any]],
     title: str = "",
 ) -> str:
     """Create a text-based comparison table.
@@ -216,10 +214,14 @@ def text_comparison_table(
     # Update col widths based on values
     for row_vals in values:
         for i, val in enumerate(row_vals):
-            col_widths[i] = max(col_widths[i], len(f"{val:.4f}" if isinstance(val, float) else str(val)))
+            col_widths[i] = max(
+                col_widths[i], len(f"{val:.4f}" if isinstance(val, float) else str(val))
+            )
 
     # Header
-    header = " " * (row_width + 1) + " | ".join(str(c).center(col_widths[i]) for i, c in enumerate(cols))
+    header = " " * (row_width + 1) + " | ".join(
+        str(c).center(col_widths[i]) for i, c in enumerate(cols)
+    )
     lines.append(header)
     lines.append("-" * len(header))
 
@@ -329,9 +331,9 @@ def experiment_summary_text(experiment: ExperimentResult) -> str:
 
 
 def plot_accuracy_comparison(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "Model Accuracy Comparison",
-    figsize: Tuple[int, int] = (10, 6),
+    figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
     """Plot accuracy comparison across experiments.
@@ -385,9 +387,9 @@ def plot_accuracy_comparison(
 
 
 def plot_latency_distribution(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "Response Latency Distribution",
-    figsize: Tuple[int, int] = (10, 6),
+    figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
     """Plot latency distribution across experiments.
@@ -445,10 +447,10 @@ def plot_latency_distribution(
 
 
 def plot_metric_comparison(
-    experiments: List[ExperimentResult],
-    metrics: List[str] = ["accuracy", "precision", "recall", "f1_score"],
+    experiments: list[ExperimentResult],
+    metrics: list[str] = None,
     title: str = "Metric Comparison",
-    figsize: Tuple[int, int] = (12, 6),
+    figsize: tuple[int, int] = (12, 6),
     save_path: Optional[str] = None,
 ) -> None:
     """Plot multiple metrics for comparison.
@@ -460,6 +462,8 @@ def plot_metric_comparison(
         figsize: Figure size.
         save_path: Path to save the plot.
     """
+    if metrics is None:
+        metrics = ["accuracy", "precision", "recall", "f1_score"]
     check_visualization_deps()
 
     model_data = {}
@@ -501,7 +505,12 @@ def plot_metric_comparison(
     plt.xlabel("Model", fontsize=12)
     plt.ylabel("Score", fontsize=12)
     plt.title(title, fontsize=14, fontweight="bold")
-    plt.xticks([j + bar_width * (n_metrics - 1) / 2 for j in range(n_models)], models, rotation=45, ha="right")
+    plt.xticks(
+        [j + bar_width * (n_metrics - 1) / 2 for j in range(n_models)],
+        models,
+        rotation=45,
+        ha="right",
+    )
     plt.legend()
     plt.tight_layout()
 
@@ -513,9 +522,9 @@ def plot_metric_comparison(
 
 
 def plot_success_rate_over_time(
-    results: List[Tuple[str, float]],
+    results: list[tuple[str, float]],
     title: str = "Success Rate Over Time",
-    figsize: Tuple[int, int] = (10, 6),
+    figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
     """Plot success rate over time/runs.
@@ -557,7 +566,7 @@ def plot_success_rate_over_time(
 
 
 def plot_bias_results(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     title: str = "Bias Probe Results",
     save_path: Optional[str] = None,
 ) -> None:
@@ -575,7 +584,7 @@ def plot_bias_results(
         for j, (response1, response2) in enumerate(result.get("output", [])):
             data.append(
                 {
-                    "Prompt Pair": f"Pair {i+1}.{j+1}",
+                    "Prompt Pair": f"Pair {i + 1}.{j + 1}",
                     "Response 1 Length": len(response1),
                     "Response 2 Length": len(response2),
                     "Length Difference": len(response1) - len(response2),
@@ -608,7 +617,7 @@ def plot_bias_results(
 
 
 def plot_factuality_results(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     title: str = "Factuality Probe Results",
     save_path: Optional[str] = None,
 ) -> None:
@@ -621,7 +630,7 @@ def plot_factuality_results(
     """
     check_visualization_deps()
 
-    categories: Dict[str, Dict[str, Any]] = {}
+    categories: dict[str, dict[str, Any]] = {}
     for result in results:
         for item in result.get("output", []):
             category = item.get("category", "general")
@@ -684,7 +693,7 @@ def plot_factuality_results(
 
 
 def create_html_report(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     title: str = "Probe Results Report",
     save_path: str = "report.html",
 ) -> str:
@@ -739,7 +748,7 @@ def create_html_report(
     html += "<h2>Results</h2>"
     for i, result in enumerate(results):
         html += "<div class='result'>"
-        html += f"<h3>Result {i+1}</h3>"
+        html += f"<h3>Result {i + 1}</h3>"
 
         if "input" in result:
             html += f"<div class='input'><strong>Input:</strong> {result['input']}</div>"
@@ -752,9 +761,9 @@ def create_html_report(
                 html += "<table><tr><th>#</th><th>Output</th></tr>"
                 for j, item in enumerate(output):
                     if isinstance(item, tuple):
-                        html += f"<tr><td>{j+1}</td><td>{item[0]}<br><em>vs.</em><br>{item[1]}</td></tr>"
+                        html += f"<tr><td>{j + 1}</td><td>{item[0]}<br><em>vs.</em><br>{item[1]}</td></tr>"
                     else:
-                        html += f"<tr><td>{j+1}</td><td>{item}</td></tr>"
+                        html += f"<tr><td>{j + 1}</td><td>{item}</td></tr>"
                 html += "</table>"
             elif isinstance(output, dict):
                 html += "<table><tr><th>Key</th><th>Value</th></tr>"
@@ -784,7 +793,7 @@ def create_html_report(
 
 
 def interactive_accuracy_comparison(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "Model Accuracy Comparison",
     show_error_bars: bool = True,
     color_by: str = "model",
@@ -810,13 +819,15 @@ def interactive_accuracy_comparison(
     data = []
     for exp in experiments:
         if exp.score and exp.score.accuracy is not None:
-            data.append({
-                "Model": exp.model_info.name,
-                "Probe": exp.probe_name,
-                "Accuracy": exp.score.accuracy * 100,
-                "Provider": exp.model_info.provider,
-                "Success Rate": exp.success_rate * 100,
-            })
+            data.append(
+                {
+                    "Model": exp.model_info.name,
+                    "Probe": exp.probe_name,
+                    "Accuracy": exp.score.accuracy * 100,
+                    "Provider": exp.model_info.provider,
+                    "Success Rate": exp.success_rate * 100,
+                }
+            )
 
     if not data:
         raise ValueError("No accuracy data available in experiments")
@@ -847,7 +858,7 @@ def interactive_accuracy_comparison(
 
 
 def interactive_latency_distribution(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "Response Latency Distribution",
     chart_type: str = "box",
 ) -> Any:
@@ -871,12 +882,16 @@ def interactive_latency_distribution(
     for exp in experiments:
         for result in exp.results:
             if result.latency_ms is not None:
-                data.append({
-                    "Model": exp.model_info.name,
-                    "Probe": exp.probe_name,
-                    "Latency (ms)": result.latency_ms,
-                    "Status": result.status.value if hasattr(result.status, 'value') else str(result.status),
-                })
+                data.append(
+                    {
+                        "Model": exp.model_info.name,
+                        "Probe": exp.probe_name,
+                        "Latency (ms)": result.latency_ms,
+                        "Status": result.status.value
+                        if hasattr(result.status, "value")
+                        else str(result.status),
+                    }
+                )
 
     if not data:
         raise ValueError("No latency data available in experiments")
@@ -922,8 +937,8 @@ def interactive_latency_distribution(
 
 
 def interactive_metric_radar(
-    experiments: List[ExperimentResult],
-    metrics: Optional[List[str]] = None,
+    experiments: list[ExperimentResult],
+    metrics: Optional[list[str]] = None,
     title: str = "Model Performance Radar",
 ) -> Any:
     """Create an interactive radar/spider chart for multi-metric comparison.
@@ -971,21 +986,23 @@ def interactive_metric_radar(
         values_closed = values + [values[0]]
         metrics_closed = metrics + [metrics[0]]
 
-        fig.add_trace(go.Scatterpolar(
-            r=values_closed,
-            theta=[m.replace("_", " ").title() for m in metrics_closed],
-            fill="toself",
-            name=model_name,
-            opacity=0.7,
-        ))
+        fig.add_trace(
+            go.Scatterpolar(
+                r=values_closed,
+                theta=[m.replace("_", " ").title() for m in metrics_closed],
+                fill="toself",
+                name=model_name,
+                opacity=0.7,
+            )
+        )
 
     fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 100],
-            )
-        ),
+        polar={
+            "radialaxis": {
+                "visible": True,
+                "range": [0, 100],
+            }
+        },
         showlegend=True,
         title=title,
     )
@@ -994,7 +1011,7 @@ def interactive_metric_radar(
 
 
 def interactive_timeline(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     metric: str = "accuracy",
     title: str = "Performance Over Time",
 ) -> Any:
@@ -1015,13 +1032,17 @@ def interactive_timeline(
         if exp.score:
             value = getattr(exp.score, metric, None)
             if value is not None:
-                data.append({
-                    "Index": i,
-                    "Model": exp.model_info.name,
-                    "Probe": exp.probe_name,
-                    metric.replace("_", " ").title(): value * 100 if metric != "f1_score" else value,
-                    "Timestamp": exp.timestamp if hasattr(exp, 'timestamp') else f"Run {i+1}",
-                })
+                data.append(
+                    {
+                        "Index": i,
+                        "Model": exp.model_info.name,
+                        "Probe": exp.probe_name,
+                        metric.replace("_", " ").title(): value * 100
+                        if metric != "f1_score"
+                        else value,
+                        "Timestamp": exp.timestamp if hasattr(exp, "timestamp") else f"Run {i + 1}",
+                    }
+                )
 
     if not data:
         raise ValueError(f"No {metric} data available in experiments")
@@ -1050,7 +1071,7 @@ def interactive_timeline(
 
 
 def interactive_heatmap(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     row_key: str = "model",
     col_key: str = "probe",
     value_key: str = "accuracy",
@@ -1113,16 +1134,18 @@ def interactive_heatmap(
         z_data.append(z_row)
         text_data.append(text_row)
 
-    fig = go.Figure(data=go.Heatmap(
-        z=z_data,
-        x=cols,
-        y=rows,
-        text=text_data,
-        texttemplate="%{text}",
-        textfont={"size": 12},
-        colorscale="RdYlGn",
-        hoverongaps=False,
-    ))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_data,
+            x=cols,
+            y=rows,
+            text=text_data,
+            texttemplate="%{text}",
+            textfont={"size": 12},
+            colorscale="RdYlGn",
+            hoverongaps=False,
+        )
+    )
 
     fig.update_layout(
         title=title,
@@ -1134,7 +1157,7 @@ def interactive_heatmap(
 
 
 def interactive_scatter_comparison(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     x_metric: str = "accuracy",
     y_metric: str = "mean_latency_ms",
     size_metric: Optional[str] = None,
@@ -1174,7 +1197,9 @@ def interactive_scatter_comparison(
                     "Model": exp.model_info.name,
                     "Probe": exp.probe_name,
                     "Provider": exp.model_info.provider,
-                    x_metric.replace("_", " ").title(): x_val * 100 if "rate" in x_metric or x_metric in ["accuracy", "precision", "recall"] else x_val,
+                    x_metric.replace("_", " ").title(): x_val * 100
+                    if "rate" in x_metric or x_metric in ["accuracy", "precision", "recall"]
+                    else x_val,
                     y_metric.replace("_", " ").title(): y_val,
                 }
 
@@ -1213,7 +1238,7 @@ def interactive_scatter_comparison(
 
 
 def interactive_sunburst(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     value_metric: str = "accuracy",
     title: str = "Experiment Breakdown",
 ) -> Any:
@@ -1238,12 +1263,16 @@ def interactive_sunburst(
         if exp.score:
             value = getattr(exp.score, value_metric, None)
             if value is not None:
-                data.append({
-                    "Provider": exp.model_info.provider,
-                    "Model": exp.model_info.name,
-                    "Probe": exp.probe_name,
-                    "Value": value * 100 if value_metric in ["accuracy", "precision", "recall"] else value,
-                })
+                data.append(
+                    {
+                        "Provider": exp.model_info.provider,
+                        "Model": exp.model_info.name,
+                        "Probe": exp.probe_name,
+                        "Value": value * 100
+                        if value_metric in ["accuracy", "precision", "recall"]
+                        else value,
+                    }
+                )
 
     if not data:
         raise ValueError(f"No {value_metric} data available")
@@ -1263,7 +1292,7 @@ def interactive_sunburst(
 
 
 def create_interactive_dashboard(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "LLM Evaluation Dashboard",
     save_path: Optional[str] = None,
 ) -> Any:
@@ -1339,7 +1368,7 @@ def create_interactive_dashboard(
                 name=model,
                 x=[model],
                 y=[sum(accs) / len(accs)],
-                text=[f"{sum(accs)/len(accs):.1f}%"],
+                text=[f"{sum(accs) / len(accs):.1f}%"],
                 textposition="outside",
                 showlegend=False,
             ),
@@ -1376,7 +1405,7 @@ def create_interactive_dashboard(
 
     # Chart 4: Success rate trend
     if success_rates:
-        for model in set(sr[2] for sr in success_rates):
+        for model in {sr[2] for sr in success_rates}:
             model_rates = [(sr[0], sr[1]) for sr in success_rates if sr[2] == model]
             fig.add_trace(
                 go.Scatter(
@@ -1408,7 +1437,7 @@ def create_interactive_dashboard(
 
 
 def create_interactive_html_report(
-    experiments: List[ExperimentResult],
+    experiments: list[ExperimentResult],
     title: str = "LLM Evaluation Report",
     save_path: str = "interactive_report.html",
     include_raw_results: bool = False,
@@ -1435,25 +1464,33 @@ def create_interactive_html_report(
 
     try:
         acc_fig = interactive_accuracy_comparison(experiments)
-        charts_html.append(('Accuracy Comparison', acc_fig.to_html(full_html=False, include_plotlyjs=False)))
+        charts_html.append(
+            ("Accuracy Comparison", acc_fig.to_html(full_html=False, include_plotlyjs=False))
+        )
     except ValueError:
         pass
 
     try:
         lat_fig = interactive_latency_distribution(experiments)
-        charts_html.append(('Latency Distribution', lat_fig.to_html(full_html=False, include_plotlyjs=False)))
+        charts_html.append(
+            ("Latency Distribution", lat_fig.to_html(full_html=False, include_plotlyjs=False))
+        )
     except ValueError:
         pass
 
     try:
         radar_fig = interactive_metric_radar(experiments)
-        charts_html.append(('Performance Radar', radar_fig.to_html(full_html=False, include_plotlyjs=False)))
+        charts_html.append(
+            ("Performance Radar", radar_fig.to_html(full_html=False, include_plotlyjs=False))
+        )
     except ValueError:
         pass
 
     try:
         heatmap_fig = interactive_heatmap(experiments)
-        charts_html.append(('Performance Heatmap', heatmap_fig.to_html(full_html=False, include_plotlyjs=False)))
+        charts_html.append(
+            ("Performance Heatmap", heatmap_fig.to_html(full_html=False, include_plotlyjs=False))
+        )
     except ValueError:
         pass
 
@@ -1563,7 +1600,7 @@ def create_interactive_html_report(
             acc_count += 1
     avg_accuracy = avg_accuracy / acc_count if acc_count > 0 else 0
 
-    unique_models = len(set(exp.model_info.name for exp in experiments))
+    unique_models = len({exp.model_info.name for exp in experiments})
 
     html += f"""
         <div class="summary-cards">
@@ -1577,7 +1614,7 @@ def create_interactive_html_report(
             </div>
             <div class="card">
                 <h3>Success Rate</h3>
-                <div class="value">{total_success/total_results*100:.1f}%</div>
+                <div class="value">{total_success / total_results * 100:.1f}%</div>
             </div>
             <div class="card">
                 <h3>Avg Accuracy</h3>
@@ -1615,8 +1652,12 @@ def create_interactive_html_report(
                 </tr>
 """
         for exp in experiments:
-            acc = f"{exp.score.accuracy*100:.1f}%" if exp.score and exp.score.accuracy else "N/A"
-            lat = f"{exp.score.mean_latency_ms:.1f}" if exp.score and exp.score.mean_latency_ms else "N/A"
+            acc = f"{exp.score.accuracy * 100:.1f}%" if exp.score and exp.score.accuracy else "N/A"
+            lat = (
+                f"{exp.score.mean_latency_ms:.1f}"
+                if exp.score and exp.score.mean_latency_ms
+                else "N/A"
+            )
             html += f"""
                 <tr>
                     <td>{exp.model_info.name}</td>
@@ -1655,7 +1696,7 @@ class ExperimentExplorer:
         >>> explorer.show()  # Displays interactive widgets in Jupyter
     """
 
-    def __init__(self, experiments: List[ExperimentResult]):
+    def __init__(self, experiments: list[ExperimentResult]):
         """Initialize the explorer.
 
         Args:
@@ -1665,15 +1706,15 @@ class ExperimentExplorer:
         check_plotly_deps()
 
         self.experiments = experiments
-        self.models = sorted(set(exp.model_info.name for exp in experiments))
-        self.probes = sorted(set(exp.probe_name for exp in experiments))
+        self.models = sorted({exp.model_info.name for exp in experiments})
+        self.probes = sorted({exp.probe_name for exp in experiments})
 
     def show(self) -> None:
         """Display the interactive explorer widgets."""
         # Model selector
         model_select = widgets.SelectMultiple(
             options=self.models,
-            value=self.models[:min(3, len(self.models))],
+            value=self.models[: min(3, len(self.models))],
             description="Models:",
             disabled=False,
         )
@@ -1681,7 +1722,7 @@ class ExperimentExplorer:
         # Probe selector
         probe_select = widgets.SelectMultiple(
             options=self.probes,
-            value=self.probes[:min(3, len(self.probes))],
+            value=self.probes[: min(3, len(self.probes))],
             description="Probes:",
             disabled=False,
         )
@@ -1707,9 +1748,9 @@ class ExperimentExplorer:
             selected_probes = list(probe_select.value)
 
             filtered = [
-                exp for exp in self.experiments
-                if exp.model_info.name in selected_models
-                and exp.probe_name in selected_probes
+                exp
+                for exp in self.experiments
+                if exp.model_info.name in selected_models and exp.probe_name in selected_probes
             ]
 
             if not filtered:
@@ -1744,10 +1785,12 @@ class ExperimentExplorer:
         chart_type.observe(update_chart, names="value")
 
         # Layout
-        controls = widgets.HBox([
-            widgets.VBox([model_select, probe_select]),
-            chart_type,
-        ])
+        controls = widgets.HBox(
+            [
+                widgets.VBox([model_select, probe_select]),
+                chart_type,
+            ]
+        )
 
         display(widgets.VBox([controls, output]))
         update_chart()  # Initial render
@@ -1779,7 +1822,9 @@ class ExperimentExplorer:
                 if value is not None:
                     if probe not in data[model]:
                         data[model][probe] = []
-                    data[model][probe].append(value * 100 if metric in ["accuracy", "precision", "recall"] else value)
+                    data[model][probe].append(
+                        value * 100 if metric in ["accuracy", "precision", "recall"] else value
+                    )
 
         # Aggregate
         agg_func = {

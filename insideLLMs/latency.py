@@ -17,7 +17,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 
 class LatencyMetric(Enum):
@@ -56,9 +56,9 @@ class LatencyMeasurement:
     metric: LatencyMetric
     value_ms: float
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "metric": self.metric.value,
@@ -76,9 +76,9 @@ class ThroughputMeasurement:
     value: float
     unit: str
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "metric": self.metric.value,
@@ -116,7 +116,7 @@ class LatencyStats:
         """Check if latency is consistent (low variation)."""
         return self.coefficient_of_variation < 0.3
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "mean_ms": self.mean_ms,
@@ -152,7 +152,7 @@ class ThroughputStats:
         # Conservative estimate using lower bound
         return max(0, self.mean - self.std)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "mean": self.mean,
@@ -172,12 +172,12 @@ class ResponseProfile:
 
     prompt_tokens: int
     completion_tokens: int
-    time_to_first_token_ms: Optional[float]
+    time_to_first_token_ms: float | None
     total_time_ms: float
     tokens_per_second: float
     timestamp: float = field(default_factory=time.time)
-    model_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    model_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def inter_token_latency_ms(self) -> float:
@@ -189,7 +189,7 @@ class ResponseProfile:
         generation_time = self.total_time_ms - self.time_to_first_token_ms
         return generation_time / max(1, self.completion_tokens - 1)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt_tokens": self.prompt_tokens,
@@ -209,12 +209,12 @@ class PerformanceReport:
     """Comprehensive performance report."""
 
     model_id: str
-    latency_stats: Dict[LatencyMetric, LatencyStats]
-    throughput_stats: Dict[ThroughputMetric, ThroughputStats]
-    response_profiles: List[ResponseProfile]
+    latency_stats: dict[LatencyMetric, LatencyStats]
+    throughput_stats: dict[ThroughputMetric, ThroughputStats]
+    response_profiles: list[ResponseProfile]
     performance_level: PerformanceLevel
-    bottlenecks: List[str]
-    recommendations: List[str]
+    bottlenecks: list[str]
+    recommendations: list[str]
 
     @property
     def overall_score(self) -> float:
@@ -240,16 +240,12 @@ class PerformanceReport:
             return statistics.mean(scores)
         return 0.5
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
-            "latency_stats": {
-                k.value: v.to_dict() for k, v in self.latency_stats.items()
-            },
-            "throughput_stats": {
-                k.value: v.to_dict() for k, v in self.throughput_stats.items()
-            },
+            "latency_stats": {k.value: v.to_dict() for k, v in self.latency_stats.items()},
+            "throughput_stats": {k.value: v.to_dict() for k, v in self.throughput_stats.items()},
             "n_profiles": len(self.response_profiles),
             "performance_level": self.performance_level.value,
             "overall_score": self.overall_score,
@@ -263,12 +259,12 @@ class LatencyTimer:
 
     def __init__(self):
         """Initialize timer."""
-        self._start_time: Optional[float] = None
-        self._first_token_time: Optional[float] = None
-        self._end_time: Optional[float] = None
-        self._token_times: List[float] = []
+        self._start_time: float | None = None
+        self._first_token_time: float | None = None
+        self._end_time: float | None = None
+        self._token_times: list[float] = []
 
-    def start(self) -> "LatencyTimer":
+    def start(self) -> LatencyTimer:
         """Start the timer."""
         self._start_time = time.perf_counter()
         return self
@@ -287,14 +283,14 @@ class LatencyTimer:
         self._end_time = time.perf_counter()
 
     @property
-    def time_to_first_token_ms(self) -> Optional[float]:
+    def time_to_first_token_ms(self) -> float | None:
         """Get time to first token in milliseconds."""
         if self._start_time is None or self._first_token_time is None:
             return None
         return (self._first_token_time - self._start_time) * 1000
 
     @property
-    def total_time_ms(self) -> Optional[float]:
+    def total_time_ms(self) -> float | None:
         """Get total time in milliseconds."""
         if self._start_time is None:
             return None
@@ -302,7 +298,7 @@ class LatencyTimer:
         return (end - self._start_time) * 1000
 
     @property
-    def inter_token_latencies_ms(self) -> List[float]:
+    def inter_token_latencies_ms(self) -> list[float]:
         """Get inter-token latencies in milliseconds."""
         if len(self._token_times) < 2:
             return []
@@ -312,7 +308,7 @@ class LatencyTimer:
             latencies.append(latency)
         return latencies
 
-    def __enter__(self) -> "LatencyTimer":
+    def __enter__(self) -> LatencyTimer:
         """Context manager entry."""
         return self.start()
 
@@ -324,20 +320,20 @@ class LatencyTimer:
 class LatencyProfiler:
     """Profile latency characteristics of model responses."""
 
-    def __init__(self, model_id: Optional[str] = None):
+    def __init__(self, model_id: str | None = None):
         """Initialize profiler.
 
         Args:
             model_id: Optional model identifier
         """
         self.model_id = model_id
-        self._measurements: Dict[LatencyMetric, List[float]] = defaultdict(list)
+        self._measurements: dict[LatencyMetric, list[float]] = defaultdict(list)
 
     def record(
         self,
         metric: LatencyMetric,
         value_ms: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LatencyMeasurement:
         """Record a latency measurement.
 
@@ -396,7 +392,7 @@ class LatencyProfiler:
             sample_count=n,
         )
 
-    def get_all_stats(self) -> Dict[LatencyMetric, LatencyStats]:
+    def get_all_stats(self) -> dict[LatencyMetric, LatencyStats]:
         """Get statistics for all recorded metrics.
 
         Returns:
@@ -405,7 +401,7 @@ class LatencyProfiler:
         return {metric: self.get_stats(metric) for metric in self._measurements}
 
     @staticmethod
-    def _percentile(sorted_values: List[float], p: float) -> float:
+    def _percentile(sorted_values: list[float], p: float) -> float:
         """Calculate percentile from sorted values."""
         if not sorted_values:
             return 0.0
@@ -424,21 +420,21 @@ class LatencyProfiler:
 class ThroughputProfiler:
     """Profile throughput characteristics of model responses."""
 
-    def __init__(self, model_id: Optional[str] = None):
+    def __init__(self, model_id: str | None = None):
         """Initialize profiler.
 
         Args:
             model_id: Optional model identifier
         """
         self.model_id = model_id
-        self._measurements: Dict[ThroughputMetric, List[float]] = defaultdict(list)
-        self._request_times: List[float] = []
+        self._measurements: dict[ThroughputMetric, list[float]] = defaultdict(list)
+        self._request_times: list[float] = []
 
     def record(
         self,
         metric: ThroughputMetric,
         value: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ThroughputMeasurement:
         """Record a throughput measurement.
 
@@ -518,7 +514,7 @@ class ThroughputProfiler:
             return 0.0
         return (len(recent_requests) - 1) / time_span * 60
 
-    def get_all_stats(self) -> Dict[ThroughputMetric, ThroughputStats]:
+    def get_all_stats(self) -> dict[ThroughputMetric, ThroughputStats]:
         """Get statistics for all recorded metrics.
 
         Returns:
@@ -548,8 +544,8 @@ class ResponseProfiler:
 
     def __init__(
         self,
-        model_id: Optional[str] = None,
-        token_estimator: Optional[Callable[[str], int]] = None,
+        model_id: str | None = None,
+        token_estimator: Callable[[str], int] | None = None,
     ):
         """Initialize profiler.
 
@@ -559,7 +555,7 @@ class ResponseProfiler:
         """
         self.model_id = model_id
         self._token_estimator = token_estimator or self._default_token_estimator
-        self._profiles: List[ResponseProfile] = []
+        self._profiles: list[ResponseProfile] = []
         self._latency_profiler = LatencyProfiler(model_id)
         self._throughput_profiler = ThroughputProfiler(model_id)
 
@@ -573,10 +569,10 @@ class ResponseProfiler:
         prompt: str,
         response: str,
         total_time_ms: float,
-        time_to_first_token_ms: Optional[float] = None,
-        prompt_tokens: Optional[int] = None,
-        completion_tokens: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        time_to_first_token_ms: float | None = None,
+        prompt_tokens: int | None = None,
+        completion_tokens: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ResponseProfile:
         """Profile a single response.
 
@@ -596,10 +592,7 @@ class ResponseProfiler:
         completion_toks = completion_tokens or self._token_estimator(response)
 
         # Calculate tokens per second
-        if total_time_ms > 0:
-            tokens_per_second = (completion_toks / total_time_ms) * 1000
-        else:
-            tokens_per_second = 0.0
+        tokens_per_second = completion_toks / total_time_ms * 1000 if total_time_ms > 0 else 0.0
 
         profile = ResponseProfile(
             prompt_tokens=prompt_toks,
@@ -614,16 +607,10 @@ class ResponseProfiler:
         self._profiles.append(profile)
 
         # Record to sub-profilers
-        self._latency_profiler.record(
-            LatencyMetric.TOTAL_RESPONSE_TIME, total_time_ms
-        )
+        self._latency_profiler.record(LatencyMetric.TOTAL_RESPONSE_TIME, total_time_ms)
         if time_to_first_token_ms is not None:
-            self._latency_profiler.record(
-                LatencyMetric.TIME_TO_FIRST_TOKEN, time_to_first_token_ms
-            )
-        self._throughput_profiler.record(
-            ThroughputMetric.TOKENS_PER_SECOND, tokens_per_second
-        )
+            self._latency_profiler.record(LatencyMetric.TIME_TO_FIRST_TOKEN, time_to_first_token_ms)
+        self._throughput_profiler.record(ThroughputMetric.TOKENS_PER_SECOND, tokens_per_second)
         self._throughput_profiler.record_request()
 
         return profile
@@ -660,9 +647,9 @@ class ResponseProfiler:
 
     def _detect_bottlenecks(
         self,
-        latency_stats: Dict[LatencyMetric, LatencyStats],
-        throughput_stats: Dict[ThroughputMetric, ThroughputStats],
-    ) -> List[str]:
+        latency_stats: dict[LatencyMetric, LatencyStats],
+        throughput_stats: dict[ThroughputMetric, ThroughputStats],
+    ) -> list[str]:
         """Detect performance bottlenecks."""
         bottlenecks = []
 
@@ -670,9 +657,7 @@ class ResponseProfiler:
         if LatencyMetric.TIME_TO_FIRST_TOKEN in latency_stats:
             ttft = latency_stats[LatencyMetric.TIME_TO_FIRST_TOKEN]
             if ttft.mean_ms > 500:
-                bottlenecks.append(
-                    f"High time to first token (mean: {ttft.mean_ms:.0f}ms)"
-                )
+                bottlenecks.append(f"High time to first token (mean: {ttft.mean_ms:.0f}ms)")
             if ttft.p99_ms > 2000:
                 bottlenecks.append(f"TTFT tail latency issues (p99: {ttft.p99_ms:.0f}ms)")
 
@@ -688,44 +673,30 @@ class ResponseProfiler:
         if ThroughputMetric.TOKENS_PER_SECOND in throughput_stats:
             tps = throughput_stats[ThroughputMetric.TOKENS_PER_SECOND]
             if tps.mean < 20:
-                bottlenecks.append(
-                    f"Low throughput (mean: {tps.mean:.1f} tokens/s)"
-                )
+                bottlenecks.append(f"Low throughput (mean: {tps.mean:.1f} tokens/s)")
 
         return bottlenecks
 
     def _generate_recommendations(
         self,
-        latency_stats: Dict[LatencyMetric, LatencyStats],
-        throughput_stats: Dict[ThroughputMetric, ThroughputStats],
-        bottlenecks: List[str],
-    ) -> List[str]:
+        latency_stats: dict[LatencyMetric, LatencyStats],
+        throughput_stats: dict[ThroughputMetric, ThroughputStats],
+        bottlenecks: list[str],
+    ) -> list[str]:
         """Generate optimization recommendations."""
         recommendations = []
 
         if any("time to first token" in b.lower() for b in bottlenecks):
-            recommendations.append(
-                "Consider using streaming to improve perceived responsiveness"
-            )
-            recommendations.append(
-                "Check network latency and consider edge deployment"
-            )
+            recommendations.append("Consider using streaming to improve perceived responsiveness")
+            recommendations.append("Check network latency and consider edge deployment")
 
         if any("inconsistent" in b.lower() for b in bottlenecks):
-            recommendations.append(
-                "Implement request batching to stabilize latency"
-            )
-            recommendations.append(
-                "Consider using dedicated inference endpoints"
-            )
+            recommendations.append("Implement request batching to stabilize latency")
+            recommendations.append("Consider using dedicated inference endpoints")
 
         if any("low throughput" in b.lower() for b in bottlenecks):
-            recommendations.append(
-                "Optimize prompt length to improve generation speed"
-            )
-            recommendations.append(
-                "Consider using a faster model variant"
-            )
+            recommendations.append("Optimize prompt length to improve generation speed")
+            recommendations.append("Consider using a faster model variant")
 
         if not recommendations:
             recommendations.append("Performance is within acceptable parameters")
@@ -734,8 +705,8 @@ class ResponseProfiler:
 
     def _classify_performance(
         self,
-        latency_stats: Dict[LatencyMetric, LatencyStats],
-        throughput_stats: Dict[ThroughputMetric, ThroughputStats],
+        latency_stats: dict[LatencyMetric, LatencyStats],
+        throughput_stats: dict[ThroughputMetric, ThroughputStats],
     ) -> PerformanceLevel:
         """Classify overall performance level."""
         scores = []
@@ -793,7 +764,7 @@ class PerformanceComparator:
 
     def __init__(self):
         """Initialize comparator."""
-        self._reports: Dict[str, PerformanceReport] = {}
+        self._reports: dict[str, PerformanceReport] = {}
 
     def add_report(self, name: str, report: PerformanceReport) -> None:
         """Add a performance report for comparison.
@@ -806,7 +777,7 @@ class PerformanceComparator:
 
     def compare_latency(
         self, metric: LatencyMetric = LatencyMetric.TOTAL_RESPONSE_TIME
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Compare latency across all reports.
 
         Args:
@@ -837,7 +808,7 @@ class PerformanceComparator:
 
     def compare_throughput(
         self, metric: ThroughputMetric = ThroughputMetric.TOKENS_PER_SECOND
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Compare throughput across all reports.
 
         Args:
@@ -859,17 +830,13 @@ class PerformanceComparator:
 
         # Add ranking (higher is better for throughput)
         if results:
-            sorted_by_mean = sorted(
-                results.items(), key=lambda x: x[1]["mean"], reverse=True
-            )
+            sorted_by_mean = sorted(results.items(), key=lambda x: x[1]["mean"], reverse=True)
             for rank, (name, _) in enumerate(sorted_by_mean, 1):
                 results[name]["rank"] = rank
 
         return results
 
-    def get_best_performer(
-        self, by: str = "latency"
-    ) -> Tuple[str, PerformanceReport]:
+    def get_best_performer(self, by: str = "latency") -> tuple[str, PerformanceReport]:
         """Get the best performing configuration.
 
         Args:
@@ -894,7 +861,7 @@ class PerformanceComparator:
 
         return best_name, self._reports[best_name]
 
-    def generate_comparison_report(self) -> Dict[str, Any]:
+    def generate_comparison_report(self) -> dict[str, Any]:
         """Generate comprehensive comparison report.
 
         Returns:
@@ -906,12 +873,10 @@ class PerformanceComparator:
             "latency_comparison": self.compare_latency(),
             "throughput_comparison": self.compare_throughput(),
             "performance_levels": {
-                name: report.performance_level.value
-                for name, report in self._reports.items()
+                name: report.performance_level.value for name, report in self._reports.items()
             },
             "overall_scores": {
-                name: report.overall_score
-                for name, report in self._reports.items()
+                name: report.overall_score for name, report in self._reports.items()
             },
         }
 
@@ -919,16 +884,16 @@ class PerformanceComparator:
 class StreamingProfiler:
     """Profile streaming response characteristics."""
 
-    def __init__(self, model_id: Optional[str] = None):
+    def __init__(self, model_id: str | None = None):
         """Initialize profiler.
 
         Args:
             model_id: Optional model identifier
         """
         self.model_id = model_id
-        self._timer: Optional[LatencyTimer] = None
+        self._timer: LatencyTimer | None = None
         self._tokens_received: int = 0
-        self._chunk_sizes: List[int] = []
+        self._chunk_sizes: list[int] = []
 
     def start_stream(self) -> None:
         """Start profiling a streaming response."""
@@ -955,7 +920,7 @@ class StreamingProfiler:
         self._tokens_received += chunk_tokens
         self._chunk_sizes.append(len(chunk))
 
-    def end_stream(self) -> Dict[str, Any]:
+    def end_stream(self) -> dict[str, Any]:
         """End stream profiling and return metrics.
 
         Returns:
@@ -973,13 +938,9 @@ class StreamingProfiler:
             "total_time_ms": self._timer.total_time_ms,
             "tokens_received": self._tokens_received,
             "n_chunks": len(self._chunk_sizes),
-            "avg_chunk_size": (
-                statistics.mean(self._chunk_sizes) if self._chunk_sizes else 0
-            ),
+            "avg_chunk_size": (statistics.mean(self._chunk_sizes) if self._chunk_sizes else 0),
             "avg_inter_token_latency_ms": (
-                statistics.mean(inter_token_latencies)
-                if inter_token_latencies
-                else 0
+                statistics.mean(inter_token_latencies) if inter_token_latencies else 0
             ),
             "max_inter_token_latency_ms": (
                 max(inter_token_latencies) if inter_token_latencies else 0
@@ -1087,7 +1048,7 @@ def profile_response(
     prompt: str,
     response: str,
     time_ms: float,
-    model_id: Optional[str] = None,
+    model_id: str | None = None,
 ) -> ResponseProfile:
     """Quick profile of a response.
 
@@ -1105,9 +1066,9 @@ def profile_response(
 
 
 def quick_performance_check(
-    response_times_ms: List[float],
-    tokens_per_response: Optional[List[int]] = None,
-) -> Dict[str, Any]:
+    response_times_ms: list[float],
+    tokens_per_response: list[int] | None = None,
+) -> dict[str, Any]:
     """Quick performance check from response times.
 
     Args:
@@ -1147,8 +1108,7 @@ def quick_performance_check(
     throughput = None
     if tokens_per_response and len(tokens_per_response) == len(response_times_ms):
         tps_values = [
-            calculate_throughput(t, ms)
-            for t, ms in zip(tokens_per_response, response_times_ms)
+            calculate_throughput(t, ms) for t, ms in zip(tokens_per_response, response_times_ms)
         ]
         throughput = {
             "mean_tps": statistics.mean(tps_values),

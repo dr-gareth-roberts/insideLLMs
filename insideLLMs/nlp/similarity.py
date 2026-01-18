@@ -1,9 +1,9 @@
-from typing import Callable, List
+from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_sklearn, ensure_spacy
 
-
 # ===== Dependency Management =====
+
 
 def check_sklearn():
     """Ensure scikit-learn is available."""
@@ -16,12 +16,13 @@ def check_spacy(model_name: str = "en_core_web_sm"):
 
 
 # ===== Helper functions (copied from tokenization.py for now) =====
-def simple_tokenize(text: str) -> List[str]:
+def simple_tokenize(text: str) -> list[str]:
     """Simple word tokenization by splitting on whitespace."""
     return text.split()
 
 
 # ===== Text Similarity =====
+
 
 def cosine_similarity_texts(text1: str, text2: str) -> float:
     """Calculate cosine similarity between two texts using TF-IDF."""
@@ -71,7 +72,9 @@ def levenshtein_distance(text1: str, text2: str) -> int:
     return previous_row[-1]
 
 
-def semantic_similarity_word_embeddings(text1: str, text2: str, model_name: str = "en_core_web_sm") -> float:
+def semantic_similarity_word_embeddings(
+    text1: str, text2: str, model_name: str = "en_core_web_sm"
+) -> float:
     """Calculate semantic similarity between two texts using word embeddings."""
     nlp = check_spacy(model_name)
     doc1 = nlp(text1)

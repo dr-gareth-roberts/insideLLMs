@@ -6,7 +6,8 @@ This module provides wrappers for running LLMs locally, including:
 """
 
 import os
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
 from insideLLMs.types import ModelInfo
@@ -73,8 +74,7 @@ class LlamaCppModel(Model):
                 from llama_cpp import Llama
             except ImportError:
                 raise ImportError(
-                    "llama-cpp-python package required. "
-                    "Install with: pip install llama-cpp-python"
+                    "llama-cpp-python package required. Install with: pip install llama-cpp-python"
                 )
 
             self._model = Llama(
@@ -117,7 +117,7 @@ class LlamaCppModel(Model):
         self._call_count += 1
         return response["choices"][0]["text"]
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -237,9 +237,7 @@ class OllamaModel(Model):
             try:
                 import ollama
             except ImportError:
-                raise ImportError(
-                    "ollama package required. Install with: pip install ollama"
-                )
+                raise ImportError("ollama package required. Install with: pip install ollama")
 
             self._client = ollama.Client(host=self.base_url, timeout=self.timeout)
         return self._client
@@ -260,9 +258,7 @@ class OllamaModel(Model):
         if "temperature" in kwargs:
             options["temperature"] = kwargs.pop("temperature")
         if "num_predict" in kwargs or "max_tokens" in kwargs:
-            options["num_predict"] = kwargs.pop(
-                "num_predict", kwargs.pop("max_tokens", None)
-            )
+            options["num_predict"] = kwargs.pop("num_predict", kwargs.pop("max_tokens", None))
         if "top_p" in kwargs:
             options["top_p"] = kwargs.pop("top_p")
         if "top_k" in kwargs:
@@ -280,7 +276,7 @@ class OllamaModel(Model):
         self._call_count += 1
         return response["response"]
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -303,9 +299,7 @@ class OllamaModel(Model):
         if "temperature" in kwargs:
             options["temperature"] = kwargs.pop("temperature")
         if "num_predict" in kwargs or "max_tokens" in kwargs:
-            options["num_predict"] = kwargs.pop(
-                "num_predict", kwargs.pop("max_tokens", None)
-            )
+            options["num_predict"] = kwargs.pop("num_predict", kwargs.pop("max_tokens", None))
 
         response = client.chat(
             model=self.model_name,
@@ -333,9 +327,7 @@ class OllamaModel(Model):
         if "temperature" in kwargs:
             options["temperature"] = kwargs.pop("temperature")
         if "num_predict" in kwargs or "max_tokens" in kwargs:
-            options["num_predict"] = kwargs.pop(
-                "num_predict", kwargs.pop("max_tokens", None)
-            )
+            options["num_predict"] = kwargs.pop("num_predict", kwargs.pop("max_tokens", None))
 
         self._call_count += 1
         for chunk in client.generate(
@@ -372,7 +364,7 @@ class OllamaModel(Model):
         client = self._get_client()
         client.pull(self.model_name)
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List available models in Ollama.
 
         Returns:
@@ -382,7 +374,7 @@ class OllamaModel(Model):
         models = client.list()
         return [m["name"] for m in models.get("models", [])]
 
-    def show_model_info(self) -> Dict[str, Any]:
+    def show_model_info(self) -> dict[str, Any]:
         """Get detailed information about the model.
 
         Returns:
@@ -436,9 +428,7 @@ class VLLMModel(Model):
             try:
                 from openai import OpenAI
             except ImportError:
-                raise ImportError(
-                    "openai package required. Install with: pip install openai"
-                )
+                raise ImportError("openai package required. Install with: pip install openai")
 
             self._client = OpenAI(
                 base_url=f"{self.base_url}/v1",
@@ -469,7 +459,7 @@ class VLLMModel(Model):
         self._call_count += 1
         return response.choices[0].text
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -484,10 +474,12 @@ class VLLMModel(Model):
         # Convert to OpenAI format
         openai_messages = []
         for msg in messages:
-            openai_messages.append({
-                "role": msg.get("role", "user"),
-                "content": msg.get("content", ""),
-            })
+            openai_messages.append(
+                {
+                    "role": msg.get("role", "user"),
+                    "content": msg.get("content", ""),
+                }
+            )
 
         response = client.chat.completions.create(
             model=self.model_name,

@@ -1,11 +1,8 @@
 """Tests for the CLI module."""
 
 import json
-import sys
 import tempfile
-from io import StringIO
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -42,7 +39,7 @@ class TestColorize:
 
     def test_colorize_with_single_code(self):
         """Test colorize with a single color code."""
-        from insideLLMs.cli import colorize, Colors, USE_COLOR
+        from insideLLMs.cli import USE_COLOR, Colors, colorize
 
         if USE_COLOR:
             result = colorize("test", Colors.RED)
@@ -52,7 +49,7 @@ class TestColorize:
 
     def test_colorize_with_multiple_codes(self):
         """Test colorize with multiple color codes."""
-        from insideLLMs.cli import colorize, Colors, USE_COLOR
+        from insideLLMs.cli import USE_COLOR, Colors, colorize
 
         if USE_COLOR:
             result = colorize("test", Colors.BOLD, Colors.RED)
@@ -181,12 +178,9 @@ class TestCreateParser:
         from insideLLMs.cli import create_parser
 
         parser = create_parser()
-        args = parser.parse_args([
-            "benchmark",
-            "--models", "dummy,openai",
-            "--probes", "logic,bias",
-            "-n", "5"
-        ])
+        args = parser.parse_args(
+            ["benchmark", "--models", "dummy,openai", "--probes", "logic,bias", "-n", "5"]
+        )
         assert args.command == "benchmark"
         assert args.models == "dummy,openai"
         assert args.probes == "logic,bias"
@@ -197,11 +191,7 @@ class TestCreateParser:
         from insideLLMs.cli import create_parser
 
         parser = create_parser()
-        args = parser.parse_args([
-            "compare",
-            "--models", "dummy,openai",
-            "--input", "Hello world"
-        ])
+        args = parser.parse_args(["compare", "--models", "dummy,openai", "--input", "Hello world"])
         assert args.command == "compare"
         assert args.models == "dummy,openai"
         assert args.input == "Hello world"
@@ -322,8 +312,9 @@ class TestCmdInit:
 
     def test_init_basic_template(self):
         """Test init with basic template."""
-        from insideLLMs.cli import main
         import yaml
+
+        from insideLLMs.cli import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -339,8 +330,9 @@ class TestCmdInit:
 
     def test_init_full_template(self):
         """Test init with full template."""
-        from insideLLMs.cli import main
         import yaml
+
+        from insideLLMs.cli import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -406,8 +398,9 @@ class TestCmdValidate:
 
     def test_validate_valid_config(self):
         """Test validating a valid config."""
-        from insideLLMs.cli import main
         import yaml
+
+        from insideLLMs.cli import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -424,8 +417,9 @@ class TestCmdValidate:
 
     def test_validate_invalid_config(self):
         """Test validating an invalid config."""
-        from insideLLMs.cli import main
         import yaml
+
+        from insideLLMs.cli import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -574,8 +568,9 @@ class TestSupportsColor:
 
     def test_no_color_env_disables_color(self):
         """Test NO_COLOR environment variable."""
-        from insideLLMs.cli import _supports_color
         import os
+
+        from insideLLMs.cli import _supports_color
 
         original = os.environ.get("NO_COLOR")
         try:
@@ -589,8 +584,9 @@ class TestSupportsColor:
 
     def test_force_color_env_enables_color(self):
         """Test FORCE_COLOR environment variable."""
-        from insideLLMs.cli import _supports_color
         import os
+
+        from insideLLMs.cli import _supports_color
 
         original_no_color = os.environ.pop("NO_COLOR", None)
         original_force_color = os.environ.get("FORCE_COLOR")

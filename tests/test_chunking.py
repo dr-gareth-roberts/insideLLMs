@@ -4,8 +4,8 @@ import pytest
 
 from insideLLMs.nlp.chunking import (
     split_by_char_count,
-    split_by_word_count,
     split_by_sentence,
+    split_by_word_count,
 )
 
 
@@ -65,7 +65,9 @@ def test_split_by_word_count_no_overlap():
 def test_split_by_sentence_with_overlap_no_nltk():
     """Test sentence-based chunking with overlap, without NLTK."""
     text = "First sentence. Second sentence. Third sentence."
-    chunks = split_by_sentence(text, sentences_per_chunk=2, overlap=1, use_nltk_for_segmentation=False)
+    chunks = split_by_sentence(
+        text, sentences_per_chunk=2, overlap=1, use_nltk_for_segmentation=False
+    )
     # With overlap=1, step is 1 sentence
     # Chunk 1: sentences 0-1 (First, Second)
     # Chunk 2: sentences 1-2 (Second, Third)
@@ -81,7 +83,9 @@ def test_split_by_sentence_with_overlap_no_nltk():
 def test_split_by_sentence_no_overlap():
     """Test sentence chunking without overlap."""
     text = "First. Second. Third. Fourth."
-    chunks = split_by_sentence(text, sentences_per_chunk=2, overlap=0, use_nltk_for_segmentation=False)
+    chunks = split_by_sentence(
+        text, sentences_per_chunk=2, overlap=0, use_nltk_for_segmentation=False
+    )
     assert len(chunks) == 2
 
 
@@ -91,7 +95,7 @@ def test_empty_text():
     assert split_by_word_count("", words_per_chunk=4) == []
     # Note: split_by_sentence may return [''] for empty text due to regex behavior
     result = split_by_sentence("", sentences_per_chunk=2, use_nltk_for_segmentation=False)
-    assert result == [] or result == ['']
+    assert result == [] or result == [""]
 
 
 @pytest.mark.parametrize(
@@ -113,7 +117,10 @@ def test_overlap_validation(func, args):
     [
         (split_by_char_count, {"text": "abc", "chunk_size": 0}),
         (split_by_word_count, {"text": "a b c", "words_per_chunk": 0}),
-        (split_by_sentence, {"text": "A. B.", "sentences_per_chunk": 0, "use_nltk_for_segmentation": False}),
+        (
+            split_by_sentence,
+            {"text": "A. B.", "sentences_per_chunk": 0, "use_nltk_for_segmentation": False},
+        ),
     ],
 )
 def test_invalid_chunk_size(func, args):

@@ -4,7 +4,8 @@ This module provides a wrapper for Cohere's language models via their API.
 """
 
 import os
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
 from insideLLMs.types import ModelInfo
@@ -58,9 +59,7 @@ class CohereModel(Model):
             try:
                 import cohere
             except ImportError:
-                raise ImportError(
-                    "cohere package required. Install with: pip install cohere"
-                )
+                raise ImportError("cohere package required. Install with: pip install cohere")
 
             self._client = cohere.Client(api_key=self.api_key)
         return self._client
@@ -105,7 +104,7 @@ class CohereModel(Model):
         self._call_count += 1
         return response.text
 
-    def chat(self, messages: List[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Args:
@@ -133,14 +132,18 @@ class CohereModel(Model):
                 # Don't add to history yet - only add completed turns
             elif role == "assistant" and current_message:
                 # Add completed turn to history
-                chat_history.append({
-                    "role": "USER",
-                    "message": current_message,
-                })
-                chat_history.append({
-                    "role": "CHATBOT",
-                    "message": content,
-                })
+                chat_history.append(
+                    {
+                        "role": "USER",
+                        "message": current_message,
+                    }
+                )
+                chat_history.append(
+                    {
+                        "role": "CHATBOT",
+                        "message": content,
+                    }
+                )
                 current_message = ""
 
         # The last user message becomes the current message
@@ -225,10 +228,10 @@ class CohereModel(Model):
 
     def embed(
         self,
-        texts: List[str],
+        texts: list[str],
         input_type: str = "search_document",
-        embedding_types: Optional[List[str]] = None,
-    ) -> List[List[float]]:
+        embedding_types: Optional[list[str]] = None,
+    ) -> list[list[float]]:
         """Generate embeddings for the given texts.
 
         Args:
@@ -257,10 +260,10 @@ class CohereModel(Model):
     def rerank(
         self,
         query: str,
-        documents: List[str],
+        documents: list[str],
         top_n: Optional[int] = None,
         model: str = "rerank-english-v3.0",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Rerank documents based on relevance to a query.
 
         Args:

@@ -3,7 +3,6 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -158,7 +157,7 @@ class TestProbeBenchmark:
         """Test creating a ProbeBenchmark."""
         from insideLLMs.benchmark import ProbeBenchmark
         from insideLLMs.models import DummyModel
-        from insideLLMs.probes import LogicProbe, BiasProbe
+        from insideLLMs.probes import BiasProbe, LogicProbe
 
         model = DummyModel()
         probes = [LogicProbe(), BiasProbe()]
@@ -205,7 +204,7 @@ class TestProbeBenchmark:
         """Test running a benchmark with multiple probes."""
         from insideLLMs.benchmark import ProbeBenchmark
         from insideLLMs.models import DummyModel
-        from insideLLMs.probes import LogicProbe, BiasProbe
+        from insideLLMs.probes import BiasProbe, LogicProbe
 
         model = DummyModel()
         probes = [LogicProbe(), BiasProbe()]
@@ -345,7 +344,7 @@ class TestBenchmarkIntegration:
         """Test full probe benchmark workflow."""
         from insideLLMs.benchmark import ProbeBenchmark
         from insideLLMs.models import DummyModel
-        from insideLLMs.probes import LogicProbe, BiasProbe
+        from insideLLMs.probes import BiasProbe, LogicProbe
 
         # Create benchmark
         model = DummyModel()

@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 
 class QualityDimension(Enum):
@@ -36,9 +36,9 @@ class DimensionScore:
     score: float  # 0-1
     confidence: float = 1.0
     explanation: str = ""
-    evidence: List[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "dimension": self.dimension.value,
@@ -56,10 +56,10 @@ class QualityReport:
     prompt: str
     response: str
     overall_score: float
-    dimension_scores: Dict[QualityDimension, DimensionScore] = field(default_factory=dict)
-    issues: List[str] = field(default_factory=list)
-    suggestions: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    dimension_scores: dict[QualityDimension, DimensionScore] = field(default_factory=dict)
+    issues: list[str] = field(default_factory=list)
+    suggestions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def passed(self) -> bool:
@@ -71,22 +71,17 @@ class QualityReport:
         score_obj = self.dimension_scores.get(dimension)
         return score_obj.score if score_obj else None
 
-    def get_weakest_dimensions(self, n: int = 3) -> List[Tuple[QualityDimension, float]]:
+    def get_weakest_dimensions(self, n: int = 3) -> list[tuple[QualityDimension, float]]:
         """Get n weakest dimensions."""
-        sorted_dims = sorted(
-            self.dimension_scores.items(),
-            key=lambda x: x[1].score
-        )
+        sorted_dims = sorted(self.dimension_scores.items(), key=lambda x: x[1].score)
         return [(d, s.score) for d, s in sorted_dims[:n]]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "overall_score": self.overall_score,
             "passed": self.passed,
-            "dimension_scores": {
-                d.value: s.to_dict() for d, s in self.dimension_scores.items()
-            },
+            "dimension_scores": {d.value: s.to_dict() for d, s in self.dimension_scores.items()},
             "issues": self.issues,
             "suggestions": self.suggestions,
         }
@@ -116,14 +111,60 @@ class RelevanceScorer:
         prompt_words = set(re.findall(r"\b\w{3,}\b", prompt_lower))
         # Remove common stop words that don't carry semantic meaning
         stop_words = {
-            "the", "what", "how", "why", "when", "where", "who", "which",
-            "is", "are", "was", "were", "can", "could", "would", "should",
-            "does", "did", "has", "have", "had", "been", "being",
-            "this", "that", "these", "those", "there", "here",
-            "with", "from", "about", "into", "through", "during",
-            "for", "and", "but", "not", "you", "your", "our", "their",
-            "will", "would", "could", "should", "may", "might", "must",
-            "some", "any", "all", "most", "more", "such", "than",
+            "the",
+            "what",
+            "how",
+            "why",
+            "when",
+            "where",
+            "who",
+            "which",
+            "is",
+            "are",
+            "was",
+            "were",
+            "can",
+            "could",
+            "would",
+            "should",
+            "does",
+            "did",
+            "has",
+            "have",
+            "had",
+            "been",
+            "being",
+            "this",
+            "that",
+            "these",
+            "those",
+            "there",
+            "here",
+            "with",
+            "from",
+            "about",
+            "into",
+            "through",
+            "during",
+            "for",
+            "and",
+            "but",
+            "not",
+            "you",
+            "your",
+            "our",
+            "their",
+            "will",
+            "may",
+            "might",
+            "must",
+            "some",
+            "any",
+            "all",
+            "most",
+            "more",
+            "such",
+            "than",
         }
         prompt_content_words = prompt_words - stop_words
 
@@ -162,8 +203,10 @@ class RelevanceScorer:
         score = term_score + length_score
 
         explanation = (
-            "High relevance" if score >= 0.7
-            else "Moderate relevance" if score >= 0.4
+            "High relevance"
+            if score >= 0.7
+            else "Moderate relevance"
+            if score >= 0.4
             else "Low relevance"
         )
 
@@ -228,22 +271,13 @@ class CompletenessScorer:
         evidence = []
 
         # Check for incomplete indicators
-        incomplete_count = sum(
-            1 for ind in self.INCOMPLETE_INDICATORS
-            if ind in response_lower
-        )
+        incomplete_count = sum(1 for ind in self.INCOMPLETE_INDICATORS if ind in response_lower)
 
         # Check for hedging language
-        hedging_count = sum(
-            1 for ind in self.HEDGING_INDICATORS
-            if ind in response_lower
-        )
+        hedging_count = sum(1 for ind in self.HEDGING_INDICATORS if ind in response_lower)
 
         # Check for complete indicators
-        complete_count = sum(
-            1 for ind in self.COMPLETE_INDICATORS
-            if ind in response_lower
-        )
+        complete_count = sum(1 for ind in self.COMPLETE_INDICATORS if ind in response_lower)
 
         # Check response structure
         sentence_count = len(re.findall(r"[.!?]", response))
@@ -264,7 +298,7 @@ class CompletenessScorer:
 
         # Word counts
         response_word_count = len(response.split())
-        prompt_word_count = len(prompt.split())
+        len(prompt.split())
 
         # Score calculation - start based on basic response length adequacy
         if response_word_count < 10:
@@ -333,10 +367,25 @@ class CoherenceScorer:
 
     # Transition words indicating coherent structure
     TRANSITIONS = {
-        "first", "second", "third", "finally", "next", "then",
-        "however", "therefore", "consequently", "moreover",
-        "additionally", "furthermore", "in addition", "as a result",
-        "because", "since", "although", "despite", "meanwhile",
+        "first",
+        "second",
+        "third",
+        "finally",
+        "next",
+        "then",
+        "however",
+        "therefore",
+        "consequently",
+        "moreover",
+        "additionally",
+        "furthermore",
+        "in addition",
+        "as a result",
+        "because",
+        "since",
+        "although",
+        "despite",
+        "meanwhile",
     }
 
     def score(self, prompt: str, response: str) -> DimensionScore:
@@ -354,8 +403,7 @@ class CoherenceScorer:
 
         # Count transition words
         transition_count = sum(
-            1 for t in self.TRANSITIONS
-            if re.search(rf"\b{t}\b", response_lower)
+            1 for t in self.TRANSITIONS if re.search(rf"\b{t}\b", response_lower)
         )
 
         # Check sentence structure
@@ -367,10 +415,7 @@ class CoherenceScorer:
         avg_length = sum(sentence_lengths) / len(sentence_lengths) if sentence_lengths else 0
 
         # Check for very short or very long sentences
-        problematic_sentences = sum(
-            1 for l in sentence_lengths
-            if l < 3 or l > 50
-        )
+        problematic_sentences = sum(1 for l in sentence_lengths if l < 3 or l > 50)
 
         # Check for repeated starts (sign of incoherence)
         sentence_starts = [s.split()[0].lower() if s.split() else "" for s in sentences]
@@ -425,17 +470,34 @@ class ConcisenessScorer:
 
     # Filler words and phrases
     FILLERS = [
-        "basically", "actually", "literally", "really", "very",
-        "kind of", "sort of", "i think", "i believe", "in my opinion",
-        "as you know", "as mentioned", "it should be noted",
-        "it is important to note", "needless to say",
+        "basically",
+        "actually",
+        "literally",
+        "really",
+        "very",
+        "kind of",
+        "sort of",
+        "i think",
+        "i believe",
+        "in my opinion",
+        "as you know",
+        "as mentioned",
+        "it should be noted",
+        "it is important to note",
+        "needless to say",
     ]
 
     # Redundant phrases
     REDUNDANT = [
-        "absolutely essential", "advance planning", "basic fundamentals",
-        "completely finished", "end result", "final outcome",
-        "future plans", "past history", "true fact",
+        "absolutely essential",
+        "advance planning",
+        "basic fundamentals",
+        "completely finished",
+        "end result",
+        "final outcome",
+        "future plans",
+        "past history",
+        "true fact",
     ]
 
     def score(self, prompt: str, response: str) -> DimensionScore:
@@ -452,24 +514,18 @@ class ConcisenessScorer:
         evidence = []
 
         # Count filler words
-        filler_count = sum(
-            1 for f in self.FILLERS
-            if f in response_lower
-        )
+        filler_count = sum(1 for f in self.FILLERS if f in response_lower)
 
         # Count redundant phrases
-        redundant_count = sum(
-            1 for r in self.REDUNDANT
-            if r in response_lower
-        )
+        redundant_count = sum(1 for r in self.REDUNDANT if r in response_lower)
 
         # Analyze word count vs information density
         words = response.split()
         word_count = len(words)
 
         # Check for repetition
-        unique_words = set(w.lower() for w in words if len(w) > 3)
-        repetition_ratio = len(unique_words) / word_count if word_count > 0 else 0
+        unique_words = {w.lower() for w in words if len(w) > 3}
+        len(unique_words) / word_count if word_count > 0 else 0
 
         # Calculate information density (unique words per total words)
         info_density = len(unique_words) / word_count if word_count > 0 else 0
@@ -563,10 +619,7 @@ class ClarityScorer:
         complex_ratio = complex_words / word_count
 
         # Check for jargon
-        jargon_matches = sum(
-            len(re.findall(p, response))
-            for p in self.JARGON_PATTERNS
-        )
+        jargon_matches = sum(len(re.findall(p, response)) for p in self.JARGON_PATTERNS)
 
         # Check for clear structure
         has_lists = bool(re.search(r"^[-•*\d+.]\s", response, re.MULTILINE))
@@ -628,9 +681,22 @@ class SpecificityScorer:
 
     # Vague terms
     VAGUE_TERMS = [
-        "some", "many", "few", "often", "sometimes", "usually",
-        "things", "stuff", "something", "somehow", "somewhat",
-        "a lot", "various", "several", "certain", "particular",
+        "some",
+        "many",
+        "few",
+        "often",
+        "sometimes",
+        "usually",
+        "things",
+        "stuff",
+        "something",
+        "somehow",
+        "somewhat",
+        "a lot",
+        "various",
+        "several",
+        "certain",
+        "particular",
     ]
 
     # Specific indicators
@@ -655,15 +721,11 @@ class SpecificityScorer:
         evidence = []
 
         # Count vague terms
-        vague_count = sum(
-            1 for v in self.VAGUE_TERMS
-            if re.search(rf"\b{v}\b", response_lower)
-        )
+        vague_count = sum(1 for v in self.VAGUE_TERMS if re.search(rf"\b{v}\b", response_lower))
 
         # Count specific patterns
         specific_count = sum(
-            len(re.findall(p, response, re.IGNORECASE))
-            for p in self.SPECIFIC_PATTERNS
+            len(re.findall(p, response, re.IGNORECASE)) for p in self.SPECIFIC_PATTERNS
         )
 
         # Check for proper nouns (capitalized words not at sentence start)
@@ -725,8 +787,8 @@ class ResponseQualityAnalyzer:
 
     def __init__(
         self,
-        dimensions: Optional[List[QualityDimension]] = None,
-        weights: Optional[Dict[QualityDimension, float]] = None,
+        dimensions: Optional[list[QualityDimension]] = None,
+        weights: Optional[dict[QualityDimension, float]] = None,
     ):
         """Initialize analyzer.
 
@@ -735,7 +797,7 @@ class ResponseQualityAnalyzer:
             weights: Custom weights for each dimension.
         """
         self.dimensions = dimensions or list(QualityDimension)
-        self.weights = weights or {d: 1.0 for d in QualityDimension}
+        self.weights = weights or dict.fromkeys(QualityDimension, 1.0)
 
         # Initialize scorers
         self._scorers = {
@@ -757,9 +819,9 @@ class ResponseQualityAnalyzer:
         Returns:
             Quality report.
         """
-        dimension_scores: Dict[QualityDimension, DimensionScore] = {}
-        issues: List[str] = []
-        suggestions: List[str] = []
+        dimension_scores: dict[QualityDimension, DimensionScore] = {}
+        issues: list[str] = []
+        suggestions: list[str] = []
 
         # Score each dimension
         for dimension in self.dimensions:
@@ -773,13 +835,9 @@ class ResponseQualityAnalyzer:
                     suggestions.append(f"Improve {dimension.value}")
 
         # Calculate overall score (weighted average)
-        total_weight = sum(
-            self.weights.get(d, 1.0)
-            for d in dimension_scores
-        )
+        total_weight = sum(self.weights.get(d, 1.0) for d in dimension_scores)
         weighted_sum = sum(
-            dimension_scores[d].score * self.weights.get(d, 1.0)
-            for d in dimension_scores
+            dimension_scores[d].score * self.weights.get(d, 1.0) for d in dimension_scores
         )
         overall_score = weighted_sum / total_weight if total_weight > 0 else 0
 
@@ -792,7 +850,7 @@ class ResponseQualityAnalyzer:
             suggestions=suggestions,
         )
 
-    def quick_check(self, prompt: str, response: str) -> Tuple[float, bool, List[str]]:
+    def quick_check(self, prompt: str, response: str) -> tuple[float, bool, list[str]]:
         """Quick quality check.
 
         Args:
@@ -816,7 +874,7 @@ class ComparisonResult:
     winner: str  # "A", "B", or "tie"
     score_a: float
     score_b: float
-    dimension_comparison: Dict[str, str]  # dimension -> winner
+    dimension_comparison: dict[str, str]  # dimension -> winner
     reasoning: str
 
 
@@ -831,9 +889,7 @@ class ResponseComparator:
         """
         self.analyzer = analyzer or ResponseQualityAnalyzer()
 
-    def compare(
-        self, prompt: str, response_a: str, response_b: str
-    ) -> ComparisonResult:
+    def compare(self, prompt: str, response_a: str, response_b: str) -> ComparisonResult:
         """Compare two responses.
 
         Args:
@@ -888,6 +944,7 @@ class ResponseComparator:
 
 # Convenience functions
 
+
 def analyze_quality(prompt: str, response: str) -> QualityReport:
     """Analyze response quality.
 
@@ -902,7 +959,7 @@ def analyze_quality(prompt: str, response: str) -> QualityReport:
     return analyzer.analyze(prompt, response)
 
 
-def quick_quality_check(prompt: str, response: str) -> Tuple[float, bool, List[str]]:
+def quick_quality_check(prompt: str, response: str) -> tuple[float, bool, list[str]]:
     """Quick quality check.
 
     Args:
@@ -916,9 +973,7 @@ def quick_quality_check(prompt: str, response: str) -> Tuple[float, bool, List[s
     return analyzer.quick_check(prompt, response)
 
 
-def compare_responses(
-    prompt: str, response_a: str, response_b: str
-) -> ComparisonResult:
+def compare_responses(prompt: str, response_a: str, response_b: str) -> ComparisonResult:
     """Compare two responses.
 
     Args:

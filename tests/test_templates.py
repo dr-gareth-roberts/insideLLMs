@@ -122,8 +122,7 @@ class TestBuiltInTemplates:
     def test_entity_extraction(self):
         """Test entity extraction template."""
         rendered = ENTITY_EXTRACTION.render(
-            entity_types="names and places",
-            text="John went to Paris."
+            entity_types="names and places", text="John went to Paris."
         )
 
         assert "names and places" in rendered
@@ -133,9 +132,7 @@ class TestBuiltInTemplates:
     def test_binary_classification(self):
         """Test binary classification template."""
         rendered = BINARY_CLASSIFICATION.render(
-            category_a="positive",
-            category_b="negative",
-            text="I love this!"
+            category_a="positive", category_b="negative", text="I love this!"
         )
 
         assert "positive" in rendered
@@ -145,8 +142,7 @@ class TestBuiltInTemplates:
     def test_code_generation(self):
         """Test code generation template."""
         rendered = CODE_GENERATION.render(
-            language="python",
-            requirements="- Calculate factorial\n- Handle edge cases"
+            language="python", requirements="- Calculate factorial\n- Handle edge cases"
         )
 
         assert "python" in rendered.lower()
@@ -216,10 +212,7 @@ class TestTemplateLibrary:
         """Test rendering by name."""
         library = TemplateLibrary()
         rendered = library.render(
-            "binary_classification",
-            category_a="yes",
-            category_b="no",
-            text="Test input"
+            "binary_classification", category_a="yes", category_b="no", text="Test input"
         )
 
         assert "yes" in rendered
@@ -276,9 +269,7 @@ class TestConvenienceFunctions:
     def test_render_template(self):
         """Test render_template function."""
         rendered = render_template(
-            "concise_summary",
-            max_sentences="3",
-            text="This is the text to summarize."
+            "concise_summary", max_sentences="3", text="This is the text to summarize."
         )
 
         assert "3 sentences" in rendered
@@ -370,8 +361,7 @@ class TestTemplateRendering:
         """Test rendering with all variables provided."""
         template = get_template("code_generation")
         rendered = template.render(
-            language="javascript",
-            requirements="- Create a function\n- Add error handling"
+            language="javascript", requirements="- Create a function\n- Add error handling"
         )
 
         assert "javascript" in rendered
@@ -382,7 +372,7 @@ class TestTemplateRendering:
         template = get_template("structured_extraction")
         rendered = template.render(
             fields="- name: string\n- age: number\n- email: string",
-            text="John is 30 years old. Email: john@example.com"
+            text="John is 30 years old. Email: john@example.com",
         )
 
         assert "name:" in rendered
@@ -394,7 +384,7 @@ class TestTemplateRendering:
         rendered = template.render(
             category_a="<positive>",
             category_b="<negative>",
-            text="Test with 'quotes' and \"double quotes\""
+            text="Test with 'quotes' and \"double quotes\"",
         )
 
         assert "<positive>" in rendered

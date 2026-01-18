@@ -1,6 +1,6 @@
 import re
 from collections import Counter
-from typing import Callable, Dict, List
+from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_nltk
 
@@ -10,12 +10,12 @@ def check_nltk():
     ensure_nltk(("tokenizers/punkt",))
 
 
-def simple_tokenize(text: str) -> List[str]:
+def simple_tokenize(text: str) -> list[str]:
     """Simple word tokenization by splitting on whitespace."""
     return text.split()
 
 
-def segment_sentences_internal(text: str, use_nltk: bool = True) -> List[str]:
+def segment_sentences_internal(text: str, use_nltk: bool = True) -> list[str]:
     """Split text into sentences."""
     if use_nltk:
         check_nltk()
@@ -26,7 +26,7 @@ def segment_sentences_internal(text: str, use_nltk: bool = True) -> List[str]:
     return pattern.split(text)
 
 
-def nltk_tokenize_internal(text: str) -> List[str]:
+def nltk_tokenize_internal(text: str) -> list[str]:
     """Tokenize text using NLTK's word_tokenize."""
     check_nltk()
     from nltk.tokenize import word_tokenize
@@ -113,7 +113,7 @@ def calculate_readability_flesch_kincaid(text: str) -> float:
     return 0.39 * (num_words / num_sentences) + 11.8 * (syllables / num_words) - 15.59
 
 
-def get_word_frequencies(text: str, tokenizer: Callable = simple_tokenize) -> Dict[str, int]:
+def get_word_frequencies(text: str, tokenizer: Callable = simple_tokenize) -> dict[str, int]:
     """Get word frequencies in text."""
     tokens = tokenizer(text)
     return dict(Counter(tokens))

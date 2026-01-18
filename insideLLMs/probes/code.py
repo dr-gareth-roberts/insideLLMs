@@ -8,10 +8,10 @@ Tests the model's ability to:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from insideLLMs.probes.base import ScoredProbe
-from insideLLMs.types import ProbeCategory, ProbeResult, ProbeScore, ResultStatus
+from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 
 
 class CodeGenerationProbe(ScoredProbe[str]):
@@ -147,18 +147,14 @@ class CodeGenerationProbe(ScoredProbe[str]):
         # Check for expected patterns
         if isinstance(reference, dict):
             expected_patterns = reference.get("patterns", [])
-            expected_output = reference.get("expected_output")
+            reference.get("expected_output")
         elif isinstance(reference, str):
             expected_patterns = [reference]
-            expected_output = None
         else:
             expected_patterns = []
-            expected_output = None
 
         if expected_patterns:
-            pattern_matches = sum(
-                1 for p in expected_patterns if p.lower() in code.lower()
-            )
+            pattern_matches = sum(1 for p in expected_patterns if p.lower() in code.lower())
             pattern_score = pattern_matches / len(expected_patterns)
             score_components.append(pattern_score)
             details["pattern_match_score"] = pattern_score
@@ -264,7 +260,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
             "brief": "Provide a brief one-line explanation.",
             "medium": "Explain what this code does and how it works.",
             "detailed": "Provide a detailed explanation covering the purpose, "
-                       "logic, and any important concepts used.",
+            "logic, and any important concepts used.",
         }
 
         self.prompt_template = (
@@ -284,10 +280,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         Returns:
             The code explanation.
         """
-        if isinstance(code, dict):
-            code_text = code.get("code", str(code))
-        else:
-            code_text = str(code)
+        code_text = code.get("code", str(code)) if isinstance(code, dict) else str(code)
 
         prompt = self.prompt_template.format(code=code_text)
         return model.generate(prompt, **kwargs)
@@ -336,8 +329,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
 
         # Structure check (has sections, bullet points, etc.)
         has_structure = any(
-            indicator in model_output
-            for indicator in ["1.", "-", "*", ":", "\n\n"]
+            indicator in model_output for indicator in ["1.", "-", "*", ":", "\n\n"]
         )
         structure_score = 1.0 if has_structure else 0.7
         details["has_structure"] = has_structure
@@ -440,12 +432,18 @@ class CodeDebugProbe(ScoredProbe[str]):
 
         # Check for explanation
         explanation_indicators = [
-            "bug", "issue", "problem", "error", "fix", "because",
-            "the reason", "should be", "instead of", "causes"
+            "bug",
+            "issue",
+            "problem",
+            "error",
+            "fix",
+            "because",
+            "the reason",
+            "should be",
+            "instead of",
+            "causes",
         ]
-        has_explanation = any(
-            ind in model_output.lower() for ind in explanation_indicators
-        )
+        has_explanation = any(ind in model_output.lower() for ind in explanation_indicators)
         details["has_explanation"] = has_explanation
 
         # Check for code fix
@@ -462,9 +460,7 @@ class CodeDebugProbe(ScoredProbe[str]):
 
         if fix_patterns:
             output_lower = model_output.lower()
-            pattern_matches = sum(
-                1 for p in fix_patterns if p.lower() in output_lower
-            )
+            pattern_matches = sum(1 for p in fix_patterns if p.lower() in output_lower)
             fix_score = pattern_matches / len(fix_patterns)
             details["fix_patterns_found"] = pattern_matches
         else:
@@ -472,9 +468,9 @@ class CodeDebugProbe(ScoredProbe[str]):
 
         # Overall score
         overall_score = (
-            (1.0 if has_explanation else 0.3) * 0.3 +
-            (1.0 if has_code_fix else 0.3) * 0.3 +
-            fix_score * 0.4
+            (1.0 if has_explanation else 0.3) * 0.3
+            + (1.0 if has_code_fix else 0.3) * 0.3
+            + fix_score * 0.4
         )
 
         details["score"] = overall_score

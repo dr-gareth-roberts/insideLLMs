@@ -28,10 +28,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from insideLLMs.types import ModelResponse
-
 
 T = TypeVar("T")
 
@@ -43,6 +42,7 @@ T = TypeVar("T")
 
 class CacheStrategy(Enum):
     """Cache eviction strategies."""
+
     LRU = "lru"  # Least Recently Used
     LFU = "lfu"  # Least Frequently Used
     FIFO = "fifo"  # First In First Out
@@ -52,6 +52,7 @@ class CacheStrategy(Enum):
 
 class CacheStatus(Enum):
     """Cache entry status."""
+
     ACTIVE = "active"
     EXPIRED = "expired"
     EVICTED = "evicted"
@@ -60,6 +61,7 @@ class CacheStatus(Enum):
 
 class CacheScope(Enum):
     """Cache scope for different contexts."""
+
     GLOBAL = "global"
     SESSION = "session"
     REQUEST = "request"
@@ -70,6 +72,7 @@ class CacheScope(Enum):
 @dataclass
 class CacheConfig:
     """Configuration for cache behavior."""
+
     max_size: int = 1000
     ttl_seconds: Optional[int] = 3600  # 1 hour default
     strategy: CacheStrategy = CacheStrategy.LRU
@@ -78,7 +81,7 @@ class CacheConfig:
     hash_algorithm: str = "sha256"
     scope: CacheScope = CacheScope.GLOBAL
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "max_size": self.max_size,
@@ -99,6 +102,7 @@ class CacheConfig:
 @dataclass
 class CacheEntry:
     """A single cache entry with metadata."""
+
     key: str
     value: Any
     created_at: datetime = field(default_factory=datetime.now)
@@ -106,7 +110,7 @@ class CacheEntry:
     access_count: int = 0
     last_accessed: datetime = field(default_factory=datetime.now)
     size_bytes: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.size_bytes == 0:
@@ -130,7 +134,7 @@ class CacheEntry:
         self.access_count += 1
         self.last_accessed = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "key": self.key,
@@ -147,6 +151,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache statistics."""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
@@ -158,7 +163,7 @@ class CacheStats:
     avg_access_count: float = 0.0
     hit_rate: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "hits": self.hits,
@@ -177,13 +182,14 @@ class CacheStats:
 @dataclass
 class CacheLookupResult:
     """Result of a cache lookup."""
+
     hit: bool
     value: Optional[Any]
     key: str
     entry: Optional[CacheEntry] = None
     lookup_time_ms: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "hit": self.hit,
@@ -202,7 +208,7 @@ class CacheLookupResult:
 def generate_cache_key(
     prompt: str,
     model: Optional[str] = None,
-    params: Optional[Dict] = None,
+    params: Optional[dict] = None,
     algorithm: str = "sha256",
     **kwargs: Any,
 ) -> str:
@@ -293,7 +299,7 @@ class BaseCacheABC(ABC, Generic[T]):
         key: str,
         value: T,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Set a value in the cache."""
         pass
@@ -336,7 +342,7 @@ class InMemoryCache(BaseCacheABC[T]):
         max_size: int = 1000,
         default_ttl: Optional[int] = None,
     ):
-        self._cache: Dict[str, Dict] = {}
+        self._cache: dict[str, dict] = {}
         self._max_size = max_size
         self._default_ttl = default_ttl
         self._stats = CacheStats()
@@ -368,7 +374,7 @@ class InMemoryCache(BaseCacheABC[T]):
         key: str,
         value: T,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Set a value in the cache."""
         with self._lock:
@@ -430,7 +436,7 @@ class InMemoryCache(BaseCacheABC[T]):
         del self._cache[lru_key]
         self._stats.evictions += 1
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all cache keys."""
         with self._lock:
             return list(self._cache.keys())
@@ -499,9 +505,7 @@ class DiskCache(BaseCacheABC[T]):
     def get(self, key: str) -> Optional[T]:
         """Get a value from the cache."""
         conn = self._get_conn()
-        cursor = conn.execute(
-            "SELECT value, expires_at FROM cache WHERE key = ?", (key,)
-        )
+        cursor = conn.execute("SELECT value, expires_at FROM cache WHERE key = ?", (key,))
         row = cursor.fetchone()
 
         if row is None:
@@ -528,7 +532,7 @@ class DiskCache(BaseCacheABC[T]):
         key: str,
         value: T,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Set a value in the cache."""
         conn = self._get_conn()
@@ -610,18 +614,18 @@ class DiskCache(BaseCacheABC[T]):
     def export_to_file(self, path: Union[str, Path]) -> int:
         """Export cache to a JSON file."""
         conn = self._get_conn()
-        cursor = conn.execute(
-            "SELECT key, value, created_at, metadata FROM cache"
-        )
+        cursor = conn.execute("SELECT key, value, created_at, metadata FROM cache")
 
         entries = []
         for row in cursor:
-            entries.append({
-                "key": row["key"],
-                "value": json.loads(row["value"]),
-                "created_at": row["created_at"],
-                "metadata": json.loads(row["metadata"]) if row["metadata"] else None,
-            })
+            entries.append(
+                {
+                    "key": row["key"],
+                    "value": json.loads(row["value"]),
+                    "created_at": row["created_at"],
+                    "metadata": json.loads(row["metadata"]) if row["metadata"] else None,
+                }
+            )
 
         with open(path, "w") as f:
             json.dump(entries, f, indent=2)
@@ -707,7 +711,7 @@ class StrategyCache:
         key: str,
         value: Any,
         ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict] = None,
+        metadata: Optional[dict] = None,
     ) -> CacheEntry:
         """Set value in cache."""
         with self._lock:
@@ -763,24 +767,20 @@ class StrategyCache:
             self._update_stats()
             return self._stats
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all cache keys."""
         with self._lock:
             return list(self._entries.keys())
 
-    def values(self) -> List[Any]:
+    def values(self) -> list[Any]:
         """Get all cached values."""
         with self._lock:
             return [e.value for e in self._entries.values() if not e.is_expired()]
 
-    def items(self) -> List[Tuple[str, Any]]:
+    def items(self) -> list[tuple[str, Any]]:
         """Get all key-value pairs."""
         with self._lock:
-            return [
-                (k, e.value)
-                for k, e in self._entries.items()
-                if not e.is_expired()
-            ]
+            return [(k, e.value) for k, e in self._entries.items() if not e.is_expired()]
 
     def _evict_one(self):
         """Evict one entry based on strategy."""
@@ -841,9 +841,9 @@ class StrategyCache:
         if valid_entries:
             self._stats.oldest_entry = min(e.created_at for e in valid_entries)
             self._stats.newest_entry = max(e.created_at for e in valid_entries)
-            self._stats.avg_access_count = sum(
-                e.access_count for e in valid_entries
-            ) / len(valid_entries)
+            self._stats.avg_access_count = sum(e.access_count for e in valid_entries) / len(
+                valid_entries
+            )
 
         total = self._stats.hits + self._stats.misses
         self._stats.hit_rate = self._stats.hits / total if total > 0 else 0.0
@@ -871,20 +871,18 @@ class PromptCache(StrategyCache):
     ):
         super().__init__(config)
         self.similarity_threshold = similarity_threshold
-        self._prompt_keys: Dict[str, str] = {}  # prompt hash -> cache key
+        self._prompt_keys: dict[str, str] = {}  # prompt hash -> cache key
 
     def cache_response(
         self,
         prompt: str,
         response: str,
         model: Optional[str] = None,
-        params: Optional[Dict] = None,
-        metadata: Optional[Dict] = None,
+        params: Optional[dict] = None,
+        metadata: Optional[dict] = None,
     ) -> CacheEntry:
         """Cache an LLM response."""
-        key = generate_cache_key(
-            prompt, model, params, self.config.hash_algorithm
-        )
+        key = generate_cache_key(prompt, model, params, self.config.hash_algorithm)
 
         entry_metadata = {
             "prompt": prompt,
@@ -905,12 +903,10 @@ class PromptCache(StrategyCache):
         self,
         prompt: str,
         model: Optional[str] = None,
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
     ) -> CacheLookupResult:
         """Get cached response for a prompt."""
-        key = generate_cache_key(
-            prompt, model, params, self.config.hash_algorithm
-        )
+        key = generate_cache_key(prompt, model, params, self.config.hash_algorithm)
         return self.get(key)
 
     def get_by_prompt(self, prompt: str) -> CacheLookupResult:
@@ -927,7 +923,7 @@ class PromptCache(StrategyCache):
         self,
         prompt: str,
         limit: int = 5,
-    ) -> List[Tuple[str, CacheEntry, float]]:
+    ) -> list[tuple[str, CacheEntry, float]]:
         """Find similar cached prompts."""
         results = []
 
@@ -1004,9 +1000,7 @@ class CachedModel:
         **kwargs: Any,
     ) -> ModelResponse:
         """Generate a response, using cache if available."""
-        should_cache = (
-            not self._cache_only_deterministic or temperature == 0
-        )
+        should_cache = not self._cache_only_deterministic or temperature == 0
 
         if should_cache:
             model_id = getattr(self._model, "model_id", str(type(self._model).__name__))
@@ -1038,11 +1032,11 @@ class CachedModel:
 
         return response
 
-    def _serialize_response(self, response: ModelResponse) -> Dict[str, Any]:
+    def _serialize_response(self, response: ModelResponse) -> dict[str, Any]:
         """Serialize a ModelResponse for caching."""
         return asdict(response)
 
-    def _deserialize_response(self, data: Dict[str, Any]) -> ModelResponse:
+    def _deserialize_response(self, data: dict[str, Any]) -> ModelResponse:
         """Deserialize a cached response."""
         return ModelResponse(**data)
 
@@ -1066,29 +1060,31 @@ class CacheWarmer:
     ):
         self.cache = cache
         self.generator = generator
-        self._warming_queue: List[Dict] = []
-        self._warming_results: List[Dict] = []
+        self._warming_queue: list[dict] = []
+        self._warming_results: list[dict] = []
 
     def add_prompt(
         self,
         prompt: str,
         model: Optional[str] = None,
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
         priority: int = 0,
     ):
         """Add prompt to warming queue."""
-        self._warming_queue.append({
-            "prompt": prompt,
-            "model": model,
-            "params": params,
-            "priority": priority,
-        })
+        self._warming_queue.append(
+            {
+                "prompt": prompt,
+                "model": model,
+                "params": params,
+                "priority": priority,
+            }
+        )
 
     def warm(
         self,
         batch_size: int = 10,
         skip_existing: bool = True,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Execute cache warming."""
         if not self.generator:
             raise ValueError("Generator function required for warming")
@@ -1106,31 +1102,41 @@ class CacheWarmer:
             )
 
             if skip_existing and self.cache.contains(key):
-                results.append({
-                    "prompt": item["prompt"],
-                    "status": "skipped",
-                    "reason": "already_cached",
-                })
+                results.append(
+                    {
+                        "prompt": item["prompt"],
+                        "status": "skipped",
+                        "reason": "already_cached",
+                    }
+                )
                 continue
 
             try:
                 value = self.generator(item["prompt"])
-                self.cache.set(key, value, metadata={
-                    "prompt": item["prompt"],
-                    "model": item["model"],
-                    "params": item["params"],
-                    "warmed": True,
-                })
-                results.append({
-                    "prompt": item["prompt"],
-                    "status": "success",
-                })
+                self.cache.set(
+                    key,
+                    value,
+                    metadata={
+                        "prompt": item["prompt"],
+                        "model": item["model"],
+                        "params": item["params"],
+                        "warmed": True,
+                    },
+                )
+                results.append(
+                    {
+                        "prompt": item["prompt"],
+                        "status": "success",
+                    }
+                )
             except Exception as e:
-                results.append({
-                    "prompt": item["prompt"],
-                    "status": "error",
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "prompt": item["prompt"],
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
 
         self._warming_queue = self._warming_queue[batch_size:]
         self._warming_results.extend(results)
@@ -1141,7 +1147,7 @@ class CacheWarmer:
         """Get number of prompts in warming queue."""
         return len(self._warming_queue)
 
-    def get_results(self) -> List[Dict]:
+    def get_results(self) -> list[dict]:
         """Get warming results."""
         return self._warming_results.copy()
 
@@ -1198,7 +1204,7 @@ class MemoizedFunction:
         key = self.key_generator(*args, **kwargs)
         self.cache.delete(key)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get memoization statistics."""
         return {
             "call_count": self._call_count,
@@ -1215,6 +1221,7 @@ def memoize(
     ttl_seconds: Optional[int] = 3600,
 ) -> Callable:
     """Decorator for memoizing functions."""
+
     def decorator(fn: Callable) -> MemoizedFunction:
         nonlocal cache
         if cache is None:
@@ -1236,7 +1243,7 @@ class CacheNamespace:
 
     def __init__(self, default_config: Optional[CacheConfig] = None):
         self.default_config = default_config or CacheConfig()
-        self._caches: Dict[str, BaseCache] = {}
+        self._caches: dict[str, BaseCache] = {}
         self._lock = threading.RLock()
 
     def get_cache(
@@ -1269,18 +1276,15 @@ class CacheNamespace:
                 return True
             return False
 
-    def list_caches(self) -> List[str]:
+    def list_caches(self) -> list[str]:
         """List all cache names."""
         with self._lock:
             return list(self._caches.keys())
 
-    def get_all_stats(self) -> Dict[str, CacheStats]:
+    def get_all_stats(self) -> dict[str, CacheStats]:
         """Get statistics for all caches."""
         with self._lock:
-            return {
-                name: cache.get_stats()
-                for name, cache in self._caches.items()
-            }
+            return {name: cache.get_stats() for name, cache in self._caches.items()}
 
     def clear_all(self):
         """Clear all caches."""
@@ -1299,14 +1303,14 @@ class ResponseDeduplicator:
 
     def __init__(self, similarity_threshold: float = 1.0):
         self.similarity_threshold = similarity_threshold
-        self._responses: List[Tuple[str, str, Any]] = []
+        self._responses: list[tuple[str, str, Any]] = []
 
     def add(
         self,
         prompt: str,
         response: str,
         metadata: Optional[Any] = None,
-    ) -> Tuple[bool, Optional[int]]:
+    ) -> tuple[bool, Optional[int]]:
         """Add response, returning whether it's a duplicate."""
         for i, (_, existing_response, _) in enumerate(self._responses):
             if self._is_duplicate(response, existing_response):
@@ -1332,7 +1336,7 @@ class ResponseDeduplicator:
 
         return similarity >= self.similarity_threshold
 
-    def get_unique_responses(self) -> List[Tuple[str, str, Any]]:
+    def get_unique_responses(self) -> list[tuple[str, str, Any]]:
         """Get all unique responses."""
         return self._responses.copy()
 
@@ -1365,7 +1369,7 @@ class AsyncCacheAdapter:
         key: str,
         value: Any,
         ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict] = None,
+        metadata: Optional[dict] = None,
     ) -> CacheEntry:
         """Async set in cache."""
         return self.cache.set(key, value, ttl_seconds, metadata)
@@ -1424,7 +1428,7 @@ def create_namespace(
 def get_cache_key(
     prompt: str,
     model: Optional[str] = None,
-    params: Optional[Dict] = None,
+    params: Optional[dict] = None,
 ) -> str:
     """Generate cache key for prompt."""
     return generate_cache_key(prompt, model, params)
@@ -1435,8 +1439,8 @@ def cached_response(
     generator: Callable[[str], str],
     cache: Optional[PromptCache] = None,
     model: Optional[str] = None,
-    params: Optional[Dict] = None,
-) -> Tuple[str, bool]:
+    params: Optional[dict] = None,
+) -> tuple[str, bool]:
     """Get cached response or generate new one."""
     if cache is None:
         cache = create_prompt_cache()

@@ -9,13 +9,12 @@ Provides tools for:
 """
 
 import hashlib
-import json
 import random
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 
 class VersionStatus(Enum):
@@ -56,9 +55,9 @@ class TemplateChange:
     author: Optional[str] = None
     previous_content: Optional[str] = None
     new_content: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp,
@@ -81,12 +80,12 @@ class TemplateVersion:
     version_number: str  # Semantic versioning: "1.0.0"
     status: VersionStatus
     created_at: str
-    variables: List[str] = field(default_factory=list)
+    variables: list[str] = field(default_factory=list)
     description: str = ""
     author: Optional[str] = None
-    changelog: List[TemplateChange] = field(default_factory=list)
+    changelog: list[TemplateChange] = field(default_factory=list)
     parent_version: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def content_hash(self) -> str:
@@ -98,7 +97,7 @@ class TemplateVersion:
         """Check if version is active."""
         return self.status == VersionStatus.ACTIVE
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "version_id": self.version_id,
@@ -128,8 +127,8 @@ class ABVariant:
     impressions: int = 0
     conversions: int = 0
     total_score: float = 0.0
-    scores: List[float] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def conversion_rate(self) -> float:
@@ -152,7 +151,7 @@ class ABVariant:
     @property
     def score_std(self) -> float:
         """Calculate score standard deviation."""
-        return self.score_variance ** 0.5
+        return self.score_variance**0.5
 
     def record_impression(self, score: float, converted: bool = False) -> None:
         """Record an impression with score."""
@@ -162,7 +161,7 @@ class ABVariant:
         if converted:
             self.conversions += 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "variant_id": self.variant_id,
@@ -185,22 +184,22 @@ class ABTestResult:
     test_id: str
     test_name: str
     status: ABTestStatus
-    variants: List[ABVariant]
+    variants: list[ABVariant]
     winner: Optional[str]  # variant_id of winner
     confidence: float  # Statistical confidence level
     total_impressions: int
     duration_seconds: float
     started_at: str
     ended_at: Optional[str]
-    recommendations: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_significant(self) -> bool:
         """Check if results are statistically significant."""
         return self.confidence >= 0.95
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "test_id": self.test_id,
@@ -224,8 +223,8 @@ class TemplateVersionManager:
 
     def __init__(self):
         """Initialize version manager."""
-        self.templates: Dict[str, Dict[str, TemplateVersion]] = {}  # name -> version_id -> version
-        self.active_versions: Dict[str, str] = {}  # name -> active version_id
+        self.templates: dict[str, dict[str, TemplateVersion]] = {}  # name -> version_id -> version
+        self.active_versions: dict[str, str] = {}  # name -> active version_id
 
     def _generate_version_id(self, name: str, version: str) -> str:
         """Generate unique version ID."""
@@ -233,15 +232,16 @@ class TemplateVersionManager:
         content = f"{name}:{version}:{timestamp}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def _extract_variables(self, content: str) -> List[str]:
+    def _extract_variables(self, content: str) -> list[str]:
         """Extract variable names from template content."""
         import re
+
         # Match {variable} and {{variable}} patterns
         pattern = r"\{+(\w+)\}+"
         matches = re.findall(pattern, content)
         return list(set(matches))
 
-    def _parse_version(self, version: str) -> Tuple[int, int, int]:
+    def _parse_version(self, version: str) -> tuple[int, int, int]:
         """Parse semantic version string."""
         parts = version.split(".")
         major = int(parts[0]) if len(parts) > 0 else 0
@@ -266,7 +266,7 @@ class TemplateVersionManager:
         description: str = "",
         author: Optional[str] = None,
         initial_version: str = "1.0.0",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> TemplateVersion:
         """Create a new template with initial version."""
         if name in self.templates and len(self.templates[name]) > 0:
@@ -312,7 +312,7 @@ class TemplateVersionManager:
         author: Optional[str] = None,
         version_level: str = "patch",  # "major", "minor", "patch"
         explicit_version: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> TemplateVersion:
         """Create a new version of an existing template."""
         if name not in self.templates or len(self.templates[name]) == 0:
@@ -378,21 +378,25 @@ class TemplateVersionManager:
             if old_id in self.templates[name]:
                 old_version = self.templates[name][old_id]
                 old_version.status = VersionStatus.DEPRECATED
-                old_version.changelog.append(TemplateChange(
-                    timestamp=datetime.now().isoformat(),
-                    change_type="status_change",
-                    description=f"Deprecated in favor of version {version.version_number}",
-                    author=author,
-                ))
+                old_version.changelog.append(
+                    TemplateChange(
+                        timestamp=datetime.now().isoformat(),
+                        change_type="status_change",
+                        description=f"Deprecated in favor of version {version.version_number}",
+                        author=author,
+                    )
+                )
 
         # Activate new version
         version.status = VersionStatus.ACTIVE
-        version.changelog.append(TemplateChange(
-            timestamp=datetime.now().isoformat(),
-            change_type="status_change",
-            description="Activated as current version",
-            author=author,
-        ))
+        version.changelog.append(
+            TemplateChange(
+                timestamp=datetime.now().isoformat(),
+                change_type="status_change",
+                description="Activated as current version",
+                author=author,
+            )
+        )
         self.active_versions[name] = version_id
 
         return version
@@ -417,9 +421,7 @@ class TemplateVersionManager:
                 return version
         return None
 
-    def list_versions(
-        self, name: str, include_archived: bool = False
-    ) -> List[TemplateVersion]:
+    def list_versions(self, name: str, include_archived: bool = False) -> list[TemplateVersion]:
         """List all versions of a template."""
         if name not in self.templates:
             return []
@@ -428,7 +430,7 @@ class TemplateVersionManager:
             versions = [v for v in versions if v.status != VersionStatus.ARCHIVED]
         return sorted(versions, key=lambda v: self._parse_version(v.version_number), reverse=True)
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """List all template names."""
         return list(self.templates.keys())
 
@@ -469,16 +471,18 @@ class TemplateVersionManager:
             raise ValueError("Cannot archive active version. Activate another version first.")
 
         version.status = VersionStatus.ARCHIVED
-        version.changelog.append(TemplateChange(
-            timestamp=datetime.now().isoformat(),
-            change_type="status_change",
-            description="Archived",
-            author=author,
-        ))
+        version.changelog.append(
+            TemplateChange(
+                timestamp=datetime.now().isoformat(),
+                change_type="status_change",
+                description="Archived",
+                author=author,
+            )
+        )
 
         return version
 
-    def diff_versions(self, name: str, version_id_a: str, version_id_b: str) -> Dict[str, Any]:
+    def diff_versions(self, name: str, version_id_a: str, version_id_b: str) -> dict[str, Any]:
         """Compare two versions of a template."""
         if name not in self.templates:
             raise ValueError(f"Template '{name}' not found")
@@ -511,7 +515,7 @@ class TemplateVersionManager:
             "character_diff": len(version_b.content) - len(version_a.content),
         }
 
-    def export_template(self, name: str, version_id: Optional[str] = None) -> Dict[str, Any]:
+    def export_template(self, name: str, version_id: Optional[str] = None) -> dict[str, Any]:
         """Export template and its history as JSON."""
         if name not in self.templates:
             raise ValueError(f"Template '{name}' not found")
@@ -530,7 +534,9 @@ class TemplateVersionManager:
             "exported_at": datetime.now().isoformat(),
         }
 
-    def import_template(self, data: Dict[str, Any], overwrite: bool = False) -> List[TemplateVersion]:
+    def import_template(
+        self, data: dict[str, Any], overwrite: bool = False
+    ) -> list[TemplateVersion]:
         """Import template from exported JSON."""
         name = data["template_name"]
 
@@ -556,9 +562,7 @@ class TemplateVersionManager:
                 variables=v_data.get("variables", []),
                 description=v_data.get("description", ""),
                 author=v_data.get("author"),
-                changelog=[
-                    TemplateChange(**c) for c in v_data.get("changelog", [])
-                ],
+                changelog=[TemplateChange(**c) for c in v_data.get("changelog", [])],
                 parent_version=v_data.get("parent_version"),
                 metadata=v_data.get("metadata", {}),
             )
@@ -584,14 +588,14 @@ class ABTestRunner:
         self.strategy = strategy
         self.min_samples_per_variant = min_samples_per_variant
         self.confidence_threshold = confidence_threshold
-        self.tests: Dict[str, "ABTest"] = {}
+        self.tests: dict[str, ABTest] = {}
 
     def create_test(
         self,
         name: str,
-        variants: List[Tuple[str, TemplateVersion, float]],  # (name, version, weight)
+        variants: list[tuple[str, TemplateVersion, float]],  # (name, version, weight)
         description: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> "ABTest":
         """Create a new A/B test."""
         test_id = hashlib.sha256(f"{name}:{time.time()}".encode()).hexdigest()[:16]
@@ -599,12 +603,14 @@ class ABTestRunner:
         ab_variants = []
         for variant_name, template_version, weight in variants:
             variant_id = hashlib.sha256(f"{test_id}:{variant_name}".encode()).hexdigest()[:12]
-            ab_variants.append(ABVariant(
-                variant_id=variant_id,
-                name=variant_name,
-                template_version=template_version,
-                weight=weight,
-            ))
+            ab_variants.append(
+                ABVariant(
+                    variant_id=variant_id,
+                    name=variant_name,
+                    template_version=template_version,
+                    weight=weight,
+                )
+            )
 
         test = ABTest(
             test_id=test_id,
@@ -624,7 +630,7 @@ class ABTestRunner:
         """Get a test by ID."""
         return self.tests.get(test_id)
 
-    def list_tests(self, status: Optional[ABTestStatus] = None) -> List["ABTest"]:
+    def list_tests(self, status: Optional[ABTestStatus] = None) -> list["ABTest"]:
         """List all tests, optionally filtered by status."""
         tests = list(self.tests.values())
         if status:
@@ -638,7 +644,7 @@ class ABTest:
 
     test_id: str
     name: str
-    variants: List[ABVariant]
+    variants: list[ABVariant]
     strategy: AllocationStrategy
     min_samples: int
     confidence_threshold: float
@@ -646,10 +652,10 @@ class ABTest:
     status: ABTestStatus = ABTestStatus.PENDING
     started_at: Optional[str] = None
     ended_at: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     _round_robin_index: int = field(default=0, repr=False)
-    _bandit_alpha: List[float] = field(default_factory=list, repr=False)
-    _bandit_beta: List[float] = field(default_factory=list, repr=False)
+    _bandit_alpha: list[float] = field(default_factory=list, repr=False)
+    _bandit_beta: list[float] = field(default_factory=list, repr=False)
 
     def __post_init__(self):
         """Initialize bandit parameters."""
@@ -778,6 +784,7 @@ class ABTest:
         """Convert z-score to confidence level (approximate)."""
         # Using approximation for normal CDF
         import math
+
         z = abs(z)
         # Taylor series approximation
         t = 1.0 / (1.0 + 0.2316419 * z)
@@ -792,8 +799,8 @@ class ABTest:
         if n1 < 2 or n2 < 2:
             return 0.0
 
-        se1 = std1 ** 2 / n1
-        se2 = std2 ** 2 / n2
+        se1 = std1**2 / n1
+        se2 = std2**2 / n2
         se = (se1 + se2) ** 0.5
 
         if se == 0:
@@ -805,7 +812,6 @@ class ABTest:
         """Get current test results with statistical analysis."""
         # Find best variant by conversion rate
         best_variant = max(self.variants, key=lambda v: v.conversion_rate)
-        second_best = None
         max_confidence = 0.0
 
         # Compare best against others
@@ -821,7 +827,6 @@ class ABTest:
                 conf = self._z_to_confidence(z)
                 if conf > max_confidence:
                     max_confidence = conf
-                    second_best = variant
 
         # Generate recommendations
         recommendations = []
@@ -836,9 +841,7 @@ class ABTest:
             recommendations.append(
                 f"'{best_variant.name}' is the winner with {max_confidence:.1%} confidence"
             )
-            recommendations.append(
-                f"Consider promoting '{best_variant.name}' to production"
-            )
+            recommendations.append(f"Consider promoting '{best_variant.name}' to production")
         elif max_confidence >= 0.9:
             recommendations.append(
                 f"'{best_variant.name}' is leading but needs more data for conclusive results"
@@ -868,7 +871,7 @@ class ABTest:
             metadata=self.metadata,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "test_id": self.test_id,
@@ -899,12 +902,12 @@ class TemplateExperiment:
 
     def run_comparison(
         self,
-        templates: List[TemplateVersion],
-        test_cases: List[Dict[str, Any]],  # [{"variables": {...}, "expected": "..."}]
-        render_fn: Callable[[str, Dict[str, Any]], str],  # (template_content, variables) -> prompt
+        templates: list[TemplateVersion],
+        test_cases: list[dict[str, Any]],  # [{"variables": {...}, "expected": "..."}]
+        render_fn: Callable[[str, dict[str, Any]], str],  # (template_content, variables) -> prompt
         model_fn: Callable[[str], str],  # (prompt) -> response
         n_runs: int = 1,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run a comparison experiment across templates."""
         results = {}
 
@@ -931,9 +934,16 @@ class TemplateExperiment:
                 "min_score": min(template_scores) if template_scores else 0,
                 "max_score": max(template_scores) if template_scores else 0,
                 "std_score": (
-                    (sum((s - sum(template_scores) / len(template_scores)) ** 2 for s in template_scores)
-                     / len(template_scores)) ** 0.5
-                    if template_scores else 0
+                    (
+                        sum(
+                            (s - sum(template_scores) / len(template_scores)) ** 2
+                            for s in template_scores
+                        )
+                        / len(template_scores)
+                    )
+                    ** 0.5
+                    if template_scores
+                    else 0
                 ),
                 "conversion_rate": template_conversions / (n_runs * len(test_cases)),
             }
@@ -944,7 +954,9 @@ class TemplateExperiment:
         return {
             "results": results,
             "winner": best_id,
-            "winner_version": templates[[t.version_id for t in templates].index(best_id)].version_number,
+            "winner_version": templates[
+                [t.version_id for t in templates].index(best_id)
+            ].version_number,
             "total_test_cases": len(test_cases),
             "total_runs": n_runs,
         }
@@ -985,7 +997,9 @@ def create_version(
     version_level: str = "patch",
 ) -> TemplateVersion:
     """Create a new version of an existing template."""
-    return get_default_manager().create_version(name, content, description, version_level=version_level)
+    return get_default_manager().create_version(
+        name, content, description, version_level=version_level
+    )
 
 
 def get_active_template(name: str) -> Optional[TemplateVersion]:
@@ -1003,19 +1017,19 @@ def rollback_template(name: str, to_version_id: Optional[str] = None) -> Templat
     return get_default_manager().rollback(name, to_version_id)
 
 
-def list_template_versions(name: str) -> List[TemplateVersion]:
+def list_template_versions(name: str) -> list[TemplateVersion]:
     """List all versions of a template."""
     return get_default_manager().list_versions(name)
 
 
-def diff_template_versions(name: str, version_a: str, version_b: str) -> Dict[str, Any]:
+def diff_template_versions(name: str, version_a: str, version_b: str) -> dict[str, Any]:
     """Compare two versions."""
     return get_default_manager().diff_versions(name, version_a, version_b)
 
 
 def create_ab_test(
     name: str,
-    variants: List[Tuple[str, TemplateVersion, float]],
+    variants: list[tuple[str, TemplateVersion, float]],
     strategy: AllocationStrategy = AllocationStrategy.RANDOM,
 ) -> ABTest:
     """Create an A/B test."""
@@ -1024,12 +1038,12 @@ def create_ab_test(
 
 
 def run_template_comparison(
-    templates: List[TemplateVersion],
-    test_cases: List[Dict[str, Any]],
-    render_fn: Callable[[str, Dict[str, Any]], str],
+    templates: list[TemplateVersion],
+    test_cases: list[dict[str, Any]],
+    render_fn: Callable[[str, dict[str, Any]], str],
     model_fn: Callable[[str], str],
     scorer: Callable[[str, str], float],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a quick comparison of templates."""
     experiment = TemplateExperiment(scorer)
     return experiment.run_comparison(templates, test_cases, render_fn, model_fn)

@@ -16,7 +16,7 @@ import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 
 class AggregationMethod(Enum):
@@ -60,9 +60,9 @@ class ModelOutput:
     response: str
     confidence: float = 1.0
     latency: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "model_id": self.model_id,
@@ -79,13 +79,13 @@ class AggregatedOutput:
 
     final_response: str
     method: AggregationMethod
-    source_outputs: List[ModelOutput]
+    source_outputs: list[ModelOutput]
     agreement_level: AgreementLevel
     agreement_score: float
-    selected_model: Optional[str]
-    vote_distribution: Dict[str, int]
+    selected_model: str | None
+    vote_distribution: dict[str, int]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "final_response": self.final_response[:500],
@@ -103,14 +103,14 @@ class ModelComparison:
     """Comparison between models on a task."""
 
     prompt: str
-    outputs: List[ModelOutput]
+    outputs: list[ModelOutput]
     best_model: str
     worst_model: str
-    ranking: List[Tuple[str, float]]
-    agreement_matrix: Dict[Tuple[str, str], float]
+    ranking: list[tuple[str, float]]
+    agreement_matrix: dict[tuple[str, str], float]
     diversity_score: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "prompt": self.prompt[:200],
@@ -128,17 +128,17 @@ class EnsembleReport:
 
     n_prompts: int
     n_models: int
-    model_ids: List[str]
+    model_ids: list[str]
     aggregation_method: AggregationMethod
     overall_agreement: float
-    per_model_selection_rate: Dict[str, float]
-    per_model_agreement: Dict[str, float]
+    per_model_selection_rate: dict[str, float]
+    per_model_agreement: dict[str, float]
     best_performing_model: str
     most_agreeable_model: str
     ensemble_diversity: float
-    recommendations: List[str]
+    recommendations: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "n_prompts": self.n_prompts,
@@ -194,6 +194,7 @@ class ResponseNormalizer:
 
         if self.remove_punctuation:
             import string
+
             result = result.translate(str.maketrans("", "", string.punctuation))
 
         return result
@@ -204,7 +205,7 @@ class SimilarityCalculator:
 
     def __init__(
         self,
-        normalizer: Optional[ResponseNormalizer] = None,
+        normalizer: ResponseNormalizer | None = None,
     ):
         """Initialize calculator.
 
@@ -247,7 +248,7 @@ class ResponseAggregator:
 
     def __init__(
         self,
-        similarity_calculator: Optional[SimilarityCalculator] = None,
+        similarity_calculator: SimilarityCalculator | None = None,
         similarity_threshold: float = 0.8,
     ):
         """Initialize aggregator.
@@ -261,9 +262,9 @@ class ResponseAggregator:
 
     def aggregate(
         self,
-        outputs: List[ModelOutput],
+        outputs: list[ModelOutput],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Callable[[str], float] | None = None,
     ) -> AggregatedOutput:
         """Aggregate outputs from multiple models.
 
@@ -326,14 +327,14 @@ class ResponseAggregator:
             vote_distribution=vote_dist,
         )
 
-    def _calculate_agreement(self, outputs: List[ModelOutput]) -> float:
+    def _calculate_agreement(self, outputs: list[ModelOutput]) -> float:
         """Calculate overall agreement score."""
         if len(outputs) <= 1:
             return 1.0
 
         similarities = []
         for i, out1 in enumerate(outputs):
-            for out2 in outputs[i + 1:]:
+            for out2 in outputs[i + 1 :]:
                 sim = self._calculator.calculate(out1.response, out2.response)
                 similarities.append(sim)
 
@@ -341,17 +342,18 @@ class ResponseAggregator:
 
     def _group_similar_responses(
         self,
-        outputs: List[ModelOutput],
-    ) -> List[List[ModelOutput]]:
+        outputs: list[ModelOutput],
+    ) -> list[list[ModelOutput]]:
         """Group similar responses together."""
-        groups: List[List[ModelOutput]] = []
+        groups: list[list[ModelOutput]] = []
 
         for output in outputs:
             found_group = False
             for group in groups:
-                if self._calculator.calculate(
-                    output.response, group[0].response
-                ) >= self._threshold:
+                if (
+                    self._calculator.calculate(output.response, group[0].response)
+                    >= self._threshold
+                ):
                     group.append(output)
                     found_group = True
                     break
@@ -376,9 +378,9 @@ class ResponseAggregator:
 
     @staticmethod
     def _majority_vote(
-        groups: List[List[ModelOutput]],
-        outputs: List[ModelOutput],
-    ) -> Tuple[str, str]:
+        groups: list[list[ModelOutput]],
+        outputs: list[ModelOutput],
+    ) -> tuple[str, str]:
         """Select response by majority vote."""
         if not groups:
             return "", ""
@@ -389,9 +391,9 @@ class ResponseAggregator:
 
     @staticmethod
     def _weighted_vote(
-        groups: List[List[ModelOutput]],
-        outputs: List[ModelOutput],
-    ) -> Tuple[str, str]:
+        groups: list[list[ModelOutput]],
+        outputs: list[ModelOutput],
+    ) -> tuple[str, str]:
         """Select response by confidence-weighted vote."""
         if not groups:
             return "", ""
@@ -408,9 +410,9 @@ class ResponseAggregator:
 
     @staticmethod
     def _best_of_n(
-        outputs: List[ModelOutput],
-        scorer: Optional[Callable[[str], float]],
-    ) -> Tuple[str, str]:
+        outputs: list[ModelOutput],
+        scorer: Callable[[str], float] | None,
+    ) -> tuple[str, str]:
         """Select best response using scorer."""
         if not outputs:
             return "", ""
@@ -425,9 +427,9 @@ class ResponseAggregator:
 
     @staticmethod
     def _consensus(
-        groups: List[List[ModelOutput]],
-        outputs: List[ModelOutput],
-    ) -> Tuple[str, str]:
+        groups: list[list[ModelOutput]],
+        outputs: list[ModelOutput],
+    ) -> tuple[str, str]:
         """Find consensus response (most similar to all others)."""
         if not outputs:
             return "", ""
@@ -438,8 +440,7 @@ class ResponseAggregator:
 
         for output in outputs:
             sims = [
-                calculator.calculate(output.response, o.response)
-                for o in outputs if o != output
+                calculator.calculate(output.response, o.response) for o in outputs if o != output
             ]
             avg_sim = statistics.mean(sims) if sims else 0
 
@@ -452,7 +453,7 @@ class ResponseAggregator:
         return outputs[0].response, outputs[0].model_id
 
     @staticmethod
-    def _longest(outputs: List[ModelOutput]) -> Tuple[str, str]:
+    def _longest(outputs: list[ModelOutput]) -> tuple[str, str]:
         """Select longest response."""
         if not outputs:
             return "", ""
@@ -460,7 +461,7 @@ class ResponseAggregator:
         return selected.response, selected.model_id
 
     @staticmethod
-    def _shortest(outputs: List[ModelOutput]) -> Tuple[str, str]:
+    def _shortest(outputs: list[ModelOutput]) -> tuple[str, str]:
         """Select shortest response."""
         if not outputs:
             return "", ""
@@ -468,7 +469,7 @@ class ResponseAggregator:
         return selected.response, selected.model_id
 
     @staticmethod
-    def _most_confident(outputs: List[ModelOutput]) -> Tuple[str, str]:
+    def _most_confident(outputs: list[ModelOutput]) -> tuple[str, str]:
         """Select most confident response."""
         if not outputs:
             return "", ""
@@ -477,8 +478,8 @@ class ResponseAggregator:
 
     def _diverse_selection(
         self,
-        outputs: List[ModelOutput],
-    ) -> Tuple[str, str]:
+        outputs: list[ModelOutput],
+    ) -> tuple[str, str]:
         """Select response that maximizes diversity coverage."""
         if not outputs:
             return "", ""
@@ -490,7 +491,8 @@ class ResponseAggregator:
         for output in outputs:
             sims = [
                 self._calculator.calculate(output.response, o.response)
-                for o in outputs if o != output
+                for o in outputs
+                if o != output
             ]
             # Lower average similarity = more diverse
             diversity = 1 - (statistics.mean(sims) if sims else 0)
@@ -509,7 +511,7 @@ class ModelAgreementAnalyzer:
 
     def __init__(
         self,
-        similarity_calculator: Optional[SimilarityCalculator] = None,
+        similarity_calculator: SimilarityCalculator | None = None,
     ):
         """Initialize analyzer.
 
@@ -520,8 +522,8 @@ class ModelAgreementAnalyzer:
 
     def analyze(
         self,
-        outputs: List[ModelOutput],
-    ) -> Dict[str, Any]:
+        outputs: list[ModelOutput],
+    ) -> dict[str, Any]:
         """Analyze agreement between model outputs.
 
         Args:
@@ -539,9 +541,9 @@ class ModelAgreementAnalyzer:
             }
 
         # Build agreement matrix
-        matrix: Dict[Tuple[str, str], float] = {}
+        matrix: dict[tuple[str, str], float] = {}
         for i, out1 in enumerate(outputs):
-            for out2 in outputs[i + 1:]:
+            for out2 in outputs[i + 1 :]:
                 sim = self._calculator.calculate(out1.response, out2.response)
                 matrix[(out1.model_id, out2.model_id)] = sim
                 matrix[(out2.model_id, out1.model_id)] = sim
@@ -550,21 +552,23 @@ class ModelAgreementAnalyzer:
         overall = statistics.mean(matrix.values()) if matrix else 1.0
 
         # Find most/least agreeable models
-        model_agreements: Dict[str, List[float]] = defaultdict(list)
-        for (m1, m2), sim in matrix.items():
+        model_agreements: dict[str, list[float]] = defaultdict(list)
+        for (m1, _m2), sim in matrix.items():
             model_agreements[m1].append(sim)
 
-        avg_agreements = {
-            m: statistics.mean(sims) for m, sims in model_agreements.items()
-        }
+        avg_agreements = {m: statistics.mean(sims) for m, sims in model_agreements.items()}
 
         return {
             "n_models": len(outputs),
             "overall_agreement": overall,
             "agreement_matrix": {f"{k[0]}-{k[1]}": v for k, v in matrix.items()},
             "per_model_agreement": avg_agreements,
-            "most_agreeable": max(avg_agreements.items(), key=lambda x: x[1])[0] if avg_agreements else None,
-            "least_agreeable": min(avg_agreements.items(), key=lambda x: x[1])[0] if avg_agreements else None,
+            "most_agreeable": max(avg_agreements.items(), key=lambda x: x[1])[0]
+            if avg_agreements
+            else None,
+            "least_agreeable": min(avg_agreements.items(), key=lambda x: x[1])[0]
+            if avg_agreements
+            else None,
         }
 
 
@@ -573,8 +577,8 @@ class EnsembleEvaluator:
 
     def __init__(
         self,
-        aggregator: Optional[ResponseAggregator] = None,
-        analyzer: Optional[ModelAgreementAnalyzer] = None,
+        aggregator: ResponseAggregator | None = None,
+        analyzer: ModelAgreementAnalyzer | None = None,
     ):
         """Initialize evaluator.
 
@@ -587,9 +591,9 @@ class EnsembleEvaluator:
 
     def evaluate(
         self,
-        prompt_outputs: List[List[ModelOutput]],
+        prompt_outputs: list[list[ModelOutput]],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Callable[[str], float] | None = None,
     ) -> EnsembleReport:
         """Evaluate ensemble across multiple prompts.
 
@@ -613,9 +617,9 @@ class EnsembleEvaluator:
         model_ids = sorted(all_models)
 
         # Track selection counts and agreements
-        selection_counts: Dict[str, int] = Counter()
+        selection_counts: dict[str, int] = Counter()
         all_agreements = []
-        per_model_agreements: Dict[str, List[float]] = defaultdict(list)
+        per_model_agreements: dict[str, list[float]] = defaultdict(list)
 
         for outputs in prompt_outputs:
             # Aggregate
@@ -632,12 +636,9 @@ class EnsembleEvaluator:
 
         # Calculate metrics
         n_prompts = len(prompt_outputs)
-        selection_rates = {
-            m: count / n_prompts for m, count in selection_counts.items()
-        }
+        selection_rates = {m: count / n_prompts for m, count in selection_counts.items()}
         avg_model_agreements = {
-            m: statistics.mean(agreements)
-            for m, agreements in per_model_agreements.items()
+            m: statistics.mean(agreements) for m, agreements in per_model_agreements.items()
         }
 
         # Calculate diversity
@@ -645,9 +646,9 @@ class EnsembleEvaluator:
 
         # Find best models
         best_model = max(selection_rates.items(), key=lambda x: x[1])[0] if selection_rates else ""
-        most_agreeable = max(
-            avg_model_agreements.items(), key=lambda x: x[1]
-        )[0] if avg_model_agreements else ""
+        most_agreeable = (
+            max(avg_model_agreements.items(), key=lambda x: x[1])[0] if avg_model_agreements else ""
+        )
 
         return EnsembleReport(
             n_prompts=n_prompts,
@@ -667,7 +668,7 @@ class EnsembleEvaluator:
 
     def _calculate_diversity(
         self,
-        prompt_outputs: List[List[ModelOutput]],
+        prompt_outputs: list[list[ModelOutput]],
     ) -> float:
         """Calculate response diversity across prompts."""
         calculator = SimilarityCalculator()
@@ -679,7 +680,7 @@ class EnsembleEvaluator:
 
             sims = []
             for i, out1 in enumerate(outputs):
-                for out2 in outputs[i + 1:]:
+                for out2 in outputs[i + 1 :]:
                     sims.append(calculator.calculate(out1.response, out2.response))
 
             # Diversity = 1 - average similarity
@@ -690,10 +691,10 @@ class EnsembleEvaluator:
 
     @staticmethod
     def _generate_recommendations(
-        selection_rates: Dict[str, float],
-        agreements: Dict[str, float],
+        selection_rates: dict[str, float],
+        agreements: dict[str, float],
         diversity: float,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate recommendations based on evaluation."""
         recommendations = []
 
@@ -719,13 +720,9 @@ class EnsembleEvaluator:
 
         # Check diversity
         if diversity < 0.1:
-            recommendations.append(
-                "Low ensemble diversity; models produce similar outputs"
-            )
+            recommendations.append("Low ensemble diversity; models produce similar outputs")
         elif diversity > 0.7:
-            recommendations.append(
-                "High ensemble diversity; consider using consensus method"
-            )
+            recommendations.append("High ensemble diversity; consider using consensus method")
 
         if not recommendations:
             recommendations.append("Ensemble appears well-balanced")
@@ -755,8 +752,8 @@ class ModelEnsemble:
 
     def __init__(
         self,
-        models: Dict[str, Callable[[str], str]],
-        aggregator: Optional[ResponseAggregator] = None,
+        models: dict[str, Callable[[str], str]],
+        aggregator: ResponseAggregator | None = None,
         default_method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
     ):
         """Initialize ensemble.
@@ -773,8 +770,8 @@ class ModelEnsemble:
     def query(
         self,
         prompt: str,
-        method: Optional[AggregationMethod] = None,
-        scorer: Optional[Callable[[str], float]] = None,
+        method: AggregationMethod | None = None,
+        scorer: Callable[[str], float] | None = None,
     ) -> AggregatedOutput:
         """Query the ensemble.
 
@@ -793,10 +790,12 @@ class ModelEnsemble:
         for model_id, model_fn in self._models.items():
             try:
                 response = model_fn(prompt)
-                outputs.append(ModelOutput(
-                    model_id=model_id,
-                    response=response,
-                ))
+                outputs.append(
+                    ModelOutput(
+                        model_id=model_id,
+                        response=response,
+                    )
+                )
             except Exception:
                 # Skip failed models
                 continue
@@ -806,8 +805,8 @@ class ModelEnsemble:
     def compare_methods(
         self,
         prompt: str,
-        methods: Optional[List[AggregationMethod]] = None,
-    ) -> Dict[AggregationMethod, AggregatedOutput]:
+        methods: list[AggregationMethod] | None = None,
+    ) -> dict[AggregationMethod, AggregatedOutput]:
         """Compare different aggregation methods.
 
         Args:
@@ -841,7 +840,7 @@ class ModelEnsemble:
 
 
 def create_ensemble(
-    models: Dict[str, Callable[[str], str]],
+    models: dict[str, Callable[[str], str]],
     method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
 ) -> ModelEnsemble:
     """Create a model ensemble.
@@ -857,7 +856,7 @@ def create_ensemble(
 
 
 def aggregate_responses(
-    outputs: List[ModelOutput],
+    outputs: list[ModelOutput],
     method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
 ) -> AggregatedOutput:
     """Aggregate model outputs.
@@ -874,8 +873,8 @@ def aggregate_responses(
 
 
 def analyze_model_agreement(
-    outputs: List[ModelOutput],
-) -> Dict[str, Any]:
+    outputs: list[ModelOutput],
+) -> dict[str, Any]:
     """Analyze agreement between models.
 
     Args:
@@ -889,7 +888,7 @@ def analyze_model_agreement(
 
 
 def evaluate_ensemble(
-    prompt_outputs: List[List[ModelOutput]],
+    prompt_outputs: list[list[ModelOutput]],
     method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
 ) -> EnsembleReport:
     """Evaluate ensemble performance.
@@ -906,9 +905,9 @@ def evaluate_ensemble(
 
 
 def quick_ensemble_check(
-    models: Dict[str, Callable[[str], str]],
-    prompts: List[str],
-) -> Dict[str, Any]:
+    models: dict[str, Callable[[str], str]],
+    prompts: list[str],
+) -> dict[str, Any]:
     """Quick ensemble performance check.
 
     Args:
@@ -923,10 +922,12 @@ def quick_ensemble_check(
     results = []
     for prompt in prompts:
         output = ensemble.query(prompt)
-        results.append({
-            "agreement": output.agreement_score,
-            "selected": output.selected_model,
-        })
+        results.append(
+            {
+                "agreement": output.agreement_score,
+                "selected": output.selected_model,
+            }
+        )
 
     agreements = [r["agreement"] for r in results]
     selections = Counter(r["selected"] for r in results if r["selected"])

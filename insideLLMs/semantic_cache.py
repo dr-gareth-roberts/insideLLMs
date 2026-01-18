@@ -28,17 +28,17 @@ Example:
 
 import hashlib
 import json
-import time
+import math
 import threading
-from abc import ABC, abstractmethod
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar, Union
-import math
+from typing import Any, Callable, Optional, TypeVar, Union
 
 # Optional Redis import
 try:
     import redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -47,6 +47,7 @@ except ImportError:
 # Optional numpy import for vector operations
 try:
     import numpy as np
+
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
@@ -85,7 +86,7 @@ class SemanticCacheConfig:
     max_candidates: int = 100  # Max candidates for similarity search
     index_batch_size: int = 50
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "max_size": self.max_size,
@@ -108,13 +109,13 @@ class SemanticCacheEntry:
     key: str
     value: Any
     prompt: str
-    embedding: Optional[List[float]] = None
+    embedding: Optional[list[float]] = None
     created_at: datetime = field(default_factory=datetime.now)
     expires_at: Optional[datetime] = None
     access_count: int = 0
     last_accessed: datetime = field(default_factory=datetime.now)
     similarity_score: float = 1.0  # How similar this entry was to the query
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_expired(self) -> bool:
         """Check if entry is expired."""
@@ -127,7 +128,7 @@ class SemanticCacheEntry:
         self.access_count += 1
         self.last_accessed = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "key": self.key,
@@ -155,7 +156,7 @@ class SemanticLookupResult:
     lookup_time_ms: float = 0.0
     candidates_checked: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "hit": self.hit,
@@ -192,7 +193,7 @@ class SemanticCacheStats:
         """Calculate semantic hit rate."""
         return self.semantic_hits / self.hits if self.hits > 0 else 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "hits": self.hits,
@@ -222,11 +223,11 @@ class SimpleEmbedder:
 
     def __init__(self, dimension: int = 384):
         self.dimension = dimension
-        self._vocab: Dict[str, int] = {}
-        self._idf: Dict[str, float] = {}
+        self._vocab: dict[str, int] = {}
+        self._idf: dict[str, float] = {}
         self._doc_count = 0
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate embedding for text."""
         # Tokenize
         words = self._tokenize(text)
@@ -234,7 +235,7 @@ class SimpleEmbedder:
             return [0.0] * self.dimension
 
         # Build word frequency
-        word_freq: Dict[str, int] = {}
+        word_freq: dict[str, int] = {}
         for word in words:
             word_freq[word] = word_freq.get(word, 0) + 1
 
@@ -265,20 +266,21 @@ class SimpleEmbedder:
 
         return embedding
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization."""
         # Lowercase and split on non-alphanumeric
         import re
+
         text = text.lower()
-        words = re.findall(r'\b\w+\b', text)
+        words = re.findall(r"\b\w+\b", text)
         return [w for w in words if len(w) > 1]
 
-    def batch_embed(self, texts: List[str]) -> List[List[float]]:
+    def batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         return [self.embed(text) for text in texts]
 
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     """Calculate cosine similarity between two vectors."""
     if len(vec1) != len(vec2):
         return 0.0
@@ -322,9 +324,7 @@ class RedisCache:
         client: Optional["redis.Redis"] = None,
     ):
         if not REDIS_AVAILABLE:
-            raise ImportError(
-                "Redis support requires redis-py. Install with: pip install redis"
-            )
+            raise ImportError("Redis support requires redis-py. Install with: pip install redis")
 
         self.config = config or SemanticCacheConfig()
         self._prefix = self.config.redis_prefix
@@ -364,9 +364,9 @@ class RedisCache:
             self._stats.exact_hits += 1
             self._stats.total_lookups += 1
             self._stats.avg_lookup_time_ms = (
-                (self._stats.avg_lookup_time_ms * (self._stats.total_lookups - 1)
-                 + (time.time() - start) * 1000) / self._stats.total_lookups
-            )
+                self._stats.avg_lookup_time_ms * (self._stats.total_lookups - 1)
+                + (time.time() - start) * 1000
+            ) / self._stats.total_lookups
 
             return json.loads(data)
         except Exception:
@@ -378,7 +378,7 @@ class RedisCache:
         key: str,
         value: Any,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> bool:
         """Set value in cache."""
         redis_key = self._make_key(key)
@@ -398,10 +398,13 @@ class RedisCache:
                 "last_accessed": time.time(),
                 **(metadata or {}),
             }
-            self._client.hset(f"{redis_key}:meta", mapping={
-                k: json.dumps(v) if isinstance(v, (dict, list)) else str(v)
-                for k, v in meta.items()
-            })
+            self._client.hset(
+                f"{redis_key}:meta",
+                mapping={
+                    k: json.dumps(v) if isinstance(v, (dict, list)) else str(v)
+                    for k, v in meta.items()
+                },
+            )
             if ttl:
                 self._client.expire(f"{redis_key}:meta", ttl)
 
@@ -438,7 +441,7 @@ class RedisCache:
             pass
         return self._stats
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all cache keys."""
         try:
             all_keys = self._client.keys(f"{self._prefix}*")
@@ -478,18 +481,18 @@ class VectorCache:
     def __init__(
         self,
         config: Optional[SemanticCacheConfig] = None,
-        embedder: Optional[Union[Callable[[str], List[float]], SimpleEmbedder]] = None,
+        embedder: Optional[Union[Callable[[str], list[float]], SimpleEmbedder]] = None,
     ):
         self.config = config or SemanticCacheConfig()
         self._embedder = embedder or SimpleEmbedder(self.config.embedding_dimension)
-        self._entries: Dict[str, SemanticCacheEntry] = {}
-        self._embeddings: Dict[str, List[float]] = {}
+        self._entries: dict[str, SemanticCacheEntry] = {}
+        self._embeddings: dict[str, list[float]] = {}
         self._stats = SemanticCacheStats()
         self._lock = threading.RLock()
         self._similarity_sums = 0.0
         self._similarity_count = 0
 
-    def _get_embedding(self, text: str) -> List[float]:
+    def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text."""
         if callable(self._embedder):
             return self._embedder(text)
@@ -500,7 +503,7 @@ class VectorCache:
         prompt: str,
         value: Any,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> SemanticCacheEntry:
         """Set value in cache with semantic embedding.
 
@@ -632,7 +635,7 @@ class VectorCache:
             best_similarity = 0.0
             candidates_checked = 0
 
-            for key, embedding in list(self._embeddings.items())[:self.config.max_candidates]:
+            for key, embedding in list(self._embeddings.items())[: self.config.max_candidates]:
                 entry = self._entries.get(key)
                 if entry is None or entry.is_expired():
                     continue
@@ -678,7 +681,7 @@ class VectorCache:
         prompt: str,
         limit: int = 5,
         threshold: float = 0.5,
-    ) -> List[Tuple[SemanticCacheEntry, float]]:
+    ) -> list[tuple[SemanticCacheEntry, float]]:
         """Find all similar cached entries above threshold.
 
         Args:
@@ -775,7 +778,7 @@ class SemanticCache:
     def __init__(
         self,
         config: Optional[SemanticCacheConfig] = None,
-        embedder: Optional[Union[Callable[[str], List[float]], SimpleEmbedder]] = None,
+        embedder: Optional[Union[Callable[[str], list[float]], SimpleEmbedder]] = None,
         backend: str = "memory",
         redis_client: Optional["redis.Redis"] = None,
     ):
@@ -797,7 +800,7 @@ class SemanticCache:
         prompt: str,
         value: Any,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> SemanticCacheEntry:
         """Cache a value with semantic embedding.
 
@@ -864,7 +867,7 @@ class SemanticCache:
         prompt: str,
         limit: int = 5,
         threshold: float = 0.5,
-    ) -> List[Tuple[SemanticCacheEntry, float]]:
+    ) -> list[tuple[SemanticCacheEntry, float]]:
         """Find all similar cached entries."""
         return self._vector_cache.find_similar(prompt, limit, threshold)
 
@@ -943,9 +946,7 @@ class SemanticCacheModel:
         Returns:
             Model response (from cache or fresh)
         """
-        should_cache = use_cache and (
-            not self._cache_temp_zero_only or temperature == 0
-        )
+        should_cache = use_cache and (not self._cache_temp_zero_only or temperature == 0)
 
         if should_cache:
             # Try to get from cache
@@ -971,7 +972,7 @@ class SemanticCacheModel:
 
     def chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         temperature: float = 0.0,
         use_cache: bool = True,
         **kwargs: Any,
@@ -990,9 +991,7 @@ class SemanticCacheModel:
         # Create cache key from messages
         prompt = json.dumps(messages, sort_keys=True)
 
-        should_cache = use_cache and (
-            not self._cache_temp_zero_only or temperature == 0
-        )
+        should_cache = use_cache and (not self._cache_temp_zero_only or temperature == 0)
 
         if should_cache:
             result = self._cache.get_exact(prompt)
@@ -1039,8 +1038,7 @@ def create_semantic_cache(
         similarity_threshold=similarity_threshold,
         max_size=max_size,
         ttl_seconds=ttl_seconds,
-        **{k: v for k, v in redis_kwargs.items()
-           if k in SemanticCacheConfig.__dataclass_fields__},
+        **{k: v for k, v in redis_kwargs.items() if k in SemanticCacheConfig.__dataclass_fields__},
     )
 
     backend = "redis" if use_redis else "memory"
@@ -1052,7 +1050,7 @@ def quick_semantic_cache(
     generator: Callable[[str], Any],
     cache: Optional[SemanticCache] = None,
     threshold: float = 0.85,
-) -> Tuple[Any, bool, float]:
+) -> tuple[Any, bool, float]:
     """Quick helper for semantic caching.
 
     Args:

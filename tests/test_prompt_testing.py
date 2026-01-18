@@ -1,7 +1,5 @@
 """Tests for prompt testing and experimentation utilities."""
 
-import pytest
-
 from insideLLMs.prompt_testing import (
     ABTestRunner,
     ExperimentResult,
@@ -205,10 +203,11 @@ class TestPromptVariationGenerator:
     def test_chaining(self):
         """Test method chaining."""
         gen = PromptVariationGenerator("Base")
-        result = (gen
-                  .add_prefix_variations(["P1"])
-                  .add_suffix_variations(["S1"])
-                  .add_strategy_variations())
+        result = (
+            gen.add_prefix_variations(["P1"])
+            .add_suffix_variations(["S1"])
+            .add_strategy_variations()
+        )
 
         assert result is gen
 
@@ -438,10 +437,12 @@ class TestPromptExperiment:
 
     def test_chaining(self):
         """Test method chaining."""
-        exp = (PromptExperiment("test")
-               .add_variant("V1")
-               .add_variant("V2")
-               .configure_scorer(length_range=(10, 100)))
+        exp = (
+            PromptExperiment("test")
+            .add_variant("V1")
+            .add_variant("V2")
+            .configure_scorer(length_range=(10, 100))
+        )
 
         assert len(exp.variants) == 2
 

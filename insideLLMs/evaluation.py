@@ -18,13 +18,7 @@ from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    List,
     Optional,
-    Sequence,
-    Tuple,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -37,7 +31,7 @@ class EvaluationResult:
 
     score: float
     passed: bool
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     metric_name: str = ""
 
     def __repr__(self) -> str:
@@ -49,14 +43,14 @@ class EvaluationResult:
 class MultiMetricResult:
     """Result from multiple evaluation metrics."""
 
-    results: Dict[str, EvaluationResult]
+    results: dict[str, EvaluationResult]
     overall_score: float
     overall_passed: bool
 
     def __getitem__(self, key: str) -> EvaluationResult:
         return self.results[key]
 
-    def get_scores(self) -> Dict[str, float]:
+    def get_scores(self) -> dict[str, float]:
         """Get all scores as a dictionary."""
         return {name: r.score for name, r in self.results.items()}
 
@@ -100,7 +94,7 @@ def normalize_text(
 
 def extract_answer(
     text: str,
-    patterns: Optional[List[str]] = None,
+    patterns: Optional[list[str]] = None,
 ) -> str:
     """Extract the final answer from a response.
 
@@ -166,7 +160,7 @@ def extract_number(text: str) -> Optional[float]:
     return None
 
 
-def extract_choice(text: str, choices: List[str]) -> Optional[str]:
+def extract_choice(text: str, choices: list[str]) -> Optional[str]:
     """Extract a multiple-choice answer.
 
     Args:
@@ -340,8 +334,8 @@ def cosine_similarity_bow(s1: str, s2: str, normalize: bool = True) -> float:
 
     # Calculate dot product and magnitudes
     dot_product = sum(words1.get(w, 0) * words2.get(w, 0) for w in all_words)
-    magnitude1 = sum(v ** 2 for v in words1.values()) ** 0.5
-    magnitude2 = sum(v ** 2 for v in words2.values()) ** 0.5
+    magnitude1 = sum(v**2 for v in words1.values()) ** 0.5
+    magnitude2 = sum(v**2 for v in words2.values()) ** 0.5
 
     if magnitude1 == 0 or magnitude2 == 0:
         return 0.0
@@ -389,7 +383,7 @@ def token_f1(prediction: str, reference: str, normalize: bool = True) -> float:
 # N-gram Based Metrics
 
 
-def get_ngrams(text: str, n: int) -> List[Tuple[str, ...]]:
+def get_ngrams(text: str, n: int) -> list[tuple[str, ...]]:
     """Extract n-grams from text.
 
     Args:
@@ -521,10 +515,10 @@ def rouge_l(prediction: str, reference: str, normalize: bool = True) -> float:
 
 
 def calculate_classification_metrics(
-    predictions: List[Any],
-    references: List[Any],
-    labels: Optional[List[Any]] = None,
-) -> Dict[str, float]:
+    predictions: list[Any],
+    references: list[Any],
+    labels: Optional[list[Any]] = None,
+) -> dict[str, float]:
     """Calculate classification metrics.
 
     Args:
@@ -545,9 +539,9 @@ def calculate_classification_metrics(
         labels = list(set(predictions) | set(references))
 
     # Calculate per-class metrics
-    tp = {label: 0 for label in labels}
-    fp = {label: 0 for label in labels}
-    fn = {label: 0 for label in labels}
+    tp = dict.fromkeys(labels, 0)
+    fp = dict.fromkeys(labels, 0)
+    fn = dict.fromkeys(labels, 0)
 
     for pred, ref in zip(predictions, references):
         if pred == ref:
@@ -566,20 +560,11 @@ def calculate_classification_metrics(
     f1s = []
 
     for label in labels:
-        if tp[label] + fp[label] > 0:
-            p = tp[label] / (tp[label] + fp[label])
-        else:
-            p = 0.0
+        p = tp[label] / (tp[label] + fp[label]) if tp[label] + fp[label] > 0 else 0.0
 
-        if tp[label] + fn[label] > 0:
-            r = tp[label] / (tp[label] + fn[label])
-        else:
-            r = 0.0
+        r = tp[label] / (tp[label] + fn[label]) if tp[label] + fn[label] > 0 else 0.0
 
-        if p + r > 0:
-            f = 2 * p * r / (p + r)
-        else:
-            f = 0.0
+        f = 2 * p * r / (p + r) if p + r > 0 else 0.0
 
         precisions.append(p)
         recalls.append(r)
@@ -623,10 +608,10 @@ class Evaluator(ABC):
 
     def evaluate_batch(
         self,
-        predictions: List[str],
-        references: List[str],
+        predictions: list[str],
+        references: list[str],
         **kwargs: Any,
-    ) -> List[EvaluationResult]:
+    ) -> list[EvaluationResult]:
         """Evaluate multiple predictions.
 
         Args:
@@ -637,15 +622,12 @@ class Evaluator(ABC):
         Returns:
             List of EvaluationResults.
         """
-        return [
-            self.evaluate(p, r, **kwargs)
-            for p, r in zip(predictions, references)
-        ]
+        return [self.evaluate(p, r, **kwargs) for p, r in zip(predictions, references)]
 
     def aggregate_results(
         self,
-        results: List[EvaluationResult],
-    ) -> Dict[str, float]:
+        results: list[EvaluationResult],
+    ) -> dict[str, float]:
         """Aggregate evaluation results.
 
         Args:
@@ -770,7 +752,7 @@ class SemanticSimilarityEvaluator(Evaluator):
         self,
         normalize: bool = True,
         threshold: float = 0.6,
-        weights: Optional[Dict[str, float]] = None,
+        weights: Optional[dict[str, float]] = None,
     ):
         self.normalize = normalize
         self.threshold = threshold
@@ -793,8 +775,7 @@ class SemanticSimilarityEvaluator(Evaluator):
         }
 
         weighted_score = sum(
-            scores.get(metric, 0) * weight
-            for metric, weight in self.weights.items()
+            scores.get(metric, 0) * weight for metric, weight in self.weights.items()
         )
 
         return EvaluationResult(
@@ -856,7 +837,9 @@ class MultipleChoiceEvaluator(Evaluator):
 
     name = "multiple_choice"
 
-    def __init__(self, choices: List[str] = ["A", "B", "C", "D"]):
+    def __init__(self, choices: list[str] = None):
+        if choices is None:
+            choices = ["A", "B", "C", "D"]
         self.choices = choices
         self.threshold = 1.0
 
@@ -894,8 +877,8 @@ class CompositeEvaluator(Evaluator):
 
     def __init__(
         self,
-        evaluators: List[Evaluator],
-        weights: Optional[List[float]] = None,
+        evaluators: list[Evaluator],
+        weights: Optional[list[float]] = None,
         require_all: bool = False,
     ):
         self.evaluators = evaluators
@@ -985,11 +968,11 @@ class JudgeResult:
     """
 
     overall_score: float
-    criteria_scores: Dict[str, float]
+    criteria_scores: dict[str, float]
     reasoning: str
     raw_response: str
     passed: bool
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
     def to_evaluation_result(self) -> EvaluationResult:
         """Convert to standard EvaluationResult format."""
@@ -1192,7 +1175,7 @@ class JudgeModel:
     def __init__(
         self,
         judge_model: "Model",
-        criteria: Optional[List[JudgeCriterion]] = None,
+        criteria: Optional[list[JudgeCriterion]] = None,
         system_prompt: Optional[str] = None,
         template: Optional[str] = None,
         threshold: float = 0.6,
@@ -1226,7 +1209,7 @@ class JudgeModel:
             )
         return "\n\n".join(lines)
 
-    def _parse_judge_response(self, response: str) -> Dict[str, Any]:
+    def _parse_judge_response(self, response: str) -> dict[str, Any]:
         """Parse the JSON response from the judge model."""
         # Try to extract JSON from markdown code blocks
         json_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", response)
@@ -1245,7 +1228,7 @@ class JudgeModel:
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse judge response as JSON: {e}")
 
-    def _calculate_overall_score(self, criteria_scores: Dict[str, float]) -> float:
+    def _calculate_overall_score(self, criteria_scores: dict[str, float]) -> float:
         """Calculate weighted normalized score from individual criteria scores."""
         total_weight = sum(c.weight for c in self.criteria)
         if total_weight == 0:
@@ -1356,11 +1339,11 @@ class JudgeModel:
 
     def evaluate_batch(
         self,
-        prompts: List[str],
-        responses: List[str],
-        references: Optional[List[str]] = None,
+        prompts: list[str],
+        responses: list[str],
+        references: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> List[JudgeResult]:
+    ) -> list[JudgeResult]:
         """Evaluate multiple responses.
 
         Args:
@@ -1373,10 +1356,7 @@ class JudgeModel:
             List of JudgeResults.
         """
         refs = references or [None] * len(prompts)
-        return [
-            self.evaluate(p, r, ref, **kwargs)
-            for p, r, ref in zip(prompts, responses, refs)
-        ]
+        return [self.evaluate(p, r, ref, **kwargs) for p, r, ref in zip(prompts, responses, refs)]
 
     def compare(
         self,
@@ -1384,7 +1364,7 @@ class JudgeModel:
         response_a: str,
         response_b: str,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compare two responses using pairwise evaluation.
 
         Args:
@@ -1499,11 +1479,11 @@ class JudgeEvaluator(Evaluator):
 
 
 def evaluate_predictions(
-    predictions: List[str],
-    references: List[str],
+    predictions: list[str],
+    references: list[str],
     evaluator: Optional[Evaluator] = None,
-    metrics: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    metrics: Optional[list[str]] = None,
+) -> dict[str, Any]:
     """Evaluate predictions using specified metrics.
 
     Args:
@@ -1591,7 +1571,7 @@ def create_evaluator(
 def create_judge(
     judge_model: "Model",
     criteria_preset: Optional[str] = None,
-    custom_criteria: Optional[List[JudgeCriterion]] = None,
+    custom_criteria: Optional[list[JudgeCriterion]] = None,
     **kwargs: Any,
 ) -> JudgeModel:
     """Convenience function to create a JudgeModel with preset criteria.

@@ -51,15 +51,22 @@ __version__ = "0.1.0"
 # =============================================================================
 # Core Types (Essential for all users)
 # =============================================================================
-from insideLLMs.types import (
-    ExperimentResult,
-    ModelInfo,
-    ModelResponse,
-    ProbeCategory,
-    ProbeResult,
-    ProbeScore,
-    ResultStatus,
-    TokenUsage,
+# =============================================================================
+# Configuration (Essential for experiment setup)
+# =============================================================================
+from insideLLMs.config import (
+    ExperimentConfig,
+    ModelConfig,
+    ProbeConfig,
+)
+
+# =============================================================================
+# Exceptions (Core error handling)
+# =============================================================================
+from insideLLMs.exceptions import (
+    InsideLLMsError,
+    ModelError,
+    ProbeError,
 )
 
 # =============================================================================
@@ -88,13 +95,13 @@ from insideLLMs.probes import (
 )
 
 # =============================================================================
-# Runner and Execution (Essential for running experiments)
+# Registry (For plugin system)
 # =============================================================================
-from insideLLMs.runner import (
-    AsyncProbeRunner,
-    ProbeRunner,
-    create_experiment_result,
-    run_probe,
+from insideLLMs.registry import (
+    Registry,
+    ensure_builtins_registered,
+    model_registry,
+    probe_registry,
 )
 
 # =============================================================================
@@ -106,31 +113,23 @@ from insideLLMs.results import (
 )
 
 # =============================================================================
-# Configuration (Essential for experiment setup)
+# Runner and Execution (Essential for running experiments)
 # =============================================================================
-from insideLLMs.config import (
-    ExperimentConfig,
-    ModelConfig,
-    ProbeConfig,
+from insideLLMs.runner import (
+    AsyncProbeRunner,
+    ProbeRunner,
+    create_experiment_result,
+    run_probe,
 )
-
-# =============================================================================
-# Exceptions (Core error handling)
-# =============================================================================
-from insideLLMs.exceptions import (
-    InsideLLMsError,
-    ModelError,
-    ProbeError,
-)
-
-# =============================================================================
-# Registry (For plugin system)
-# =============================================================================
-from insideLLMs.registry import (
-    Registry,
-    ensure_builtins_registered,
-    model_registry,
-    probe_registry,
+from insideLLMs.types import (
+    ExperimentResult,
+    ModelInfo,
+    ModelResponse,
+    ProbeCategory,
+    ProbeResult,
+    ProbeScore,
+    ResultStatus,
+    TokenUsage,
 )
 
 # Auto-register built-in models, probes, and datasets
@@ -359,6 +358,7 @@ def __getattr__(name: str):
 
     if name in _LAZY_IMPORTS:
         import importlib
+
         module = importlib.import_module(_LAZY_IMPORTS[name])
         return getattr(module, name)
 

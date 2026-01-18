@@ -5,12 +5,11 @@ This benchmark measures probe execution overhead
 """
 
 import time
-from typing import List
 
 
 def benchmark_probe_creation():
     """Benchmark probe instantiation times."""
-    from insideLLMs import LogicProbe, BiasProbe, AttackProbe, FactualityProbe
+    from insideLLMs import AttackProbe, BiasProbe, FactualityProbe, LogicProbe
 
     probes = [
         ("LogicProbe", LogicProbe),
@@ -30,7 +29,7 @@ def benchmark_probe_creation():
 
 def benchmark_probe_execution():
     """Benchmark probe execution with DummyModel."""
-    from insideLLMs import DummyModel, LogicProbe, BiasProbe
+    from insideLLMs import BiasProbe, DummyModel, LogicProbe
 
     model = DummyModel()
     test_data = [
@@ -68,7 +67,7 @@ def benchmark_runner():
     print("\nProbeRunner execution times:")
 
     start = time.time()
-    results = runner.run(test_data)
+    runner.run(test_data)
     total_time = (time.time() - start) * 1000
     per_item = total_time / len(test_data)
 

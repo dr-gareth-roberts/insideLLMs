@@ -12,7 +12,7 @@ Provides tools for:
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 
 class VerificationStatus(Enum):
@@ -57,7 +57,7 @@ class Claim:
     category: KnowledgeCategory = KnowledgeCategory.FACTUAL
     confidence: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text": self.text,
@@ -76,11 +76,11 @@ class VerificationResult:
     claim: Claim
     status: VerificationStatus
     confidence: float
-    supporting_evidence: List[str] = field(default_factory=list)
-    contradicting_evidence: List[str] = field(default_factory=list)
+    supporting_evidence: list[str] = field(default_factory=list)
+    contradicting_evidence: list[str] = field(default_factory=list)
     source_quality: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "claim": self.claim.to_dict(),
@@ -100,9 +100,9 @@ class KnowledgeProbe:
     expected_answer: Optional[str] = None
     category: KnowledgeCategory = KnowledgeCategory.FACTUAL
     difficulty: float = 0.5  # 0-1
-    hints: List[str] = field(default_factory=list)
+    hints: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "question": self.question,
@@ -124,7 +124,7 @@ class ProbeResult:
     confidence_expressed: float = 0.0
     reasoning_provided: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "probe": self.probe.to_dict(),
@@ -141,12 +141,12 @@ class ConsistencyResult:
     """Result of consistency testing."""
 
     original_response: str
-    paraphrased_responses: List[str]
+    paraphrased_responses: list[str]
     consistency_score: float  # 0-1
-    contradictions: List[Tuple[str, str]] = field(default_factory=list)
+    contradictions: list[tuple[str, str]] = field(default_factory=list)
     semantic_drift: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "original_response": self.original_response,
@@ -164,12 +164,12 @@ class KnowledgeReport:
     probes_run: int
     correct_count: int
     accuracy: float
-    by_category: Dict[str, float]
-    by_difficulty: Dict[str, float]
+    by_category: dict[str, float]
+    by_difficulty: dict[str, float]
     confidence_calibration: float
-    knowledge_gaps: List[str] = field(default_factory=list)
+    knowledge_gaps: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "probes_run": self.probes_run,
@@ -205,12 +205,12 @@ class ClaimExtractor:
         self,
         text: str,
         min_confidence: float = 0.3,
-    ) -> List[Claim]:
+    ) -> list[Claim]:
         """Extract claims from text."""
         claims = []
 
         # Split into sentences
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
 
         for sentence in sentences:
             sentence = sentence.strip()
@@ -262,7 +262,7 @@ class ClaimExtractor:
     def _estimate_confidence(
         self,
         sentence: str,
-        groups: Dict[str, str],
+        groups: dict[str, str],
     ) -> float:
         """Estimate confidence in extracted claim."""
         confidence = 0.5
@@ -272,7 +272,7 @@ class ClaimExtractor:
             confidence += 0.1
 
         # Boost for numbers/dates
-        if re.search(r'\d+', sentence):
+        if re.search(r"\d+", sentence):
             confidence += 0.1
 
         # Reduce for hedging language
@@ -295,7 +295,7 @@ class FactVerifier:
 
     def __init__(
         self,
-        knowledge_base: Optional[Dict[str, Any]] = None,
+        knowledge_base: Optional[dict[str, Any]] = None,
     ):
         """Initialize verifier."""
         self.knowledge_base = knowledge_base or {}
@@ -319,7 +319,7 @@ class FactVerifier:
                     contradicting.extend(kb_result["evidence"])
 
         # Check internal consistency
-        consistency = self._check_consistency(claim, context)
+        self._check_consistency(claim, context)
 
         # Determine status
         if supporting and not contradicting:
@@ -346,16 +346,16 @@ class FactVerifier:
 
     def verify_batch(
         self,
-        claims: List[Claim],
+        claims: list[Claim],
         context: Optional[str] = None,
-    ) -> List[VerificationResult]:
+    ) -> list[VerificationResult]:
         """Verify multiple claims."""
         return [self.verify(claim, context) for claim in claims]
 
     def _check_knowledge_base(
         self,
         claim: Claim,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """Check claim against knowledge base."""
         if not self.knowledge_base:
             return None
@@ -393,7 +393,7 @@ class FactVerifier:
 
     def _assess_source_quality(
         self,
-        evidence: List[str],
+        evidence: list[str],
     ) -> float:
         """Assess quality of evidence sources."""
         if not evidence:
@@ -408,7 +408,7 @@ class KnowledgeProber:
 
     def __init__(self):
         """Initialize prober."""
-        self.probes: List[KnowledgeProbe] = []
+        self.probes: list[KnowledgeProbe] = []
 
     def add_probe(
         self,
@@ -416,7 +416,7 @@ class KnowledgeProber:
         expected_answer: Optional[str] = None,
         category: KnowledgeCategory = KnowledgeCategory.FACTUAL,
         difficulty: float = 0.5,
-        hints: Optional[List[str]] = None,
+        hints: Optional[list[str]] = None,
     ) -> KnowledgeProbe:
         """Add a knowledge probe."""
         probe = KnowledgeProbe(
@@ -450,9 +450,7 @@ class KnowledgeProber:
 
         if probe.expected_answer:
             is_correct = self._check_answer(response, probe.expected_answer)
-            partial_score = self._calculate_partial_score(
-                response, probe.expected_answer
-            )
+            partial_score = self._calculate_partial_score(response, probe.expected_answer)
 
         # Check for confidence expression
         confidence_expressed = self._detect_confidence(response)
@@ -472,13 +470,13 @@ class KnowledgeProber:
     def run_all_probes(
         self,
         model_fn: Callable[[str], str],
-    ) -> List[ProbeResult]:
+    ) -> list[ProbeResult]:
         """Run all registered probes."""
         return [self.run_probe(probe, model_fn) for probe in self.probes]
 
     def generate_report(
         self,
-        results: List[ProbeResult],
+        results: list[ProbeResult],
     ) -> KnowledgeReport:
         """Generate report from probe results."""
         if not results:
@@ -497,7 +495,7 @@ class KnowledgeProber:
         accuracy = correct / total if total > 0 else 0.0
 
         # By category
-        by_category: Dict[str, List[bool]] = {}
+        by_category: dict[str, list[bool]] = {}
         for result in results:
             cat = result.probe.category.value
             if cat not in by_category:
@@ -506,8 +504,7 @@ class KnowledgeProber:
                 by_category[cat].append(result.is_correct)
 
         category_accuracy = {
-            cat: sum(scores) / len(scores) if scores else 0.0
-            for cat, scores in by_category.items()
+            cat: sum(scores) / len(scores) if scores else 0.0 for cat, scores in by_category.items()
         }
 
         # By difficulty
@@ -585,7 +582,15 @@ class KnowledgeProber:
     def _detect_confidence(self, response: str) -> float:
         """Detect expressed confidence level."""
         # Check for uncertainty markers first (they override high confidence words)
-        low_confidence = ["not sure", "maybe", "perhaps", "possibly", "might be", "could be", "uncertain"]
+        low_confidence = [
+            "not sure",
+            "maybe",
+            "perhaps",
+            "possibly",
+            "might be",
+            "could be",
+            "uncertain",
+        ]
         medium_confidence = ["probably", "likely", "think", "believe"]
         high_confidence = ["certainly", "definitely", "absolutely", "i'm sure", "i am sure"]
 
@@ -626,14 +631,14 @@ class KnowledgeProber:
 
     def _calculate_calibration(
         self,
-        results: List[ProbeResult],
+        results: list[ProbeResult],
     ) -> float:
         """Calculate confidence calibration score."""
         if not results:
             return 0.0
 
         # Group by confidence bins
-        bins: Dict[str, List[bool]] = {
+        bins: dict[str, list[bool]] = {
             "low": [],
             "medium": [],
             "high": [],
@@ -680,7 +685,7 @@ class ConsistencyTester:
         self,
         question: str,
         num_paraphrases: int = 3,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate paraphrased versions of a question."""
         paraphrases = []
 
@@ -715,14 +720,10 @@ class ConsistencyTester:
         paraphrased_responses = [model_fn(p) for p in paraphrases]
 
         # Calculate consistency
-        consistency_score = self._calculate_consistency(
-            original_response, paraphrased_responses
-        )
+        consistency_score = self._calculate_consistency(original_response, paraphrased_responses)
 
         # Find contradictions
-        contradictions = self._find_contradictions(
-            original_response, paraphrased_responses
-        )
+        contradictions = self._find_contradictions(original_response, paraphrased_responses)
 
         # Calculate semantic drift
         drift = self._calculate_drift(original_response, paraphrased_responses)
@@ -748,7 +749,7 @@ class ConsistencyTester:
 
         for old, new in replacements.items():
             if question.lower().startswith(old):
-                return new + question[len(old):]
+                return new + question[len(old) :]
 
         return question
 
@@ -760,6 +761,7 @@ class ConsistencyTester:
             "I'd like to know: ",
         ]
         import random
+
         return random.choice(prefixes) + question
 
     def _simplify(self, question: str) -> str:
@@ -779,12 +781,13 @@ class ConsistencyTester:
             " Explain in detail.",
         ]
         import random
+
         return question.rstrip("?") + "?" + random.choice(suffixes)
 
     def _calculate_consistency(
         self,
         original: str,
-        paraphrased: List[str],
+        paraphrased: list[str],
     ) -> float:
         """Calculate consistency score."""
         if not paraphrased:
@@ -813,8 +816,8 @@ class ConsistencyTester:
     def _find_contradictions(
         self,
         original: str,
-        paraphrased: List[str],
-    ) -> List[Tuple[str, str]]:
+        paraphrased: list[str],
+    ) -> list[tuple[str, str]]:
         """Find potential contradictions."""
         contradictions = []
 
@@ -838,7 +841,7 @@ class ConsistencyTester:
     def _calculate_drift(
         self,
         original: str,
-        paraphrased: List[str],
+        paraphrased: list[str],
     ) -> float:
         """Calculate semantic drift from original."""
         if not paraphrased:
@@ -858,13 +861,13 @@ class SourceAttributor:
 
     def __init__(self):
         """Initialize attributor."""
-        self.sources: Dict[str, Dict[str, Any]] = {}
+        self.sources: dict[str, dict[str, Any]] = {}
 
     def add_source(
         self,
         name: str,
         reliability: float = 0.5,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Add a source."""
         self.sources[name] = {
@@ -875,8 +878,8 @@ class SourceAttributor:
     def attribute(
         self,
         claim: Claim,
-        candidate_sources: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        candidate_sources: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
         """Attribute a claim to sources."""
         sources_to_check = candidate_sources or list(self.sources.keys())
 
@@ -885,11 +888,13 @@ class SourceAttributor:
             if source_name in self.sources:
                 score = self._match_source(claim, source_name)
                 if score > 0.3:
-                    attributions.append({
-                        "source": source_name,
-                        "confidence": score,
-                        "reliability": self.sources[source_name]["reliability"],
-                    })
+                    attributions.append(
+                        {
+                            "source": source_name,
+                            "confidence": score,
+                            "reliability": self.sources[source_name]["reliability"],
+                        }
+                    )
 
         # Sort by confidence
         attributions.sort(key=lambda x: x["confidence"], reverse=True)
@@ -916,7 +921,7 @@ class SourceAttributor:
         metadata = source.get("metadata", {})
         if "topics" in metadata:
             claim_words = set(claim.text.lower().split())
-            topics = set(t.lower() for t in metadata["topics"])
+            topics = {t.lower() for t in metadata["topics"]}
             if claim_words & topics:
                 base_score += 0.3
 
@@ -929,7 +934,7 @@ class SourceAttributor:
 def extract_claims(
     text: str,
     min_confidence: float = 0.3,
-) -> List[Claim]:
+) -> list[Claim]:
     """Extract factual claims from text.
 
     Args:
@@ -945,7 +950,7 @@ def extract_claims(
 
 def verify_claim(
     claim: Claim,
-    knowledge_base: Optional[Dict[str, Any]] = None,
+    knowledge_base: Optional[dict[str, Any]] = None,
     context: Optional[str] = None,
 ) -> VerificationResult:
     """Verify a factual claim.
@@ -963,9 +968,9 @@ def verify_claim(
 
 
 def probe_knowledge(
-    questions: List[str],
+    questions: list[str],
     model_fn: Callable[[str], str],
-    expected_answers: Optional[List[str]] = None,
+    expected_answers: Optional[list[str]] = None,
 ) -> KnowledgeReport:
     """Probe model knowledge with questions.
 
@@ -1008,8 +1013,8 @@ def check_consistency(
 
 def verify_facts(
     text: str,
-    knowledge_base: Optional[Dict[str, Any]] = None,
-) -> List[VerificationResult]:
+    knowledge_base: Optional[dict[str, Any]] = None,
+) -> list[VerificationResult]:
     """Extract and verify facts from text.
 
     Args:

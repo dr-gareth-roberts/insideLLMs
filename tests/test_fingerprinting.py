@@ -1,16 +1,12 @@
 """Tests for model capability fingerprinting."""
 
-from typing import Dict
-
-import pytest
 from insideLLMs.fingerprinting import (
     CapabilityCategory,
     CapabilityLevel,
-    CapabilityProbe,
     CapabilityProfiler,
     CapabilityScore,
-    FingerprintComparison,
     FingerprintComparator,
+    FingerprintComparison,
     FingerprintGenerator,
     LimitationDetector,
     LimitationReport,
@@ -231,7 +227,11 @@ class TestFingerprintComparison:
             similarity_score=0.6,
             category_differences={},
             skill_differences={},
-            model_a_advantages=[SkillType.CODE_GENERATION, SkillType.DEBUGGING, SkillType.CODE_UNDERSTANDING],
+            model_a_advantages=[
+                SkillType.CODE_GENERATION,
+                SkillType.DEBUGGING,
+                SkillType.CODE_UNDERSTANDING,
+            ],
             model_b_advantages=[SkillType.GRAMMAR],
             shared_strengths=[],
             shared_weaknesses=[],
@@ -319,6 +319,7 @@ class TestSkillAssessor:
 
     def test_custom_evaluator(self):
         """Test with custom evaluator."""
+
         def strict_evaluator(response: str, expected: str) -> float:
             return 1.0 if response.strip() == expected.strip() else 0.0
 
@@ -350,8 +351,7 @@ class TestLimitationDetector:
         ]
         reports = detector.detect(responses)
         repetition_reports = [
-            r for r in reports
-            if r.limitation_type == LimitationType.REPETITIVE_OUTPUT
+            r for r in reports if r.limitation_type == LimitationType.REPETITIVE_OUTPUT
         ]
         assert len(repetition_reports) > 0
 
@@ -364,8 +364,7 @@ class TestLimitationDetector:
         ]
         reports = detector.detect(responses)
         format_reports = [
-            r for r in reports
-            if r.limitation_type == LimitationType.FORMAT_INCONSISTENT
+            r for r in reports if r.limitation_type == LimitationType.FORMAT_INCONSISTENT
         ]
         assert len(format_reports) > 0
 
@@ -377,8 +376,7 @@ class TestLimitationDetector:
         ]
         reports = detector.detect(responses)
         hallucination_reports = [
-            r for r in reports
-            if r.limitation_type == LimitationType.HALLUCINATION_PRONE
+            r for r in reports if r.limitation_type == LimitationType.HALLUCINATION_PRONE
         ]
         assert len(hallucination_reports) > 0
 
@@ -410,10 +408,7 @@ class TestCapabilityProfiler:
                 ("Check other areas", "check_other_areas"),
             ],
         }
-        profile = profiler.profile_category(
-            CapabilityCategory.REASONING,
-            skill_results
-        )
+        profile = profiler.profile_category(CapabilityCategory.REASONING, skill_results)
         assert profile.category == CapabilityCategory.REASONING
         assert len(profile.skills) > 0
 
@@ -422,7 +417,7 @@ class TestCapabilityProfiler:
         profiler = CapabilityProfiler()
         profile = profiler.profile_category(
             CapabilityCategory.CODING,
-            {}  # No results
+            {},  # No results
         )
         assert profile.overall_score == 0.0
         assert profile.overall_level == CapabilityLevel.NONE
@@ -478,9 +473,7 @@ class TestFingerprintGenerator:
 class TestFingerprintComparator:
     """Tests for FingerprintComparator."""
 
-    def _create_fingerprint(
-        self, model_id: str, scores: Dict
-    ) -> ModelFingerprint:
+    def _create_fingerprint(self, model_id: str, scores: dict) -> ModelFingerprint:
         """Helper to create a fingerprint."""
         skill_profiles = {}
         for cat in CapabilityCategory:
@@ -509,14 +502,20 @@ class TestFingerprintComparator:
         """Test comparing similar fingerprints."""
         comparator = FingerprintComparator()
 
-        fp1 = self._create_fingerprint("model_a", {
-            CapabilityCategory.REASONING: 0.8,
-            CapabilityCategory.CODING: 0.7,
-        })
-        fp2 = self._create_fingerprint("model_b", {
-            CapabilityCategory.REASONING: 0.78,
-            CapabilityCategory.CODING: 0.72,
-        })
+        fp1 = self._create_fingerprint(
+            "model_a",
+            {
+                CapabilityCategory.REASONING: 0.8,
+                CapabilityCategory.CODING: 0.7,
+            },
+        )
+        fp2 = self._create_fingerprint(
+            "model_b",
+            {
+                CapabilityCategory.REASONING: 0.78,
+                CapabilityCategory.CODING: 0.72,
+            },
+        )
 
         comparison = comparator.compare(fp1, fp2)
         assert comparison.similarity_score > 0.8
@@ -526,8 +525,8 @@ class TestFingerprintComparator:
         comparator = FingerprintComparator()
 
         # Use all categories to make difference clearer
-        all_categories_high = {cat: 0.9 for cat in CapabilityCategory}
-        all_categories_low = {cat: 0.2 for cat in CapabilityCategory}
+        all_categories_high = dict.fromkeys(CapabilityCategory, 0.9)
+        all_categories_low = dict.fromkeys(CapabilityCategory, 0.2)
 
         fp1 = self._create_fingerprint("model_a", all_categories_high)
         fp2 = self._create_fingerprint("model_b", all_categories_low)
@@ -630,7 +629,7 @@ class TestEdgeCases:
         }
         profile = profiler.profile_category(
             CapabilityCategory.REASONING,  # Wrong category
-            skill_results
+            skill_results,
         )
         # Should return empty profile since skills don't match category
         assert len(profile.skills) == 0

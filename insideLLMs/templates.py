@@ -10,7 +10,7 @@ Provides:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Optional
 
 
 class TemplateCategory(Enum):
@@ -36,10 +36,10 @@ class PromptTemplateInfo:
     category: TemplateCategory
     description: str
     template: str
-    variables: List[str]
-    examples: List[Dict[str, str]] = field(default_factory=list)
-    best_for: List[str] = field(default_factory=list)
-    tips: List[str] = field(default_factory=list)
+    variables: list[str]
+    examples: list[dict[str, str]] = field(default_factory=list)
+    best_for: list[str] = field(default_factory=list)
+    tips: list[str] = field(default_factory=list)
 
     def render(self, **kwargs) -> str:
         """Render template with variables.
@@ -56,7 +56,7 @@ class PromptTemplateInfo:
                 result = result.replace(f"{{{var}}}", str(kwargs[var]))
         return result
 
-    def get_missing_vars(self, provided: Set[str]) -> Set[str]:
+    def get_missing_vars(self, provided: set[str]) -> set[str]:
         """Get missing required variables.
 
         Args:
@@ -490,7 +490,13 @@ Your expertise includes:
 Respond to all messages in character. Begin by introducing yourself briefly.
 
 User: {user_message}""",
-    variables=["persona_name", "persona_description", "communication_style", "expertise", "user_message"],
+    variables=[
+        "persona_name",
+        "persona_description",
+        "communication_style",
+        "expertise",
+        "user_message",
+    ],
     best_for=["roleplay", "specialized assistance", "educational scenarios"],
     tips=["Define persona clearly", "Include communication style"],
 )
@@ -561,7 +567,7 @@ class TemplateLibrary:
 
     def __init__(self):
         """Initialize with built-in templates."""
-        self._templates: Dict[str, PromptTemplateInfo] = {}
+        self._templates: dict[str, PromptTemplateInfo] = {}
         self._register_builtins()
 
     def _register_builtins(self) -> None:
@@ -610,7 +616,7 @@ class TemplateLibrary:
 
     def list_templates(
         self, category: Optional[TemplateCategory] = None
-    ) -> List[PromptTemplateInfo]:
+    ) -> list[PromptTemplateInfo]:
         """List available templates.
 
         Args:
@@ -624,9 +630,7 @@ class TemplateLibrary:
             templates = [t for t in templates if t.category == category]
         return templates
 
-    def list_names(
-        self, category: Optional[TemplateCategory] = None
-    ) -> List[str]:
+    def list_names(self, category: Optional[TemplateCategory] = None) -> list[str]:
         """List template names.
 
         Args:
@@ -663,7 +667,7 @@ class TemplateLibrary:
             raise KeyError(f"Template '{name}' not found")
         return template.render(**kwargs)
 
-    def search(self, query: str) -> List[PromptTemplateInfo]:
+    def search(self, query: str) -> list[PromptTemplateInfo]:
         """Search templates by keyword.
 
         Args:
@@ -700,9 +704,7 @@ def get_template(name: str) -> Optional[PromptTemplateInfo]:
     return _default_library.get(name)
 
 
-def list_templates(
-    category: Optional[TemplateCategory] = None
-) -> List[PromptTemplateInfo]:
+def list_templates(category: Optional[TemplateCategory] = None) -> list[PromptTemplateInfo]:
     """List templates from default library.
 
     Args:
@@ -736,7 +738,7 @@ def register_template(template: PromptTemplateInfo) -> None:
     _default_library.register(template)
 
 
-def search_templates(query: str) -> List[PromptTemplateInfo]:
+def search_templates(query: str) -> list[PromptTemplateInfo]:
     """Search templates in default library.
 
     Args:

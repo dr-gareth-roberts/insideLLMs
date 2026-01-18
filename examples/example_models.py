@@ -1,7 +1,10 @@
 """Example script to demonstrate usage of DummyModel, OpenAIModel, and HuggingFaceModel."""
-from insideLLMs.models import DummyModel, OpenAIModel, HuggingFaceModel
-from insideLLMs.prompt_utils import PromptTemplate
+
 import os
+
+from insideLLMs.models import DummyModel, HuggingFaceModel, OpenAIModel
+from insideLLMs.prompt_utils import PromptTemplate
+
 
 def main():
     prompt = "What is the capital of France?"
@@ -23,6 +26,7 @@ def main():
     print("\n--- PromptTemplate Example ---")
     template = PromptTemplate("Translate '{text}' to French.")
     print(template.format(text="Hello, world!"))
+
 
 if __name__ == "__main__":
     main()

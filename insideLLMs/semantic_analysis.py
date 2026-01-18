@@ -9,10 +9,9 @@ Provides tools for:
 """
 
 import hashlib
-import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional
 
 
 class SimilarityMetric(Enum):
@@ -50,7 +49,7 @@ class SimilarityResult:
     score: float
     metric: SimilarityMetric
     normalized: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_similar(self) -> bool:
@@ -71,7 +70,7 @@ class SimilarityResult:
         else:
             return "very_low"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "text_a": self.text_a[:100] + "..." if len(self.text_a) > 100 else self.text_a,
@@ -96,9 +95,9 @@ class EmbeddingStats:
     min_val: float
     max_val: float
     sparsity: float  # Fraction of near-zero values
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "dimension": self.dimension,
@@ -118,14 +117,14 @@ class ClusterInfo:
 
     cluster_id: int
     size: int
-    centroid: List[float]
-    member_indices: List[int]
-    member_texts: List[str]
+    centroid: list[float]
+    member_indices: list[int]
+    member_texts: list[str]
     intra_cluster_similarity: float
     representative_text: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "cluster_id": self.cluster_id,
@@ -144,13 +143,13 @@ class ClusteringResult:
 
     method: ClusteringMethod
     n_clusters: int
-    clusters: List[ClusterInfo]
-    labels: List[int]
+    clusters: list[ClusterInfo]
+    labels: list[int]
     silhouette_score: Optional[float] = None
     inertia: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "method": self.method.value,
@@ -168,17 +167,17 @@ class SearchResult:
     """Result of a semantic search."""
 
     query: str
-    matches: List[Tuple[int, str, float]]  # (index, text, score)
+    matches: list[tuple[int, str, float]]  # (index, text, score)
     metric: SimilarityMetric
     total_searched: int
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def top_match(self) -> Optional[Tuple[int, str, float]]:
+    def top_match(self) -> Optional[tuple[int, str, float]]:
         """Get the top match."""
         return self.matches[0] if self.matches else None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "query": self.query[:100] + "..." if len(self.query) > 100 else self.query,
@@ -199,7 +198,7 @@ class SimilarityCalculator:
         """Initialize calculator."""
         self.default_metric = default_metric
 
-    def cosine_similarity(self, a: List[float], b: List[float]) -> float:
+    def cosine_similarity(self, a: list[float], b: list[float]) -> float:
         """Compute cosine similarity between two vectors."""
         if len(a) != len(b):
             raise ValueError(f"Vector dimensions must match: {len(a)} vs {len(b)}")
@@ -213,35 +212,35 @@ class SimilarityCalculator:
 
         return dot / (norm_a * norm_b)
 
-    def euclidean_distance(self, a: List[float], b: List[float]) -> float:
+    def euclidean_distance(self, a: list[float], b: list[float]) -> float:
         """Compute Euclidean distance between two vectors."""
         if len(a) != len(b):
             raise ValueError(f"Vector dimensions must match: {len(a)} vs {len(b)}")
 
         return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
 
-    def manhattan_distance(self, a: List[float], b: List[float]) -> float:
+    def manhattan_distance(self, a: list[float], b: list[float]) -> float:
         """Compute Manhattan distance between two vectors."""
         if len(a) != len(b):
             raise ValueError(f"Vector dimensions must match: {len(a)} vs {len(b)}")
 
         return sum(abs(x - y) for x, y in zip(a, b))
 
-    def dot_product(self, a: List[float], b: List[float]) -> float:
+    def dot_product(self, a: list[float], b: list[float]) -> float:
         """Compute dot product between two vectors."""
         if len(a) != len(b):
             raise ValueError(f"Vector dimensions must match: {len(a)} vs {len(b)}")
 
         return sum(x * y for x, y in zip(a, b))
 
-    def jaccard_similarity(self, a: List[float], b: List[float]) -> float:
+    def jaccard_similarity(self, a: list[float], b: list[float]) -> float:
         """Compute Jaccard similarity between two binary/set vectors."""
         if len(a) != len(b):
             raise ValueError(f"Vector dimensions must match: {len(a)} vs {len(b)}")
 
         # Treat as sets: non-zero values are members
-        set_a = set(i for i, x in enumerate(a) if x != 0)
-        set_b = set(i for i, y in enumerate(b) if y != 0)
+        set_a = {i for i, x in enumerate(a) if x != 0}
+        set_b = {i for i, y in enumerate(b) if y != 0}
 
         intersection = len(set_a & set_b)
         union = len(set_a | set_b)
@@ -250,8 +249,8 @@ class SimilarityCalculator:
 
     def compute(
         self,
-        a: List[float],
-        b: List[float],
+        a: list[float],
+        b: list[float],
         metric: Optional[SimilarityMetric] = None,
     ) -> float:
         """Compute similarity/distance based on metric."""
@@ -276,9 +275,9 @@ class SimilarityCalculator:
 
     def pairwise_similarity(
         self,
-        embeddings: List[List[float]],
+        embeddings: list[list[float]],
         metric: Optional[SimilarityMetric] = None,
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Compute pairwise similarity matrix."""
         n = len(embeddings)
         matrix = [[0.0] * n for _ in range(n)]
@@ -302,7 +301,7 @@ class EmbeddingAnalyzer:
         """Initialize analyzer."""
         self.calculator = similarity_calculator or SimilarityCalculator()
 
-    def compute_stats(self, embedding: List[float]) -> EmbeddingStats:
+    def compute_stats(self, embedding: list[float]) -> EmbeddingStats:
         """Compute statistics for an embedding."""
         n = len(embedding)
         if n == 0:
@@ -319,7 +318,7 @@ class EmbeddingAnalyzer:
         magnitude = sum(x * x for x in embedding) ** 0.5
         mean = sum(embedding) / n
         variance = sum((x - mean) ** 2 for x in embedding) / n
-        std = variance ** 0.5
+        std = variance**0.5
         min_val = min(embedding)
         max_val = max(embedding)
 
@@ -338,14 +337,14 @@ class EmbeddingAnalyzer:
             sparsity=sparsity,
         )
 
-    def normalize(self, embedding: List[float]) -> List[float]:
+    def normalize(self, embedding: list[float]) -> list[float]:
         """Normalize embedding to unit length."""
         magnitude = sum(x * x for x in embedding) ** 0.5
         if magnitude == 0:
             return embedding[:]
         return [x / magnitude for x in embedding]
 
-    def average_embeddings(self, embeddings: List[List[float]]) -> List[float]:
+    def average_embeddings(self, embeddings: list[list[float]]) -> list[float]:
         """Compute average of multiple embeddings."""
         if not embeddings:
             return []
@@ -362,9 +361,9 @@ class EmbeddingAnalyzer:
 
     def weighted_average(
         self,
-        embeddings: List[List[float]],
-        weights: List[float],
-    ) -> List[float]:
+        embeddings: list[list[float]],
+        weights: list[float],
+    ) -> list[float]:
         """Compute weighted average of embeddings."""
         if not embeddings:
             return []
@@ -387,9 +386,9 @@ class EmbeddingAnalyzer:
 
     def find_outliers(
         self,
-        embeddings: List[List[float]],
+        embeddings: list[list[float]],
         threshold: float = 2.0,
-    ) -> List[int]:
+    ) -> list[int]:
         """Find outlier embeddings based on distance from centroid."""
         if len(embeddings) < 2:
             return []
@@ -405,7 +404,7 @@ class EmbeddingAnalyzer:
         # Compute mean and std of distances
         mean_dist = sum(distances) / len(distances)
         variance = sum((d - mean_dist) ** 2 for d in distances) / len(distances)
-        std_dist = variance ** 0.5
+        std_dist = variance**0.5
 
         if std_dist == 0:
             return []
@@ -425,16 +424,16 @@ class TextSimilarityAnalyzer:
 
     def __init__(
         self,
-        embed_fn: Optional[Callable[[str], List[float]]] = None,
+        embed_fn: Optional[Callable[[str], list[float]]] = None,
         metric: SimilarityMetric = SimilarityMetric.COSINE,
     ):
         """Initialize analyzer."""
         self.embed_fn = embed_fn or self._default_embed
         self.metric = metric
         self.calculator = SimilarityCalculator(metric)
-        self._cache: Dict[str, List[float]] = {}
+        self._cache: dict[str, list[float]] = {}
 
-    def _default_embed(self, text: str) -> List[float]:
+    def _default_embed(self, text: str) -> list[float]:
         """Default embedding: bag of words (simple baseline)."""
         # Simple word frequency vector
         words = text.lower().split()
@@ -443,7 +442,7 @@ class TextSimilarityAnalyzer:
             return [0.0]
 
         # Create frequency vector
-        freq = {w: 0 for w in vocab}
+        freq = dict.fromkeys(vocab, 0)
         for w in words:
             freq[w] += 1
 
@@ -451,7 +450,7 @@ class TextSimilarityAnalyzer:
         total = sum(freq.values())
         return [freq[w] / total for w in vocab]
 
-    def _get_embedding(self, text: str, use_cache: bool = True) -> List[float]:
+    def _get_embedding(self, text: str, use_cache: bool = True) -> list[float]:
         """Get embedding for text, using cache if available."""
         cache_key = hashlib.md5(text.encode()).hexdigest()
 
@@ -499,10 +498,10 @@ class TextSimilarityAnalyzer:
 
     def compare_batch(
         self,
-        texts_a: List[str],
-        texts_b: List[str],
+        texts_a: list[str],
+        texts_b: list[str],
         metric: Optional[SimilarityMetric] = None,
-    ) -> List[SimilarityResult]:
+    ) -> list[SimilarityResult]:
         """Compare lists of texts pairwise."""
         if len(texts_a) != len(texts_b):
             raise ValueError("Lists must have same length")
@@ -512,7 +511,7 @@ class TextSimilarityAnalyzer:
     def find_most_similar(
         self,
         query: str,
-        candidates: List[str],
+        candidates: list[str],
         top_k: int = 5,
         metric: Optional[SimilarityMetric] = None,
     ) -> SearchResult:
@@ -547,9 +546,9 @@ class TextSimilarityAnalyzer:
 
     def find_duplicates(
         self,
-        texts: List[str],
+        texts: list[str],
         threshold: float = 0.9,
-    ) -> List[Tuple[int, int, float]]:
+    ) -> list[tuple[int, int, float]]:
         """Find near-duplicate texts."""
         duplicates = []
 
@@ -567,7 +566,7 @@ class EmbeddingClusterer:
 
     def __init__(
         self,
-        embed_fn: Optional[Callable[[str], List[float]]] = None,
+        embed_fn: Optional[Callable[[str], list[float]]] = None,
         similarity_calculator: Optional[SimilarityCalculator] = None,
     ):
         """Initialize clusterer."""
@@ -576,10 +575,10 @@ class EmbeddingClusterer:
 
     def _simple_kmeans(
         self,
-        embeddings: List[List[float]],
+        embeddings: list[list[float]],
         k: int,
         max_iters: int = 100,
-    ) -> Tuple[List[int], List[List[float]], float]:
+    ) -> tuple[list[int], list[list[float]], float]:
         """Simple k-means implementation."""
         import random
 
@@ -616,8 +615,7 @@ class EmbeddingClusterer:
                 cluster_points = [embeddings[i] for i in range(n) if labels[i] == j]
                 if cluster_points:
                     centroids[j] = [
-                        sum(p[d] for p in cluster_points) / len(cluster_points)
-                        for d in range(dim)
+                        sum(p[d] for p in cluster_points) / len(cluster_points) for d in range(dim)
                     ]
 
         # Compute inertia
@@ -629,9 +627,9 @@ class EmbeddingClusterer:
 
     def _hierarchical_clustering(
         self,
-        embeddings: List[List[float]],
+        embeddings: list[list[float]],
         n_clusters: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """Simple hierarchical clustering."""
         n = len(embeddings)
 
@@ -682,7 +680,7 @@ class EmbeddingClusterer:
 
     def cluster(
         self,
-        texts: List[str],
+        texts: list[str],
         n_clusters: int = 5,
         method: ClusteringMethod = ClusteringMethod.KMEANS,
     ) -> ClusteringResult:
@@ -718,8 +716,9 @@ class EmbeddingClusterer:
             for c in range(n_clusters):
                 cluster_embs = [embeddings[i] for i in range(len(texts)) if labels[i] == c]
                 if cluster_embs:
-                    centroid = [sum(e[d] for e in cluster_embs) / len(cluster_embs)
-                                for d in range(max_dim)]
+                    centroid = [
+                        sum(e[d] for e in cluster_embs) / len(cluster_embs) for d in range(max_dim)
+                    ]
                     centroids.append(centroid)
                 else:
                     centroids.append([0.0] * max_dim)
@@ -740,7 +739,9 @@ class EmbeddingClusterer:
                     sims = []
                     for i in range(len(cluster_embs)):
                         for j in range(i + 1, len(cluster_embs)):
-                            sim = self.calculator.cosine_similarity(cluster_embs[i], cluster_embs[j])
+                            sim = self.calculator.cosine_similarity(
+                                cluster_embs[i], cluster_embs[j]
+                            )
                             sims.append(sim)
                     intra_sim = sum(sims) / len(sims) if sims else 1.0
                 else:
@@ -756,15 +757,17 @@ class EmbeddingClusterer:
                         best_dist = dist
                         best_text = texts[idx]
 
-                clusters.append(ClusterInfo(
-                    cluster_id=c,
-                    size=len(member_texts),
-                    centroid=centroid,
-                    member_indices=member_indices,
-                    member_texts=member_texts,
-                    intra_cluster_similarity=intra_sim,
-                    representative_text=best_text,
-                ))
+                clusters.append(
+                    ClusterInfo(
+                        cluster_id=c,
+                        size=len(member_texts),
+                        centroid=centroid,
+                        member_indices=member_indices,
+                        member_texts=member_texts,
+                        intra_cluster_similarity=intra_sim,
+                        representative_text=best_text,
+                    )
+                )
 
         return ClusteringResult(
             method=method,
@@ -776,10 +779,10 @@ class EmbeddingClusterer:
 
     def find_optimal_k(
         self,
-        texts: List[str],
+        texts: list[str],
         max_k: int = 10,
         method: ClusteringMethod = ClusteringMethod.KMEANS,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Find optimal number of clusters using elbow method."""
         if len(texts) < 2:
             return {"optimal_k": 1, "inertias": []}
@@ -825,17 +828,17 @@ class SemanticSearch:
 
     def __init__(
         self,
-        embed_fn: Optional[Callable[[str], List[float]]] = None,
+        embed_fn: Optional[Callable[[str], list[float]]] = None,
         metric: SimilarityMetric = SimilarityMetric.COSINE,
     ):
         """Initialize search engine."""
         self.embed_fn = embed_fn
         self.metric = metric
         self.calculator = SimilarityCalculator(metric)
-        self.index: List[Tuple[str, List[float]]] = []
-        self.metadata: List[Dict[str, Any]] = []
+        self.index: list[tuple[str, list[float]]] = []
+        self.metadata: list[dict[str, Any]] = []
 
-    def _get_embedding(self, text: str) -> List[float]:
+    def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text."""
         if self.embed_fn:
             return self.embed_fn(text)
@@ -845,13 +848,13 @@ class SemanticSearch:
             if not words:
                 return [0.0]
             vocab = sorted(set(words))
-            freq = {w: 0 for w in vocab}
+            freq = dict.fromkeys(vocab, 0)
             for w in words:
                 freq[w] += 1
             total = sum(freq.values())
             return [freq[w] / total for w in vocab]
 
-    def add(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> int:
+    def add(self, text: str, metadata: Optional[dict[str, Any]] = None) -> int:
         """Add text to index."""
         embedding = self._get_embedding(text)
         idx = len(self.index)
@@ -861,9 +864,9 @@ class SemanticSearch:
 
     def add_batch(
         self,
-        texts: List[str],
-        metadata: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[int]:
+        texts: list[str],
+        metadata: Optional[list[dict[str, Any]]] = None,
+    ) -> list[int]:
         """Add multiple texts to index."""
         metadata = metadata or [{}] * len(texts)
         return [self.add(text, meta) for text, meta in zip(texts, metadata)]
@@ -915,7 +918,7 @@ class SemanticSearch:
 def compute_similarity(
     text_a: str,
     text_b: str,
-    embed_fn: Optional[Callable[[str], List[float]]] = None,
+    embed_fn: Optional[Callable[[str], list[float]]] = None,
     metric: SimilarityMetric = SimilarityMetric.COSINE,
 ) -> SimilarityResult:
     """Compute similarity between two texts."""
@@ -925,9 +928,9 @@ def compute_similarity(
 
 def find_similar_texts(
     query: str,
-    candidates: List[str],
+    candidates: list[str],
     top_k: int = 5,
-    embed_fn: Optional[Callable[[str], List[float]]] = None,
+    embed_fn: Optional[Callable[[str], list[float]]] = None,
 ) -> SearchResult:
     """Find most similar texts to query."""
     analyzer = TextSimilarityAnalyzer(embed_fn)
@@ -935,9 +938,9 @@ def find_similar_texts(
 
 
 def cluster_texts(
-    texts: List[str],
+    texts: list[str],
     n_clusters: int = 5,
-    embed_fn: Optional[Callable[[str], List[float]]] = None,
+    embed_fn: Optional[Callable[[str], list[float]]] = None,
 ) -> ClusteringResult:
     """Cluster texts by semantic similarity."""
     clusterer = EmbeddingClusterer(embed_fn)
@@ -945,30 +948,30 @@ def cluster_texts(
 
 
 def find_duplicate_texts(
-    texts: List[str],
+    texts: list[str],
     threshold: float = 0.9,
-    embed_fn: Optional[Callable[[str], List[float]]] = None,
-) -> List[Tuple[int, int, float]]:
+    embed_fn: Optional[Callable[[str], list[float]]] = None,
+) -> list[tuple[int, int, float]]:
     """Find near-duplicate texts."""
     analyzer = TextSimilarityAnalyzer(embed_fn)
     return analyzer.find_duplicates(texts, threshold)
 
 
-def analyze_embedding(embedding: List[float]) -> EmbeddingStats:
+def analyze_embedding(embedding: list[float]) -> EmbeddingStats:
     """Analyze an embedding vector."""
     analyzer = EmbeddingAnalyzer()
     return analyzer.compute_stats(embedding)
 
 
-def normalize_embedding(embedding: List[float]) -> List[float]:
+def normalize_embedding(embedding: list[float]) -> list[float]:
     """Normalize embedding to unit length."""
     analyzer = EmbeddingAnalyzer()
     return analyzer.normalize(embedding)
 
 
 def create_semantic_index(
-    texts: List[str],
-    embed_fn: Optional[Callable[[str], List[float]]] = None,
+    texts: list[str],
+    embed_fn: Optional[Callable[[str], list[float]]] = None,
 ) -> SemanticSearch:
     """Create a semantic search index."""
     search = SemanticSearch(embed_fn)

@@ -17,8 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
-
+from typing import Any, Callable, Optional, TypeVar, Union
 
 # Create library logger
 logger = logging.getLogger("insideLLMs")
@@ -43,9 +42,9 @@ class LogEntry:
     message: str
     module: str = ""
     function: str = ""
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -82,7 +81,9 @@ class StructuredFormatter(logging.Formatter):
         location = f"{record.module}.{record.funcName}:{record.lineno}"
 
         # Format base message
-        base = f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {level:8s} | {location:40s} | {message}"
+        base = (
+            f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {level:8s} | {location:40s} | {message}"
+        )
 
         # Add extra fields if present
         if self.include_extra and hasattr(record, "extra_data"):
@@ -173,7 +174,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
 class LoggerAdapter(logging.LoggerAdapter):
     """Logger adapter that supports extra context."""
 
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple:
+    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:
         """Process the log message."""
         extra = kwargs.get("extra", {})
         extra.update(self.extra)
@@ -199,6 +200,7 @@ def log_with_context(
 
 
 # Timing and performance logging
+
 
 @contextmanager
 def log_timing(
@@ -245,6 +247,7 @@ def log_call(
     Returns:
         Decorator function.
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
@@ -253,8 +256,8 @@ def log_call(
             # Log call
             if log_args:
                 args_str = ", ".join(
-                    [repr(a)[:50] for a in args] +
-                    [f"{k}={repr(v)[:50]}" for k, v in kwargs.items()]
+                    [repr(a)[:50] for a in args]
+                    + [f"{k}={repr(v)[:50]}" for k, v in kwargs.items()]
                 )
                 func_logger.log(level, f"Calling {func.__name__}({args_str})")
             else:
@@ -267,8 +270,7 @@ def log_call(
                 elapsed = time.perf_counter() - start
                 if log_result:
                     func_logger.log(
-                        level,
-                        f"{func.__name__} returned {repr(result)[:100]} in {elapsed:.3f}s"
+                        level, f"{func.__name__} returned {repr(result)[:100]} in {elapsed:.3f}s"
                     )
                 elif log_timing_flag:
                     func_logger.log(level, f"{func.__name__} completed in {elapsed:.3f}s")
@@ -283,10 +285,12 @@ def log_call(
                 raise
 
         return wrapper
+
     return decorator
 
 
 # Error tracking
+
 
 @dataclass
 class ErrorRecord:
@@ -296,9 +300,9 @@ class ErrorRecord:
     error_type: str
     message: str
     traceback: str
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -313,14 +317,14 @@ class ErrorTracker:
     """Tracks errors for analysis and debugging."""
 
     def __init__(self, max_errors: int = 1000):
-        self._errors: List[ErrorRecord] = []
+        self._errors: list[ErrorRecord] = []
         self._max_errors = max_errors
-        self._counts: Dict[str, int] = {}
+        self._counts: dict[str, int] = {}
 
     def record(
         self,
         error: Exception,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
     ) -> ErrorRecord:
         """Record an error.
 
@@ -344,21 +348,21 @@ class ErrorTracker:
 
         # Trim if needed
         if len(self._errors) > self._max_errors:
-            self._errors = self._errors[-self._max_errors:]
+            self._errors = self._errors[-self._max_errors :]
 
         return record
 
     @property
-    def errors(self) -> List[ErrorRecord]:
+    def errors(self) -> list[ErrorRecord]:
         """Get all recorded errors."""
         return self._errors.copy()
 
     @property
-    def error_counts(self) -> Dict[str, int]:
+    def error_counts(self) -> dict[str, int]:
         """Get error counts by type."""
         return self._counts.copy()
 
-    def get_recent(self, n: int = 10) -> List[ErrorRecord]:
+    def get_recent(self, n: int = 10) -> list[ErrorRecord]:
         """Get the most recent errors.
 
         Args:
@@ -369,7 +373,7 @@ class ErrorTracker:
         """
         return self._errors[-n:]
 
-    def get_by_type(self, error_type: str) -> List[ErrorRecord]:
+    def get_by_type(self, error_type: str) -> list[ErrorRecord]:
         """Get errors of a specific type.
 
         Args:
@@ -385,7 +389,7 @@ class ErrorTracker:
         self._errors.clear()
         self._counts.clear()
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         """Get a summary of recorded errors.
 
         Returns:
@@ -395,9 +399,7 @@ class ErrorTracker:
             "total_errors": len(self._errors),
             "unique_types": len(self._counts),
             "counts_by_type": self._counts.copy(),
-            "most_recent": (
-                self._errors[-1].to_dict() if self._errors else None
-            ),
+            "most_recent": (self._errors[-1].to_dict() if self._errors else None),
         }
 
 
@@ -415,7 +417,7 @@ def get_error_tracker() -> ErrorTracker:
 
 def track_error(
     error: Exception,
-    context: Optional[Dict[str, Any]] = None,
+    context: Optional[dict[str, Any]] = None,
 ) -> ErrorRecord:
     """Track an error using the global tracker.
 
@@ -430,6 +432,7 @@ def track_error(
 
 
 # Progress logging
+
 
 class ProgressLogger:
     """Logger for tracking progress of long-running operations."""
@@ -483,8 +486,7 @@ class ProgressLogger:
         rate = self.current / elapsed if elapsed > 0 else 0
 
         self.logger.info(
-            f"{self.description}: Completed {self.current} items "
-            f"in {elapsed:.1f}s ({rate:.1f}/s)"
+            f"{self.description}: Completed {self.current} items in {elapsed:.1f}s ({rate:.1f}/s)"
         )
 
 
@@ -513,6 +515,7 @@ def progress_context(
 
 # Experiment logging
 
+
 @dataclass
 class ExperimentLog:
     """Log entry for an experiment."""
@@ -526,10 +529,10 @@ class ExperimentLog:
     n_samples: int = 0
     n_completed: int = 0
     n_failed: int = 0
-    metrics: Dict[str, float] = field(default_factory=dict)
-    errors: List[Dict[str, Any]] = field(default_factory=list)
+    metrics: dict[str, float] = field(default_factory=dict)
+    errors: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "experiment_id": self.experiment_id,
@@ -551,7 +554,7 @@ class ExperimentLogger:
 
     def __init__(self, logger_instance: Optional[logging.Logger] = None):
         self.logger = logger_instance or get_logger("experiment")
-        self._experiments: Dict[str, ExperimentLog] = {}
+        self._experiments: dict[str, ExperimentLog] = {}
 
     def start_experiment(
         self,
@@ -609,16 +612,18 @@ class ExperimentLogger:
         else:
             log.n_failed += 1
             if error:
-                log.errors.append({
-                    "type": type(error).__name__,
-                    "message": str(error),
-                })
+                log.errors.append(
+                    {
+                        "type": type(error).__name__,
+                        "message": str(error),
+                    }
+                )
 
     def finish_experiment(
         self,
         experiment_id: str,
         status: str = "completed",
-        metrics: Optional[Dict[str, float]] = None,
+        metrics: Optional[dict[str, float]] = None,
     ) -> Optional[ExperimentLog]:
         """Finish logging an experiment.
 
@@ -656,7 +661,7 @@ class ExperimentLogger:
         """Get an experiment log."""
         return self._experiments.get(experiment_id)
 
-    def get_all_experiments(self) -> List[ExperimentLog]:
+    def get_all_experiments(self) -> list[ExperimentLog]:
         """Get all experiment logs."""
         return list(self._experiments.values())
 

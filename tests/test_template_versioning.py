@@ -1,6 +1,7 @@
 """Tests for template versioning and A/B testing utilities."""
 
 import pytest
+
 from insideLLMs.template_versioning import (
     ABTest,
     ABTestResult,
@@ -19,7 +20,6 @@ from insideLLMs.template_versioning import (
     create_version,
     diff_template_versions,
     get_active_template,
-    get_default_manager,
     list_template_versions,
     rollback_template,
     run_template_comparison,
@@ -306,11 +306,11 @@ class TestTemplateVersionManager:
     def test_list_versions(self):
         """Test listing versions."""
         manager = TemplateVersionManager()
-        v1 = manager.create_template("greeting", "Hello!")
+        manager.create_template("greeting", "Hello!")
         v2 = manager.create_version("greeting", "Hi!")
         # Activate v2 so next version increments from it
         manager.activate_version("greeting", v2.version_id)
-        v3 = manager.create_version("greeting", "Hey!")
+        manager.create_version("greeting", "Hey!")
 
         versions = manager.list_versions("greeting")
         assert len(versions) == 3
@@ -348,8 +348,8 @@ class TestTemplateVersionManager:
     def test_export_import_template(self):
         """Test exporting and importing templates."""
         manager1 = TemplateVersionManager()
-        v1 = manager1.create_template("greeting", "Hello!")
-        v2 = manager1.create_version("greeting", "Hi!")
+        manager1.create_template("greeting", "Hello!")
+        manager1.create_version("greeting", "Hi!")
 
         exported = manager1.export_template("greeting")
         assert exported["template_name"] == "greeting"
@@ -609,6 +609,7 @@ class TestTemplateExperiment:
 
     def test_run_comparison(self):
         """Test running a comparison experiment."""
+
         def scorer(response: str, expected: str) -> float:
             return 1.0 if expected.lower() in response.lower() else 0.0
 
@@ -644,9 +645,7 @@ class TestTemplateExperiment:
             {"variables": {"question": "Capital of France?"}, "expected": "Paris"},
         ]
 
-        results = experiment.run_comparison(
-            [t1, t2], test_cases, render_fn, model_fn, n_runs=1
-        )
+        results = experiment.run_comparison([t1, t2], test_cases, render_fn, model_fn, n_runs=1)
 
         assert "results" in results
         assert "winner" in results
@@ -671,7 +670,7 @@ class TestConvenienceFunctions:
         """Test creating version with convenience function."""
         set_default_manager(TemplateVersionManager())
 
-        v1 = create_template("test_greeting", "Hello!")
+        create_template("test_greeting", "Hello!")
         v2 = create_version("test_greeting", "Hi there!")
         assert v2.version_number == "1.0.1"
 

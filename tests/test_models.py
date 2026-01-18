@@ -1,18 +1,18 @@
 """Tests for model implementations."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from insideLLMs.models import (
-    DummyModel,
-    Model,
-    GeminiModel,
     CohereModel,
+    DummyModel,
+    GeminiModel,
     LlamaCppModel,
     OllamaModel,
     VLLMModel,
 )
-from insideLLMs.models.base import AsyncModel, ModelProtocol, ModelWrapper
+from insideLLMs.models.base import ModelProtocol, ModelWrapper
 from insideLLMs.types import ModelInfo
 
 
@@ -238,6 +238,7 @@ class TestGeminiModel:
         # If google-generativeai is not installed, should raise ImportError
         try:
             import google.generativeai
+
             pytest.skip("google-generativeai is installed, skipping import test")
         except ImportError:
             with pytest.raises(ImportError, match="google-generativeai"):

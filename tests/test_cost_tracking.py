@@ -1,41 +1,41 @@
 """Tests for the cost tracking module."""
 
-import pytest
 from datetime import datetime, timedelta
+
 from insideLLMs.cost_tracking import (
-    # Enums
-    PricingTier,
-    CostCategory,
     AlertLevel,
-    TimeGranularity,
-    # Dataclasses
-    ModelPricing,
-    UsageRecord,
     Budget,
     BudgetAlert,
-    CostSummary,
-    CostForecast,
-    # Classes
-    PricingRegistry,
-    CostCalculator,
-    UsageTracker,
     BudgetManager,
+    CostCalculator,
+    CostCategory,
+    CostForecast,
     CostForecaster,
     CostReporter,
+    CostSummary,
+    # Dataclasses
+    ModelPricing,
+    # Classes
+    PricingRegistry,
+    # Enums
+    PricingTier,
+    TimeGranularity,
+    UsageRecord,
+    UsageTracker,
     # Convenience functions
     calculate_cost,
-    estimate_request_cost,
     compare_model_costs,
-    get_cheapest_model,
-    create_usage_tracker,
     create_budget_manager,
+    create_usage_tracker,
+    estimate_request_cost,
+    get_cheapest_model,
     quick_cost_estimate,
 )
-
 
 # ============================================================================
 # Enum Tests
 # ============================================================================
+
 
 class TestCostEnums:
     """Test cost-related enums."""
@@ -69,6 +69,7 @@ class TestCostEnums:
 # ============================================================================
 # Dataclass Tests
 # ============================================================================
+
 
 class TestModelPricing:
     """Test ModelPricing dataclass."""
@@ -237,6 +238,7 @@ class TestCostForecast:
 # PricingRegistry Tests
 # ============================================================================
 
+
 class TestPricingRegistry:
     """Test PricingRegistry class."""
 
@@ -279,6 +281,7 @@ class TestPricingRegistry:
 # ============================================================================
 # CostCalculator Tests
 # ============================================================================
+
 
 class TestCostCalculator:
     """Test CostCalculator class."""
@@ -325,6 +328,7 @@ class TestCostCalculator:
 # ============================================================================
 # UsageTracker Tests
 # ============================================================================
+
 
 class TestUsageTracker:
     """Test UsageTracker class."""
@@ -407,6 +411,7 @@ class TestUsageTracker:
 # BudgetManager Tests
 # ============================================================================
 
+
 class TestBudgetManager:
     """Test BudgetManager class."""
 
@@ -449,8 +454,10 @@ class TestBudgetManager:
         tracker = UsageTracker()
         manager = BudgetManager(tracker)
         manager.create_budget(
-            "test", 0.001, TimeGranularity.DAY,
-            alert_threshold=0.5  # Lower threshold for testing
+            "test",
+            0.001,
+            TimeGranularity.DAY,
+            alert_threshold=0.5,  # Lower threshold for testing
         )
 
         # This should exceed 50% of $0.001
@@ -511,6 +518,7 @@ class TestBudgetManager:
 # CostForecaster Tests
 # ============================================================================
 
+
 class TestCostForecaster:
     """Test CostForecaster class."""
 
@@ -555,6 +563,7 @@ class TestCostForecaster:
 # CostReporter Tests
 # ============================================================================
 
+
 class TestCostReporter:
     """Test CostReporter class."""
 
@@ -575,10 +584,7 @@ class TestCostReporter:
         now = datetime.now()
 
         for i in range(7):
-            tracker.record_usage(
-                "gpt-4", 1000, 500,
-                timestamp=now - timedelta(days=i)
-            )
+            tracker.record_usage("gpt-4", 1000, 500, timestamp=now - timedelta(days=i))
 
         reporter = CostReporter(tracker)
         report = reporter.generate_weekly_report()
@@ -613,6 +619,7 @@ class TestCostReporter:
 # ============================================================================
 # Convenience Function Tests
 # ============================================================================
+
 
 class TestConvenienceFunctions:
     """Test module-level convenience functions."""
@@ -656,6 +663,7 @@ class TestConvenienceFunctions:
 # Integration Tests
 # ============================================================================
 
+
 class TestIntegration:
     """Integration tests for cost tracking workflows."""
 
@@ -672,7 +680,7 @@ class TestIntegration:
             tracker.record_usage("gpt-4", 1000, 500)
 
         # Check budget
-        alert = manager.check_budget("daily")
+        manager.check_budget("daily")
 
         # Get status
         status = manager.get_budget_status("daily")
@@ -701,10 +709,7 @@ class TestIntegration:
         for i in range(7):
             num_requests = 10 + i * 2  # Increasing usage
             for _ in range(num_requests):
-                tracker.record_usage(
-                    "gpt-4", 500, 200,
-                    timestamp=now - timedelta(days=6-i)
-                )
+                tracker.record_usage("gpt-4", 500, 200, timestamp=now - timedelta(days=6 - i))
 
         forecaster = CostForecaster(tracker)
         forecast = forecaster.forecast(TimeGranularity.WEEK, lookback_days=7)
@@ -716,6 +721,7 @@ class TestIntegration:
 # ============================================================================
 # Edge Cases
 # ============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""

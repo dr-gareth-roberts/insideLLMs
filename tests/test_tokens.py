@@ -158,7 +158,7 @@ class TestVocabCoverage:
             uncovered={"x"},
         )
 
-        assert abs(coverage.coverage_ratio - 2/3) < 0.001
+        assert abs(coverage.coverage_ratio - 2 / 3) < 0.001
 
     def test_to_dict(self):
         """Test conversion to dictionary."""
@@ -358,7 +358,7 @@ class TestEmbeddingUtils:
         vec = [3.0, 4.0]
         normalized = EmbeddingUtils.normalize(vec)
 
-        magnitude = math.sqrt(sum(v ** 2 for v in normalized))
+        magnitude = math.sqrt(sum(v**2 for v in normalized))
         assert abs(magnitude - 1.0) < 0.0001
 
     def test_average_embeddings(self):
@@ -484,7 +484,7 @@ class TestContextWindowManager:
         """Test resetting context."""
         manager = ContextWindowManager(max_tokens=1000)
         manager.add_content("Hello world")
-        initial_remaining = manager.remaining_tokens()
+        manager.remaining_tokens()
 
         manager.reset()
 

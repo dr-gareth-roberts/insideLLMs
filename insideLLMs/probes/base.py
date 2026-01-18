@@ -5,7 +5,7 @@ specific aspects of LLM behavior such as logic, factuality, bias, and safety.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar, runtime_checkable
+from typing import Any, Generic, Optional, Protocol, TypeVar, runtime_checkable
 
 from insideLLMs.types import (
     ProbeCategory,
@@ -97,11 +97,10 @@ class Probe(ABC, Generic[T]):
     def run_batch(
         self,
         model: Any,
-        dataset: List[Any],
-
+        dataset: list[Any],
         max_workers: int = 1,
         **kwargs: Any,
-    ) -> List[ProbeResult[T]]:
+    ) -> list[ProbeResult[T]]:
         """Run the probe on a batch of inputs.
 
         This method provides consistent error handling and result formatting
@@ -157,7 +156,7 @@ class Probe(ABC, Generic[T]):
 
         return results
 
-    def score(self, results: List[ProbeResult[T]]) -> ProbeScore:
+    def score(self, results: list[ProbeResult[T]]) -> ProbeScore:
         """Calculate aggregate scores from probe results.
 
         Override this method in subclasses to provide probe-specific scoring.
@@ -198,7 +197,7 @@ class Probe(ABC, Generic[T]):
         """
         return True
 
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> dict[str, Any]:
         """Return probe metadata.
 
         Returns:
@@ -228,7 +227,7 @@ class ScoredProbe(Probe[T]):
         model_output: T,
         reference: Any,
         input_data: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate a single model output against a reference.
 
         Args:
@@ -241,7 +240,7 @@ class ScoredProbe(Probe[T]):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def score(self, results: List[ProbeResult[T]]) -> ProbeScore:
+    def score(self, results: list[ProbeResult[T]]) -> ProbeScore:
         """Calculate scores including correctness metrics.
 
         Args:
@@ -281,7 +280,7 @@ class ComparativeProbe(Probe[T]):
         input_a: Any,
         input_b: Any,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run the probe comparing two inputs.
 
         Args:
@@ -312,7 +311,7 @@ class ComparativeProbe(Probe[T]):
         response_b: str,
         input_a: Any,
         input_b: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compare two model responses.
 
         Override this method in subclasses for specific comparison logic.

@@ -10,13 +10,10 @@ This module provides tools for analyzing experiment results including:
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional
 
 from insideLLMs.types import (
     ExperimentResult,
-    ProbeResult,
-    ProbeScore,
-    ResultStatus,
 )
 
 
@@ -48,7 +45,7 @@ class ConfidenceInterval:
         return (
             f"ConfidenceInterval({self.point_estimate:.4f} "
             f"[{self.lower:.4f}, {self.upper:.4f}], "
-            f"{self.confidence_level*100:.0f}%)"
+            f"{self.confidence_level * 100:.0f}%)"
         )
 
 
@@ -105,10 +102,10 @@ class AggregatedResults:
     """Aggregated results from multiple experiment runs."""
 
     metric_name: str
-    values: List[float]
+    values: list[float]
     stats: DescriptiveStats
     ci: ConfidenceInterval
-    raw_results: List[ExperimentResult] = field(default_factory=list)
+    raw_results: list[ExperimentResult] = field(default_factory=list)
 
 
 @dataclass
@@ -178,14 +175,14 @@ def _t_score(confidence_level: float, df: int) -> float:
     return z + g1 / df + g2 / (df**2) + g3 / (df**3)
 
 
-def calculate_mean(values: List[float]) -> float:
+def calculate_mean(values: list[float]) -> float:
     """Calculate arithmetic mean."""
     if not values:
         return 0.0
     return sum(values) / len(values)
 
 
-def calculate_variance(values: List[float], ddof: int = 1) -> float:
+def calculate_variance(values: list[float], ddof: int = 1) -> float:
     """Calculate sample variance.
 
     Args:
@@ -202,12 +199,12 @@ def calculate_variance(values: List[float], ddof: int = 1) -> float:
     return sum(squared_diffs) / (len(values) - ddof)
 
 
-def calculate_std(values: List[float], ddof: int = 1) -> float:
+def calculate_std(values: list[float], ddof: int = 1) -> float:
     """Calculate sample standard deviation."""
     return math.sqrt(calculate_variance(values, ddof))
 
 
-def calculate_median(values: List[float]) -> float:
+def calculate_median(values: list[float]) -> float:
     """Calculate median."""
     if not values:
         return 0.0
@@ -219,7 +216,7 @@ def calculate_median(values: List[float]) -> float:
     return sorted_values[mid]
 
 
-def calculate_percentile(values: List[float], percentile: float) -> float:
+def calculate_percentile(values: list[float], percentile: float) -> float:
     """Calculate a specific percentile.
 
     Args:
@@ -241,7 +238,7 @@ def calculate_percentile(values: List[float], percentile: float) -> float:
     return sorted_values[f] * (c - k) + sorted_values[c] * (k - f)
 
 
-def calculate_skewness(values: List[float]) -> float:
+def calculate_skewness(values: list[float]) -> float:
     """Calculate Fisher-Pearson coefficient of skewness."""
     if len(values) < 3:
         return 0.0
@@ -254,7 +251,7 @@ def calculate_skewness(values: List[float]) -> float:
     return m3 / (std**3)
 
 
-def calculate_kurtosis(values: List[float]) -> float:
+def calculate_kurtosis(values: list[float]) -> float:
     """Calculate excess kurtosis (Fisher's definition)."""
     if len(values) < 4:
         return 0.0
@@ -267,7 +264,7 @@ def calculate_kurtosis(values: List[float]) -> float:
     return m4 / (std**4) - 3
 
 
-def descriptive_statistics(values: List[float]) -> DescriptiveStats:
+def descriptive_statistics(values: list[float]) -> DescriptiveStats:
     """Calculate comprehensive descriptive statistics.
 
     Args:
@@ -310,7 +307,7 @@ def descriptive_statistics(values: List[float]) -> DescriptiveStats:
 
 
 def confidence_interval(
-    values: List[float],
+    values: list[float],
     confidence_level: float = 0.95,
     method: str = "t",
 ) -> ConfidenceInterval:
@@ -339,9 +336,7 @@ def confidence_interval(
     se = std / math.sqrt(n) if n > 0 else 0
 
     if method == "bootstrap":
-        return bootstrap_confidence_interval(
-            values, lambda x: calculate_mean(x), confidence_level
-        )
+        return bootstrap_confidence_interval(values, lambda x: calculate_mean(x), confidence_level)
     elif method == "z" or n > 100:
         z = _z_score(confidence_level)
         margin = z * se
@@ -367,8 +362,8 @@ def confidence_interval(
 
 
 def bootstrap_confidence_interval(
-    values: List[float],
-    statistic_fn: Callable[[List[float]], float],
+    values: list[float],
+    statistic_fn: Callable[[list[float]], float],
     confidence_level: float = 0.95,
     n_bootstrap: int = 1000,
     seed: Optional[int] = None,
@@ -421,7 +416,7 @@ def bootstrap_confidence_interval(
     )
 
 
-def cohens_d(group1: List[float], group2: List[float]) -> float:
+def cohens_d(group1: list[float], group2: list[float]) -> float:
     """Calculate Cohen's d effect size.
 
     Args:
@@ -468,8 +463,8 @@ def interpret_cohens_d(d: float) -> str:
 
 
 def welchs_t_test(
-    group1: List[float],
-    group2: List[float],
+    group1: list[float],
+    group2: list[float],
     alpha: float = 0.05,
 ) -> HypothesisTestResult:
     """Perform Welch's t-test for independent samples.
@@ -508,7 +503,7 @@ def welchs_t_test(
     # Welch-Satterthwaite degrees of freedom
     num = (var1 / n1 + var2 / n2) ** 2
     denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
-    df = num / denom if denom > 0 else 1
+    num / denom if denom > 0 else 1
 
     # Approximate p-value (two-tailed)
     # Using normal approximation for simplicity
@@ -544,8 +539,8 @@ def _normal_cdf(x: float) -> float:
 
 
 def paired_t_test(
-    values1: List[float],
-    values2: List[float],
+    values1: list[float],
+    values2: list[float],
     alpha: float = 0.05,
 ) -> HypothesisTestResult:
     """Perform paired t-test.
@@ -617,8 +612,8 @@ def paired_t_test(
 
 
 def mann_whitney_u(
-    group1: List[float],
-    group2: List[float],
+    group1: list[float],
+    group2: list[float],
     alpha: float = 0.05,
 ) -> HypothesisTestResult:
     """Perform Mann-Whitney U test (non-parametric alternative to t-test).
@@ -671,10 +666,7 @@ def mann_whitney_u(
     mean_u = n1 * n2 / 2
     std_u = math.sqrt(n1 * n2 * (n1 + n2 + 1) / 12)
 
-    if std_u == 0:
-        z_stat = 0.0
-    else:
-        z_stat = (u_stat - mean_u) / std_u
+    z_stat = 0.0 if std_u == 0 else (u_stat - mean_u) / std_u
 
     p_value = 2 * (1 - _normal_cdf(abs(z_stat)))
 
@@ -710,9 +702,9 @@ def mann_whitney_u(
 
 
 def extract_metric_from_results(
-    results: List[ExperimentResult],
+    results: list[ExperimentResult],
     metric: str = "accuracy",
-) -> List[float]:
+) -> list[float]:
     """Extract a specific metric from experiment results.
 
     Args:
@@ -742,7 +734,7 @@ def extract_metric_from_results(
     return values
 
 
-def extract_latencies(results: List[ExperimentResult]) -> List[float]:
+def extract_latencies(results: list[ExperimentResult]) -> list[float]:
     """Extract all latencies from experiment results.
 
     Args:
@@ -759,7 +751,7 @@ def extract_latencies(results: List[ExperimentResult]) -> List[float]:
     return latencies
 
 
-def extract_success_rates(results: List[ExperimentResult]) -> List[float]:
+def extract_success_rates(results: list[ExperimentResult]) -> list[float]:
     """Extract success rates from experiment results.
 
     Args:
@@ -772,7 +764,7 @@ def extract_success_rates(results: List[ExperimentResult]) -> List[float]:
 
 
 def aggregate_experiment_results(
-    results: List[ExperimentResult],
+    results: list[ExperimentResult],
     metric: str = "accuracy",
     confidence_level: float = 0.95,
 ) -> AggregatedResults:
@@ -801,8 +793,8 @@ def aggregate_experiment_results(
 
 
 def compare_experiments(
-    results_a: List[ExperimentResult],
-    results_b: List[ExperimentResult],
+    results_a: list[ExperimentResult],
+    results_b: list[ExperimentResult],
     metric: str = "accuracy",
     test: str = "welch",
     alpha: float = 0.05,
@@ -842,9 +834,7 @@ def compare_experiments(
 
     # CI for the difference (using pooled SE for simplicity)
     if values_a and values_b:
-        se_diff = math.sqrt(
-            stats_a.variance / len(values_a) + stats_b.variance / len(values_b)
-        )
+        se_diff = math.sqrt(stats_a.variance / len(values_a) + stats_b.variance / len(values_b))
         z = _z_score(1 - alpha)
         diff_ci = ConfidenceInterval(
             point_estimate=difference,
@@ -869,10 +859,10 @@ def compare_experiments(
 
 
 def multiple_comparison_correction(
-    p_values: List[float],
+    p_values: list[float],
     method: str = "bonferroni",
     alpha: float = 0.05,
-) -> Tuple[List[float], List[bool]]:
+) -> tuple[list[float], list[bool]]:
     """Apply multiple comparison correction to p-values.
 
     Args:
@@ -996,10 +986,10 @@ def required_sample_size(
 
 
 def generate_summary_report(
-    results: List[ExperimentResult],
+    results: list[ExperimentResult],
     include_ci: bool = True,
     confidence_level: float = 0.95,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate a comprehensive summary report of experiment results.
 
     Args:
@@ -1014,7 +1004,7 @@ def generate_summary_report(
         return {"error": "No results to analyze"}
 
     # Group by model
-    by_model: Dict[str, List[ExperimentResult]] = {}
+    by_model: dict[str, list[ExperimentResult]] = {}
     for r in results:
         model_name = r.model_info.name
         if model_name not in by_model:
@@ -1022,7 +1012,7 @@ def generate_summary_report(
         by_model[model_name].append(r)
 
     # Group by probe
-    by_probe: Dict[str, List[ExperimentResult]] = {}
+    by_probe: dict[str, list[ExperimentResult]] = {}
     for r in results:
         if r.probe_name not in by_probe:
             by_probe[r.probe_name] = []
