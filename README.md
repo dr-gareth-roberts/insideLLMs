@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
-    <strong>The most comprehensive Python toolkit for LLM evaluation, testing, and production deployment</strong>
+    <strong>LLM evaluation, testing, and production deployment</strong>
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> &bull;
@@ -21,8 +21,7 @@
 
 ---
 
-**insideLLMs** is a battle-tested Python library that gives you everything you need to understand, evaluate, and deploy large language models in production. **93 modules**, **113,000+ lines of code**, and **3,098 tests**.
-
+**insideLLMs** is a Python library that gives you everything you need to understand, evaluate, and deploy large language models in production.
 ```python
 from insideLLMs import ProbeRunner, LogicProbe
 from insideLLMs.models import OpenAIModel
@@ -483,7 +482,7 @@ results = run_experiment_from_config("experiment.yaml")
 git clone https://github.com/dr-gareth-roberts/insideLLMs
 cd insideLLMs
 pip install -r requirements-dev.txt
-pytest  # Run 3,098 tests
+pytest 
 ```
 
 ---
