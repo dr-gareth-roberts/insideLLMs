@@ -807,10 +807,10 @@ class TestEdgeCases:
 
     def test_unicode_content(self):
         cache = create_cache()
-        cache.set("key", "こんにちは 🌍")
+        cache.set("key", "こんにちは \U0001f30d")
 
         result = cache.get("key")
-        assert result.value == "こんにちは 🌍"
+        assert result.value == "こんにちは \U0001f30d"
 
     def test_large_value(self):
         cache = create_cache()

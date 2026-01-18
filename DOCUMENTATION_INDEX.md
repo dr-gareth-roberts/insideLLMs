@@ -4,7 +4,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ---
 
-## 📚 Documentation Files
+## Documentation Files
 
 ### [ARCHITECTURE.md](ARCHITECTURE.md)
 **Architecture and execution flow diagrams** for the core runtime.
@@ -63,7 +63,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ---
 
-## 🎯 Quick Navigation
+## Quick Navigation
 
 ### I want to...
 
@@ -88,6 +88,9 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 #### **Run experiments from configuration files**
 → [API_REFERENCE.md - Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution)
 
+#### **Run a cross-model behavioural harness**
+→ [README.md](README.md#behavioural-harness), [docs/runner.rst](docs/runner.rst)
+
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
 
@@ -99,7 +102,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ---
 
-## 📖 Documentation by Topic
+## Documentation by Topic
 
 ### Models
 
@@ -154,7 +157,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ---
 
-## 💡 Common Use Cases
+## Common Use Cases
 
 ### Use Case 1: Test a model for bias
 1. Read [BiasProbe documentation](API_REFERENCE.md#biasprobe)
@@ -174,11 +177,15 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 ### Use Case 4: Run experiments from config
 1. Read [Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution)
 2. Check [config example](QUICK_REFERENCE.md#configuration-files)
-3. See `configs/` directory for sample configs
+3. See `README.md` and `QUICK_REFERENCE.md` for sample configs
+
+### Use Case 5: Run a cross-model behavioural harness
+1. Read [README.md](README.md#behavioural-harness)
+2. See [Runner docs](docs/runner.rst#harness-runs)
 
 ---
 
-## 🔍 Search Tips
+## Search Tips
 
 - **Looking for a specific function?** Use your editor's search (Cmd/Ctrl+F) in API_REFERENCE.md
 - **Need a quick example?** Check QUICK_REFERENCE.md first
@@ -187,16 +194,16 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ---
 
-## 📝 Additional Resources
+## Additional Resources
 
 - **Examples:** See `examples/` directory for runnable code
 - **Tests:** See `tests/` directory for usage examples
-- **Configuration:** See `configs/` directory for sample configurations
+- **Configuration:** See `README.md` and `QUICK_REFERENCE.md` for sample configurations
 - **Source Code:** Browse `insideLLMs/` for implementation details
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 If you find errors or have suggestions for improving the documentation:
 1. Open an issue on GitHub

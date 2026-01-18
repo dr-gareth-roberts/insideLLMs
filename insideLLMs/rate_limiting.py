@@ -530,11 +530,10 @@ class RetryHandler:
                 errors.append(last_error)
 
                 # Check if error is retryable
-                if self.config.retryable_errors:
-                    if not any(
-                        isinstance(e, err_type) for err_type in self.config.retryable_errors
-                    ):
-                        break
+                if self.config.retryable_errors and not any(
+                    isinstance(e, err_type) for err_type in self.config.retryable_errors
+                ):
+                    break
 
                 if attempt < self.config.max_retries:
                     delay = self._calculate_delay(attempt)
@@ -580,11 +579,10 @@ class RetryHandler:
                 last_error = str(e)
                 errors.append(last_error)
 
-                if self.config.retryable_errors:
-                    if not any(
-                        isinstance(e, err_type) for err_type in self.config.retryable_errors
-                    ):
-                        break
+                if self.config.retryable_errors and not any(
+                    isinstance(e, err_type) for err_type in self.config.retryable_errors
+                ):
+                    break
 
                 if attempt < self.config.max_retries:
                     delay = self._calculate_delay(attempt)

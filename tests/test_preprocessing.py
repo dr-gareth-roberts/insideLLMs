@@ -149,10 +149,10 @@ class TestTextCleaner:
 
     def test_remove_emojis(self):
         """Test emoji removal."""
-        text = "Hello 😀 World 🌍"
+        text = "Hello \U0001f600 World \U0001f30d"
         result = TextCleaner.remove_emojis(text)
-        assert "😀" not in result
-        assert "🌍" not in result
+        assert "\U0001f600" not in result
+        assert "\U0001f30d" not in result
         assert "Hello" in result
 
     def test_remove_punctuation(self):
@@ -519,7 +519,7 @@ class TestEdgeCases:
         assert normalizer.normalize("مرحبا") == "مرحبا"
 
         # Emoji (may be removed depending on settings)
-        result = normalizer.normalize("Hello 👋")
+        result = normalizer.normalize("Hello \U0001f44b")
         assert "Hello" in result
 
     def test_very_long_text(self):

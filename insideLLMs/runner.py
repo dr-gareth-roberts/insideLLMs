@@ -7,7 +7,9 @@ or from configuration files. Supports async execution for parallel processing.
 import asyncio
 import json
 import uuid
-from datetime import datetime
+from dataclasses import asdict, is_dataclass
+from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
@@ -22,6 +24,7 @@ from insideLLMs.registry import (
     model_registry,
     probe_registry,
 )
+from insideLLMs.statistics import generate_summary_report
 from insideLLMs.types import (
     ConfigDict,
     ExperimentResult,
@@ -130,6 +133,20 @@ class ProbeRunner:
     def error_count(self) -> int:
         """Count errors from the last run."""
         return sum(1 for r in self._results if r.get("status") == "error")
+
+
+def _serialize_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value) and not isinstance(value, type):
+        return asdict(value)
+    if isinstance(value, dict):
+        return {k: _serialize_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize_value(v) for v in value]
+    return value
 
 
 class AsyncProbeRunner:
@@ -364,7 +381,7 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
         }
 
         if probe_type not in probe_map:
-            raise ValueError(f"Unknown probe type: {probe_type}")
+            raise ValueError(f"Unknown probe type: {probe_type}") from None
 
         return probe_map[probe_type](**probe_args)
 
@@ -444,6 +461,128 @@ def run_experiment_from_config(
 
     runner = ProbeRunner(model, probe)
     return runner.run(dataset, progress_callback=progress_callback)
+
+
+def run_harness_from_config(
+    config_path: Union[str, Path],
+    *,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+) -> dict[str, Any]:
+    """Run a cross-model probe harness from a configuration file.
+
+    The configuration file should specify:
+    - models: list of model configs (type + args)
+    - probes: list of probe configs (type + args)
+    - dataset: format, path/name, and optional split
+    - max_examples: optional limit
+
+    Args:
+        config_path: Path to the YAML or JSON configuration file.
+        progress_callback: Optional callback for progress updates.
+
+    Returns:
+        Dictionary with per-example records, experiments, and summary.
+    """
+    config_path = Path(config_path)
+    config = load_config(config_path)
+    base_dir = config_path.parent
+
+    models_config = config.get("models", [])
+    probes_config = config.get("probes", [])
+    dataset_config = config.get("dataset")
+
+    if not models_config:
+        raise ValueError("Harness config requires at least one model in 'models'.")
+    if not probes_config:
+        raise ValueError("Harness config requires at least one probe in 'probes'.")
+    if not dataset_config:
+        raise ValueError("Harness config requires a 'dataset' section.")
+
+    dataset = _load_dataset_from_config(dataset_config, base_dir)
+    max_examples = config.get("max_examples")
+    if max_examples:
+        dataset = dataset[:max_examples]
+
+    experiments: list[ExperimentResult] = []
+    records: list[dict[str, Any]] = []
+
+    total_items = len(dataset) * len(models_config) * len(probes_config)
+    dataset_ref = dataset_config.get("name") or dataset_config.get("path") or "dataset"
+    dataset_format = dataset_config.get("format")
+
+    for model_idx, model_config in enumerate(models_config):
+        model = _create_model_from_config(model_config)
+        model_info = model.info()
+
+        for probe_idx, probe_config in enumerate(probes_config):
+            probe = _create_probe_from_config(probe_config)
+            run_offset = (model_idx * len(probes_config) + probe_idx) * len(dataset)
+
+            def local_progress(current: int, total: int) -> None:
+                if progress_callback and total_items:
+                    progress_callback(run_offset + current, total_items)
+
+            started_at = datetime.now(timezone.utc)
+            results = ProbeRunner(model, probe).run(
+                dataset,
+                progress_callback=local_progress if progress_callback else None,
+            )
+            completed_at = datetime.now(timezone.utc)
+
+            experiment_config = {
+                "model": model_config,
+                "probe": probe_config,
+                "dataset": dataset_config,
+            }
+
+            experiment = create_experiment_result(
+                model,
+                probe,
+                results,
+                config=experiment_config,
+            )
+            experiment.started_at = started_at
+            experiment.completed_at = completed_at
+            experiments.append(experiment)
+
+            for example_index, result in enumerate(results):
+                records.append(
+                    {
+                        "experiment_id": experiment.experiment_id,
+                        "model_type": model_config.get("type"),
+                        "model_name": model_info.name,
+                        "model_id": model_info.model_id,
+                        "probe_type": probe_config.get("type"),
+                        "probe_name": probe.name,
+                        "probe_category": probe.category.value
+                        if isinstance(probe.category, ProbeCategory)
+                        else str(probe.category),
+                        "dataset": dataset_ref,
+                        "dataset_format": dataset_format,
+                        "example_index": example_index,
+                        "input": _serialize_value(result.get("input")),
+                        "output": _serialize_value(result.get("output")),
+                        "status": result.get("status"),
+                        "error": result.get("error"),
+                        "error_type": result.get("error_type"),
+                        "latency_ms": result.get("latency_ms"),
+                        "started_at": started_at.isoformat(),
+                        "completed_at": completed_at.isoformat(),
+                    }
+                )
+
+    summary = generate_summary_report(
+        experiments,
+        include_ci=True,
+        confidence_level=config.get("confidence_level", 0.95),
+    )
+
+    return {
+        "records": records,
+        "experiments": experiments,
+        "summary": summary,
+        "config": config,
+    }
 
 
 async def run_experiment_from_config_async(

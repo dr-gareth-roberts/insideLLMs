@@ -273,17 +273,38 @@ readability = calculate_readability_flesch_kincaid(text)
 ### YAML Configuration
 
 ```yaml
-experiment:
-  name: "My Experiment"
-  output_dir: "results"
+model:
+  type: openai
+  args:
+    model_name: gpt-4o
+probe:
+  type: logic
+  args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+```
 
+### Harness Configuration
+
+```yaml
 models:
-  - type: "OpenAIModel"
-    model_name: "gpt-3.5-turbo"
-
+  - type: openai
+    args:
+      model_name: gpt-4o
+  - type: anthropic
+    args:
+      model_name: claude-3-opus-20240229
 probes:
-  - type: "LogicProbe"
-    dataset: "data/problems.jsonl"
+  - type: logic
+    args: {}
+  - type: bias
+    args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+max_examples: 50
+output_dir: results
 ```
 
 ### Running from Config
@@ -292,6 +313,10 @@ probes:
 from insideLLMs.runner import run_experiment_from_config
 
 results = run_experiment_from_config("config.yaml")
+```
+
+```bash
+insidellms harness harness.yaml
 ```
 
 ---

@@ -726,7 +726,7 @@ class TestEdgeCases:
     def test_unicode_text(self):
         """Test unicode text handling."""
         extractor = JSONExtractor()
-        result = extractor.extract('{"name": "日本語", "emoji": "🎉"}')
+        result = extractor.extract('{"name": "日本語", "emoji": "\U0001f389"}')
         assert result.is_success
         assert result.extracted_data["name"] == "日本語"
 

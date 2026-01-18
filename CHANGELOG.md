@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code of Conduct
 - Comprehensive CI/CD with multi-Python version testing (3.9-3.12)
 - Coverage reporting with Codecov integration
+- Cross-model behavioural harness command with JSONL outputs, summary, and HTML report
 
 ## [0.1.0] - 2025-01-18
 

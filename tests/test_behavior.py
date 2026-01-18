@@ -566,7 +566,9 @@ class TestEdgeCases:
     def test_unicode_in_response(self):
         """Test with unicode characters."""
         detector = PatternDetector()
-        patterns = detector.detect_patterns("I think this answer might be correct. 日本語テスト 🎉")
+        patterns = detector.detect_patterns(
+            "I think this answer might be correct. 日本語テスト \U0001f389"
+        )
 
         # Should still detect hedging
         hedging = [p for p in patterns if p.pattern == BehaviorPattern.HEDGING]

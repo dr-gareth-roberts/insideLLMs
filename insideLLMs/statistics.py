@@ -1040,7 +1040,7 @@ def generate_summary_report(
         if latencies:
             model_report["latency_ms"] = descriptive_statistics(latencies).__dict__
 
-        if include_ci and success_rates:
+        if include_ci and len(success_rates) > 1:
             ci = confidence_interval(success_rates, confidence_level)
             model_report["success_rate_ci"] = {
                 "point_estimate": ci.point_estimate,
@@ -1064,7 +1064,7 @@ def generate_summary_report(
         accuracies = extract_metric_from_results(probe_results, "accuracy")
         if accuracies:
             probe_report["accuracy"] = descriptive_statistics(accuracies).__dict__
-            if include_ci:
+            if include_ci and len(accuracies) > 1:
                 ci = confidence_interval(accuracies, confidence_level)
                 probe_report["accuracy_ci"] = {
                     "point_estimate": ci.point_estimate,

@@ -6,10 +6,12 @@ benchmarking, interactive exploration, and managing configurations.
 
 import argparse
 import asyncio
+import html
 import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -22,7 +24,9 @@ from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runner import (
     run_experiment_from_config,
     run_experiment_from_config_async,
+    run_harness_from_config,
 )
+from insideLLMs.types import ExperimentResult
 
 # ============================================================================
 # Console Output Utilities (works without external dependencies)
@@ -123,28 +127,163 @@ def print_subheader(title: str) -> None:
 
 def print_success(message: str) -> None:
     """Print a success message."""
-    print(colorize("✓ ", Colors.BRIGHT_GREEN) + message)
+    print(colorize("OK ", Colors.BRIGHT_GREEN) + message)
 
 
 def print_error(message: str) -> None:
     """Print an error message."""
-    print(colorize("✗ ", Colors.BRIGHT_RED) + colorize(message, Colors.RED), file=sys.stderr)
+    print(colorize("ERROR ", Colors.BRIGHT_RED) + colorize(message, Colors.RED), file=sys.stderr)
 
 
 def print_warning(message: str) -> None:
     """Print a warning message."""
-    print(colorize("⚠ ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW))
+    print(colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW))
 
 
 def print_info(message: str) -> None:
     """Print an info message."""
-    print(colorize("ℹ ", Colors.BRIGHT_BLUE) + message)
+    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message)
 
 
 def print_key_value(key: str, value: Any, indent: int = 2) -> None:
     """Print a key-value pair."""
     spaces = " " * indent
     print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}")
+
+
+def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
+    with open(output_path, "w") as f:
+        for record in records:
+            f.write(json.dumps(record, default=str) + "\n")
+
+
+def _format_percent(value: Optional[float]) -> str:
+    if value is None:
+        return "-"
+    return f"{value * 100:.1f}%"
+
+
+def _format_float(value: Optional[float]) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.3f}"
+
+
+def _build_basic_harness_report(
+    experiments: list[ExperimentResult],
+    summary: dict[str, Any],
+    title: str,
+) -> str:
+    rows = []
+    for experiment in experiments:
+        latencies = [r.latency_ms for r in experiment.results if r.latency_ms is not None]
+        avg_latency = sum(latencies) / len(latencies) if latencies else None
+        accuracy = experiment.score.accuracy if experiment.score else None
+        rows.append(
+            (
+                html.escape(experiment.model_info.name),
+                html.escape(experiment.probe_name),
+                _format_percent(experiment.success_rate),
+                _format_float(accuracy),
+                _format_float(avg_latency),
+            )
+        )
+
+    rows_html = "\n".join(
+        f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td>"
+        f"<td>{row[3]}</td><td>{row[4]}</td></tr>"
+        for row in rows
+    )
+
+    def summary_table(section: str) -> str:
+        items = summary.get(section, {})
+        lines = []
+        for name, stats in items.items():
+            success = stats.get("success_rate", {}).get("mean")
+            ci = stats.get("success_rate_ci", {})
+            ci_text = "-"
+            if ci and ci.get("lower") is not None and ci.get("upper") is not None:
+                ci_text = f"{ci.get('lower'):.3f}..{ci.get('upper'):.3f}"
+            lines.append(
+                f"<tr><td>{html.escape(name)}</td>"
+                f"<td>{_format_percent(success)}</td><td>{ci_text}</td></tr>"
+            )
+        return "\n".join(lines)
+
+    by_model_rows = summary_table("by_model")
+    by_probe_rows = summary_table("by_probe")
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; color: #222; }}
+    h1 {{ margin-bottom: 4px; }}
+    .meta {{ color: #666; margin-bottom: 16px; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+    th {{ background: #f5f5f5; }}
+    .section {{ margin-top: 24px; }}
+  </style>
+</head>
+<body>
+  <h1>{html.escape(title)}</h1>
+  <div class="meta">Generated {datetime.now(timezone.utc).isoformat()}</div>
+
+  <div class="section">
+    <h2>Model x Probe Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Probe</th>
+          <th>Success Rate</th>
+          <th>Accuracy</th>
+          <th>Avg Latency (ms)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows_html}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>By Model</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Success Rate</th>
+          <th>Success Rate CI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {by_model_rows}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>By Probe</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Probe</th>
+          <th>Success Rate</th>
+          <th>Success Rate CI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {by_probe_rows}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+"""
 
 
 class ProgressBar:
@@ -219,9 +358,9 @@ class Spinner:
     def stop(self, success: bool = True) -> None:
         """Stop the spinner with a final status."""
         if success:
-            print(f"\r{colorize('✓', Colors.GREEN)} {self.message}... done")
+            print(f"\r{colorize('OK', Colors.GREEN)} {self.message}... done")
         else:
-            print(f"\r{colorize('✗', Colors.RED)} {self.message}... failed")
+            print(f"\r{colorize('FAIL', Colors.RED)} {self.message}... failed")
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -339,6 +478,41 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         default="insidellms",
         help="Project name for experiment tracking",
+    )
+
+    # =========================================================================
+    # Harness command
+    # =========================================================================
+    harness_parser = subparsers.add_parser(
+        "harness",
+        help="Run a cross-model probe harness",
+        formatter_class=CustomFormatter,
+    )
+    harness_parser.add_argument(
+        "config",
+        type=str,
+        help="Path to the harness configuration file",
+    )
+    harness_parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=str,
+        help="Output directory for results, summary, and report",
+    )
+    harness_parser.add_argument(
+        "--report-title",
+        type=str,
+        help="Title for the HTML report",
+    )
+    harness_parser.add_argument(
+        "--skip-report",
+        action="store_true",
+        help="Skip generating the HTML report",
+    )
+    harness_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed progress and tracebacks",
     )
 
     # =========================================================================
@@ -688,7 +862,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         elif args.format == "summary":
             # Minimal summary output
             print(
-                f"✓ {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
+                f"OK {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
             )
         else:  # table format
             print_subheader("Results Summary")
@@ -714,9 +888,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print_subheader("Sample Results")
             for i, r in enumerate(results[:5]):
                 status_icon = (
-                    colorize("✓", Colors.GREEN)
+                    colorize("OK", Colors.GREEN)
                     if r.get("status") == "success"
-                    else colorize("✗", Colors.RED)
+                    else colorize("FAIL", Colors.RED)
                 )
                 inp = str(r.get("input", ""))[:50]
                 if len(str(r.get("input", ""))) > 50:
@@ -730,6 +904,96 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     except Exception as e:
         print_error(f"Error running experiment: {e}")
+        if args.verbose:
+            import traceback
+
+            traceback.print_exc()
+        return 1
+
+
+def cmd_harness(args: argparse.Namespace) -> int:
+    """Execute the harness command."""
+    config_path = Path(args.config)
+
+    if not config_path.exists():
+        print_error(f"Config file not found: {config_path}")
+        return 1
+
+    print_header("Running Behavioural Harness")
+    print_key_value("Config", config_path)
+
+    progress_bar: Optional[ProgressBar] = None
+
+    def progress_callback(current: int, total: int) -> None:
+        nonlocal progress_bar
+        if not args.verbose:
+            return
+        if progress_bar is None:
+            progress_bar = ProgressBar(total, prefix="Evaluating")
+        progress_bar.update(current)
+
+    try:
+        start_time = time.time()
+        result = run_harness_from_config(
+            config_path,
+            progress_callback=progress_callback if args.verbose else None,
+        )
+        elapsed = time.time() - start_time
+
+        if progress_bar:
+            progress_bar.finish()
+
+        output_dir = (
+            Path(args.output_dir)
+            if args.output_dir
+            else Path(result["config"].get("output_dir", "results"))
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        results_path = output_dir / "results.jsonl"
+        summary_path = output_dir / "summary.json"
+        report_path = output_dir / "report.html"
+
+        _write_jsonl(result["records"], results_path)
+        print_success(f"Results written to: {results_path}")
+
+        summary_payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "summary": result["summary"],
+            "config": result["config"],
+        }
+        with open(summary_path, "w") as f:
+            json.dump(summary_payload, f, indent=2, default=str)
+        print_success(f"Summary written to: {summary_path}")
+
+        if not args.skip_report:
+            report_title = args.report_title or result["config"].get(
+                "report_title", "Behavioural Probe Report"
+            )
+            try:
+                from insideLLMs.visualization import create_interactive_html_report
+
+                create_interactive_html_report(
+                    result["experiments"],
+                    title=report_title,
+                    save_path=str(report_path),
+                )
+            except ImportError:
+                report_html = _build_basic_harness_report(
+                    result["experiments"],
+                    result["summary"],
+                    report_title,
+                )
+                with open(report_path, "w") as f:
+                    f.write(report_html)
+
+            print_success(f"Report written to: {report_path}")
+
+        print_key_value("Elapsed", f"{elapsed:.2f}s")
+        return 0
+
+    except Exception as e:
+        print_error(f"Error running harness: {e}")
         if args.verbose:
             import traceback
 
@@ -1426,12 +1690,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
         if errors:
             print_subheader("Errors")
             for e in errors:
-                print(f"  {colorize('✗', Colors.RED)} {e}")
+                print(f"  {colorize('ERROR', Colors.RED)} {e}")
 
         if warnings:
             print_subheader("Warnings")
             for w in warnings:
-                print(f"  {colorize('⚠', Colors.YELLOW)} {w}")
+                print(f"  {colorize('WARN', Colors.YELLOW)} {w}")
 
         if not errors:
             print()
@@ -1556,6 +1820,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     commands = {
         "run": cmd_run,
+        "harness": cmd_harness,
         "list": cmd_list,
         "init": cmd_init,
         "info": cmd_info,
