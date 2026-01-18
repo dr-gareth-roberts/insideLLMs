@@ -21,14 +21,14 @@
 
 ---
 
-**insideLLMs** is a battle-tested Python library that gives you everything you need to understand, evaluate, and deploy large language models in production. With **93 modules**, **113,000+ lines of code**, and **3,098 tests**, it's the most comprehensive LLM toolkit available.
+**insideLLMs** is a battle-tested Python library that gives you everything you need to understand, evaluate, and deploy large language models in production. **93 modules**, **113,000+ lines of code**, and **3,098 tests**.
 
 ```python
 from insideLLMs import ProbeRunner, LogicProbe
 from insideLLMs.models import OpenAIModel
 
 # Evaluate any LLM in 3 lines
-model = OpenAIModel("gpt-4")
+model = OpenAIModel("gpt-4o")
 results = ProbeRunner(model, LogicProbe()).run([
     "If all cats are mammals and all mammals breathe, do all cats breathe?"
 ])
