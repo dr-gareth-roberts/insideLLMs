@@ -17,6 +17,7 @@ import time
 import uuid
 from dataclasses import is_dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
@@ -70,6 +71,19 @@ def _json_default(obj: Any) -> Any:
 
     if isinstance(obj, datetime):
         return obj.isoformat()
+    if isinstance(obj, Enum):
+        return obj.value
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, (set, frozenset)):
+        values = list(obj)
+        try:
+            return sorted(values)
+        except TypeError:
+            return sorted(
+                values,
+                key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
+            )
     if is_dataclass(obj) and not isinstance(obj, type):
         # Avoid importing asdict here; dataclass instances are rare in CLI outputs.
         return obj.__dict__
@@ -278,9 +292,8 @@ def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
 
 
 def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
-    harness = (
-        record.get("custom", {}).get("harness") if isinstance(record.get("custom"), dict) else {}
-    )
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
     model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
     probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
 
@@ -296,9 +309,10 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
         or harness.get("probe_name")
         or "probe"
     )
+    replicate_key = custom.get("replicate_key")
     example_id = record.get("example_id") or harness.get("example_index")
     stable_id = record.get("messages_hash") or _fingerprint_value(record.get("input"))
-    chosen_id = stable_id or example_id or "0"
+    chosen_id = replicate_key or stable_id or example_id or "0"
     return (str(model_id), str(probe_id), str(chosen_id))
 
 
@@ -341,6 +355,10 @@ def _output_text(record: dict[str, Any]) -> Optional[str]:
 
 
 def _output_fingerprint(record: dict[str, Any]) -> Optional[str]:
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    override = custom.get("output_fingerprint")
+    if isinstance(override, str):
+        return override
     output = record.get("output")
     if output is None:
         return None

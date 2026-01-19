@@ -3,8 +3,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
-from insideLLMs.runner import _deterministic_base_time, _deterministic_item_times
+from insideLLMs.runner import (
+    _deterministic_base_time,
+    _deterministic_item_times,
+    _fingerprint_value,
+    _replicate_key,
+)
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
 
@@ -13,6 +19,8 @@ def _write_harness_records(
     run_id: str,
     outputs: list[str],
     *,
+    inputs: list[dict[str, Any]] | None = None,
+    example_ids: list[str] | None = None,
     scores: list[float] | None = None,
     statuses: list[str] | None = None,
     errors: list[str | None] | None = None,
@@ -29,23 +37,41 @@ def _write_harness_records(
         status = status_values[index] if index < len(status_values) else status_values[-1]
         error = error_values[index] if index < len(error_values) else error_values[-1]
         started_at, completed_at = _deterministic_item_times(base_time, index)
+        input_item = inputs[index] if inputs and index < len(inputs) else {"question": f"Q{index}?"}
+        example_id = (
+            example_ids[index]
+            if example_ids and index < len(example_ids)
+            else str(index)
+        )
+        input_hash = _fingerprint_value(input_item)
+        model_spec = {"model_id": "dummy-1", "provider": "dummy", "params": {}}
+        probe_spec = {"probe_id": "logic", "probe_version": None, "params": {}}
+        dataset_spec = {
+            "dataset_id": "canary-ds",
+            "dataset_version": None,
+            "dataset_hash": None,
+            "provenance": "jsonl",
+            "params": {},
+        }
+        replicate_key = _replicate_key(
+            model_spec=model_spec,
+            probe_spec=probe_spec,
+            dataset_spec=dataset_spec,
+            example_id=example_id,
+            record_index=index,
+            input_hash=input_hash,
+        )
         records.append(
             {
                 "schema_version": DEFAULT_SCHEMA_VERSION,
                 "run_id": run_id,
                 "started_at": started_at.isoformat(),
                 "completed_at": completed_at.isoformat(),
-                "model": {"model_id": "dummy-1", "provider": "dummy", "params": {}},
-                "probe": {"probe_id": "logic", "probe_version": None, "params": {}},
-                "dataset": {
-                    "dataset_id": "canary-ds",
-                    "dataset_version": None,
-                    "dataset_hash": None,
-                    "provenance": "jsonl",
-                    "params": {},
-                },
-                "example_id": str(index),
-                "input": {"question": f"Q{index}?"},
+                "model": model_spec,
+                "probe": probe_spec,
+                "dataset": dataset_spec,
+                "example_id": example_id,
+                "input": input_item,
                 "output": output_text,
                 "output_text": output_text,
                 "scores": {"score": score},
@@ -56,6 +82,8 @@ def _write_harness_records(
                 "error": error,
                 "error_type": "RuntimeError" if error else None,
                 "custom": {
+                    "replicate_key": replicate_key,
+                    "record_index": index,
                     "harness": {
                         "experiment_id": "exp-canary",
                         "model_type": "dummy",
@@ -67,7 +95,7 @@ def _write_harness_records(
                         "dataset": "canary-ds",
                         "dataset_format": "jsonl",
                         "example_index": index,
-                    }
+                    },
                 },
             }
         )
@@ -174,3 +202,23 @@ def test_diff_fail_on_regressions_exit_code(tmp_path):
         repo_root,
         expected_code=2,
     )
+
+
+def test_diff_handles_replicates(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+    repeated_inputs = [{"question": "Same prompt"}] * 2
+
+    _write_harness_records(baseline_dir, run_id, ["A", "A"], inputs=repeated_inputs)
+    _write_harness_records(candidate_dir, run_id, ["A", "B"], inputs=repeated_inputs)
+
+    output = _run_cli(
+        ["diff", str(baseline_dir), str(candidate_dir)],
+        _seeded_env("0"),
+        repo_root,
+    )
+
+    assert "Common keys: 2" in output

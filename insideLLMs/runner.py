@@ -457,6 +457,15 @@ def _serialize_value(value: Any) -> Any:
         return {k: _serialize_value(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_serialize_value(v) for v in value]
+    if isinstance(value, (set, frozenset)):
+        normalized = [_serialize_value(v) for v in value]
+        try:
+            return sorted(normalized)
+        except TypeError:
+            return sorted(
+                normalized,
+                key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
+            )
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     # Last-resort: keep JSONL/manifest emission resilient even for exotic objects.
@@ -480,12 +489,40 @@ def _deterministic_hash(payload: Any) -> str:
     return hashlib.sha256(_stable_json_dumps(payload).encode("utf-8")).hexdigest()
 
 
+def _fingerprint_value(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
+
+
 def _hash_prompt_set(prompt_set: list[Any]) -> str:
     hasher = hashlib.sha256()
     for item in prompt_set:
         hasher.update(_stable_json_dumps(item).encode("utf-8"))
         hasher.update(b"\n")
     return hasher.hexdigest()
+
+
+def _replicate_key(
+    *,
+    model_spec: dict[str, Any],
+    probe_spec: dict[str, Any],
+    dataset_spec: dict[str, Any],
+    example_id: str,
+    record_index: int,
+    input_hash: Optional[str],
+) -> str:
+    payload = {
+        "model_id": model_spec.get("model_id"),
+        "probe_id": probe_spec.get("probe_id"),
+        "dataset_id": dataset_spec.get("dataset_id"),
+        "dataset_version": dataset_spec.get("dataset_version"),
+        "dataset_hash": dataset_spec.get("dataset_hash"),
+        "example_id": example_id,
+        "record_index": record_index,
+        "input_hash": input_hash,
+    }
+    return _deterministic_hash(payload)[:16]
 
 
 def _deterministic_run_id_from_config_snapshot(
@@ -683,12 +720,26 @@ def _build_result_record(
         except Exception:
             messages_hash = None
 
+    input_fingerprint = _fingerprint_value(item)
+    replicate_key = _replicate_key(
+        model_spec=model,
+        probe_spec=probe,
+        dataset_spec=dataset,
+        example_id=example_id,
+        record_index=index,
+        input_hash=messages_hash or input_fingerprint,
+    )
+
     # Derive output_text / scoring fields (best-effort)
     output_text = None
     if isinstance(output, str):
         output_text = output
     elif isinstance(output, dict):
         output_text = output.get("output_text") or output.get("text")
+
+    output_fingerprint = None
+    if output is not None and not isinstance(output, str):
+        output_fingerprint = _fingerprint_value(output)
 
     scores: dict[str, Any] = {}
     usage: dict[str, Any] = {}
@@ -729,7 +780,11 @@ def _build_result_record(
         "status": status,
         "error": err_str,
         "error_type": err_type,
-        "custom": {},
+        "custom": {
+            "replicate_key": replicate_key,
+            "record_index": index,
+            "output_fingerprint": output_fingerprint,
+        },
     }
 
 
@@ -1644,20 +1699,22 @@ def run_harness_from_config(
 
                 # Keep harness-specific grouping fields, but nest them under `custom`
                 # so the top-level record matches the standard ResultRecord schema.
-                record["custom"] = {
-                    "harness": {
-                        "experiment_id": experiment.experiment_id,
-                        "model_type": model_config.get("type"),
-                        "model_name": model_info.name,
-                        "model_id": model_info.model_id,
-                        "probe_type": probe_config.get("type"),
-                        "probe_name": probe.name,
-                        "probe_category": probe_category_str,
-                        "dataset": dataset_ref,
-                        "dataset_format": dataset_format,
-                        "example_index": example_index,
-                    }
+                record_custom = (
+                    record.get("custom") if isinstance(record.get("custom"), dict) else {}
+                )
+                record_custom["harness"] = {
+                    "experiment_id": experiment.experiment_id,
+                    "model_type": model_config.get("type"),
+                    "model_name": model_info.name,
+                    "model_id": model_info.model_id,
+                    "probe_type": probe_config.get("type"),
+                    "probe_name": probe.name,
+                    "probe_category": probe_category_str,
+                    "dataset": dataset_ref,
+                    "dataset_format": dataset_format,
+                    "example_index": example_index,
                 }
+                record["custom"] = record_custom
                 records.append(record)
 
     summary = generate_summary_report(
