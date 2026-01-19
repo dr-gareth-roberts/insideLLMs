@@ -2270,7 +2270,24 @@ def cmd_diff(args: argparse.Namespace) -> int:
         if not metrics_compared and (score_a is not None or score_b is not None):
             reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
             detail = _metric_mismatch_details(record_a, record_b)
-            changes.append((*label, f"metrics_not_comparable:{reason}; {detail}"))
+            changes.append((*label, f"metrics not comparable:{reason}; {detail}"))
+
+        if metrics_compared and status_a == "success" and status_b == "success":
+            scores_a = record_a.get("scores") if isinstance(record_a.get("scores"), dict) else None
+            scores_b = record_b.get("scores") if isinstance(record_b.get("scores"), dict) else None
+            if isinstance(scores_a, dict) and isinstance(scores_b, dict):
+                keys_a = sorted(scores_a.keys())
+                keys_b = sorted(scores_b.keys())
+                missing_in_b = sorted(set(keys_a) - set(keys_b))
+                missing_in_a = sorted(set(keys_b) - set(keys_a))
+                if missing_in_a or missing_in_b:
+                    changes.append(
+                        (
+                            *label,
+                            "metric_key_missing: "
+                            f"baseline_missing={missing_in_a}, candidate_missing={missing_in_b}",
+                        )
+                    )
 
         output_a = _output_text(record_a)
         output_b = _output_text(record_b)

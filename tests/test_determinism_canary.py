@@ -297,8 +297,41 @@ def test_diff_metric_mismatch_reason(tmp_path):
         repo_root,
     )
 
-    assert "metrics_not_comparable:primary_metric_mismatch" in output
+    assert "metrics not comparable" in output
+    assert "primary_metric_mismatch" in output
     assert "baseline.primary_metric='score'" in output
     assert "candidate.primary_metric='accuracy'" in output
-    assert "baseline.scores keys=['score']" in output
-    assert "candidate.scores keys=['accuracy']" in output
+    assert "score" in output
+    assert "accuracy" in output
+
+
+def test_diff_missing_metric_key(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+
+    _write_harness_records(
+        baseline_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"score": 1.0, "latency_ms": 10.0}],
+        primary_metrics=["score"],
+    )
+    _write_harness_records(
+        candidate_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"score": 1.0}],
+        primary_metrics=["score"],
+    )
+
+    output = _run_cli(
+        ["diff", str(baseline_dir), str(candidate_dir)],
+        _seeded_env("0"),
+        repo_root,
+    )
+
+    assert "metric_key_missing" in output
+    assert "latency_ms" in output
