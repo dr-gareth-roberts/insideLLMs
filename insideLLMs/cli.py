@@ -354,12 +354,34 @@ def _output_text(record: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _output_fingerprint(record: dict[str, Any]) -> Optional[str]:
+def _strip_volatile_keys(value: Any, ignore_keys: set[str]) -> Any:
+    if isinstance(value, dict):
+        cleaned: dict[str, Any] = {}
+        for key, item in value.items():
+            key_str = str(key).lower()
+            if key_str in ignore_keys:
+                continue
+            cleaned[key] = _strip_volatile_keys(item, ignore_keys)
+        return cleaned
+    if isinstance(value, list):
+        return [_strip_volatile_keys(item, ignore_keys) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_strip_volatile_keys(item, ignore_keys) for item in value)
+    return value
+
+
+def _output_fingerprint(record: dict[str, Any], ignore_keys: Optional[set[str]] = None) -> Optional[str]:
+    output = record.get("output")
+    if ignore_keys:
+        if output is None:
+            return None
+        sanitized = _strip_volatile_keys(output, ignore_keys)
+        return _fingerprint_value(sanitized)
+
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     override = custom.get("output_fingerprint")
     if isinstance(override, str):
         return override
-    output = record.get("output")
     if output is None:
         return None
     return _fingerprint_value(output)
@@ -1039,6 +1061,15 @@ def create_parser() -> argparse.ArgumentParser:
         "--fail-on-regressions",
         action="store_true",
         help="Exit with non-zero status if regressions are detected",
+    )
+    diff_parser.add_argument(
+        "--output-fingerprint-ignore",
+        action="append",
+        default=[],
+        help=(
+            "Comma-separated output keys to ignore when fingerprinting structured outputs "
+            "(repeatable)."
+        ),
     )
 
     # =========================================================================
@@ -2095,6 +2126,15 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print_error("Both run directories must contain records to compare")
         return 1
 
+    ignore_keys: set[str] = set()
+    for entry in args.output_fingerprint_ignore or []:
+        for item in str(entry).split(","):
+            item = item.strip()
+            if item:
+                ignore_keys.add(item.lower())
+
+    ignore_keys_set = ignore_keys if ignore_keys else None
+
     def build_index(
         records: list[dict[str, Any]],
     ) -> tuple[dict[tuple[str, str, str], dict[str, Any]], int]:
@@ -2176,8 +2216,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             if output_a != output_b:
                 changes.append((*label, "output changed"))
         else:
-            fingerprint_a = _output_fingerprint(record_a)
-            fingerprint_b = _output_fingerprint(record_b)
+            fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys_set)
+            fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys_set)
             if fingerprint_a != fingerprint_b:
                 if fingerprint_a and fingerprint_b:
                     changes.append(

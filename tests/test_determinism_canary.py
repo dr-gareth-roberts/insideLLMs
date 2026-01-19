@@ -17,7 +17,7 @@ from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 def _write_harness_records(
     run_dir: Path,
     run_id: str,
-    outputs: list[str],
+    outputs: list[Any],
     *,
     inputs: list[dict[str, Any]] | None = None,
     example_ids: list[str] | None = None,
@@ -61,6 +61,9 @@ def _write_harness_records(
             record_index=index,
             input_hash=input_hash,
         )
+        output_value = output_text
+        output_text_value = output_text if isinstance(output_text, str) else None
+
         records.append(
             {
                 "schema_version": DEFAULT_SCHEMA_VERSION,
@@ -72,8 +75,8 @@ def _write_harness_records(
                 "dataset": dataset_spec,
                 "example_id": example_id,
                 "input": input_item,
-                "output": output_text,
-                "output_text": output_text,
+                "output": output_value,
+                "output_text": output_text_value,
                 "scores": {"score": score},
                 "primary_metric": "score",
                 "usage": {},
@@ -222,3 +225,32 @@ def test_diff_handles_replicates(tmp_path):
     )
 
     assert "Common keys: 2" in output
+
+
+def test_diff_ignores_output_keys(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+
+    baseline_output = {"answer": "A", "timestamp": "2024-01-01T00:00:00Z"}
+    candidate_output = {"answer": "A", "timestamp": "2024-01-02T00:00:00Z"}
+
+    _write_harness_records(baseline_dir, run_id, [baseline_output])
+    _write_harness_records(candidate_dir, run_id, [candidate_output])
+
+    output = _run_cli(
+        [
+            "diff",
+            str(baseline_dir),
+            str(candidate_dir),
+            "--output-fingerprint-ignore",
+            "timestamp",
+        ],
+        _seeded_env("0"),
+        repo_root,
+    )
+
+    assert "Other changes: 0" in output
+    assert "output changed" not in output
