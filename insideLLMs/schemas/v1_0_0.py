@@ -272,6 +272,102 @@ class ComparisonReport(_BaseSchema):
     significant_differences: dict[str, Any] = Field(default_factory=dict)
 
 
+class DiffRecordKey(_BaseSchema):
+    model_id: str
+    probe_id: str
+    item_id: str
+
+
+class DiffRecordLabel(_BaseSchema):
+    model: str
+    probe: str
+    example: str
+
+
+class DiffRecordIdentity(_BaseSchema):
+    record_key: DiffRecordKey
+    model_id: str
+    probe_id: str
+    example_id: str
+    replicate_key: Optional[str] = None
+    label: DiffRecordLabel
+
+
+class DiffOutputSummary(_BaseSchema):
+    type: Literal["text", "structured"]
+    preview: Optional[str] = None
+    length: Optional[int] = None
+    fingerprint: Optional[str] = None
+
+
+class DiffRecordSummary(_BaseSchema):
+    status: str
+    primary_metric: Optional[str] = None
+    primary_score: Optional[float] = None
+    scores_keys: Optional[list[str]] = None
+    output: Optional[DiffOutputSummary] = None
+
+
+class MetricContext(_BaseSchema):
+    primary_metric: Optional[str] = None
+    scores_keys: Optional[list[str]] = None
+    metric_value: Optional[Any] = None
+
+
+class MetricMismatchDetails(_BaseSchema):
+    baseline: MetricContext
+    candidate: MetricContext
+    replicate_key: Optional[str] = None
+
+
+class DiffChangeEntry(DiffRecordIdentity):
+    kind: str
+    baseline: Optional[DiffRecordSummary] = None
+    candidate: Optional[DiffRecordSummary] = None
+    detail: Optional[str] = None
+    metric: Optional[str] = None
+    delta: Optional[float] = None
+    reason: Optional[str] = None
+    details: Optional[MetricMismatchDetails] = None
+    baseline_missing: Optional[list[str]] = None
+    candidate_missing: Optional[list[str]] = None
+    baseline_fingerprint: Optional[str] = None
+    candidate_fingerprint: Optional[str] = None
+
+
+class DiffRunIds(_BaseSchema):
+    baseline: list[str] = Field(default_factory=list)
+    candidate: list[str] = Field(default_factory=list)
+
+
+class DiffCounts(_BaseSchema):
+    common: int
+    only_baseline: int
+    only_candidate: int
+    regressions: int
+    improvements: int
+    other_changes: int
+
+
+class DiffDuplicates(_BaseSchema):
+    baseline: int
+    candidate: int
+
+
+class DiffReport(_BaseSchema):
+    schema_version: str = Field(default=SCHEMA_VERSION)
+    baseline: str
+    candidate: str
+    run_ids: DiffRunIds
+    counts: DiffCounts
+    duplicates: DiffDuplicates
+    regressions: list[DiffChangeEntry] = Field(default_factory=list)
+    improvements: list[DiffChangeEntry] = Field(default_factory=list)
+    changes: list[DiffChangeEntry] = Field(default_factory=list)
+    only_baseline: list[DiffRecordIdentity] = Field(default_factory=list)
+    only_candidate: list[DiffRecordIdentity] = Field(default_factory=list)
+
+
 class ExportMetadata(_BaseSchema):
     """Metadata file included with export bundles."""
 
@@ -294,6 +390,7 @@ _SCHEMA_MAP = {
     "HarnessSummary": HarnessSummary,
     "BenchmarkSummary": BenchmarkSummary,
     "ComparisonReport": ComparisonReport,
+    "DiffReport": DiffReport,
     "ExportMetadata": ExportMetadata,
 }
 
