@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="insideLLMs.jpg" alt="insideLLMs" width="720">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
     <strong>Deterministic behavioural probe harness for LLM comparison</strong>
@@ -12,7 +13,6 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml"><img src="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/dr-gareth-roberts/insideLLMs"><img src="https://codecov.io/gh/dr-gareth-roberts/insideLLMs/branch/main/graph/badge.svg" alt="Coverage"></a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
