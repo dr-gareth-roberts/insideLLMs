@@ -397,6 +397,72 @@ def _primary_score(record: dict[str, Any]) -> tuple[Optional[str], Optional[floa
     return None, None
 
 
+def _metric_mismatch_reason(record_a: dict[str, Any], record_b: dict[str, Any]) -> Optional[str]:
+    scores_a = record_a.get("scores")
+    scores_b = record_b.get("scores")
+    if not isinstance(scores_a, dict) or not isinstance(scores_b, dict):
+        return "type_mismatch"
+
+    keys_a = sorted(scores_a.keys())
+    keys_b = sorted(scores_b.keys())
+    if not keys_a or not keys_b:
+        return "missing_scores"
+
+    primary_a = record_a.get("primary_metric")
+    primary_b = record_b.get("primary_metric")
+    if primary_a and primary_b and primary_a != primary_b:
+        return "primary_metric_mismatch"
+    if not primary_a or not primary_b:
+        return "missing_primary_metric"
+
+    if primary_a not in scores_a or primary_b not in scores_b:
+        return "metric_key_missing"
+
+    value_a = scores_a.get(primary_a)
+    value_b = scores_b.get(primary_b)
+    if not isinstance(value_a, (int, float)) or not isinstance(value_b, (int, float)):
+        return "non_numeric_metric"
+
+    return "type_mismatch"
+
+
+def _metric_mismatch_details(record_a: dict[str, Any], record_b: dict[str, Any]) -> str:
+    scores_a = record_a.get("scores")
+    scores_b = record_b.get("scores")
+    primary_a = record_a.get("primary_metric")
+    primary_b = record_b.get("primary_metric")
+
+    keys_a = sorted(scores_a.keys()) if isinstance(scores_a, dict) else None
+    keys_b = sorted(scores_b.keys()) if isinstance(scores_b, dict) else None
+
+    details = [
+        f"baseline.primary_metric={primary_a!r}",
+        f"candidate.primary_metric={primary_b!r}",
+    ]
+
+    if keys_a is not None:
+        details.append(f"baseline.scores keys={keys_a!r}")
+    else:
+        details.append(f"baseline.scores type={type(scores_a).__name__}")
+
+    if keys_b is not None:
+        details.append(f"candidate.scores keys={keys_b!r}")
+    else:
+        details.append(f"candidate.scores type={type(scores_b).__name__}")
+
+    if isinstance(scores_a, dict) and primary_a in scores_a:
+        details.append(f"baseline.{primary_a}={scores_a.get(primary_a)!r}")
+    if isinstance(scores_b, dict) and primary_b in scores_b:
+        details.append(f"candidate.{primary_b}={scores_b.get(primary_b)!r}")
+
+    custom = record_a.get("custom") if isinstance(record_a.get("custom"), dict) else {}
+    replicate_key = custom.get("replicate_key")
+    if replicate_key:
+        details.append(f"replicate_key={replicate_key}")
+
+    return "; ".join(details)
+
+
 def _build_experiments_from_records(
     records: list[dict[str, Any]],
 ) -> tuple[list[ExperimentResult], dict[str, Any], str]:
@@ -2202,13 +2268,9 @@ def cmd_diff(args: argparse.Namespace) -> int:
                 )
 
         if not metrics_compared and (score_a is not None or score_b is not None):
-            changes.append(
-                (
-                    *label,
-                    f"metrics not comparable (baseline: {score_name_a or 'none'}, "
-                    f"comparison: {score_name_b or 'none'})",
-                )
-            )
+            reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
+            detail = _metric_mismatch_details(record_a, record_b)
+            changes.append((*label, f"metrics_not_comparable:{reason}; {detail}"))
 
         output_a = _output_text(record_a)
         output_b = _output_text(record_b)
