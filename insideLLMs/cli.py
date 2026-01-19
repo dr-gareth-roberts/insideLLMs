@@ -2027,6 +2027,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
             registry.HARNESS_SUMMARY,
             registry.BENCHMARK_SUMMARY,
             registry.COMPARISON_REPORT,
+            registry.DIFF_REPORT,
             registry.EXPORT_METADATA,
         ]
         for name in schema_names:
@@ -2495,6 +2496,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
             )
 
     diff_report = {
+        "schema_version": DEFAULT_SCHEMA_VERSION,
         "baseline": str(run_dir_a),
         "candidate": str(run_dir_b),
         "run_ids": {

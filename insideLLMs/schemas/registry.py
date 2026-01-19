@@ -58,6 +58,7 @@ class SchemaRegistry:
     HARNESS_SUMMARY = "HarnessSummary"  # summary.json payload
     BENCHMARK_SUMMARY = "BenchmarkSummary"  # benchmark run output
     COMPARISON_REPORT = "ComparisonReport"  # comparison output
+    DIFF_REPORT = "DiffReport"  # diff.json output
     EXPORT_METADATA = "ExportMetadata"  # export bundle metadata
 
     def __init__(self) -> None:
@@ -73,6 +74,7 @@ class SchemaRegistry:
             self.HARNESS_SUMMARY,
             self.BENCHMARK_SUMMARY,
             self.COMPARISON_REPORT,
+            self.DIFF_REPORT,
             self.EXPORT_METADATA,
         }:
             return []

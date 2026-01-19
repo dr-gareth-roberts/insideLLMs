@@ -480,6 +480,13 @@ insidellms diff ./runs/baseline ./runs/candidate --fail-on-regressions
 
 CI gating tip: `insidellms diff --fail-on-regressions` exits non-zero on behavioural regressions, so CI can fail the job. Keep the baseline `records.jsonl` somewhere durable (repo or artefact storage).
 
+Machine-readable diff output (DiffReport schema):
+
+```bash
+insidellms diff ./baseline ./candidate --format json --output diff.json
+insidellms schema DiffReport > diff.schema.json
+```
+
 ```bash
 # General help
 insidellms --help
