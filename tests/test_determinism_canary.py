@@ -8,12 +8,26 @@ from insideLLMs.runner import _deterministic_base_time, _deterministic_item_time
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
 
-def _write_harness_records(run_dir: Path, run_id: str, outputs: list[str]) -> None:
+def _write_harness_records(
+    run_dir: Path,
+    run_id: str,
+    outputs: list[str],
+    *,
+    scores: list[float] | None = None,
+    statuses: list[str] | None = None,
+    errors: list[str | None] | None = None,
+) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
     base_time = _deterministic_base_time(run_id)
 
     records = []
+    score_values = scores or [1.0] * len(outputs)
+    status_values = statuses or ["success"] * len(outputs)
+    error_values = errors or [None] * len(outputs)
     for index, output_text in enumerate(outputs):
+        score = score_values[index] if index < len(score_values) else score_values[-1]
+        status = status_values[index] if index < len(status_values) else status_values[-1]
+        error = error_values[index] if index < len(error_values) else error_values[-1]
         started_at, completed_at = _deterministic_item_times(base_time, index)
         records.append(
             {
@@ -34,13 +48,13 @@ def _write_harness_records(run_dir: Path, run_id: str, outputs: list[str]) -> No
                 "input": {"question": f"Q{index}?"},
                 "output": output_text,
                 "output_text": output_text,
-                "scores": {"score": 1.0},
+                "scores": {"score": score},
                 "primary_metric": "score",
                 "usage": {},
                 "latency_ms": 1.0,
-                "status": "success",
-                "error": None,
-                "error_type": None,
+                "status": status,
+                "error": error,
+                "error_type": "RuntimeError" if error else None,
                 "custom": {
                     "harness": {
                         "experiment_id": "exp-canary",
@@ -64,7 +78,13 @@ def _write_harness_records(run_dir: Path, run_id: str, outputs: list[str]) -> No
             handle.write(json.dumps(record) + "\n")
 
 
-def _run_cli(args: list[str], env: dict[str, str], cwd: Path) -> str:
+def _run_cli(
+    args: list[str],
+    env: dict[str, str],
+    cwd: Path,
+    *,
+    expected_code: int = 0,
+) -> str:
     result = subprocess.run(
         [sys.executable, "-m", "insideLLMs.cli", *args],
         cwd=str(cwd),
@@ -73,7 +93,7 @@ def _run_cli(args: list[str], env: dict[str, str], cwd: Path) -> str:
         capture_output=True,
         check=False,
     )
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == expected_code, result.stderr
     return result.stdout
 
 
@@ -111,7 +131,13 @@ def test_diff_hash_seed_determinism(tmp_path):
     baseline_dir = tmp_path / "baseline"
     candidate_dir = tmp_path / "candidate"
     _write_harness_records(baseline_dir, run_id, ["A", "B"])
-    _write_harness_records(candidate_dir, run_id, ["A", "C"])
+    _write_harness_records(
+        candidate_dir,
+        run_id,
+        ["A", "C"],
+        statuses=["success", "error"],
+        errors=[None, "simulated failure"],
+    )
 
     out_a = _run_cli(
         ["diff", str(baseline_dir), str(candidate_dir)],
@@ -125,3 +151,26 @@ def test_diff_hash_seed_determinism(tmp_path):
     )
 
     assert out_a == out_b
+
+
+def test_diff_fail_on_regressions_exit_code(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+    _write_harness_records(baseline_dir, run_id, ["A", "B"])
+    _write_harness_records(
+        candidate_dir,
+        run_id,
+        ["A", "C"],
+        statuses=["success", "error"],
+        errors=[None, "simulated failure"],
+    )
+
+    _run_cli(
+        ["diff", str(baseline_dir), str(candidate_dir), "--fail-on-regressions"],
+        _seeded_env("0"),
+        repo_root,
+        expected_code=2,
+    )
