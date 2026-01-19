@@ -24,6 +24,7 @@ from contextlib import ExitStack
 from insideLLMs.config_types import RunConfig
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
+from insideLLMs.validation import ValidationError, validate_prompt_set
 from insideLLMs.registry import (
     NotFoundError,
     dataset_registry,
@@ -126,6 +127,9 @@ class ProbeRunner:
         dataset_info = dataset_info if dataset_info is not None else config.dataset_info
         config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
         store_messages = store_messages if store_messages is not None else config.store_messages
+
+        # Validate prompt set before execution
+        validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
@@ -888,6 +892,9 @@ class AsyncProbeRunner:
         dataset_info = dataset_info if dataset_info is not None else config.dataset_info
         config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
         store_messages = store_messages if store_messages is not None else config.store_messages
+
+        # Validate prompt set before execution
+        validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
