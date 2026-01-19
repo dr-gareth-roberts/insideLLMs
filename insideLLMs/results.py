@@ -13,6 +13,7 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Optional, Union
 
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.types import (
     BenchmarkComparison,
     ExperimentResult,
@@ -60,6 +61,11 @@ def save_results_json(
     results: Union[list[dict[str, Any]], list[ProbeResult], ExperimentResult],
     path: str,
     indent: int = 2,
+    *,
+    validate_output: bool = False,
+    schema_name: Optional[str] = None,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+    validation_mode: str = "strict",
 ) -> None:
     """Save results to a JSON file.
 
@@ -69,6 +75,42 @@ def save_results_json(
         indent: JSON indentation level.
     """
     serializable = _serialize_for_json(results)
+
+    if validate_output:
+        from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        registry = SchemaRegistry()
+        validator = OutputValidator(registry=registry)
+
+        if schema_name:
+            # If the caller specifies a schema, validate directly.
+            if isinstance(serializable, list):
+                for item in serializable:
+                    validator.validate(
+                        schema_name,
+                        item,
+                        schema_version=schema_version,
+                        mode=validation_mode,  # type: ignore[arg-type]
+                    )
+            else:
+                validator.validate(
+                    schema_name,
+                    serializable,
+                    schema_version=schema_version,
+                    mode=validation_mode,  # type: ignore[arg-type]
+                )
+        else:
+            # Heuristic: list of per-item runner results
+            if isinstance(serializable, list) and all(
+                isinstance(x, dict) and "input" in x and "status" in x for x in serializable
+            ):
+                for item in serializable:
+                    validator.validate(
+                        registry.RUNNER_ITEM,
+                        item,
+                        schema_version=schema_version,
+                        mode=validation_mode,  # type: ignore[arg-type]
+                    )
     with open(path, "w") as f:
         json.dump(serializable, f, indent=indent, default=str)
 

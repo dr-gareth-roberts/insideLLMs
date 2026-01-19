@@ -12,9 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pull request template
 - Security policy (SECURITY.md)
 - Code of Conduct
-- Comprehensive CI/CD with multi-Python version testing (3.9-3.12)
+- Comprehensive CI/CD with multi-Python version testing (3.10-3.12)
 - Coverage reporting with Codecov integration
 - Cross-model behavioural harness command with JSONL outputs, summary, and HTML report
+- Versioned output schemas with optional Pydantic validation (runner/results/export) and `insidellms schema` CLI utilities
 
 ## [0.1.0] - 2025-01-18
 

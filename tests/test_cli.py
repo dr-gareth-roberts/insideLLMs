@@ -157,11 +157,220 @@ class TestCreateParser:
         from insideLLMs.cli import create_parser
 
         parser = create_parser()
-        args = parser.parse_args(["run", "config.yaml", "--verbose", "--async"])
+        args = parser.parse_args(
+            [
+                "run",
+                "config.yaml",
+                "--verbose",
+                "--async",
+                "--run-dir",
+                "./runs/run-1",
+                "--run-root",
+                "./runs",
+                "--run-id",
+                "run-1",
+                "--overwrite",
+                "--validate-output",
+                "--schema-version",
+                "1.0.0",
+                "--validation-mode",
+                "warn",
+            ]
+        )
         assert args.command == "run"
         assert args.config == "config.yaml"
         assert args.verbose is True
         assert args.use_async is True
+        assert args.run_dir == "./runs/run-1"
+        assert args.run_root == "./runs"
+        assert args.run_id == "run-1"
+        assert args.overwrite is True
+        assert args.validate_output is True
+        assert args.schema_version == "1.0.0"
+        assert args.validation_mode == "warn"
+
+    def test_harness_command_args(self):
+        """Test harness command arguments."""
+        from insideLLMs.cli import create_parser
+
+        parser = create_parser()
+        args = parser.parse_args(
+            [
+                "harness",
+                "harness.yaml",
+                "--output-dir",
+                "./legacy_out",
+                "--run-dir",
+                "./runs/h-1",
+                "--run-root",
+                "./runs",
+                "--run-id",
+                "h-1",
+                "--overwrite",
+                "--skip-report",
+                "--validate-output",
+                "--schema-version",
+                "1.0.0",
+                "--validation-mode",
+                "warn",
+            ]
+        )
+        assert args.command == "harness"
+        assert args.config == "harness.yaml"
+        assert args.output_dir == "./legacy_out"
+        assert args.run_dir == "./runs/h-1"
+        assert args.run_root == "./runs"
+        assert args.run_id == "h-1"
+        assert args.overwrite is True
+        assert args.skip_report is True
+        assert args.validate_output is True
+        assert args.schema_version == "1.0.0"
+        assert args.validation_mode == "warn"
+
+
+class TestCmdRun:
+    """Test the run command end-to-end (including run_dir/run_root semantics)."""
+
+    def _write_minimal_yaml_config(self, tmp_path: Path) -> Path:
+        import yaml
+
+        data_path = tmp_path / "data.jsonl"
+        data_path.write_text('{"question": "Is 2+2=4?"}\n', encoding="utf-8")
+
+        config_path = tmp_path / "config.yaml"
+        config = {
+            "model": {"type": "dummy"},
+            "probe": {"type": "logic"},
+            "dataset": {
+                "path": str(data_path),
+                "format": "jsonl",
+                "input_field": "question",
+            },
+        }
+        config_path.write_text(yaml.dump(config), encoding="utf-8")
+        return config_path
+
+    def test_run_with_run_dir_writes_artifacts(self, tmp_path, capsys):
+        """--run-dir should be treated as the final directory for artifacts."""
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        config_path = self._write_minimal_yaml_config(tmp_path)
+        run_dir = tmp_path / "my_run_dir"
+
+        rc = main(
+            [
+                "run",
+                str(config_path),
+                "--format",
+                "summary",
+                "--run-dir",
+                str(run_dir),
+                "--run-id",
+                "run-123",
+            ]
+        )
+        assert rc == 0
+
+        assert (run_dir / "manifest.json").exists()
+        assert (run_dir / "records.jsonl").exists()
+        assert (run_dir / "config.resolved.yaml").exists()
+
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["run_id"] == "run-123"
+
+        captured = capsys.readouterr()
+        assert "Run written to:" in captured.out
+        assert str(run_dir) in captured.out
+
+    def test_run_with_run_root_and_run_id_forms_dir(self, tmp_path):
+        """When --run-dir is not set, the directory should be <run_root>/<run_id>."""
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        config_path = self._write_minimal_yaml_config(tmp_path)
+        run_root = tmp_path / "runs_root"
+        run_id = "run-xyz"
+
+        rc = main(
+            [
+                "run",
+                str(config_path),
+                "--format",
+                "summary",
+                "--run-root",
+                str(run_root),
+                "--run-id",
+                run_id,
+            ]
+        )
+        assert rc == 0
+
+        run_dir = run_root / run_id
+        assert (run_dir / "manifest.json").exists()
+        assert (run_dir / "records.jsonl").exists()
+        assert (run_dir / "config.resolved.yaml").exists()
+
+    def test_run_overwrite_policy(self, tmp_path):
+        """Existing non-empty run_dir should fail unless --overwrite is provided."""
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        config_path = self._write_minimal_yaml_config(tmp_path)
+        run_dir = tmp_path / "existing_run"
+        run_dir.mkdir(parents=True)
+        (run_dir / "keep.txt").write_text("do not keep", encoding="utf-8")
+
+        rc = main(["run", str(config_path), "--format", "summary", "--run-dir", str(run_dir)])
+        assert rc == 1
+
+        # With --overwrite but without a run sentinel, this should still refuse
+        # (critical safety guard).
+        rc = main(
+            [
+                "run",
+                str(config_path),
+                "--format",
+                "summary",
+                "--run-dir",
+                str(run_dir),
+                "--overwrite",
+            ]
+        )
+        assert rc == 1
+
+        # Add a sentinel marker to indicate this is an insideLLMs run directory.
+        (run_dir / ".insidellms_run").write_text("marker\n", encoding="utf-8")
+
+        rc = main(
+            [
+                "run",
+                str(config_path),
+                "--format",
+                "summary",
+                "--run-dir",
+                str(run_dir),
+                "--overwrite",
+            ]
+        )
+        assert rc == 0
+
+        assert not (run_dir / "keep.txt").exists()
+        assert (run_dir / "manifest.json").exists()
+        assert (run_dir / "records.jsonl").exists()
+        assert (run_dir / "config.resolved.yaml").exists()
 
     def test_quicktest_command_args(self):
         """Test quicktest command arguments."""
@@ -225,6 +434,27 @@ class TestCreateParser:
         assert args.command == "validate"
         assert args.config == "config.yaml"
 
+    def test_schema_command_args(self):
+        """Test schema command arguments."""
+        from insideLLMs.cli import create_parser
+
+        parser = create_parser()
+
+        args = parser.parse_args(["schema", "list"])
+        assert args.command == "schema"
+        assert args.op == "list"
+
+        args = parser.parse_args(["schema", "dump", "--name", "ProbeResult", "--version", "1.0.0"])
+        assert args.command == "schema"
+        assert args.op == "dump"
+        assert args.name == "ProbeResult"
+        assert args.version == "1.0.0"
+
+        # Shortcut form: `insidellms schema <SchemaName>`
+        args = parser.parse_args(["schema", "ProbeResult"])
+        assert args.command == "schema"
+        assert args.op == "ProbeResult"
+
     def test_export_command_args(self):
         """Test export command arguments."""
         from insideLLMs.cli import create_parser
@@ -235,6 +465,81 @@ class TestCreateParser:
         assert args.input == "results.json"
         assert args.format == "csv"
         assert args.output == "out.csv"
+
+
+class TestCmdHarness:
+    """Test the harness command emits a validate-able run directory."""
+
+    def _write_minimal_harness_yaml_config(self, tmp_path: Path) -> Path:
+        import yaml
+
+        data_path = tmp_path / "data.jsonl"
+        data_path.write_text(
+            '{"question": "What is 2 + 2?"}\n{"question": "What is 3 + 3?"}\n',
+            encoding="utf-8",
+        )
+
+        config_path = tmp_path / "harness.yaml"
+        config = {
+            "models": [{"type": "dummy", "args": {}}],
+            "probes": [{"type": "logic", "args": {}}],
+            "dataset": {"format": "jsonl", "path": str(data_path), "input_field": "question"},
+            "max_examples": 1,
+        }
+        config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+        return config_path
+
+    def test_harness_emits_run_dir_and_validate_succeeds(self, tmp_path, capsys):
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        config_path = self._write_minimal_harness_yaml_config(tmp_path)
+        run_dir = tmp_path / "harness_run"
+
+        rc = main(
+            [
+                "harness",
+                str(config_path),
+                "--run-dir",
+                str(run_dir),
+                "--run-id",
+                "harness-123",
+            ]
+        )
+        assert rc == 0
+
+        # Standardized run-dir artifacts
+        assert (run_dir / "manifest.json").exists()
+        assert (run_dir / "records.jsonl").exists()
+        assert (run_dir / "config.resolved.yaml").exists()
+        assert (run_dir / ".insidellms_run").exists()
+
+        # Backward-compatible harness outputs
+        assert (run_dir / "summary.json").exists()
+        assert (run_dir / "report.html").exists()
+        assert (run_dir / "results.jsonl").exists()
+
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["run_id"] == "harness-123"
+        assert manifest.get("records_file") == "records.jsonl"
+        assert manifest.get("custom", {}).get("harness")
+
+        # Records should be canonical ResultRecord lines with custom.harness nesting
+        first_line = (run_dir / "records.jsonl").read_text(encoding="utf-8").splitlines()[0]
+        record = json.loads(first_line)
+        assert record["run_id"] == "harness-123"
+        assert record.get("custom", {}).get("harness")
+
+        # Validate should succeed against manifest + records
+        rc = main(["validate", str(run_dir)])
+        assert rc == 0
+
+        captured = capsys.readouterr()
+        assert "Validate with:" in captured.out
 
 
 class TestMainFunction:
@@ -436,6 +741,111 @@ class TestCmdValidate:
 
         result = main(["validate", "nonexistent.yaml"])
         assert result == 1
+
+    def test_validate_run_dir_ok(self, tmp_path):
+        """Validate a run_dir containing manifest.json + records.jsonl."""
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        run_dir = tmp_path / "run"
+        run_dir.mkdir(parents=True)
+
+        manifest = {
+            "schema_version": "1.0.0",
+            "run_id": "run-1",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "started_at": "2026-01-01T00:00:00+00:00",
+            "completed_at": "2026-01-01T00:00:01+00:00",
+            "model": {"model_id": "dummy", "provider": "local", "params": {}},
+            "probe": {"probe_id": "logic", "probe_version": "1.0.0", "params": {}},
+            "dataset": {
+                "dataset_id": "unit",
+                "dataset_version": "1",
+                "dataset_hash": None,
+                "provenance": None,
+                "params": {},
+            },
+            "record_count": 1,
+            "success_count": 1,
+            "error_count": 0,
+            "records_file": "records.jsonl",
+            "schemas": {"RunManifest": "1.0.0", "ResultRecord": "1.0.0"},
+            "custom": {},
+        }
+
+        (run_dir / "manifest.json").write_text(json.dumps(manifest))
+
+        record = {
+            "schema_version": "1.0.0",
+            "run_id": "run-1",
+            "started_at": "2026-01-01T00:00:00+00:00",
+            "completed_at": "2026-01-01T00:00:01+00:00",
+            "model": {"model_id": "dummy", "provider": "local", "params": {}},
+            "probe": {"probe_id": "logic", "probe_version": "1.0.0", "params": {}},
+            "example_id": "ex-1",
+            "dataset": {
+                "dataset_id": "unit",
+                "dataset_version": "1",
+                "dataset_hash": None,
+                "provenance": None,
+                "params": {},
+            },
+            "status": "success",
+            "scores": {},
+            "usage": {},
+            "custom": {},
+        }
+        (run_dir / "records.jsonl").write_text(json.dumps(record) + "\n")
+
+        assert main(["validate", str(run_dir)]) == 0
+
+    def test_validate_run_dir_strict_and_warn(self, tmp_path):
+        """Strict should fail on bad record; warn should still exit 0."""
+        import importlib.util
+
+        if importlib.util.find_spec("pydantic") is None:
+            pytest.skip("pydantic not installed")
+
+        from insideLLMs.cli import main
+
+        run_dir = tmp_path / "run"
+        run_dir.mkdir(parents=True)
+
+        manifest = {
+            "schema_version": "1.0.0",
+            "run_id": "run-1",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "started_at": "2026-01-01T00:00:00+00:00",
+            "completed_at": "2026-01-01T00:00:01+00:00",
+            "model": {"model_id": "dummy", "provider": "local", "params": {}},
+            "probe": {"probe_id": "logic", "probe_version": "1.0.0", "params": {}},
+            "record_count": 1,
+            "success_count": 1,
+            "error_count": 0,
+            "records_file": "records.jsonl",
+            "schemas": {"RunManifest": "1.0.0", "ResultRecord": "1.0.0"},
+            "custom": {},
+        }
+        (run_dir / "manifest.json").write_text(json.dumps(manifest))
+
+        bad_record = {
+            "schema_version": "1.0.0",
+            # missing run_id
+            "started_at": "2026-01-01T00:00:00+00:00",
+            "completed_at": "2026-01-01T00:00:01+00:00",
+            "model": {"model_id": "dummy", "provider": "local", "params": {}},
+            "probe": {"probe_id": "logic", "probe_version": "1.0.0", "params": {}},
+            "example_id": "ex-1",
+            "status": "success",
+        }
+        (run_dir / "records.jsonl").write_text(json.dumps(bad_record) + "\n")
+
+        assert main(["validate", str(run_dir)]) == 1
+        assert main(["validate", str(run_dir), "--mode", "warn"]) == 0
 
 
 class TestCmdExport:

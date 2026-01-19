@@ -443,6 +443,41 @@ explorer.display()
 
 `insideLLMs` includes a command-line interface to run experiments and manage your project.
 
+Quickstart (deterministic run directory + validation):
+
+```bash
+insidellms run config.yaml --run-dir ./my_run
+# Creates: ./my_run/manifest.json, ./my_run/records.jsonl, ./my_run/config.resolved.yaml
+insidellms validate ./my_run
+```
+
+Official workflow (records-only spine):
+
+```bash
+# Run an experiment or harness
+insidellms run config.yaml
+insidellms harness harness.yaml
+
+# Rebuild summary/report without model calls
+insidellms report ./my_run
+
+# Compare runs in CI (non-zero exit on regressions)
+insidellms diff ./baseline ./candidate --fail-on-regressions
+```
+
+Baseline vs candidate example (avoid overwriting):
+
+```bash
+# Establish a baseline
+insidellms harness harness.yaml --run-dir ./runs/baseline
+insidellms report ./runs/baseline
+
+# Compare a new candidate
+insidellms harness harness.yaml --run-dir ./runs/candidate
+insidellms report ./runs/candidate
+insidellms diff ./runs/baseline ./runs/candidate --fail-on-regressions
+```
+
 ```bash
 # General help
 insidellms --help
@@ -488,6 +523,7 @@ The library uses environment variables for API authentication and configuration.
 - `HUGGINGFACEHUB_API_TOKEN`: Optional for private Hugging Face models.
 
 ### Configuration
+- `INSIDELLMS_RUN_ROOT`: Override the default run directory for artifacts (manifest/records/config).
 - `NO_COLOR`: If set to any value, disables colored output in the CLI.
 - `FORCE_COLOR`: If set to any value, forces colored output.
 

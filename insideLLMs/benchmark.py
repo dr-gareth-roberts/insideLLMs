@@ -1,4 +1,9 @@
-"""Benchmarking tools for comparing models."""
+"""Benchmarking tools for comparing models.
+
+Benchmark outputs are part of the library's public, serialized API surface.
+They include a `schema_version` field so downstream tooling can validate and
+evolve contracts in a SemVer-compatible way.
+"""
 
 import json
 import time
@@ -8,6 +13,7 @@ from typing import Any
 from insideLLMs.models import Model
 from insideLLMs.probes import Probe
 from insideLLMs.runner import run_probe
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
 
 def _to_serializable(obj: Any) -> Any:
@@ -26,7 +32,13 @@ class ModelBenchmark:
         self.name = name
         self.results = {}
 
-    def run(self, prompt_set: list[Any], **probe_kwargs) -> dict[str, Any]:
+    def run(
+        self,
+        prompt_set: list[Any],
+        *,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        **probe_kwargs,
+    ) -> dict[str, Any]:
         """Run the benchmark on all models.
 
         Args:
@@ -37,6 +49,7 @@ class ModelBenchmark:
             Dictionary with benchmark results
         """
         benchmark_results = {
+            "schema_version": schema_version,
             "name": self.name,
             "probe": self.probe.name,
             "models": [],
@@ -48,7 +61,13 @@ class ModelBenchmark:
             print(f"Benchmarking {model_info.name}...")
 
             start_time = time.time()
-            results = run_probe(model, self.probe, prompt_set, **probe_kwargs)
+            results = run_probe(
+                model,
+                self.probe,
+                prompt_set,
+                schema_version=schema_version,
+                **probe_kwargs,
+            )
             end_time = time.time()
 
             # Calculate metrics from the results
@@ -93,7 +112,12 @@ class ModelBenchmark:
         if not self.results or "models" not in self.results:
             raise ValueError("No benchmark results available. Run the benchmark first.")
 
-        comparison = {"name": self.name, "metrics": {}, "rankings": {}}
+        comparison = {
+            "schema_version": self.results.get("schema_version", DEFAULT_SCHEMA_VERSION),
+            "name": self.name,
+            "metrics": {},
+            "rankings": {},
+        }
 
         # Extract metrics for comparison
         model_metrics = {}
@@ -134,7 +158,13 @@ class ProbeBenchmark:
         self.name = name
         self.results = {}
 
-    def run(self, prompt_set: list[Any], **kwargs) -> dict[str, Any]:
+    def run(
+        self,
+        prompt_set: list[Any],
+        *,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        **kwargs,
+    ) -> dict[str, Any]:
         """Run the benchmark on all probes.
 
         Args:
@@ -145,6 +175,7 @@ class ProbeBenchmark:
             Dictionary with benchmark results
         """
         benchmark_results = {
+            "schema_version": schema_version,
             "name": self.name,
             "model": _to_serializable(self.model.info()),
             "probes": [],
@@ -155,7 +186,13 @@ class ProbeBenchmark:
             print(f"Benchmarking {probe.name}...")
 
             start_time = time.time()
-            results = run_probe(self.model, probe, prompt_set, **kwargs)
+            results = run_probe(
+                self.model,
+                probe,
+                prompt_set,
+                schema_version=schema_version,
+                **kwargs,
+            )
             end_time = time.time()
 
             probe_result = {

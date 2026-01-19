@@ -6,12 +6,17 @@ benchmarking, interactive exploration, and managing configurations.
 
 import argparse
 import asyncio
+import hashlib
 import html
 import json
 import os
+import platform
+import shutil
 import sys
 import time
-from datetime import datetime, timezone
+import uuid
+from dataclasses import is_dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -22,11 +27,54 @@ from insideLLMs.registry import (
 )
 from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runner import (
+    derive_run_id_from_config_path,
     run_experiment_from_config,
     run_experiment_from_config_async,
     run_harness_from_config,
 )
-from insideLLMs.types import ExperimentResult
+from insideLLMs.statistics import generate_summary_report
+from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
+from insideLLMs.types import (
+    ExperimentResult,
+    ModelInfo,
+    ProbeCategory,
+    ProbeResult,
+    ResultStatus,
+)
+
+
+def _add_output_schema_args(parser: argparse.ArgumentParser) -> None:
+    """Add common output schema validation arguments to a subcommand parser."""
+
+    parser.add_argument(
+        "--validate-output",
+        action="store_true",
+        help="Validate serialized outputs against a versioned schema (requires pydantic)",
+    )
+    parser.add_argument(
+        "--schema-version",
+        type=str,
+        default=DEFAULT_SCHEMA_VERSION,
+        help=f"Output schema version to emit/validate (default: {DEFAULT_SCHEMA_VERSION})",
+    )
+    parser.add_argument(
+        "--validation-mode",
+        choices=["strict", "warn"],
+        default="strict",
+        help="On schema mismatch: strict=error, warn=continue (default: strict)",
+    )
+
+
+def _json_default(obj: Any) -> Any:
+    """JSON default handler for CLI writes."""
+
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if is_dataclass(obj) and not isinstance(obj, type):
+        # Avoid importing asdict here; dataclass instances are rare in CLI outputs.
+        return obj.__dict__
+    return str(obj)
+
 
 # ============================================================================
 # Console Output Utilities (works without external dependencies)
@@ -152,9 +200,9 @@ def print_key_value(key: str, value: Any, indent: int = 2) -> None:
 
 
 def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         for record in records:
-            f.write(json.dumps(record, default=str) + "\n")
+            f.write(json.dumps(record, default=_json_default) + "\n")
 
 
 def _format_percent(value: Optional[float]) -> str:
@@ -169,10 +217,343 @@ def _format_float(value: Optional[float]) -> str:
     return f"{value:.3f}"
 
 
+def _parse_datetime(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _stable_json_dumps(value: Any) -> str:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=_json_default,
+    )
+
+
+def _fingerprint_value(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
+
+
+def _status_from_record(value: Any) -> ResultStatus:
+    if isinstance(value, ResultStatus):
+        return value
+    try:
+        return ResultStatus(str(value))
+    except Exception:
+        return ResultStatus.ERROR
+
+
+def _probe_category_from_value(value: Any) -> ProbeCategory:
+    if isinstance(value, ProbeCategory):
+        return value
+    try:
+        return ProbeCategory(str(value))
+    except Exception:
+        return ProbeCategory.CUSTOM
+
+
+def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    with open(path, encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON on line {line_no}: {e}") from e
+            if isinstance(obj, dict):
+                records.append(obj)
+    return records
+
+
+def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
+    harness = (
+        record.get("custom", {}).get("harness") if isinstance(record.get("custom"), dict) else {}
+    )
+    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
+    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+
+    model_id = (
+        harness.get("model_id")
+        or model_spec.get("model_id")
+        or harness.get("model_name")
+        or "model"
+    )
+    probe_id = (
+        harness.get("probe_type")
+        or probe_spec.get("probe_id")
+        or harness.get("probe_name")
+        or "probe"
+    )
+    example_id = record.get("example_id") or harness.get("example_index")
+    stable_id = record.get("messages_hash") or _fingerprint_value(record.get("input"))
+    chosen_id = stable_id or example_id or "0"
+    return (str(model_id), str(probe_id), str(chosen_id))
+
+
+def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
+    harness = (
+        record.get("custom", {}).get("harness") if isinstance(record.get("custom"), dict) else {}
+    )
+    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
+    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+
+    model_name = harness.get("model_name") or model_spec.get("model_id") or "model"
+    model_id = harness.get("model_id") or model_spec.get("model_id")
+    if model_id and model_id != model_name:
+        model_label = f"{model_name} ({model_id})"
+    else:
+        model_label = str(model_name)
+
+    probe_name = harness.get("probe_name") or probe_spec.get("probe_id") or "probe"
+    example_id = record.get("example_id") or harness.get("example_index") or "0"
+    return (str(model_label), str(probe_name), str(example_id))
+
+
+def _status_string(record: dict[str, Any]) -> str:
+    status = record.get("status")
+    return str(status) if status is not None else "unknown"
+
+
+def _output_text(record: dict[str, Any]) -> Optional[str]:
+    output_text = record.get("output_text")
+    if isinstance(output_text, str):
+        return output_text
+    output = record.get("output")
+    if isinstance(output, str):
+        return output
+    if isinstance(output, dict):
+        value = output.get("output_text") or output.get("text")
+        if isinstance(value, str):
+            return value
+    return None
+
+
+def _output_fingerprint(record: dict[str, Any]) -> Optional[str]:
+    output = record.get("output")
+    if output is None:
+        return None
+    return _fingerprint_value(output)
+
+
+def _primary_score(record: dict[str, Any]) -> tuple[Optional[str], Optional[float]]:
+    scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
+    metric = record.get("primary_metric")
+    if metric and metric in scores and isinstance(scores[metric], (int, float)):
+        return str(metric), float(scores[metric])
+    if "score" in scores and isinstance(scores["score"], (int, float)):
+        return "score", float(scores["score"])
+    return None, None
+
+
+def _build_experiments_from_records(
+    records: list[dict[str, Any]],
+) -> tuple[list[ExperimentResult], dict[str, Any], str]:
+    if not records:
+        return [], {"derived_from_records": True}, DEFAULT_SCHEMA_VERSION
+
+    schema_version = records[0].get("schema_version") or DEFAULT_SCHEMA_VERSION
+
+    harness_records = [
+        r
+        for r in records
+        if isinstance(r.get("custom"), dict) and isinstance(r["custom"].get("harness"), dict)
+    ]
+
+    experiments: list[ExperimentResult] = []
+    derived_config: dict[str, Any] = {"derived_from_records": True}
+
+    if harness_records:
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for record in harness_records:
+            harness = record.get("custom", {}).get("harness", {})
+            experiment_id = harness.get("experiment_id") or "unknown"
+            groups.setdefault(str(experiment_id), []).append(record)
+
+        models: dict[str, dict[str, Any]] = {}
+        probes: dict[str, dict[str, Any]] = {}
+        dataset_summary: dict[str, Any] = {}
+
+        for experiment_id, group_records in groups.items():
+            first = group_records[0]
+            harness = first.get("custom", {}).get("harness", {})
+
+            model_name = (
+                harness.get("model_name") or first.get("model", {}).get("model_id") or "model"
+            )
+            model_id = (
+                harness.get("model_id") or first.get("model", {}).get("model_id") or model_name
+            )
+            provider = (
+                first.get("model", {}).get("provider") or harness.get("model_type") or "unknown"
+            )
+            extra = first.get("model", {}).get("params") or {}
+
+            probe_name = (
+                harness.get("probe_name") or first.get("probe", {}).get("probe_id") or "probe"
+            )
+            probe_category = _probe_category_from_value(harness.get("probe_category"))
+
+            model_info = ModelInfo(
+                name=str(model_name),
+                provider=str(provider),
+                model_id=str(model_id),
+                extra=extra,
+            )
+
+            def _sort_key(item: dict[str, Any]) -> int:
+                harness_item = item.get("custom", {}).get("harness", {})
+                return int(harness_item.get("example_index", 0))
+
+            sorted_records = sorted(group_records, key=_sort_key)
+            probe_results = [
+                ProbeResult(
+                    input=record.get("input"),
+                    output=record.get("output"),
+                    status=_status_from_record(record.get("status")),
+                    error=record.get("error"),
+                    latency_ms=record.get("latency_ms"),
+                    metadata=record.get("custom") or {},
+                )
+                for record in sorted_records
+            ]
+
+            started_at = min(
+                (dt for dt in (_parse_datetime(r.get("started_at")) for r in group_records) if dt),
+                default=None,
+            )
+            completed_at = max(
+                (
+                    dt
+                    for dt in (_parse_datetime(r.get("completed_at")) for r in group_records)
+                    if dt
+                ),
+                default=None,
+            )
+
+            experiments.append(
+                ExperimentResult(
+                    experiment_id=experiment_id,
+                    model_info=model_info,
+                    probe_name=str(probe_name),
+                    probe_category=probe_category,
+                    results=probe_results,
+                    score=None,
+                    started_at=started_at,
+                    completed_at=completed_at,
+                    config={
+                        "model": {"type": harness.get("model_type")},
+                        "probe": {"type": harness.get("probe_type")},
+                        "dataset": {
+                            "name": harness.get("dataset"),
+                            "format": harness.get("dataset_format"),
+                        },
+                    },
+                )
+            )
+
+            if harness.get("model_type"):
+                models.setdefault(
+                    str(harness.get("model_type")), {"type": harness.get("model_type")}
+                )
+            if harness.get("probe_type"):
+                probes.setdefault(
+                    str(harness.get("probe_type")), {"type": harness.get("probe_type")}
+                )
+            if harness.get("dataset") and not dataset_summary:
+                dataset_summary = {
+                    "name": harness.get("dataset"),
+                    "format": harness.get("dataset_format"),
+                }
+
+        derived_config.update(
+            {
+                "models": list(models.values()),
+                "probes": list(probes.values()),
+                "dataset": dataset_summary,
+            }
+        )
+        return experiments, derived_config, schema_version
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        run_id = record.get("run_id") or "run"
+        groups.setdefault(str(run_id), []).append(record)
+
+    for run_id, group_records in groups.items():
+        first = group_records[0]
+        model_spec = first.get("model", {}) if isinstance(first.get("model"), dict) else {}
+        probe_spec = first.get("probe", {}) if isinstance(first.get("probe"), dict) else {}
+
+        model_id = model_spec.get("model_id") or "model"
+        model_name = model_spec.get("params", {}).get("name") or model_id
+        provider = model_spec.get("provider") or "unknown"
+        extra = model_spec.get("params") or {}
+
+        model_info = ModelInfo(
+            name=str(model_name),
+            provider=str(provider),
+            model_id=str(model_id),
+            extra=extra,
+        )
+
+        probe_name = probe_spec.get("probe_id") or "probe"
+        probe_category = ProbeCategory.CUSTOM
+
+        probe_results = [
+            ProbeResult(
+                input=record.get("input"),
+                output=record.get("output"),
+                status=_status_from_record(record.get("status")),
+                error=record.get("error"),
+                latency_ms=record.get("latency_ms"),
+                metadata=record.get("custom") or {},
+            )
+            for record in group_records
+        ]
+
+        started_at = min(
+            (dt for dt in (_parse_datetime(r.get("started_at")) for r in group_records) if dt),
+            default=None,
+        )
+        completed_at = max(
+            (dt for dt in (_parse_datetime(r.get("completed_at")) for r in group_records) if dt),
+            default=None,
+        )
+
+        experiments.append(
+            ExperimentResult(
+                experiment_id=run_id,
+                model_info=model_info,
+                probe_name=str(probe_name),
+                probe_category=probe_category,
+                results=probe_results,
+                score=None,
+                started_at=started_at,
+                completed_at=completed_at,
+                config={},
+            )
+        )
+
+    return experiments, derived_config, schema_version
+
+
 def _build_basic_harness_report(
     experiments: list[ExperimentResult],
     summary: dict[str, Any],
     title: str,
+    generated_at: Optional[datetime] = None,
 ) -> str:
     rows = []
     for experiment in experiments:
@@ -213,6 +594,10 @@ def _build_basic_harness_report(
     by_model_rows = summary_table("by_model")
     by_probe_rows = summary_table("by_probe")
 
+    meta_line = ""
+    if generated_at is not None:
+        meta_line = f'<div class="meta">Generated {generated_at.isoformat()}</div>'
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -230,7 +615,7 @@ def _build_basic_harness_report(
 </head>
 <body>
   <h1>{html.escape(title)}</h1>
-  <div class="meta">Generated {datetime.now(timezone.utc).isoformat()}</div>
+  {meta_line}
 
   <div class="section">
     <h2>Model x Probe Summary</h2>
@@ -448,6 +833,40 @@ def create_parser() -> argparse.ArgumentParser:
         default="table",
         help="Output format (default: table)",
     )
+
+    # Deterministic harness artifact location controls
+    run_parser.add_argument(
+        "--run-dir",
+        type=str,
+        default=None,
+        help=(
+            "Write run artifacts (manifest.json + records.jsonl) exactly to this directory. "
+            "(Final directory; overrides --run-root/--run-id.)"
+        ),
+    )
+    run_parser.add_argument(
+        "--run-root",
+        type=str,
+        default=None,
+        help=(
+            "Base directory for runs when --run-dir is not set (default: ~/.insidellms/runs). "
+            "The final directory is <run_root>/<run_id>."
+        ),
+    )
+    run_parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Set the run_id recorded in the manifest. Also used as the directory name when using --run-root. "
+            "If omitted, a random UUID is generated."
+        ),
+    )
+    run_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow overwriting an existing non-empty run directory (DANGEROUS).",
+    )
     run_parser.add_argument(
         "--async",
         dest="use_async",
@@ -480,6 +899,8 @@ def create_parser() -> argparse.ArgumentParser:
         help="Project name for experiment tracking",
     )
 
+    _add_output_schema_args(run_parser)
+
     # =========================================================================
     # Harness command
     # =========================================================================
@@ -497,7 +918,40 @@ def create_parser() -> argparse.ArgumentParser:
         "--output-dir",
         "-o",
         type=str,
-        help="Output directory for results, summary, and report",
+        help="Output directory for harness artifacts (alias for --run-dir; deprecated)",
+    )
+
+    harness_parser.add_argument(
+        "--run-dir",
+        type=str,
+        default=None,
+        help=(
+            "Write harness run artifacts (manifest.json + records.jsonl) exactly to this directory. "
+            "(Final directory; overrides --run-root/--run-id.)"
+        ),
+    )
+    harness_parser.add_argument(
+        "--run-root",
+        type=str,
+        default=None,
+        help=(
+            "Base directory for harness runs when --run-dir is not set. "
+            "The final directory is <run_root>/<run_id>."
+        ),
+    )
+    harness_parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Set the run_id recorded in the manifest. Also used as the directory name when using --run-root. "
+            "If omitted, a random UUID is generated."
+        ),
+    )
+    harness_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow overwriting an existing non-empty run directory (DANGEROUS).",
     )
     harness_parser.add_argument(
         "--report-title",
@@ -513,6 +967,101 @@ def create_parser() -> argparse.ArgumentParser:
         "--verbose",
         action="store_true",
         help="Show detailed progress and tracebacks",
+    )
+
+    _add_output_schema_args(harness_parser)
+
+    # =========================================================================
+    # Report command
+    # =========================================================================
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Rebuild summary.json and report.html from records.jsonl",
+        formatter_class=CustomFormatter,
+    )
+    report_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Run directory containing records.jsonl",
+    )
+    report_parser.add_argument(
+        "--report-title",
+        type=str,
+        help="Title for the HTML report",
+    )
+
+    # =========================================================================
+    # Diff command
+    # =========================================================================
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="Compare two run directories and show behavioural regressions",
+        formatter_class=CustomFormatter,
+    )
+    diff_parser.add_argument(
+        "run_dir_a",
+        type=str,
+        help="Baseline run directory",
+    )
+    diff_parser.add_argument(
+        "run_dir_b",
+        type=str,
+        help="Comparison run directory",
+    )
+    diff_parser.add_argument(
+        "--limit",
+        type=int,
+        default=25,
+        help="Maximum number of items to show per section (default: 25)",
+    )
+    diff_parser.add_argument(
+        "--fail-on-regressions",
+        action="store_true",
+        help="Exit with non-zero status if regressions are detected",
+    )
+
+    # =========================================================================
+    # Schema command
+    # =========================================================================
+    schema_parser = subparsers.add_parser(
+        "schema",
+        help="Inspect and validate versioned output schemas",
+        formatter_class=CustomFormatter,
+    )
+    schema_parser.add_argument(
+        "op",
+        nargs="?",
+        default="list",
+        help=(
+            "Operation: list | dump | validate | <SchemaName>. "
+            "Shortcut: `insidellms schema ProbeResult` dumps JSON Schema."
+        ),
+    )
+    schema_parser.add_argument(
+        "--name",
+        help="Schema name (optional when using shortcut form: `insidellms schema <SchemaName>`)",
+    )
+    schema_parser.add_argument(
+        "--version",
+        default=DEFAULT_SCHEMA_VERSION,
+        help=f"Schema version (default: {DEFAULT_SCHEMA_VERSION})",
+    )
+    schema_parser.add_argument(
+        "--input",
+        "-i",
+        help="Input file to validate (.json or .jsonl) (for op=validate)",
+    )
+    schema_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        help="Write JSON Schema to a file (for op=dump; otherwise prints to stdout)",
+    )
+    schema_parser.add_argument(
+        "--mode",
+        choices=["strict", "warn"],
+        default="strict",
+        help="On validation error: strict=exit non-zero, warn=continue",
     )
 
     # =========================================================================
@@ -762,13 +1311,25 @@ def create_parser() -> argparse.ArgumentParser:
     # =========================================================================
     validate_parser = subparsers.add_parser(
         "validate",
-        help="Validate a configuration file without running",
+        help="Validate a configuration file or a run directory (manifest + records.jsonl)",
         formatter_class=CustomFormatter,
     )
     validate_parser.add_argument(
         "config",
         type=str,
-        help="Path to the configuration file to validate",
+        help="Path to a config file (.yaml/.json) OR a run_dir containing manifest.json",
+    )
+    validate_parser.add_argument(
+        "--mode",
+        choices=["strict", "warn"],
+        default="strict",
+        help="On schema mismatch for run_dir validation: strict=exit non-zero, warn=continue",
+    )
+    validate_parser.add_argument(
+        "--schema-version",
+        type=str,
+        default=None,
+        help="Override schema version when validating a run_dir (defaults to manifest schema_version)",
     )
 
     # =========================================================================
@@ -825,6 +1386,30 @@ def cmd_run(args: argparse.Namespace) -> int:
     try:
         start_time = time.time()
 
+        # Resolve deterministic run artifact location (used for both runner and UX hints)
+        env_run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+        default_run_root = (
+            Path(env_run_root).expanduser().absolute()
+            if env_run_root
+            else Path.home() / ".insidellms" / "runs"
+        )
+        if args.run_id:
+            resolved_run_id = args.run_id
+        else:
+            resolved_run_id = derive_run_id_from_config_path(
+                config_path,
+                schema_version=args.schema_version,
+            )
+        # Use absolute paths to reduce surprise when users provide relative paths.
+        effective_run_root = (
+            Path(args.run_root).expanduser().absolute() if args.run_root else default_run_root
+        )
+        effective_run_dir = (
+            Path(args.run_dir).expanduser().absolute()
+            if args.run_dir
+            else (effective_run_root / resolved_run_id)
+        )
+
         if args.use_async:
             print_info(f"Using async execution with concurrency={args.concurrency}")
             results = asyncio.run(
@@ -832,12 +1417,28 @@ def cmd_run(args: argparse.Namespace) -> int:
                     config_path,
                     concurrency=args.concurrency,
                     progress_callback=progress_callback if args.verbose else None,
+                    validate_output=args.validate_output,
+                    schema_version=args.schema_version,
+                    validation_mode=args.validation_mode,
+                    emit_run_artifacts=True,
+                    run_dir=str(effective_run_dir) if args.run_dir else None,
+                    run_root=str(effective_run_root),
+                    run_id=resolved_run_id,
+                    overwrite=bool(args.overwrite),
                 )
             )
         else:
             results = run_experiment_from_config(
                 config_path,
                 progress_callback=progress_callback if args.verbose else None,
+                validate_output=args.validate_output,
+                schema_version=args.schema_version,
+                validation_mode=args.validation_mode,
+                emit_run_artifacts=True,
+                run_dir=str(effective_run_dir) if args.run_dir else None,
+                run_root=str(effective_run_root),
+                run_id=resolved_run_id,
+                overwrite=bool(args.overwrite),
             )
 
         elapsed = time.time() - start_time
@@ -852,7 +1453,13 @@ def cmd_run(args: argparse.Namespace) -> int:
 
         # Output results
         if args.output:
-            save_results_json(results, args.output)
+            save_results_json(
+                results,
+                args.output,
+                validate_output=args.validate_output,
+                schema_version=args.schema_version,
+                validation_mode=args.validation_mode,
+            )
             print_success(f"Results saved to: {args.output}")
 
         if args.format == "json":
@@ -900,6 +1507,12 @@ def cmd_run(args: argparse.Namespace) -> int:
             if len(results) > 5:
                 print(colorize(f"  ... and {len(results) - 5} more", Colors.DIM))
 
+        # UX sugar: make it obvious where artifacts landed and how to validate.
+        # Keep stdout JSON clean when --format json.
+        hint_stream = sys.stderr if args.format == "json" else sys.stdout
+        print(f"\nRun written to: {effective_run_dir}", file=hint_stream)
+        print(f"Validate with: insidellms validate {effective_run_dir}", file=hint_stream)
+
         return 0
 
     except Exception as e:
@@ -937,33 +1550,228 @@ def cmd_harness(args: argparse.Namespace) -> int:
         result = run_harness_from_config(
             config_path,
             progress_callback=progress_callback if args.verbose else None,
+            validate_output=args.validate_output,
+            schema_version=args.schema_version,
+            validation_mode=args.validation_mode,
         )
         elapsed = time.time() - start_time
 
         if progress_bar:
             progress_bar.finish()
 
-        output_dir = (
-            Path(args.output_dir)
-            if args.output_dir
-            else Path(result["config"].get("output_dir", "results"))
+        # -----------------------------------------------------------------
+        # Determine harness run directory and emit standardized run artifacts
+        # (manifest.json + records.jsonl + config.resolved.yaml + .insidellms_run)
+        # -----------------------------------------------------------------
+        from insideLLMs.runner import (
+            _build_resolved_config_snapshot,
+            _deterministic_base_time,
+            _deterministic_run_times,
+            _prepare_run_dir,
+            _serialize_value,
         )
-        output_dir.mkdir(parents=True, exist_ok=True)
+        from insideLLMs.schemas.registry import normalize_semver
 
-        results_path = output_dir / "results.jsonl"
+        resolved_run_id = args.run_id or result.get("run_id") or uuid.uuid4().hex
+
+        # Absolute paths reduce surprise when users pass relative paths.
+        effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
+        config_default_dir = (
+            Path(result["config"].get("output_dir", "results")).expanduser().absolute()
+        )
+
+        # Precedence: --run-dir > --output-dir (legacy alias) > --run-root/run-id > config output_dir
+        if args.run_dir:
+            output_dir = Path(args.run_dir).expanduser().absolute()
+        elif args.output_dir:
+            output_dir = Path(args.output_dir).expanduser().absolute()
+        elif effective_run_root is not None:
+            output_dir = effective_run_root / resolved_run_id
+        else:
+            output_dir = config_default_dir
+
+        def _semver_tuple(version: str) -> tuple[int, int, int]:
+            v = normalize_semver(version)
+            parts = v.split(".")
+            try:
+                return (int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return (0, 0, 0)
+
+        def _atomic_write_text(path: Path, text: str) -> None:
+            tmp = path.with_name(f".{path.name}.tmp")
+            tmp.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, path)
+
+        def _atomic_write_yaml(path: Path, data: Any) -> None:
+            import yaml
+
+            content = yaml.safe_dump(
+                _serialize_value(data),
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write_text(path, content)
+
+        def _ensure_run_sentinel(run_dir_path: Path) -> None:
+            marker = run_dir_path / ".insidellms_run"
+            if not marker.exists():
+                try:
+                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
+                except Exception:
+                    pass
+
+        # Prepare run dir with the same safety policy as `insidellms run`.
+        _prepare_run_dir(output_dir, overwrite=bool(args.overwrite), run_root=effective_run_root)
+        _ensure_run_sentinel(output_dir)
+
+        # Write resolved config snapshot for reproducibility.
+        config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
+        _atomic_write_yaml(output_dir / "config.resolved.yaml", config_snapshot)
+
+        # Canonical record stream for validate/run-dir tooling.
+        records_path = output_dir / "records.jsonl"
+
+        # Ensure records' run_id matches the directory's run_id.
+        for record in result.get("records", []):
+            if isinstance(record, dict):
+                record["run_id"] = resolved_run_id
+
+        _write_jsonl(result["records"], records_path)
+        print_success(f"Records written to: {records_path}")
+
+        # Backward compatibility: keep results.jsonl alongside records.jsonl.
+        legacy_results_path = output_dir / "results.jsonl"
+        try:
+            os.symlink("records.jsonl", legacy_results_path)
+        except Exception:
+            try:
+                os.link(records_path, legacy_results_path)
+            except Exception:
+                shutil.copyfile(records_path, legacy_results_path)
+
+        ds_cfg = result.get("config", {}).get("dataset")
+        ds_cfg = ds_cfg if isinstance(ds_cfg, dict) else {}
+        dataset_spec = {
+            "dataset_id": ds_cfg.get("name") or ds_cfg.get("path") or ds_cfg.get("dataset_id"),
+            "dataset_version": ds_cfg.get("split") or ds_cfg.get("dataset_version"),
+            "dataset_hash": ds_cfg.get("dataset_hash"),
+            "provenance": ds_cfg.get("format") or ds_cfg.get("provenance"),
+            "params": ds_cfg,
+        }
+
+        models_cfg = result.get("config", {}).get("models")
+        models_cfg = models_cfg if isinstance(models_cfg, list) else []
+        model_types = [m.get("type") for m in models_cfg if isinstance(m, dict) and m.get("type")]
+
+        probes_cfg = result.get("config", {}).get("probes")
+        probes_cfg = probes_cfg if isinstance(probes_cfg, list) else []
+        probe_types = [p.get("type") for p in probes_cfg if isinstance(p, dict) and p.get("type")]
+
+        record_count = len(result.get("records", []))
+        success_count = sum(1 for r in result.get("records", []) if r.get("status") == "success")
+        error_count = sum(1 for r in result.get("records", []) if r.get("status") == "error")
+
+        run_base_time = _deterministic_base_time(resolved_run_id)
+        started_at, completed_at = _deterministic_run_times(run_base_time, record_count)
+        created_at = started_at
+
+        manifest: dict[str, Any] = {
+            "schema_version": args.schema_version,
+            "run_id": resolved_run_id,
+            "created_at": created_at,
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "library_version": None,
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "command": sys.argv.copy(),
+            "model": {
+                "model_id": "harness",
+                "provider": "insideLLMs",
+                "params": {"model_count": len(model_types), "models": model_types},
+            },
+            "probe": {
+                "probe_id": "harness",
+                "probe_version": None,
+                "params": {"probe_count": len(probe_types), "probes": probe_types},
+            },
+            "dataset": dataset_spec,
+            "record_count": record_count,
+            "success_count": success_count,
+            "error_count": error_count,
+            "records_file": "records.jsonl",
+            "schemas": {"RunManifest": args.schema_version, "ResultRecord": args.schema_version},
+            "custom": {
+                "harness": {
+                    "models": models_cfg,
+                    "probes": probes_cfg,
+                    "dataset": ds_cfg,
+                    "max_examples": result.get("config", {}).get("max_examples"),
+                    "experiment_count": len(result.get("experiments", [])),
+                    "legacy_results_file": "results.jsonl",
+                }
+            },
+        }
+
+        if _semver_tuple(args.schema_version) >= (1, 0, 1):
+            manifest["run_completed"] = True
+
+        try:
+            import insideLLMs
+
+            manifest["library_version"] = getattr(insideLLMs, "__version__", None)
+        except Exception:
+            pass
+
+        if args.validate_output:
+            from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+            validator = OutputValidator(SchemaRegistry())
+            validator.validate(
+                SchemaRegistry.RUN_MANIFEST,
+                manifest,
+                schema_version=args.schema_version,
+                mode=args.validation_mode,
+            )
+
+        manifest_path = output_dir / "manifest.json"
+        _atomic_write_text(
+            manifest_path,
+            json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+        )
+        print_success(f"Manifest written to: {manifest_path}")
+
         summary_path = output_dir / "summary.json"
         report_path = output_dir / "report.html"
 
-        _write_jsonl(result["records"], results_path)
-        print_success(f"Results written to: {results_path}")
-
         summary_payload = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "schema_version": args.schema_version,
+            "generated_at": created_at,
             "summary": result["summary"],
             "config": result["config"],
         }
+
+        if args.validate_output:
+            from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+            validator = OutputValidator(SchemaRegistry())
+            validator.validate(
+                SchemaRegistry.HARNESS_SUMMARY,
+                summary_payload,
+                schema_version=args.schema_version,
+                mode=args.validation_mode,
+            )
         with open(summary_path, "w") as f:
-            json.dump(summary_payload, f, indent=2, default=str)
+            json.dump(summary_payload, f, indent=2, default=_json_default)
         print_success(f"Summary written to: {summary_path}")
 
         if not args.skip_report:
@@ -983,6 +1791,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     result["experiments"],
                     result["summary"],
                     report_title,
+                    generated_at=created_at,
                 )
                 with open(report_path, "w") as f:
                     f.write(report_html)
@@ -990,6 +1799,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
             print_success(f"Report written to: {report_path}")
 
         print_key_value("Elapsed", f"{elapsed:.2f}s")
+
+        print(f"\nRun written to: {output_dir}")
+        print(f"Validate with: insidellms validate {output_dir}")
         return 0
 
     except Exception as e:
@@ -999,6 +1811,395 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
             traceback.print_exc()
         return 1
+
+
+def cmd_schema(args: argparse.Namespace) -> int:
+    """Inspect/dump/validate versioned output schemas."""
+
+    from insideLLMs.schemas import OutputValidationError, OutputValidator, SchemaRegistry
+
+    registry = SchemaRegistry()
+
+    op = getattr(args, "op", None) or "list"
+    name = getattr(args, "name", None)
+    version = getattr(args, "version", DEFAULT_SCHEMA_VERSION)
+
+    # Shortcut UX: `insidellms schema <SchemaName>` -> dump schema
+    if op not in {"list", "dump", "validate"}:
+        name = name or op
+        op = "dump"
+
+    if op == "list":
+        print_header("Available Output Schemas")
+        schema_names = [
+            registry.RUNNER_ITEM,
+            registry.RUNNER_OUTPUT,
+            registry.RESULT_RECORD,
+            registry.RUN_MANIFEST,
+            registry.HARNESS_RECORD,
+            registry.HARNESS_SUMMARY,
+            registry.BENCHMARK_SUMMARY,
+            registry.COMPARISON_REPORT,
+            registry.EXPORT_METADATA,
+        ]
+        for name in schema_names:
+            versions = registry.available_versions(name)
+            if not versions:
+                continue
+            print_key_value(name, ", ".join(versions))
+        return 0
+
+    if op == "dump":
+        if not name:
+            print_error(
+                "Missing schema name. Use: insidellms schema dump --name <SchemaName> [--version X]"
+            )
+            return 1
+        try:
+            schema = registry.get_json_schema(name, version)
+        except Exception as e:
+            print_error(f"Could not dump schema {name}@{version}: {e}")
+            return 2
+
+        payload = json.dumps(schema, indent=2, default=_json_default)
+        if args.output:
+            out_path = Path(args.output)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(payload)
+            print_success(f"Schema written to: {out_path}")
+        else:
+            print(payload)
+        return 0
+
+    if op == "validate":
+        if not name:
+            print_error(
+                "Missing schema name. Use: insidellms schema validate --name <SchemaName> -i <file>"
+            )
+            return 1
+        if not getattr(args, "input", None):
+            print_error("Missing --input for schema validate")
+            return 1
+
+        in_path = Path(args.input)
+        if not in_path.exists():
+            print_error(f"Input file not found: {in_path}")
+            return 1
+
+        validator = OutputValidator(registry)
+        errors = 0
+
+        def validate_one(obj: Any) -> None:
+            nonlocal errors
+            try:
+                validator.validate(
+                    name,
+                    obj,
+                    schema_version=version,
+                    mode="strict",
+                )
+            except OutputValidationError as e:
+                errors += 1
+                if args.mode == "warn":
+                    print_warning(str(e))
+                else:
+                    raise
+
+        try:
+            if in_path.suffix.lower() == ".jsonl":
+                with open(in_path) as f:
+                    for line_no, line in enumerate(f, start=1):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            obj = json.loads(line)
+                        except json.JSONDecodeError as e:
+                            errors += 1
+                            if args.mode == "warn":
+                                print_warning(f"Invalid JSON on line {line_no}: {e}")
+                                continue
+                            raise
+                        validate_one(obj)
+            else:
+                obj = json.loads(in_path.read_text())
+                if isinstance(obj, list):
+                    for item in obj:
+                        validate_one(item)
+                else:
+                    validate_one(obj)
+        except Exception as e:
+            if args.mode == "warn":
+                print_warning(f"Validation completed with errors: {e}")
+            else:
+                print_error(f"Validation failed: {e}")
+                return 1
+
+        if errors:
+            if args.mode == "warn":
+                print_warning(f"Validated with {errors} error(s) (warn mode)")
+                return 0
+            print_error(f"Validation failed with {errors} error(s)")
+            return 1
+
+        print_success("Validation OK")
+        return 0
+
+    print_error(f"Unknown schema op: {op}")
+    return 1
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """Rebuild summary.json and report.html from records.jsonl."""
+    run_dir = Path(args.run_dir)
+    if not run_dir.exists() or not run_dir.is_dir():
+        print_error(f"Run directory not found: {run_dir}")
+        return 1
+
+    records_path = run_dir / "records.jsonl"
+    if not records_path.exists():
+        print_error(f"records.jsonl not found in: {run_dir}")
+        return 1
+
+    try:
+        records = _read_jsonl_records(records_path)
+    except Exception as e:
+        print_error(f"Could not read records.jsonl: {e}")
+        return 1
+
+    if not records:
+        print_error("No records found in records.jsonl")
+        return 1
+
+    experiments, derived_config, schema_version = _build_experiments_from_records(records)
+    if not experiments:
+        print_error("No experiments could be reconstructed from records")
+        return 1
+
+    run_ids = {record.get("run_id") for record in records if record.get("run_id")}
+    run_id = sorted(run_ids)[0] if run_ids else None
+    if run_id and len(run_ids) > 1:
+        print_warning(f"Multiple run_ids found; using {run_id}")
+
+    generated_at = None
+    if run_id:
+        try:
+            from insideLLMs.runner import _deterministic_base_time, _deterministic_run_times
+
+            base_time = _deterministic_base_time(str(run_id))
+            _, generated_at = _deterministic_run_times(base_time, len(records))
+        except Exception:
+            generated_at = None
+
+    if generated_at is None:
+        generated_at = max(
+            (dt for dt in (_parse_datetime(r.get("completed_at")) for r in records) if dt),
+            default=None,
+        )
+
+    summary = generate_summary_report(experiments, include_ci=True)
+    summary_payload = {
+        "schema_version": schema_version,
+        "generated_at": generated_at,
+        "summary": summary,
+        "config": derived_config,
+    }
+
+    summary_path = run_dir / "summary.json"
+    with open(summary_path, "w") as f:
+        json.dump(summary_payload, f, indent=2, default=_json_default)
+    print_success(f"Summary written to: {summary_path}")
+
+    report_title = args.report_title or "Behavioural Probe Report"
+    report_path = run_dir / "report.html"
+    try:
+        from insideLLMs.visualization import create_interactive_html_report
+
+        create_interactive_html_report(
+            experiments,
+            title=report_title,
+            save_path=str(report_path),
+        )
+    except ImportError:
+        report_html = _build_basic_harness_report(
+            experiments,
+            summary,
+            report_title,
+            generated_at=generated_at,
+        )
+        with open(report_path, "w") as f:
+            f.write(report_html)
+
+    print_success(f"Report written to: {report_path}")
+    return 0
+
+
+def cmd_diff(args: argparse.Namespace) -> int:
+    """Compare two run directories and report behavioural regressions."""
+    run_dir_a = Path(args.run_dir_a)
+    run_dir_b = Path(args.run_dir_b)
+
+    if not run_dir_a.exists() or not run_dir_a.is_dir():
+        print_error(f"Run directory not found: {run_dir_a}")
+        return 1
+    if not run_dir_b.exists() or not run_dir_b.is_dir():
+        print_error(f"Run directory not found: {run_dir_b}")
+        return 1
+
+    records_path_a = run_dir_a / "records.jsonl"
+    records_path_b = run_dir_b / "records.jsonl"
+
+    if not records_path_a.exists():
+        print_error(f"records.jsonl not found in: {run_dir_a}")
+        return 1
+    if not records_path_b.exists():
+        print_error(f"records.jsonl not found in: {run_dir_b}")
+        return 1
+
+    try:
+        records_a = _read_jsonl_records(records_path_a)
+        records_b = _read_jsonl_records(records_path_b)
+    except Exception as e:
+        print_error(f"Could not read records.jsonl: {e}")
+        return 1
+
+    if not records_a or not records_b:
+        print_error("Both run directories must contain records to compare")
+        return 1
+
+    def build_index(
+        records: list[dict[str, Any]],
+    ) -> tuple[dict[tuple[str, str, str], dict[str, Any]], int]:
+        index: dict[tuple[str, str, str], dict[str, Any]] = {}
+        duplicates = 0
+        for record in records:
+            key = _record_key(record)
+            if key in index:
+                duplicates += 1
+                continue
+            index[key] = record
+        return index, duplicates
+
+    index_a, dup_a = build_index(records_a)
+    index_b, dup_b = build_index(records_b)
+
+    if dup_a:
+        print_warning(f"Baseline has {dup_a} duplicate key(s); first occurrence used")
+    if dup_b:
+        print_warning(f"Comparison has {dup_b} duplicate key(s); first occurrence used")
+
+    all_keys = set(index_a) | set(index_b)
+    regressions: list[tuple[str, str, str, str]] = []
+    improvements: list[tuple[str, str, str, str]] = []
+    changes: list[tuple[str, str, str, str]] = []
+    only_a: list[tuple[str, str, str]] = []
+    only_b: list[tuple[str, str, str]] = []
+
+    for key in sorted(all_keys):
+        record_a = index_a.get(key)
+        record_b = index_b.get(key)
+
+        if record_a is None:
+            only_b.append(_record_label(record_b))  # type: ignore[arg-type]
+            continue
+        if record_b is None:
+            only_a.append(_record_label(record_a))
+            continue
+
+        label = _record_label(record_a)
+        status_a = _status_string(record_a)
+        status_b = _status_string(record_b)
+        score_name_a, score_a = _primary_score(record_a)
+        score_name_b, score_b = _primary_score(record_b)
+
+        if status_a == "success" and status_b != "success":
+            regressions.append((*label, f"status {status_a} -> {status_b}"))
+            continue
+        if status_a != "success" and status_b == "success":
+            improvements.append((*label, f"status {status_a} -> {status_b}"))
+            continue
+
+        metrics_compared = False
+        if score_a is not None and score_b is not None and score_name_a == score_name_b:
+            delta = score_b - score_a
+            metrics_compared = True
+            if delta < 0:
+                regressions.append(
+                    (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta {delta:.4f})")
+                )
+                continue
+            if delta > 0:
+                improvements.append(
+                    (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta +{delta:.4f})")
+                )
+
+        if not metrics_compared and (score_a is not None or score_b is not None):
+            changes.append(
+                (
+                    *label,
+                    f"metrics not comparable (baseline: {score_name_a or 'none'}, "
+                    f"comparison: {score_name_b or 'none'})",
+                )
+            )
+
+        output_a = _output_text(record_a)
+        output_b = _output_text(record_b)
+        if output_a is not None or output_b is not None:
+            if output_a != output_b:
+                changes.append((*label, "output changed"))
+        else:
+            fingerprint_a = _output_fingerprint(record_a)
+            fingerprint_b = _output_fingerprint(record_b)
+            if fingerprint_a != fingerprint_b:
+                if fingerprint_a and fingerprint_b:
+                    changes.append(
+                        (*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}")
+                    )
+                else:
+                    changes.append((*label, "output changed (structured)"))
+        if status_a != status_b:
+            changes.append((*label, f"status {status_a} -> {status_b}"))
+
+    print_header("Behavioural Diff")
+    print_key_value("Baseline", run_dir_a)
+    print_key_value("Comparison", run_dir_b)
+    print_key_value("Common keys", len(all_keys) - len(only_a) - len(only_b))
+    print_key_value("Only in baseline", len(only_a))
+    print_key_value("Only in comparison", len(only_b))
+    print_key_value("Regressions", len(regressions))
+    print_key_value("Improvements", len(improvements))
+    print_key_value("Other changes", len(changes))
+
+    def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
+        if not items:
+            return
+        print_subheader(title)
+        for model_label, probe_label, example_id, detail in items[: args.limit]:
+            print(f"  {model_label} | {probe_label} | example {example_id}: {detail}")
+        if len(items) > args.limit:
+            print(colorize(f"  ... and {len(items) - args.limit} more", Colors.DIM))
+
+    print_section("Regressions", regressions)
+    print_section("Improvements", improvements)
+    print_section("Other Changes", changes)
+
+    if only_a:
+        print_subheader("Missing in Comparison")
+        for model_label, probe_label, example_id in only_a[: args.limit]:
+            print(f"  {model_label} | {probe_label} | example {example_id}")
+        if len(only_a) > args.limit:
+            print(colorize(f"  ... and {len(only_a) - args.limit} more", Colors.DIM))
+
+    if only_b:
+        print_subheader("New in Comparison")
+        for model_label, probe_label, example_id in only_b[: args.limit]:
+            print(f"  {model_label} | {probe_label} | example {example_id}")
+        if len(only_b) > args.limit:
+            print(colorize(f"  ... and {len(only_b) - args.limit} more", Colors.DIM))
+
+    if args.fail_on_regressions and regressions:
+        return 2
+    return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -1633,13 +2834,124 @@ def cmd_interactive(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Execute the validate command."""
-    print_header("Validate Configuration")
-
-    config_path = Path(args.config)
-    if not config_path.exists():
-        print_error(f"Config file not found: {config_path}")
+    target_path = Path(args.config)
+    if not target_path.exists():
+        print_error(f"Path not found: {target_path}")
         return 1
 
+    # ---------------------------------------------------------------------
+    # Run directory validation (manifest.json + records.jsonl)
+    # ---------------------------------------------------------------------
+    if target_path.is_dir() or target_path.name == "manifest.json":
+        run_dir = target_path if target_path.is_dir() else target_path.parent
+        manifest_path = (
+            target_path if target_path.name == "manifest.json" else run_dir / "manifest.json"
+        )
+
+        print_header("Validate Run Directory")
+        print_key_value("Run dir", run_dir)
+        print_key_value("Manifest", manifest_path)
+
+        if not manifest_path.exists():
+            print_error(f"manifest.json not found: {manifest_path}")
+            return 1
+
+        from insideLLMs.schemas import OutputValidationError, OutputValidator, SchemaRegistry
+
+        registry = SchemaRegistry()
+        validator = OutputValidator(registry)
+
+        errors = 0
+
+        def _handle_error(msg: str) -> None:
+            nonlocal errors
+            errors += 1
+            if args.mode == "warn":
+                print_warning(msg)
+            else:
+                print_error(msg)
+
+        try:
+            manifest_obj = json.loads(manifest_path.read_text())
+        except Exception as e:
+            _handle_error(f"Could not read manifest JSON: {e}")
+            return 0 if args.mode == "warn" else 1
+
+        # Determine schema version: CLI override > manifest.schema_version > manifest.schemas[name]
+        schema_version = (
+            args.schema_version
+            or manifest_obj.get("schema_version")
+            or manifest_obj.get("schemas", {}).get(registry.RUN_MANIFEST)
+            or DEFAULT_SCHEMA_VERSION
+        )
+
+        print_key_value("Schema version", schema_version)
+
+        # Validate manifest
+        try:
+            validator.validate(
+                registry.RUN_MANIFEST,
+                manifest_obj,
+                schema_version=schema_version,
+                mode="strict",
+            )
+        except OutputValidationError as e:
+            _handle_error(f"Manifest schema mismatch: {e}")
+            if args.mode != "warn":
+                return 1
+
+        # Validate records
+        records_file = manifest_obj.get("records_file") or "records.jsonl"
+        records_path = run_dir / records_file
+        print_key_value("Records", records_path)
+
+        if not records_path.exists():
+            _handle_error(f"records file not found: {records_path}")
+            return 0 if args.mode == "warn" else 1
+
+        try:
+            with open(records_path, encoding="utf-8") as f:
+                for line_no, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError as e:
+                        _handle_error(f"Invalid JSON on line {line_no}: {e}")
+                        if args.mode != "warn":
+                            return 1
+                        continue
+                    try:
+                        validator.validate(
+                            registry.RESULT_RECORD,
+                            obj,
+                            schema_version=schema_version,
+                            mode="strict",
+                        )
+                    except OutputValidationError as e:
+                        _handle_error(f"Record line {line_no} schema mismatch: {e}")
+                        if args.mode != "warn":
+                            return 1
+        except Exception as e:
+            _handle_error(f"Error reading records: {e}")
+            return 0 if args.mode == "warn" else 1
+
+        if errors:
+            if args.mode == "warn":
+                print_warning(f"Validation completed with {errors} error(s) (warn mode)")
+                return 0
+            print_error(f"Validation failed with {errors} error(s)")
+            return 1
+
+        print_success("Validation OK")
+        return 0
+
+    # ---------------------------------------------------------------------
+    # Config validation (legacy)
+    # ---------------------------------------------------------------------
+    print_header("Validate Configuration")
+    config_path = target_path
     print_key_value("Config", config_path)
 
     try:
@@ -1821,6 +3133,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     commands = {
         "run": cmd_run,
         "harness": cmd_harness,
+        "report": cmd_report,
+        "diff": cmd_diff,
+        "schema": cmd_schema,
         "list": cmd_list,
         "init": cmd_init,
         "info": cmd_info,

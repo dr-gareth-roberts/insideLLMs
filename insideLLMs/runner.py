@@ -5,10 +5,15 @@ or from configuration files. Supports async execution for parallel processing.
 """
 
 import asyncio
+import hashlib
 import json
-import uuid
+import os
+import platform
+import shutil
+import sys
+import warnings
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
@@ -24,10 +29,12 @@ from insideLLMs.registry import (
     model_registry,
     probe_registry,
 )
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.statistics import generate_summary_report
 from insideLLMs.types import (
     ConfigDict,
     ExperimentResult,
+    ModelInfo,
     ProbeCategory,
     ProbeResult,
     ResultStatus,
@@ -60,6 +67,8 @@ class ProbeRunner:
         self.model = model
         self.probe = probe
         self._results: list[dict[str, Any]] = []
+        self.last_run_id: Optional[str] = None
+        self.last_run_dir: Optional[Path] = None
 
     def run(
         self,
@@ -67,6 +76,17 @@ class ProbeRunner:
         *,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         stop_on_error: bool = False,
+        validate_output: bool = False,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        validation_mode: str = "strict",
+        emit_run_artifacts: bool = True,
+        run_dir: Optional[Union[str, Path]] = None,
+        run_root: Optional[Union[str, Path]] = None,
+        run_id: Optional[str] = None,
+        overwrite: bool = False,
+        dataset_info: Optional[dict[str, Any]] = None,
+        config_snapshot: Optional[dict[str, Any]] = None,
+        store_messages: bool = True,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on the model for each item in the prompt set.
@@ -82,43 +102,332 @@ class ProbeRunner:
         """
         import time
 
-        results = []
+        from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        registry = SchemaRegistry()
+        validator = OutputValidator(registry)
+
+        def _default_run_root() -> Path:
+            env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+            if env_root:
+                return Path(env_root).expanduser()
+            return Path.home() / ".insidellms" / "runs"
+
+        def _semver_tuple(version: str) -> tuple[int, int, int]:
+            # Keep local and lightweight to avoid importing pydantic when not needed.
+            from insideLLMs.schemas.registry import normalize_semver
+
+            v = normalize_semver(version)
+            parts = v.split(".")
+            try:
+                return (int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return (0, 0, 0)
+
+        def _atomic_write_text(path: Path, text: str) -> None:
+            tmp = path.with_name(f".{path.name}.tmp")
+            tmp.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, path)
+
+        def _atomic_write_yaml(path: Path, data: Any) -> None:
+            content = yaml.safe_dump(
+                _serialize_value(data),
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write_text(path, content)
+
+        def _ensure_run_sentinel(run_dir_path: Path) -> None:
+            # Marker used to make --overwrite safer (only delete dirs that look like runs).
+            marker = run_dir_path / ".insidellms_run"
+            if not marker.exists():
+                try:
+                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
+                except Exception:
+                    # Don't fail the run due to marker write issues.
+                    pass
+
+        def _model_spec() -> dict[str, Any]:
+            from dataclasses import asdict, is_dataclass
+
+            info_obj: Any = {}
+            try:
+                info_obj = self.model.info() or {}
+            except Exception:
+                info_obj = {}
+
+            # Normalize model.info() output into a dict. Historically this library
+            # has returned a ModelInfo dataclass, but some integrations return dicts.
+            if isinstance(info_obj, dict):
+                info: dict[str, Any] = info_obj
+            elif is_dataclass(info_obj):
+                info = asdict(info_obj)
+            elif hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
+                # pydantic v1 compatibility
+                info = info_obj.dict()
+            elif hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
+                # pydantic v2 compatibility
+                info = info_obj.model_dump()
+            else:
+                info = {}
+
+            model_id = (
+                info.get("model_id")
+                or info.get("id")
+                or info.get("name")
+                or info.get("model_name")
+                or getattr(self.model, "model_id", None)
+                or getattr(self.model, "name", None)
+                or self.model.__class__.__name__
+            )
+
+            provider = info.get("provider") or info.get("type") or info.get("model_type")
+            provider = str(provider) if provider is not None else None
+            return {"model_id": str(model_id), "provider": provider, "params": info}
+
+        def _probe_spec() -> dict[str, Any]:
+            probe_id = getattr(self.probe, "name", None) or self.probe.__class__.__name__
+            probe_version = getattr(self.probe, "version", None)
+            return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
+
+        def _dataset_spec() -> dict[str, Any]:
+            di = dataset_info or {}
+            dataset_id = di.get("name") or di.get("dataset") or di.get("path")
+            dataset_version = di.get("version") or di.get("dataset_version")
+            dataset_hash = di.get("hash") or di.get("dataset_hash")
+            provenance = di.get("provenance") or di.get("source") or di.get("format")
+            return {
+                "dataset_id": str(dataset_id) if dataset_id is not None else None,
+                "dataset_version": str(dataset_version) if dataset_version is not None else None,
+                "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+                "provenance": str(provenance) if provenance is not None else None,
+                "params": di,
+            }
+
+        model_spec = _model_spec()
+        probe_spec = _probe_spec()
+        dataset_spec = _dataset_spec()
+
+        if run_id is None:
+            if config_snapshot is not None:
+                resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                    config_snapshot,
+                    schema_version=schema_version,
+                )
+            else:
+                resolved_run_id = _deterministic_run_id_from_inputs(
+                    schema_version=schema_version,
+                    model_spec=model_spec,
+                    probe_spec=probe_spec,
+                    dataset_spec=dataset_spec,
+                    prompt_set=prompt_set,
+                    probe_kwargs=probe_kwargs,
+                )
+        else:
+            resolved_run_id = run_id
+
+        self.last_run_id = resolved_run_id
+        run_base_time = _deterministic_base_time(resolved_run_id)
+        run_started_at, _ = _deterministic_run_times(run_base_time, len(prompt_set))
+
+        root = Path(run_root) if run_root is not None else _default_run_root()
+        if run_dir is not None:
+            resolved_run_dir = Path(run_dir)
+        else:
+            resolved_run_dir = root / resolved_run_id
+
+        # Create the run directory up-front so we can emit JSONL incrementally.
+        # Policy: fail if non-empty unless overwrite=True.
+        if emit_run_artifacts:
+            _prepare_run_dir(resolved_run_dir, overwrite=overwrite, run_root=root)
+            self.last_run_dir = resolved_run_dir
+            _ensure_run_sentinel(resolved_run_dir)
+
+            # Snapshot of the fully resolved config (best-effort) for reproducibility.
+            if config_snapshot is not None:
+                _atomic_write_yaml(resolved_run_dir / "config.resolved.yaml", config_snapshot)
+        else:
+            self.last_run_dir = None
+
+        records_path = resolved_run_dir / "records.jsonl"
+        manifest_path = resolved_run_dir / "manifest.json"
+        records_fp = None
+        if emit_run_artifacts:
+            records_fp = open(records_path, "x", encoding="utf-8")
+
+        results: list[dict[str, Any]] = []
         total = len(prompt_set)
 
-        for i, item in enumerate(prompt_set):
-            if progress_callback:
-                progress_callback(i, total)
+        try:
+            for i, item in enumerate(prompt_set):
+                if progress_callback:
+                    progress_callback(i, total)
 
-            start_time = time.perf_counter()
-            try:
-                output = self.probe.run(self.model, item, **probe_kwargs)
-                latency_ms = (time.perf_counter() - start_time) * 1000
-                results.append(
-                    {
+                item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
+                start_time = time.perf_counter()
+                try:
+                    output = self.probe.run(self.model, item, **probe_kwargs)
+                    latency_ms = (time.perf_counter() - start_time) * 1000
+                    result_obj = {
+                        "schema_version": schema_version,
                         "input": item,
                         "output": output,
                         "latency_ms": latency_ms,
                         "status": "success",
+                        "metadata": {},
                     }
-                )
-            except Exception as e:
-                latency_ms = (time.perf_counter() - start_time) * 1000
-                error_result = {
-                    "input": item,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "latency_ms": latency_ms,
-                    "status": "error",
-                }
-                results.append(error_result)
+                    results.append(result_obj)
 
-                if stop_on_error:
-                    break
+                    if emit_run_artifacts and records_fp is not None:
+                        record = _build_result_record(
+                            schema_version=schema_version,
+                            run_id=resolved_run_id,
+                            started_at=item_started_at,
+                            completed_at=item_completed_at,
+                            model=model_spec,
+                            probe=probe_spec,
+                            dataset=dataset_spec,
+                            item=item,
+                            output=output,
+                            latency_ms=latency_ms,
+                            store_messages=store_messages,
+                            index=i,
+                            status="success",
+                            error=None,
+                        )
+                        if validate_output:
+                            validator.validate(
+                                registry.RESULT_RECORD,
+                                record,
+                                schema_version=schema_version,
+                                mode=validation_mode,
+                            )
+                        records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                        records_fp.flush()
+
+                except Exception as e:
+                    latency_ms = (time.perf_counter() - start_time) * 1000
+                    error_result = {
+                        "schema_version": schema_version,
+                        "input": item,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "latency_ms": latency_ms,
+                        "status": "error",
+                        "metadata": {},
+                    }
+                    results.append(error_result)
+
+                    if emit_run_artifacts and records_fp is not None:
+                        record = _build_result_record(
+                            schema_version=schema_version,
+                            run_id=resolved_run_id,
+                            started_at=item_started_at,
+                            completed_at=item_completed_at,
+                            model=model_spec,
+                            probe=probe_spec,
+                            dataset=dataset_spec,
+                            item=item,
+                            output=None,
+                            latency_ms=latency_ms,
+                            store_messages=store_messages,
+                            index=i,
+                            status="error",
+                            error=e,
+                        )
+                        if validate_output:
+                            validator.validate(
+                                registry.RESULT_RECORD,
+                                record,
+                                schema_version=schema_version,
+                                mode=validation_mode,
+                            )
+                        records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                        records_fp.flush()
+
+                    if stop_on_error:
+                        break
+        finally:
+            if records_fp is not None:
+                try:
+                    records_fp.close()
+                except Exception:
+                    pass
 
         if progress_callback:
             progress_callback(total, total)
 
         self._results = results
+
+        _, run_completed_at = _deterministic_run_times(run_base_time, len(results))
+
+        if emit_run_artifacts:
+            manifest = {
+                "schema_version": schema_version,
+                "run_id": resolved_run_id,
+                "created_at": run_started_at,
+                "started_at": run_started_at,
+                "completed_at": run_completed_at,
+                "library_version": None,
+                "python_version": sys.version.split()[0],
+                "platform": platform.platform(),
+                "command": None,
+                "model": model_spec,
+                "probe": probe_spec,
+                "dataset": dataset_spec,
+                "record_count": len(results),
+                "success_count": sum(1 for r in results if r.get("status") == "success"),
+                "error_count": sum(1 for r in results if r.get("status") == "error"),
+                "records_file": "records.jsonl",
+                "schemas": {
+                    registry.RESULT_RECORD: schema_version,
+                    registry.RUN_MANIFEST: schema_version,
+                    registry.RUNNER_ITEM: schema_version,
+                },
+                "custom": {},
+            }
+
+            # Explicit completion marker was added in schema v1.0.1.
+            if _semver_tuple(schema_version) >= (1, 0, 1):
+                manifest["run_completed"] = True
+
+            # Fill library version if available
+            try:
+                import insideLLMs
+
+                manifest["library_version"] = getattr(insideLLMs, "__version__", None)
+            except Exception:
+                pass
+
+            if validate_output:
+                validator.validate(
+                    registry.RUN_MANIFEST,
+                    manifest,
+                    schema_version=schema_version,
+                    mode=validation_mode,
+                )
+
+            _atomic_write_text(
+                manifest_path,
+                json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+            )
+
+        if validate_output:
+            validator.validate(
+                registry.RUNNER_OUTPUT,
+                {"schema_version": schema_version, "results": results},
+                schema_version=schema_version,
+                mode=validation_mode,
+            )
+
         return results
 
     @property
@@ -138,6 +447,8 @@ class ProbeRunner:
 def _serialize_value(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, Path):
+        return str(value)
     if isinstance(value, Enum):
         return value.value
     if is_dataclass(value) and not isinstance(value, type):
@@ -146,7 +457,280 @@ def _serialize_value(value: Any) -> Any:
         return {k: _serialize_value(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_serialize_value(v) for v in value]
-    return value
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    # Last-resort: keep JSONL/manifest emission resilient even for exotic objects.
+    return str(value)
+
+
+_DETERMINISTIC_TIME_BASE = datetime(2000, 1, 1, tzinfo=timezone.utc)
+_DETERMINISTIC_TIME_RANGE_SECONDS = 10 * 365 * 24 * 60 * 60
+
+
+def _stable_json_dumps(data: Any) -> str:
+    return json.dumps(
+        _serialize_value(data),
+        sort_keys=True,
+        separators=(",", ":"),
+        default=_serialize_value,
+    )
+
+
+def _deterministic_hash(payload: Any) -> str:
+    return hashlib.sha256(_stable_json_dumps(payload).encode("utf-8")).hexdigest()
+
+
+def _hash_prompt_set(prompt_set: list[Any]) -> str:
+    hasher = hashlib.sha256()
+    for item in prompt_set:
+        hasher.update(_stable_json_dumps(item).encode("utf-8"))
+        hasher.update(b"\n")
+    return hasher.hexdigest()
+
+
+def _deterministic_run_id_from_config_snapshot(
+    config_snapshot: dict[str, Any],
+    *,
+    schema_version: str,
+) -> str:
+    payload = {"schema_version": schema_version, "config": config_snapshot}
+    return _deterministic_hash(payload)[:32]
+
+
+def _deterministic_run_id_from_inputs(
+    *,
+    schema_version: str,
+    model_spec: dict[str, Any],
+    probe_spec: dict[str, Any],
+    dataset_spec: dict[str, Any],
+    prompt_set: list[Any],
+    probe_kwargs: dict[str, Any],
+) -> str:
+    payload = {
+        "schema_version": schema_version,
+        "model": model_spec,
+        "probe": probe_spec,
+        "dataset": dataset_spec,
+        "prompt_set_hash": _hash_prompt_set(prompt_set),
+        "probe_kwargs": probe_kwargs,
+    }
+    return _deterministic_hash(payload)[:32]
+
+
+def _deterministic_base_time(run_id: str) -> datetime:
+    digest = hashlib.sha256(run_id.encode("utf-8")).digest()
+    seconds = int.from_bytes(digest[:8], "big") % _DETERMINISTIC_TIME_RANGE_SECONDS
+    return _DETERMINISTIC_TIME_BASE + timedelta(seconds=seconds)
+
+
+def _deterministic_item_times(base_time: datetime, index: int) -> tuple[datetime, datetime]:
+    offset = index * 2
+    started_at = base_time + timedelta(microseconds=offset)
+    completed_at = base_time + timedelta(microseconds=offset + 1)
+    return started_at, completed_at
+
+
+def _deterministic_run_times(base_time: datetime, total: int) -> tuple[datetime, datetime]:
+    if total < 0:
+        total = 0
+    completed_offset = total * 2 + 1
+    started_at = base_time
+    completed_at = base_time + timedelta(microseconds=completed_offset)
+    return started_at, completed_at
+
+
+def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
+    """Best-effort normalization for model.info()-like objects.
+
+    Some integrations return dicts / dataclasses / Pydantic models. The rest of the
+    runner stack assumes we can treat info as a mapping.
+    """
+
+    if info_obj is None:
+        return {}
+    if isinstance(info_obj, dict):
+        return info_obj
+    if is_dataclass(info_obj) and not isinstance(info_obj, type):
+        return asdict(info_obj)
+    if hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
+        # pydantic v1 compatibility
+        try:
+            return info_obj.dict()
+        except Exception:
+            return {}
+    if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
+        # pydantic v2 compatibility
+        try:
+            return info_obj.model_dump()
+        except Exception:
+            return {}
+    return {}
+
+
+def _coerce_model_info(model: Model) -> ModelInfo:
+    """Return a ModelInfo instance even if model.info() returns dict-like data."""
+
+    info_obj: Any = {}
+    try:
+        info_obj = model.info() or {}
+    except Exception:
+        info_obj = {}
+
+    # If it's already the canonical type, keep it.
+    if isinstance(info_obj, ModelInfo):
+        return info_obj
+
+    info = _normalize_info_obj_to_dict(info_obj)
+
+    name = info.get("name") or getattr(model, "name", None) or model.__class__.__name__
+    provider = (
+        info.get("provider")
+        or info.get("type")
+        or info.get("model_type")
+        or model.__class__.__name__.replace("Model", "")
+    )
+    model_id = (
+        info.get("model_id")
+        or info.get("id")
+        or info.get("model_name")
+        or getattr(model, "model_id", None)
+        or name
+    )
+
+    extra: dict[str, Any] = {}
+    if isinstance(info.get("extra"), dict):
+        extra.update(info.get("extra") or {})
+    for k, v in info.items():
+        if k in {
+            "name",
+            "provider",
+            "model_id",
+            "max_tokens",
+            "supports_streaming",
+            "supports_chat",
+            "extra",
+        }:
+            continue
+        extra[k] = v
+
+    return ModelInfo(
+        name=str(name),
+        provider=str(provider),
+        model_id=str(model_id),
+        max_tokens=info.get("max_tokens"),
+        supports_streaming=bool(info.get("supports_streaming", False)),
+        supports_chat=bool(info.get("supports_chat", True)),
+        extra=extra,
+    )
+
+
+def _build_result_record(
+    *,
+    schema_version: str,
+    run_id: str,
+    started_at: datetime,
+    completed_at: datetime,
+    model: dict[str, Any],
+    probe: dict[str, Any],
+    dataset: dict[str, Any],
+    item: Any,
+    output: Any,
+    latency_ms: Optional[float],
+    store_messages: bool,
+    index: int,
+    status: str,
+    error: Optional[BaseException],
+) -> dict[str, Any]:
+    """Build a ResultRecord-shaped dict for JSONL emission.
+
+    This is intentionally best-effort and tolerant of arbitrary input/output
+    structures so the runner can act as a harness.
+    """
+
+    import hashlib
+
+    # Identify example
+    example_id = None
+    if isinstance(item, dict):
+        example_id = item.get("example_id") or item.get("id")
+    example_id = str(example_id) if example_id is not None else str(index)
+
+    # Normalize messages for storage/hashing
+    messages_raw = None
+    if isinstance(item, dict) and isinstance(item.get("messages"), list):
+        messages_raw = item.get("messages")
+
+    normalized_messages: Optional[list[dict[str, Any]]] = None
+    if messages_raw is not None:
+        normalized_messages = []
+        for m in messages_raw:
+            if isinstance(m, dict):
+                role = m.get("role") or "user"
+                normalized_messages.append({"role": str(role), "content": m.get("content")})
+            else:
+                normalized_messages.append({"role": "user", "content": m})
+
+    messages_hash = None
+    if normalized_messages is not None:
+        try:
+            messages_hash = hashlib.sha256(
+                json.dumps(
+                    normalized_messages,
+                    sort_keys=True,
+                    default=_serialize_value,
+                ).encode("utf-8")
+            ).hexdigest()
+        except Exception:
+            messages_hash = None
+
+    # Derive output_text / scoring fields (best-effort)
+    output_text = None
+    if isinstance(output, str):
+        output_text = output
+    elif isinstance(output, dict):
+        output_text = output.get("output_text") or output.get("text")
+
+    scores: dict[str, Any] = {}
+    usage: dict[str, Any] = {}
+    primary_metric = None
+    if isinstance(output, dict):
+        if isinstance(output.get("scores"), dict):
+            scores = output.get("scores")
+        elif output.get("score") is not None:
+            scores = {"score": output.get("score")}
+        if isinstance(output.get("usage"), dict):
+            usage = output.get("usage")
+        primary_metric = output.get("primary_metric")
+
+    err_str = str(error) if error is not None else None
+    err_type = type(error).__name__ if error is not None else None
+
+    return {
+        "schema_version": schema_version,
+        "run_id": run_id,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "model": model,
+        "probe": probe,
+        "dataset": dataset,
+        "example_id": example_id,
+        "input": item,
+        "messages": normalized_messages
+        if (store_messages and normalized_messages is not None)
+        else None,
+        "messages_hash": messages_hash,
+        "messages_storage": None,
+        "output": output,
+        "output_text": output_text,
+        "scores": scores,
+        "primary_metric": primary_metric,
+        "usage": usage,
+        "latency_ms": latency_ms,
+        "status": status,
+        "error": err_str,
+        "error_type": err_type,
+        "custom": {},
+    }
 
 
 class AsyncProbeRunner:
@@ -170,6 +754,8 @@ class AsyncProbeRunner:
         self.model = model
         self.probe = probe
         self._results: list[dict[str, Any]] = []
+        self.last_run_id: Optional[str] = None
+        self.last_run_dir: Optional[Path] = None
 
     async def run(
         self,
@@ -177,6 +763,17 @@ class AsyncProbeRunner:
         *,
         concurrency: int = 5,
         progress_callback: Optional[Callable[[int, int], None]] = None,
+        validate_output: bool = False,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        validation_mode: str = "strict",
+        emit_run_artifacts: bool = True,
+        run_dir: Optional[Union[str, Path]] = None,
+        run_root: Optional[Union[str, Path]] = None,
+        run_id: Optional[str] = None,
+        overwrite: bool = False,
+        dataset_info: Optional[dict[str, Any]] = None,
+        config_snapshot: Optional[dict[str, Any]] = None,
+        store_messages: bool = True,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on all items with controlled concurrency.
@@ -192,14 +789,172 @@ class AsyncProbeRunner:
         """
         import time
 
+        from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        registry = SchemaRegistry()
+        validator = OutputValidator(registry)
+
+        def _default_run_root() -> Path:
+            env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+            if env_root:
+                return Path(env_root).expanduser()
+            return Path.home() / ".insidellms" / "runs"
+
+        def _semver_tuple(version: str) -> tuple[int, int, int]:
+            from insideLLMs.schemas.registry import normalize_semver
+
+            v = normalize_semver(version)
+            parts = v.split(".")
+            try:
+                return (int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return (0, 0, 0)
+
+        def _atomic_write_text(path: Path, text: str) -> None:
+            tmp = path.with_name(f".{path.name}.tmp")
+            tmp.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, path)
+
+        def _atomic_write_yaml(path: Path, data: Any) -> None:
+            content = yaml.safe_dump(
+                _serialize_value(data),
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write_text(path, content)
+
+        def _ensure_run_sentinel(run_dir_path: Path) -> None:
+            marker = run_dir_path / ".insidellms_run"
+            if not marker.exists():
+                try:
+                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
+                except Exception:
+                    pass
+
+        def _model_spec() -> dict[str, Any]:
+            info_obj: Any = {}
+            try:
+                info_obj = self.model.info() or {}
+            except Exception:
+                info_obj = {}
+
+            if isinstance(info_obj, dict):
+                info: dict[str, Any] = info_obj
+            elif is_dataclass(info_obj):
+                info = asdict(info_obj)
+            elif hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
+                info = info_obj.dict()
+            elif hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
+                info = info_obj.model_dump()
+            else:
+                info = {}
+
+            model_id = (
+                info.get("model_id")
+                or info.get("id")
+                or info.get("name")
+                or info.get("model_name")
+                or getattr(self.model, "model_id", None)
+                or getattr(self.model, "name", None)
+                or self.model.__class__.__name__
+            )
+
+            provider = info.get("provider") or info.get("type") or info.get("model_type")
+            provider = str(provider) if provider is not None else None
+            return {"model_id": str(model_id), "provider": provider, "params": info}
+
+        def _probe_spec() -> dict[str, Any]:
+            probe_id = getattr(self.probe, "probe_id", None) or self.probe.__class__.__name__
+            probe_version = getattr(self.probe, "version", None) or getattr(
+                self.probe, "probe_version", None
+            )
+            return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
+
+        def _dataset_spec() -> dict[str, Any]:
+            di = dataset_info or {}
+            dataset_id = di.get("name") or di.get("dataset") or di.get("path")
+            dataset_version = di.get("version") or di.get("dataset_version")
+            dataset_hash = di.get("hash") or di.get("dataset_hash")
+            provenance = di.get("provenance") or di.get("source") or di.get("format")
+            return {
+                "dataset_id": str(dataset_id) if dataset_id is not None else None,
+                "dataset_version": str(dataset_version) if dataset_version is not None else None,
+                "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+                "provenance": str(provenance) if provenance is not None else None,
+                "params": di,
+            }
+
+        model_spec = _model_spec()
+        probe_spec = _probe_spec()
+        dataset_spec = _dataset_spec()
+
+        if run_id is None:
+            if config_snapshot is not None:
+                resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                    config_snapshot,
+                    schema_version=schema_version,
+                )
+            else:
+                resolved_run_id = _deterministic_run_id_from_inputs(
+                    schema_version=schema_version,
+                    model_spec=model_spec,
+                    probe_spec=probe_spec,
+                    dataset_spec=dataset_spec,
+                    prompt_set=prompt_set,
+                    probe_kwargs=probe_kwargs,
+                )
+        else:
+            resolved_run_id = run_id
+
+        self.last_run_id = resolved_run_id
+        run_base_time = _deterministic_base_time(resolved_run_id)
+        run_started_at, _ = _deterministic_run_times(run_base_time, len(prompt_set))
+
+        root = Path(run_root) if run_root is not None else _default_run_root()
+        if run_dir is not None:
+            resolved_run_dir = Path(run_dir)
+        else:
+            resolved_run_dir = root / resolved_run_id
+
+        if emit_run_artifacts:
+            _prepare_run_dir(resolved_run_dir, overwrite=overwrite, run_root=root)
+            self.last_run_dir = resolved_run_dir
+            _ensure_run_sentinel(resolved_run_dir)
+            if config_snapshot is not None:
+                _atomic_write_yaml(resolved_run_dir / "config.resolved.yaml", config_snapshot)
+        else:
+            self.last_run_dir = None
+
+        records_path = resolved_run_dir / "records.jsonl"
+        manifest_path = resolved_run_dir / "manifest.json"
+        records_fp = None
+        if emit_run_artifacts:
+            records_fp = open(records_path, "x", encoding="utf-8")
+
         semaphore = asyncio.Semaphore(concurrency)
         results: list[dict[str, Any]] = [None] * len(prompt_set)  # type: ignore
+        started_ats: list[Optional[datetime]] = [None] * len(prompt_set)
+        completed_ats: list[Optional[datetime]] = [None] * len(prompt_set)
+        errors: list[Optional[BaseException]] = [None] * len(prompt_set)
         completed = 0
         total = len(prompt_set)
 
         async def run_single(index: int, item: Any) -> None:
             nonlocal completed
             async with semaphore:
+                item_started_at, item_completed_at = _deterministic_item_times(
+                    run_base_time,
+                    index,
+                )
+                started_ats[index] = item_started_at
                 start_time = time.perf_counter()
                 try:
                     # Run in thread pool for sync models
@@ -210,21 +965,27 @@ class AsyncProbeRunner:
                     )
                     latency_ms = (time.perf_counter() - start_time) * 1000
                     results[index] = {
+                        "schema_version": schema_version,
                         "input": item,
                         "output": output,
                         "latency_ms": latency_ms,
                         "status": "success",
+                        "metadata": {},
                     }
                 except Exception as e:
                     latency_ms = (time.perf_counter() - start_time) * 1000
+                    errors[index] = e
                     results[index] = {
+                        "schema_version": schema_version,
                         "input": item,
                         "error": str(e),
                         "error_type": type(e).__name__,
                         "latency_ms": latency_ms,
                         "status": "error",
+                        "metadata": {},
                     }
                 finally:
+                    completed_ats[index] = item_completed_at
                     completed += 1
                     if progress_callback:
                         progress_callback(completed, total)
@@ -233,7 +994,169 @@ class AsyncProbeRunner:
         await asyncio.gather(*tasks)
 
         self._results = results
+
+        _, run_completed_at = _deterministic_run_times(run_base_time, len(prompt_set))
+
+        if emit_run_artifacts and records_fp is not None:
+            try:
+                for i, item in enumerate(prompt_set):
+                    result_obj = results[i] or {}
+                    record = _build_result_record(
+                        schema_version=schema_version,
+                        run_id=resolved_run_id,
+                        started_at=started_ats[i] or run_started_at,
+                        completed_at=completed_ats[i] or run_completed_at,
+                        model=model_spec,
+                        probe=probe_spec,
+                        dataset=dataset_spec,
+                        item=item,
+                        output=result_obj.get("output"),
+                        latency_ms=result_obj.get("latency_ms"),
+                        store_messages=store_messages,
+                        index=i,
+                        status=str(result_obj.get("status") or "error"),
+                        error=errors[i],
+                    )
+                    if validate_output:
+                        validator.validate(
+                            registry.RESULT_RECORD,
+                            record,
+                            schema_version=schema_version,
+                            mode=validation_mode,
+                        )
+                    records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                    records_fp.flush()
+            finally:
+                try:
+                    records_fp.close()
+                except Exception:
+                    pass
+
+        if emit_run_artifacts:
+            manifest = {
+                "schema_version": schema_version,
+                "run_id": resolved_run_id,
+                "created_at": run_started_at,
+                "started_at": run_started_at,
+                "completed_at": run_completed_at,
+                "library_version": None,
+                "python_version": sys.version.split()[0],
+                "platform": platform.platform(),
+                "command": None,
+                "model": model_spec,
+                "probe": probe_spec,
+                "dataset": dataset_spec,
+                "record_count": len(results),
+                "success_count": sum(1 for r in results if (r or {}).get("status") == "success"),
+                "error_count": sum(1 for r in results if (r or {}).get("status") == "error"),
+                "records_file": "records.jsonl",
+                "schemas": {
+                    registry.RESULT_RECORD: schema_version,
+                    registry.RUN_MANIFEST: schema_version,
+                    registry.RUNNER_ITEM: schema_version,
+                },
+                "custom": {},
+            }
+
+            if _semver_tuple(schema_version) >= (1, 0, 1):
+                manifest["run_completed"] = True
+
+            try:
+                import insideLLMs
+
+                manifest["library_version"] = getattr(insideLLMs, "__version__", None)
+            except Exception:
+                pass
+
+            if validate_output:
+                validator.validate(
+                    registry.RUN_MANIFEST,
+                    manifest,
+                    schema_version=schema_version,
+                    mode=validation_mode,
+                )
+
+            _atomic_write_text(
+                manifest_path,
+                json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+            )
+
+        if validate_output:
+            validator.validate(
+                registry.RUNNER_OUTPUT,
+                {"schema_version": schema_version, "results": results},
+                schema_version=schema_version,
+                mode=validation_mode,
+            )
+
         return results
+
+
+def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = None) -> None:
+    """Prepare a directory for run artifact emission.
+
+    Policy:
+    - If directory doesn't exist: create it.
+    - If directory exists and is empty: use it.
+    - If directory exists and is non-empty: fail unless overwrite=True.
+      If overwrite=True, remove and recreate.
+    """
+
+    if path.exists():
+        if not path.is_dir():
+            raise FileExistsError(f"run_dir '{path}' exists and is not a directory")
+
+        try:
+            is_empty = not any(path.iterdir())
+        except Exception:
+            is_empty = False
+
+        if is_empty:
+            return
+
+        if not overwrite:
+            raise FileExistsError(
+                f"run_dir '{path}' already exists and is not empty. "
+                "Use overwrite=True (or CLI --overwrite) to replace it."
+            )
+
+        resolved = path.resolve()
+
+        # Critical safety guards for overwrite.
+        cwd_resolved = Path.cwd().resolve()
+        home_resolved = Path.home().resolve()
+        if resolved == cwd_resolved:
+            raise ValueError(f"Refusing to overwrite current working directory: '{resolved}'")
+        if resolved == home_resolved:
+            raise ValueError(f"Refusing to overwrite home directory: '{resolved}'")
+
+        # Filesystem root (POSIX '/' or Windows drive root like 'C:\\').
+        if resolved.anchor and Path(resolved.anchor) == resolved:
+            raise ValueError(f"Refusing to overwrite filesystem root: '{resolved}'")
+
+        if run_root is not None:
+            try:
+                run_root_resolved = run_root.resolve()
+            except Exception:
+                run_root_resolved = run_root
+            if resolved == run_root_resolved:
+                raise ValueError(f"Refusing to overwrite run_root directory itself: '{resolved}'")
+
+        # Refuse very short paths (e.g. '/tmp', 'C:\\tmp') that are easy to fat-finger.
+        if len(resolved.parts) <= 2:
+            raise ValueError(f"Refusing to overwrite high-risk short path: '{resolved}'")
+
+        # Sentinel requirement: only overwrite if this looks like an insideLLMs run dir.
+        sentinel_ok = (path / "manifest.json").exists() or (path / ".insidellms_run").exists()
+        if not sentinel_ok:
+            raise ValueError(
+                f"Refusing to overwrite '{resolved}': directory is not empty and does not look like an "
+                "insideLLMs run (missing manifest.json or .insidellms_run)."
+            )
+
+        shutil.rmtree(path)
+
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def run_probe(
@@ -316,6 +1239,31 @@ def _resolve_path(path: str, base_dir: Path) -> Path:
     if p.is_absolute():
         return p
     return base_dir / p
+
+
+def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[str, Any]:
+    """Build a reproducibility snapshot of the config actually used for the run.
+
+    This is intended for writing to `config.resolved.yaml` in a run directory.
+    We keep the structure of the original config, but resolve any relative
+    filesystem paths that insideLLMs resolves at runtime (e.g. CSV/JSONL dataset
+    paths).
+    """
+    import copy
+
+    snapshot: dict[str, Any] = copy.deepcopy(config)  # type: ignore[arg-type]
+
+    dataset = snapshot.get("dataset") if isinstance(snapshot, dict) else None
+    if isinstance(dataset, dict):
+        fmt = dataset.get("format")
+        if fmt in ("csv", "jsonl") and isinstance(dataset.get("path"), str):
+            try:
+                dataset["path"] = str(_resolve_path(dataset["path"], base_dir).resolve())
+            except Exception:
+                # Best-effort only; do not fail the run for a snapshot.
+                pass
+
+    return snapshot
 
 
 def _create_model_from_config(config: ConfigDict) -> Model:
@@ -422,6 +1370,14 @@ def run_experiment_from_config(
     config_path: Union[str, Path],
     *,
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    validate_output: bool = False,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+    validation_mode: str = "strict",
+    emit_run_artifacts: bool = True,
+    run_dir: Optional[Union[str, Path]] = None,
+    run_root: Optional[Union[str, Path]] = None,
+    run_id: Optional[str] = None,
+    overwrite: bool = False,
 ) -> list[dict[str, Any]]:
     """Run an experiment from a configuration file.
 
@@ -455,18 +1411,44 @@ def run_experiment_from_config(
     config = load_config(config_path)
     base_dir = config_path.parent
 
+    config_snapshot = _build_resolved_config_snapshot(config, base_dir)
+    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+        config_snapshot,
+        schema_version=schema_version,
+    )
+    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+        config_snapshot,
+        schema_version=schema_version,
+    )
+
     model = _create_model_from_config(config["model"])
     probe = _create_probe_from_config(config["probe"])
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
 
     runner = ProbeRunner(model, probe)
-    return runner.run(dataset, progress_callback=progress_callback)
+    return runner.run(
+        dataset,
+        progress_callback=progress_callback,
+        validate_output=validate_output,
+        schema_version=schema_version,
+        validation_mode=validation_mode,
+        emit_run_artifacts=emit_run_artifacts,
+        run_dir=run_dir,
+        run_root=run_root,
+        run_id=resolved_run_id,
+        overwrite=overwrite,
+        dataset_info=config.get("dataset"),
+        config_snapshot=config_snapshot,
+    )
 
 
 def run_harness_from_config(
     config_path: Union[str, Path],
     *,
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    validate_output: bool = False,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+    validation_mode: str = "strict",
 ) -> dict[str, Any]:
     """Run a cross-model probe harness from a configuration file.
 
@@ -486,6 +1468,14 @@ def run_harness_from_config(
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
+
+    config_snapshot = _build_resolved_config_snapshot(config, base_dir)
+    harness_run_id = _deterministic_run_id_from_config_snapshot(
+        config_snapshot,
+        schema_version=schema_version,
+    )
+    harness_base_time = _deterministic_base_time(harness_run_id)
+    harness_generated_at, _ = _deterministic_run_times(harness_base_time, 0)
 
     models_config = config.get("models", [])
     probes_config = config.get("probes", [])
@@ -510,24 +1500,98 @@ def run_harness_from_config(
     dataset_ref = dataset_config.get("name") or dataset_config.get("path") or "dataset"
     dataset_format = dataset_config.get("format")
 
+    def _model_spec_for_harness(model_obj: Model, model_cfg: dict[str, Any]) -> dict[str, Any]:
+        info_obj: Any = {}
+        try:
+            info_obj = getattr(model_obj, "info", lambda: {})() or {}
+        except Exception:
+            info_obj = {}
+        info = _normalize_info_obj_to_dict(info_obj)
+        model_id = (
+            info.get("model_id")
+            or info.get("id")
+            or info.get("name")
+            or info.get("model_name")
+            or getattr(model_obj, "model_id", None)
+            or getattr(model_obj, "name", None)
+            or model_obj.__class__.__name__
+        )
+        provider = (
+            info.get("provider")
+            or model_cfg.get("type")
+            or info.get("type")
+            or info.get("model_type")
+        )
+        provider = str(provider) if provider is not None else None
+        return {"model_id": str(model_id), "provider": provider, "params": info}
+
+    def _probe_spec_for_harness(probe_obj: Probe, probe_cfg: dict[str, Any]) -> dict[str, Any]:
+        probe_id = (
+            getattr(probe_obj, "name", None)
+            or probe_cfg.get("type")
+            or probe_obj.__class__.__name__
+        )
+        probe_version = getattr(probe_obj, "version", None) or getattr(
+            probe_obj, "probe_version", None
+        )
+        return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
+
+    def _dataset_spec_for_harness(dataset_cfg: dict[str, Any]) -> dict[str, Any]:
+        dataset_id = (
+            dataset_cfg.get("name") or dataset_cfg.get("dataset") or dataset_cfg.get("path")
+        )
+        dataset_version = dataset_cfg.get("version") or dataset_cfg.get("dataset_version")
+        dataset_hash = dataset_cfg.get("hash") or dataset_cfg.get("dataset_hash")
+        provenance = (
+            dataset_cfg.get("provenance") or dataset_cfg.get("source") or dataset_cfg.get("format")
+        )
+        return {
+            "dataset_id": str(dataset_id) if dataset_id is not None else None,
+            "dataset_version": str(dataset_version) if dataset_version is not None else None,
+            "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+            "provenance": str(provenance) if provenance is not None else None,
+            "params": dataset_cfg,
+        }
+
     for model_idx, model_config in enumerate(models_config):
         model = _create_model_from_config(model_config)
-        model_info = model.info()
+        model_info = _coerce_model_info(model)
+        model_spec = _model_spec_for_harness(model, model_config)
 
         for probe_idx, probe_config in enumerate(probes_config):
             probe = _create_probe_from_config(probe_config)
+            probe_spec = _probe_spec_for_harness(probe, probe_config)
+            dataset_spec = _dataset_spec_for_harness(dataset_config)
             run_offset = (model_idx * len(probes_config) + probe_idx) * len(dataset)
+            experiment_id = _deterministic_harness_experiment_id(
+                model_config=model_config,
+                probe_config=probe_config,
+                dataset_config=dataset_config,
+                model_index=model_idx,
+                probe_index=probe_idx,
+                max_examples=max_examples,
+                schema_version=schema_version,
+                harness_run_id=harness_run_id,
+            )
+            experiment_base_time = _deterministic_base_time(experiment_id)
+            experiment_started_at, experiment_completed_at = _deterministic_run_times(
+                experiment_base_time,
+                len(dataset),
+            )
 
             def local_progress(current: int, total: int) -> None:
                 if progress_callback and total_items:
                     progress_callback(run_offset + current, total_items)
 
-            started_at = datetime.now(timezone.utc)
             results = ProbeRunner(model, probe).run(
                 dataset,
                 progress_callback=local_progress if progress_callback else None,
+                validate_output=validate_output,
+                schema_version=schema_version,
+                validation_mode=validation_mode,
+                emit_run_artifacts=False,
+                run_id=experiment_id,
             )
-            completed_at = datetime.now(timezone.utc)
 
             experiment_config = {
                 "model": model_config,
@@ -540,36 +1604,61 @@ def run_harness_from_config(
                 probe,
                 results,
                 config=experiment_config,
+                experiment_id=experiment_id,
+                started_at=experiment_started_at,
+                completed_at=experiment_completed_at,
             )
-            experiment.started_at = started_at
-            experiment.completed_at = completed_at
             experiments.append(experiment)
 
+            probe_category = getattr(probe, "category", ProbeCategory.CUSTOM)
+            if isinstance(probe_category, ProbeCategory):
+                probe_category_str = probe_category.value
+            else:
+                probe_category_str = str(probe_category)
+
             for example_index, result in enumerate(results):
-                records.append(
-                    {
+                record_started_at, record_completed_at = _deterministic_item_times(
+                    experiment_base_time,
+                    example_index,
+                )
+                record = _build_result_record(
+                    schema_version=schema_version,
+                    run_id=harness_run_id,
+                    started_at=record_started_at,
+                    completed_at=record_completed_at,
+                    model=model_spec,
+                    probe=probe_spec,
+                    dataset=dataset_spec,
+                    item=result.get("input"),
+                    output=result.get("output"),
+                    latency_ms=result.get("latency_ms"),
+                    store_messages=False,
+                    index=example_index,
+                    status=str(result.get("status")),
+                    error=None,
+                )
+
+                # Preserve any error details coming from ProbeRunner.run()'s raw results.
+                record["error"] = result.get("error")
+                record["error_type"] = result.get("error_type")
+
+                # Keep harness-specific grouping fields, but nest them under `custom`
+                # so the top-level record matches the standard ResultRecord schema.
+                record["custom"] = {
+                    "harness": {
                         "experiment_id": experiment.experiment_id,
                         "model_type": model_config.get("type"),
                         "model_name": model_info.name,
                         "model_id": model_info.model_id,
                         "probe_type": probe_config.get("type"),
                         "probe_name": probe.name,
-                        "probe_category": probe.category.value
-                        if isinstance(probe.category, ProbeCategory)
-                        else str(probe.category),
+                        "probe_category": probe_category_str,
                         "dataset": dataset_ref,
                         "dataset_format": dataset_format,
                         "example_index": example_index,
-                        "input": _serialize_value(result.get("input")),
-                        "output": _serialize_value(result.get("output")),
-                        "status": result.get("status"),
-                        "error": result.get("error"),
-                        "error_type": result.get("error_type"),
-                        "latency_ms": result.get("latency_ms"),
-                        "started_at": started_at.isoformat(),
-                        "completed_at": completed_at.isoformat(),
                     }
-                )
+                }
+                records.append(record)
 
     summary = generate_summary_report(
         experiments,
@@ -577,11 +1666,26 @@ def run_harness_from_config(
         confidence_level=config.get("confidence_level", 0.95),
     )
 
+    if validate_output:
+        from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        registry = SchemaRegistry()
+        validator = OutputValidator()
+        for record in records:
+            validator.validate(
+                registry.RESULT_RECORD,
+                record,
+                schema_version=schema_version,
+                mode=validation_mode,
+            )
+
     return {
         "records": records,
         "experiments": experiments,
         "summary": summary,
         "config": config,
+        "run_id": harness_run_id,
+        "generated_at": harness_generated_at,
     }
 
 
@@ -590,6 +1694,14 @@ async def run_experiment_from_config_async(
     *,
     concurrency: int = 5,
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    validate_output: bool = False,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+    validation_mode: str = "strict",
+    emit_run_artifacts: bool = True,
+    run_dir: Optional[Union[str, Path]] = None,
+    run_root: Optional[Union[str, Path]] = None,
+    run_id: Optional[str] = None,
+    overwrite: bool = False,
 ) -> list[dict[str, Any]]:
     """Run an experiment asynchronously from a configuration file.
 
@@ -608,12 +1720,28 @@ async def run_experiment_from_config_async(
     config = load_config(config_path)
     base_dir = config_path.parent
 
+    config_snapshot = _build_resolved_config_snapshot(config, base_dir)
+
     model = _create_model_from_config(config["model"])
     probe = _create_probe_from_config(config["probe"])
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
 
     runner = AsyncProbeRunner(model, probe)
-    return await runner.run(dataset, concurrency=concurrency, progress_callback=progress_callback)
+    return await runner.run(
+        dataset,
+        concurrency=concurrency,
+        progress_callback=progress_callback,
+        validate_output=validate_output,
+        schema_version=schema_version,
+        validation_mode=validation_mode,
+        emit_run_artifacts=emit_run_artifacts,
+        run_dir=run_dir,
+        run_root=run_root,
+        run_id=resolved_run_id,
+        overwrite=overwrite,
+        dataset_info=config.get("dataset"),
+        config_snapshot=config_snapshot,
+    )
 
 
 def create_experiment_result(
@@ -621,6 +1749,10 @@ def create_experiment_result(
     probe: Probe,
     results: list[dict[str, Any]],
     config: Optional[ConfigDict] = None,
+    *,
+    experiment_id: Optional[str] = None,
+    started_at: Optional[datetime] = None,
+    completed_at: Optional[datetime] = None,
 ) -> ExperimentResult:
     """Create a structured ExperimentResult from raw results.
 
@@ -643,6 +1775,7 @@ def create_experiment_result(
                 status=status,
                 error=r.get("error"),
                 latency_ms=r.get("latency_ms"),
+                metadata=r.get("metadata") or {},
             )
         )
 
@@ -654,14 +1787,77 @@ def create_experiment_result(
     if isinstance(category, str):
         category = ProbeCategory(category)
 
+    resolved_experiment_id = experiment_id
+    if resolved_experiment_id is None:
+        inputs = [r.get("input") for r in results]
+        resolved_experiment_id = _deterministic_hash(
+            {
+                "model": _serialize_value(_coerce_model_info(model)),
+                "probe": {
+                    "name": probe.name,
+                    "version": getattr(probe, "version", None),
+                },
+                "inputs_hash": _hash_prompt_set(inputs),
+            }
+        )[:12]
+
+    if started_at is None or completed_at is None:
+        base_time = _deterministic_base_time(resolved_experiment_id)
+        deterministic_started, deterministic_completed = _deterministic_run_times(
+            base_time,
+            len(results),
+        )
+        if started_at is None:
+            started_at = deterministic_started
+        if completed_at is None:
+            completed_at = deterministic_completed
+
     return ExperimentResult(
-        experiment_id=str(uuid.uuid4())[:8],
-        model_info=model.info(),
+        experiment_id=resolved_experiment_id,
+        model_info=_coerce_model_info(model),
         probe_name=probe.name,
         probe_category=category,
         results=probe_results,
         score=score,
-        started_at=datetime.now(),
-        completed_at=datetime.now(),
+        started_at=started_at,
+        completed_at=completed_at,
         config=config or {},
+    )
+
+
+def _deterministic_harness_experiment_id(
+    *,
+    model_config: dict[str, Any],
+    probe_config: dict[str, Any],
+    dataset_config: dict[str, Any],
+    model_index: int,
+    probe_index: int,
+    max_examples: Optional[int],
+    schema_version: str,
+    harness_run_id: str,
+) -> str:
+    payload = {
+        "schema_version": schema_version,
+        "harness_run_id": harness_run_id,
+        "model": model_config,
+        "probe": probe_config,
+        "dataset": dataset_config,
+        "max_examples": max_examples,
+        "model_index": model_index,
+        "probe_index": probe_index,
+    }
+    return _deterministic_hash(payload)[:16]
+
+
+def derive_run_id_from_config_path(
+    config_path: Union[str, Path],
+    *,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+) -> str:
+    config_path = Path(config_path)
+    config = load_config(config_path)
+    config_snapshot = _build_resolved_config_snapshot(config, config_path.parent)
+    return _deterministic_run_id_from_config_snapshot(
+        config_snapshot,
+        schema_version=schema_version,
     )
