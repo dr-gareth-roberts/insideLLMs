@@ -335,3 +335,37 @@ def test_diff_missing_metric_key(tmp_path):
 
     assert "metric_key_missing" in output
     assert "latency_ms" in output
+
+
+def test_diff_json_output(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+
+    _write_harness_records(
+        baseline_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"score": 1.0}],
+        primary_metrics=["score"],
+    )
+    _write_harness_records(
+        candidate_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"accuracy": 0.9}],
+        primary_metrics=["accuracy"],
+    )
+
+    output = _run_cli(
+        ["diff", str(baseline_dir), str(candidate_dir), "--format", "json"],
+        _seeded_env("0"),
+        repo_root,
+    )
+
+    payload = json.loads(output)
+    assert payload["counts"]["other_changes"] == 1
+    assert payload["changes"][0]["kind"] == "metrics_not_comparable"
+    assert payload["changes"][0]["reason"] == "primary_metric_mismatch"
