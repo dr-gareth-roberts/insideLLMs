@@ -370,9 +370,32 @@ def _strip_volatile_keys(value: Any, ignore_keys: set[str]) -> Any:
     return value
 
 
+def _trim_text(text: str, limit: int = 200) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
+
+def _output_summary(record: dict[str, Any], ignore_keys: Optional[set[str]]) -> Optional[dict[str, Any]]:
+    output_text = _output_text(record)
+    if isinstance(output_text, str):
+        return {"type": "text", "preview": _trim_text(output_text), "length": len(output_text)}
+    output = record.get("output")
+    if output is None:
+        return None
+    return {
+        "type": "structured",
+        "fingerprint": _output_fingerprint(record, ignore_keys=ignore_keys),
+    }
+
+
 def _output_fingerprint(record: dict[str, Any], ignore_keys: Optional[set[str]] = None) -> Optional[str]:
     output = record.get("output")
     if ignore_keys:
+        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+        override = custom.get("output_fingerprint")
+        if output is None and isinstance(override, str):
+            return override
         if output is None:
             return None
         sanitized = _strip_volatile_keys(output, ignore_keys)
@@ -426,7 +449,7 @@ def _metric_mismatch_reason(record_a: dict[str, Any], record_b: dict[str, Any]) 
     return "type_mismatch"
 
 
-def _metric_mismatch_details(record_a: dict[str, Any], record_b: dict[str, Any]) -> str:
+def _metric_mismatch_context(record_a: dict[str, Any], record_b: dict[str, Any]) -> dict[str, Any]:
     scores_a = record_a.get("scores")
     scores_b = record_b.get("scores")
     primary_a = record_a.get("primary_metric")
@@ -435,30 +458,58 @@ def _metric_mismatch_details(record_a: dict[str, Any], record_b: dict[str, Any])
     keys_a = sorted(scores_a.keys()) if isinstance(scores_a, dict) else None
     keys_b = sorted(scores_b.keys()) if isinstance(scores_b, dict) else None
 
-    details = [
-        f"baseline.primary_metric={primary_a!r}",
-        f"candidate.primary_metric={primary_b!r}",
-    ]
-
-    if keys_a is not None:
-        details.append(f"baseline.scores keys={keys_a!r}")
-    else:
-        details.append(f"baseline.scores type={type(scores_a).__name__}")
-
-    if keys_b is not None:
-        details.append(f"candidate.scores keys={keys_b!r}")
-    else:
-        details.append(f"candidate.scores type={type(scores_b).__name__}")
-
-    if isinstance(scores_a, dict) and primary_a in scores_a:
-        details.append(f"baseline.{primary_a}={scores_a.get(primary_a)!r}")
-    if isinstance(scores_b, dict) and primary_b in scores_b:
-        details.append(f"candidate.{primary_b}={scores_b.get(primary_b)!r}")
+    context = {
+        "baseline": {
+            "primary_metric": primary_a,
+            "scores_keys": keys_a,
+            "metric_value": scores_a.get(primary_a) if isinstance(scores_a, dict) else None,
+        },
+        "candidate": {
+            "primary_metric": primary_b,
+            "scores_keys": keys_b,
+            "metric_value": scores_b.get(primary_b) if isinstance(scores_b, dict) else None,
+        },
+    }
 
     custom = record_a.get("custom") if isinstance(record_a.get("custom"), dict) else {}
     replicate_key = custom.get("replicate_key")
     if replicate_key:
-        details.append(f"replicate_key={replicate_key}")
+        context["replicate_key"] = replicate_key
+
+    return context
+
+
+def _metric_mismatch_details(record_a: dict[str, Any], record_b: dict[str, Any]) -> str:
+    context = _metric_mismatch_context(record_a, record_b)
+
+    baseline = context.get("baseline", {})
+    candidate = context.get("candidate", {})
+    details = [
+        f"baseline.primary_metric={baseline.get('primary_metric')!r}",
+        f"candidate.primary_metric={candidate.get('primary_metric')!r}",
+    ]
+
+    if baseline.get("scores_keys") is not None:
+        details.append(f"baseline.scores keys={baseline.get('scores_keys')!r}")
+    else:
+        details.append("baseline.scores type=None")
+
+    if candidate.get("scores_keys") is not None:
+        details.append(f"candidate.scores keys={candidate.get('scores_keys')!r}")
+    else:
+        details.append("candidate.scores type=None")
+
+    if baseline.get("primary_metric") is not None:
+        details.append(
+            f"baseline.{baseline.get('primary_metric')}={baseline.get('metric_value')!r}"
+        )
+    if candidate.get("primary_metric") is not None:
+        details.append(
+            f"candidate.{candidate.get('primary_metric')}={candidate.get('metric_value')!r}"
+        )
+
+    if "replicate_key" in context:
+        details.append(f"replicate_key={context['replicate_key']}")
 
     return "; ".join(details)
 
@@ -1116,6 +1167,17 @@ def create_parser() -> argparse.ArgumentParser:
         "run_dir_b",
         type=str,
         help="Comparison run directory",
+    )
+    diff_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    diff_parser.add_argument(
+        "--output",
+        type=str,
+        help="Write JSON output to a file (json format only)",
     )
     diff_parser.add_argument(
         "--limit",
@@ -2192,6 +2254,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print_error("Both run directories must contain records to compare")
         return 1
 
+    output_format = getattr(args, "format", "text")
+    output_path = getattr(args, "output", None)
+    if output_path and output_format != "json":
+        print_warning("--output is only used with --format json")
+
     ignore_keys: set[str] = set()
     for entry in args.output_fingerprint_ignore or []:
         for item in str(entry).split(","):
@@ -2214,6 +2281,30 @@ def cmd_diff(args: argparse.Namespace) -> int:
             index[key] = record
         return index, duplicates
 
+    def record_identity(record: dict[str, Any]) -> dict[str, Any]:
+        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+        label = _record_label(record)
+        key = _record_key(record)
+        return {
+            "record_key": {"model_id": key[0], "probe_id": key[1], "item_id": key[2]},
+            "model_id": key[0],
+            "probe_id": key[1],
+            "example_id": label[2],
+            "replicate_key": custom.get("replicate_key"),
+            "label": {"model": label[0], "probe": label[1], "example": label[2]},
+        }
+
+    def record_summary(record: dict[str, Any]) -> dict[str, Any]:
+        scores = record.get("scores") if isinstance(record.get("scores"), dict) else None
+        _metric_name, metric_value = _primary_score(record)
+        return {
+            "status": _status_string(record),
+            "primary_metric": record.get("primary_metric"),
+            "primary_score": metric_value,
+            "scores_keys": sorted(scores.keys()) if isinstance(scores, dict) else None,
+            "output": _output_summary(record, ignore_keys_set),
+        }
+
     index_a, dup_a = build_index(records_a)
     index_b, dup_b = build_index(records_b)
 
@@ -2229,15 +2320,23 @@ def cmd_diff(args: argparse.Namespace) -> int:
     only_a: list[tuple[str, str, str]] = []
     only_b: list[tuple[str, str, str]] = []
 
+    regressions_json: list[dict[str, Any]] = []
+    improvements_json: list[dict[str, Any]] = []
+    changes_json: list[dict[str, Any]] = []
+    only_a_json: list[dict[str, Any]] = []
+    only_b_json: list[dict[str, Any]] = []
+
     for key in sorted(all_keys):
         record_a = index_a.get(key)
         record_b = index_b.get(key)
 
         if record_a is None:
             only_b.append(_record_label(record_b))  # type: ignore[arg-type]
+            only_b_json.append(record_identity(record_b))  # type: ignore[arg-type]
             continue
         if record_b is None:
             only_a.append(_record_label(record_a))
+            only_a_json.append(record_identity(record_a))
             continue
 
         label = _record_label(record_a)
@@ -2245,12 +2344,33 @@ def cmd_diff(args: argparse.Namespace) -> int:
         status_b = _status_string(record_b)
         score_name_a, score_a = _primary_score(record_a)
         score_name_b, score_b = _primary_score(record_b)
+        identity = record_identity(record_a)
+        summary_a = record_summary(record_a)
+        summary_b = record_summary(record_b)
 
         if status_a == "success" and status_b != "success":
             regressions.append((*label, f"status {status_a} -> {status_b}"))
+            regressions_json.append(
+                {
+                    **identity,
+                    "kind": "status_regression",
+                    "detail": f"status {status_a} -> {status_b}",
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                }
+            )
             continue
         if status_a != "success" and status_b == "success":
             improvements.append((*label, f"status {status_a} -> {status_b}"))
+            improvements_json.append(
+                {
+                    **identity,
+                    "kind": "status_improvement",
+                    "detail": f"status {status_a} -> {status_b}",
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                }
+            )
             continue
 
         metrics_compared = False
@@ -2261,16 +2381,46 @@ def cmd_diff(args: argparse.Namespace) -> int:
                 regressions.append(
                     (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta {delta:.4f})")
                 )
+                regressions_json.append(
+                    {
+                        **identity,
+                        "kind": "metric_regression",
+                        "metric": score_name_a,
+                        "baseline": summary_a,
+                        "candidate": summary_b,
+                        "delta": delta,
+                    }
+                )
                 continue
             if delta > 0:
                 improvements.append(
                     (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta +{delta:.4f})")
+                )
+                improvements_json.append(
+                    {
+                        **identity,
+                        "kind": "metric_improvement",
+                        "metric": score_name_a,
+                        "baseline": summary_a,
+                        "candidate": summary_b,
+                        "delta": delta,
+                    }
                 )
 
         if not metrics_compared and (score_a is not None or score_b is not None):
             reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
             detail = _metric_mismatch_details(record_a, record_b)
             changes.append((*label, f"metrics not comparable:{reason}; {detail}"))
+            changes_json.append(
+                {
+                    **identity,
+                    "kind": "metrics_not_comparable",
+                    "reason": reason,
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                    "details": _metric_mismatch_context(record_a, record_b),
+                }
+            )
 
         if metrics_compared and status_a == "success" and status_b == "success":
             scores_a = record_a.get("scores") if isinstance(record_a.get("scores"), dict) else None
@@ -2288,12 +2438,30 @@ def cmd_diff(args: argparse.Namespace) -> int:
                             f"baseline_missing={missing_in_a}, candidate_missing={missing_in_b}",
                         )
                     )
+                    changes_json.append(
+                        {
+                            **identity,
+                            "kind": "metric_key_missing",
+                            "baseline_missing": missing_in_a,
+                            "candidate_missing": missing_in_b,
+                            "baseline": summary_a,
+                            "candidate": summary_b,
+                        }
+                    )
 
         output_a = _output_text(record_a)
         output_b = _output_text(record_b)
         if output_a is not None or output_b is not None:
             if output_a != output_b:
                 changes.append((*label, "output changed"))
+                changes_json.append(
+                    {
+                        **identity,
+                        "kind": "output_changed",
+                        "baseline": summary_a,
+                        "candidate": summary_b,
+                    }
+                )
         else:
             fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys_set)
             fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys_set)
@@ -2304,18 +2472,74 @@ def cmd_diff(args: argparse.Namespace) -> int:
                     )
                 else:
                     changes.append((*label, "output changed (structured)"))
+                changes_json.append(
+                    {
+                        **identity,
+                        "kind": "output_changed",
+                        "baseline": summary_a,
+                        "candidate": summary_b,
+                        "baseline_fingerprint": fingerprint_a,
+                        "candidate_fingerprint": fingerprint_b,
+                    }
+                )
         if status_a != status_b:
             changes.append((*label, f"status {status_a} -> {status_b}"))
+            changes_json.append(
+                {
+                    **identity,
+                    "kind": "status_changed",
+                    "detail": f"status {status_a} -> {status_b}",
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                }
+            )
+
+    diff_report = {
+        "baseline": str(run_dir_a),
+        "candidate": str(run_dir_b),
+        "run_ids": {
+            "baseline": sorted(
+                {record.get("run_id") for record in records_a if record.get("run_id")}
+            ),
+            "candidate": sorted(
+                {record.get("run_id") for record in records_b if record.get("run_id")}
+            ),
+        },
+        "counts": {
+            "common": len(all_keys) - len(only_a) - len(only_b),
+            "only_baseline": len(only_a),
+            "only_candidate": len(only_b),
+            "regressions": len(regressions),
+            "improvements": len(improvements),
+            "other_changes": len(changes),
+        },
+        "duplicates": {"baseline": dup_a, "candidate": dup_b},
+        "regressions": regressions_json,
+        "improvements": improvements_json,
+        "changes": changes_json,
+        "only_baseline": only_a_json,
+        "only_candidate": only_b_json,
+    }
+
+    if output_format == "json":
+        payload = json.dumps(diff_report, indent=2, default=_json_default)
+        if output_path:
+            Path(output_path).write_text(payload, encoding="utf-8")
+        else:
+            print(payload)
+        if args.fail_on_regressions and regressions:
+            return 2
+        return 0
 
     print_header("Behavioural Diff")
     print_key_value("Baseline", run_dir_a)
     print_key_value("Comparison", run_dir_b)
-    print_key_value("Common keys", len(all_keys) - len(only_a) - len(only_b))
-    print_key_value("Only in baseline", len(only_a))
-    print_key_value("Only in comparison", len(only_b))
-    print_key_value("Regressions", len(regressions))
-    print_key_value("Improvements", len(improvements))
-    print_key_value("Other changes", len(changes))
+    print_key_value("Common keys", diff_report["counts"]["common"])
+    print_key_value("Only in baseline", diff_report["counts"]["only_baseline"])
+    print_key_value("Only in comparison", diff_report["counts"]["only_candidate"])
+    print_key_value("Regressions", diff_report["counts"]["regressions"])
+    print_key_value("Improvements", diff_report["counts"]["improvements"])
+    print_key_value("Other changes", diff_report["counts"]["other_changes"])
 
     def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
         if not items:
