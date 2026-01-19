@@ -685,15 +685,15 @@ flowchart LR
 
 ---
 
-## Roadmap & TODO
+## Roadmap (Indicative)
 
-We are constantly working to improve `insideLLMs`. Here are some things on our radar:
+These are potential next steps rather than commitments:
 
-- [ ] **Expanded Model Support**: Integration with AWS Bedrock, Azure OpenAI, and more local providers.
-- [ ] **Registry Integration**: Further integrate existing components with the plugin registry system.
-- [ ] **Enhanced Dashboard**: More interactive visualizations and comparative analysis tools in the HTML reports.
-- [ ] **Automated Prompt Optimization**: Tools for automatically refining prompts based on evaluation results.
-- [ ] **Better Documentation**: More examples and tutorials for advanced use cases.
+- [ ] **Model Support**: Broader coverage of hosted and local providers.
+- [ ] **Registry Integration**: Deeper integration of existing components with the plugin registry.
+- [ ] **Reporting UX**: More flexible report layouts and comparison views.
+- [ ] **Prompt Optimisation**: Optional tooling for iterating prompts based on evaluation results.
+- [ ] **Documentation**: Additional guides and examples in the Wiki.
 
 ---
 
