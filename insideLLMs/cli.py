@@ -570,6 +570,8 @@ def _build_basic_harness_report(
             )
         )
 
+    rows.sort(key=lambda row: (row[0], row[1]))
+
     rows_html = "\n".join(
         f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td>"
         f"<td>{row[3]}</td><td>{row[4]}</td></tr>"
@@ -579,7 +581,8 @@ def _build_basic_harness_report(
     def summary_table(section: str) -> str:
         items = summary.get(section, {})
         lines = []
-        for name, stats in items.items():
+        for name in sorted(items):
+            stats = items[name]
             success = stats.get("success_rate", {}).get("mean")
             ci = stats.get("success_rate_ci", {})
             ci_text = "-"
