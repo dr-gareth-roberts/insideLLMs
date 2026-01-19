@@ -19,12 +19,9 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import yaml
-from contextlib import ExitStack
 
-from insideLLMs.config_types import RunConfig
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
-from insideLLMs.validation import ValidationError, validate_prompt_set
 from insideLLMs.registry import (
     NotFoundError,
     dataset_registry,
@@ -44,41 +41,7 @@ from insideLLMs.types import (
 )
 
 
-class _RunnerBase:
-    """Base class for ProbeRunner and AsyncProbeRunner with shared functionality.
-
-    This class provides common initialization, properties, and helper methods
-    used by both synchronous and asynchronous runners.
-    """
-
-    def __init__(self, model: Model, probe: Probe):
-        """Initialize the runner.
-
-        Args:
-            model: The model to test.
-            probe: The probe to run.
-        """
-        self.model = model
-        self.probe = probe
-        self._results: list[dict[str, Any]] = []
-        self.last_run_id: Optional[str] = None
-        self.last_run_dir: Optional[Path] = None
-
-    @property
-    def success_rate(self) -> float:
-        """Calculate the success rate of the last run."""
-        if not self._results:
-            return 0.0
-        successes = sum(1 for r in self._results if r.get("status") == "success")
-        return successes / len(self._results)
-
-    @property
-    def error_count(self) -> int:
-        """Count errors from the last run."""
-        return sum(1 for r in self._results if r.get("status") == "error")
-
-
-class ProbeRunner(_RunnerBase):
+class ProbeRunner:
     """Runs a probe against a model on a dataset.
 
     The ProbeRunner orchestrates the execution of probes, handling error
@@ -94,32 +57,42 @@ class ProbeRunner(_RunnerBase):
         >>> print(f"Success rate: {runner.success_rate:.1%}")
     """
 
+    def __init__(self, model: Model, probe: Probe):
+        """Initialize the runner.
+
+        Args:
+            model: The model to test.
+            probe: The probe to run.
+        """
+        self.model = model
+        self.probe = probe
+        self._results: list[dict[str, Any]] = []
+        self.last_run_id: Optional[str] = None
+        self.last_run_dir: Optional[Path] = None
+
     def run(
         self,
         prompt_set: list[Any],
         *,
-        config: Optional[RunConfig] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-        stop_on_error: Optional[bool] = None,
-        validate_output: Optional[bool] = None,
-        schema_version: Optional[str] = None,
-        validation_mode: Optional[str] = None,
-        emit_run_artifacts: Optional[bool] = None,
+        stop_on_error: bool = False,
+        validate_output: bool = False,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        validation_mode: str = "strict",
+        emit_run_artifacts: bool = True,
         run_dir: Optional[Union[str, Path]] = None,
         run_root: Optional[Union[str, Path]] = None,
         run_id: Optional[str] = None,
-        overwrite: Optional[bool] = None,
+        overwrite: bool = False,
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
-        store_messages: Optional[bool] = None,
+        store_messages: bool = True,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on the model for each item in the prompt set.
 
         Args:
             prompt_set: List of inputs to test.
-            config: Optional RunConfig with all run settings. Individual kwargs
-                override config values if both are provided.
             progress_callback: Optional callback(current, total) for progress updates.
             stop_on_error: If True, stop execution on first error.
             **probe_kwargs: Additional arguments passed to the probe.
@@ -131,35 +104,117 @@ class ProbeRunner(_RunnerBase):
 
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
-        # Resolve config: use provided config or create default
-        if config is None:
-            config = RunConfig()
-
-        # Override config with explicit kwargs (backward compatibility)
-        stop_on_error = stop_on_error if stop_on_error is not None else config.stop_on_error
-        validate_output = validate_output if validate_output is not None else config.validate_output
-        schema_version = schema_version if schema_version is not None else config.schema_version
-        validation_mode = validation_mode if validation_mode is not None else config.validation_mode
-        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
-        run_dir = run_dir if run_dir is not None else config.run_dir
-        run_root = run_root if run_root is not None else config.run_root
-        run_id = run_id if run_id is not None else config.run_id
-        overwrite = overwrite if overwrite is not None else config.overwrite
-        dataset_info = dataset_info if dataset_info is not None else config.dataset_info
-        config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
-        store_messages = store_messages if store_messages is not None else config.store_messages
-
-        # Validate prompt set before execution
-        validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
-
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
 
-        model_spec = _build_model_spec(self.model)
-        probe_spec = _build_probe_spec(self.probe)
-        dataset_spec = _build_dataset_spec(dataset_info)
-        # Add params for backward compatibility
-        dataset_spec["params"] = dataset_info or {}
+        def _default_run_root() -> Path:
+            env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+            if env_root:
+                return Path(env_root).expanduser()
+            return Path.home() / ".insidellms" / "runs"
+
+        def _semver_tuple(version: str) -> tuple[int, int, int]:
+            # Keep local and lightweight to avoid importing pydantic when not needed.
+            from insideLLMs.schemas.registry import normalize_semver
+
+            v = normalize_semver(version)
+            parts = v.split(".")
+            try:
+                return (int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return (0, 0, 0)
+
+        def _atomic_write_text(path: Path, text: str) -> None:
+            tmp = path.with_name(f".{path.name}.tmp")
+            tmp.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, path)
+
+        def _atomic_write_yaml(path: Path, data: Any) -> None:
+            content = yaml.safe_dump(
+                _serialize_value(data),
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write_text(path, content)
+
+        def _ensure_run_sentinel(run_dir_path: Path) -> None:
+            # Marker used to make --overwrite safer (only delete dirs that look like runs).
+            marker = run_dir_path / ".insidellms_run"
+            if not marker.exists():
+                try:
+                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
+                except Exception:
+                    # Don't fail the run due to marker write issues.
+                    pass
+
+        def _model_spec() -> dict[str, Any]:
+            from dataclasses import asdict, is_dataclass
+
+            info_obj: Any = {}
+            try:
+                info_obj = self.model.info() or {}
+            except Exception:
+                info_obj = {}
+
+            # Normalize model.info() output into a dict. Historically this library
+            # has returned a ModelInfo dataclass, but some integrations return dicts.
+            if isinstance(info_obj, dict):
+                info: dict[str, Any] = info_obj
+            elif is_dataclass(info_obj):
+                info = asdict(info_obj)
+            elif hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
+                # pydantic v1 compatibility
+                info = info_obj.dict()
+            elif hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
+                # pydantic v2 compatibility
+                info = info_obj.model_dump()
+            else:
+                info = {}
+
+            model_id = (
+                info.get("model_id")
+                or info.get("id")
+                or info.get("name")
+                or info.get("model_name")
+                or getattr(self.model, "model_id", None)
+                or getattr(self.model, "name", None)
+                or self.model.__class__.__name__
+            )
+
+            provider = info.get("provider") or info.get("type") or info.get("model_type")
+            provider = str(provider) if provider is not None else None
+            return {"model_id": str(model_id), "provider": provider, "params": info}
+
+        def _probe_spec() -> dict[str, Any]:
+            probe_id = getattr(self.probe, "name", None) or self.probe.__class__.__name__
+            probe_version = getattr(self.probe, "version", None)
+            return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
+
+        def _dataset_spec() -> dict[str, Any]:
+            di = dataset_info or {}
+            dataset_id = di.get("name") or di.get("dataset") or di.get("path")
+            dataset_version = di.get("version") or di.get("dataset_version")
+            dataset_hash = di.get("hash") or di.get("dataset_hash")
+            provenance = di.get("provenance") or di.get("source") or di.get("format")
+            return {
+                "dataset_id": str(dataset_id) if dataset_id is not None else None,
+                "dataset_version": str(dataset_version) if dataset_version is not None else None,
+                "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+                "provenance": str(provenance) if provenance is not None else None,
+                "params": di,
+            }
+
+        model_spec = _model_spec()
+        probe_spec = _probe_spec()
+        dataset_spec = _dataset_spec()
 
         if run_id is None:
             if config_snapshot is not None:
@@ -204,18 +259,14 @@ class ProbeRunner(_RunnerBase):
 
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
+        records_fp = None
+        if emit_run_artifacts:
+            records_fp = open(records_path, "x", encoding="utf-8")
 
         results: list[dict[str, Any]] = []
         total = len(prompt_set)
 
-        # Use ExitStack for deterministic resource cleanup
-        with ExitStack() as stack:
-            records_fp = None
-            if emit_run_artifacts:
-                records_fp = stack.enter_context(
-                    open(records_path, "x", encoding="utf-8")
-                )
-
+        try:
             for i, item in enumerate(prompt_set):
                 if progress_callback:
                     progress_callback(i, total)
@@ -304,7 +355,12 @@ class ProbeRunner(_RunnerBase):
 
                     if stop_on_error:
                         break
-            # ExitStack automatically closes records_fp here
+        finally:
+            if records_fp is not None:
+                try:
+                    records_fp.close()
+                except Exception:
+                    pass
 
         if progress_callback:
             progress_callback(total, total)
@@ -374,6 +430,19 @@ class ProbeRunner(_RunnerBase):
 
         return results
 
+    @property
+    def success_rate(self) -> float:
+        """Calculate the success rate of the last run."""
+        if not self._results:
+            return 0.0
+        successes = sum(1 for r in self._results if r.get("status") == "success")
+        return successes / len(self._results)
+
+    @property
+    def error_count(self) -> int:
+        """Count errors from the last run."""
+        return sum(1 for r in self._results if r.get("status") == "error")
+
 
 def _serialize_value(value: Any) -> Any:
     if isinstance(value, datetime):
@@ -424,128 +493,6 @@ def _fingerprint_value(value: Any) -> Optional[str]:
     if value is None:
         return None
     return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
-
-
-def _default_run_root() -> Path:
-    """Get the default root directory for run artifacts."""
-    env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
-    if env_root:
-        return Path(env_root).expanduser()
-    return Path.home() / ".insidellms" / "runs"
-
-
-def _semver_tuple(version: str) -> tuple[int, int, int]:
-    """Convert a semver string to a tuple for comparison."""
-    from insideLLMs.schemas.registry import normalize_semver
-
-    v = normalize_semver(version)
-    parts = v.split(".")
-    try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
-    except Exception:
-        return (0, 0, 0)
-
-
-def _atomic_write_text(path: Path, text: str) -> None:
-    """Write text to a file atomically using a temp file and rename."""
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.parent.mkdir(parents=True, exist_ok=True)
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text)
-        f.flush()
-        try:
-            os.fsync(f.fileno())
-        except Exception:
-            pass
-    os.replace(tmp, path)
-
-
-def _atomic_write_yaml(path: Path, data: Any) -> None:
-    """Write data to a YAML file atomically."""
-    content = yaml.safe_dump(
-        _serialize_value(data),
-        sort_keys=False,
-        default_flow_style=False,
-        allow_unicode=True,
-    )
-    _atomic_write_text(path, content)
-
-
-def _ensure_run_sentinel(run_dir_path: Path) -> None:
-    """Create a marker file to identify run directories."""
-    marker = run_dir_path / ".insidellms_run"
-    if not marker.exists():
-        try:
-            marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:
-            # Don't fail the run due to marker write issues.
-            pass
-
-
-def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
-    """Normalize model/probe info object to a dict."""
-    if isinstance(info_obj, dict):
-        return info_obj
-    if is_dataclass(info_obj) and not isinstance(info_obj, type):
-        return asdict(info_obj)
-    if hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
-        # pydantic v1 compatibility
-        return info_obj.dict()
-    if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
-        # pydantic v2 compatibility
-        return info_obj.model_dump()
-    return {}
-
-
-def _build_model_spec(model: Any) -> dict[str, Any]:
-    """Build model specification dict from a model object."""
-    info_obj: Any = {}
-    try:
-        info_obj = model.info() if hasattr(model, "info") else {}
-    except Exception:
-        info_obj = {}
-
-    info = _normalize_info_obj_to_dict(info_obj)
-
-    model_id = (
-        info.get("model_id")
-        or info.get("id")
-        or info.get("name")
-        or info.get("model_name")
-        or getattr(model, "model_id", None)
-        or getattr(model, "name", None)
-        or model.__class__.__name__
-    )
-
-    provider = info.get("provider") or info.get("type") or info.get("model_type")
-    provider = str(provider) if provider is not None else None
-    return {"model_id": str(model_id), "provider": provider, "params": info}
-
-
-def _build_probe_spec(probe: Any) -> dict[str, Any]:
-    """Build probe specification dict from a probe object."""
-    probe_id = (
-        getattr(probe, "name", None)
-        or getattr(probe, "probe_id", None)
-        or probe.__class__.__name__
-    )
-    probe_version = getattr(probe, "version", None) or getattr(probe, "probe_version", None)
-    return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
-
-
-def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any]:
-    """Build dataset specification dict from dataset info."""
-    di = dataset_info or {}
-    dataset_id = di.get("name") or di.get("dataset") or di.get("path")
-    dataset_version = di.get("version") or di.get("dataset_version")
-    dataset_hash = di.get("hash") or di.get("dataset_hash")
-    provenance = di.get("provenance") or di.get("source") or di.get("format")
-    return {
-        "dataset_id": str(dataset_id) if dataset_id is not None else None,
-        "dataset_version": str(dataset_version) if dataset_version is not None else None,
-        "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
-        "provenance": str(provenance) if provenance is not None else None,
-    }
 
 
 def _hash_prompt_set(prompt_set: list[Any]) -> str:
@@ -841,7 +788,7 @@ def _build_result_record(
     }
 
 
-class AsyncProbeRunner(_RunnerBase):
+class AsyncProbeRunner:
     """Async version of ProbeRunner for parallel execution.
 
     Use this when you need to run probes concurrently, which is especially
@@ -852,32 +799,42 @@ class AsyncProbeRunner(_RunnerBase):
         >>> results = await runner.run(dataset, concurrency=10)
     """
 
+    def __init__(self, model: Model, probe: Probe):
+        """Initialize the async runner.
+
+        Args:
+            model: The model to test.
+            probe: The probe to run.
+        """
+        self.model = model
+        self.probe = probe
+        self._results: list[dict[str, Any]] = []
+        self.last_run_id: Optional[str] = None
+        self.last_run_dir: Optional[Path] = None
+
     async def run(
         self,
         prompt_set: list[Any],
         *,
-        config: Optional[RunConfig] = None,
-        concurrency: Optional[int] = None,
+        concurrency: int = 5,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-        validate_output: Optional[bool] = None,
-        schema_version: Optional[str] = None,
-        validation_mode: Optional[str] = None,
-        emit_run_artifacts: Optional[bool] = None,
+        validate_output: bool = False,
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
+        validation_mode: str = "strict",
+        emit_run_artifacts: bool = True,
         run_dir: Optional[Union[str, Path]] = None,
         run_root: Optional[Union[str, Path]] = None,
         run_id: Optional[str] = None,
-        overwrite: Optional[bool] = None,
+        overwrite: bool = False,
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
-        store_messages: Optional[bool] = None,
+        store_messages: bool = True,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on all items with controlled concurrency.
 
         Args:
             prompt_set: List of inputs to test.
-            config: Optional RunConfig with all run settings. Individual kwargs
-                override config values if both are provided.
             concurrency: Maximum number of concurrent executions.
             progress_callback: Optional callback(current, total) for progress updates.
             **probe_kwargs: Additional arguments passed to the probe.
@@ -889,35 +846,110 @@ class AsyncProbeRunner(_RunnerBase):
 
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
-        # Resolve config: use provided config or create default
-        if config is None:
-            config = RunConfig()
-
-        # Override config with explicit kwargs (backward compatibility)
-        concurrency = concurrency if concurrency is not None else config.concurrency
-        validate_output = validate_output if validate_output is not None else config.validate_output
-        schema_version = schema_version if schema_version is not None else config.schema_version
-        validation_mode = validation_mode if validation_mode is not None else config.validation_mode
-        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
-        run_dir = run_dir if run_dir is not None else config.run_dir
-        run_root = run_root if run_root is not None else config.run_root
-        run_id = run_id if run_id is not None else config.run_id
-        overwrite = overwrite if overwrite is not None else config.overwrite
-        dataset_info = dataset_info if dataset_info is not None else config.dataset_info
-        config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
-        store_messages = store_messages if store_messages is not None else config.store_messages
-
-        # Validate prompt set before execution
-        validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
-
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
 
-        model_spec = _build_model_spec(self.model)
-        probe_spec = _build_probe_spec(self.probe)
-        dataset_spec = _build_dataset_spec(dataset_info)
-        # Add params for backward compatibility
-        dataset_spec["params"] = dataset_info or {}
+        def _default_run_root() -> Path:
+            env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+            if env_root:
+                return Path(env_root).expanduser()
+            return Path.home() / ".insidellms" / "runs"
+
+        def _semver_tuple(version: str) -> tuple[int, int, int]:
+            from insideLLMs.schemas.registry import normalize_semver
+
+            v = normalize_semver(version)
+            parts = v.split(".")
+            try:
+                return (int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return (0, 0, 0)
+
+        def _atomic_write_text(path: Path, text: str) -> None:
+            tmp = path.with_name(f".{path.name}.tmp")
+            tmp.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, path)
+
+        def _atomic_write_yaml(path: Path, data: Any) -> None:
+            content = yaml.safe_dump(
+                _serialize_value(data),
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write_text(path, content)
+
+        def _ensure_run_sentinel(run_dir_path: Path) -> None:
+            marker = run_dir_path / ".insidellms_run"
+            if not marker.exists():
+                try:
+                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
+                except Exception:
+                    pass
+
+        def _model_spec() -> dict[str, Any]:
+            info_obj: Any = {}
+            try:
+                info_obj = self.model.info() or {}
+            except Exception:
+                info_obj = {}
+
+            if isinstance(info_obj, dict):
+                info: dict[str, Any] = info_obj
+            elif is_dataclass(info_obj):
+                info = asdict(info_obj)
+            elif hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
+                info = info_obj.dict()
+            elif hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
+                info = info_obj.model_dump()
+            else:
+                info = {}
+
+            model_id = (
+                info.get("model_id")
+                or info.get("id")
+                or info.get("name")
+                or info.get("model_name")
+                or getattr(self.model, "model_id", None)
+                or getattr(self.model, "name", None)
+                or self.model.__class__.__name__
+            )
+
+            provider = info.get("provider") or info.get("type") or info.get("model_type")
+            provider = str(provider) if provider is not None else None
+            return {"model_id": str(model_id), "provider": provider, "params": info}
+
+        def _probe_spec() -> dict[str, Any]:
+            probe_id = getattr(self.probe, "probe_id", None) or self.probe.__class__.__name__
+            probe_version = getattr(self.probe, "version", None) or getattr(
+                self.probe, "probe_version", None
+            )
+            return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
+
+        def _dataset_spec() -> dict[str, Any]:
+            di = dataset_info or {}
+            dataset_id = di.get("name") or di.get("dataset") or di.get("path")
+            dataset_version = di.get("version") or di.get("dataset_version")
+            dataset_hash = di.get("hash") or di.get("dataset_hash")
+            provenance = di.get("provenance") or di.get("source") or di.get("format")
+            return {
+                "dataset_id": str(dataset_id) if dataset_id is not None else None,
+                "dataset_version": str(dataset_version) if dataset_version is not None else None,
+                "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+                "provenance": str(provenance) if provenance is not None else None,
+                "params": di,
+            }
+
+        model_spec = _model_spec()
+        probe_spec = _probe_spec()
+        dataset_spec = _dataset_spec()
 
         if run_id is None:
             if config_snapshot is not None:
@@ -958,6 +990,9 @@ class AsyncProbeRunner(_RunnerBase):
 
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
+        records_fp = None
+        if emit_run_artifacts:
+            records_fp = open(records_path, "x", encoding="utf-8")
 
         semaphore = asyncio.Semaphore(concurrency)
         results: list[dict[str, Any]] = [None] * len(prompt_set)  # type: ignore
@@ -1017,12 +1052,8 @@ class AsyncProbeRunner(_RunnerBase):
 
         _, run_completed_at = _deterministic_run_times(run_base_time, len(prompt_set))
 
-        # Use ExitStack for deterministic resource cleanup
-        if emit_run_artifacts:
-            with ExitStack() as stack:
-                records_fp = stack.enter_context(
-                    open(records_path, "x", encoding="utf-8")
-                )
+        if emit_run_artifacts and records_fp is not None:
+            try:
                 for i, item in enumerate(prompt_set):
                     result_obj = results[i] or {}
                     record = _build_result_record(
@@ -1050,7 +1081,11 @@ class AsyncProbeRunner(_RunnerBase):
                         )
                     records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
                     records_fp.flush()
-                # ExitStack automatically closes records_fp here
+            finally:
+                try:
+                    records_fp.close()
+                except Exception:
+                    pass
 
         if emit_run_artifacts:
             manifest = {
@@ -1183,8 +1218,6 @@ def run_probe(
     model: Model,
     probe: Probe,
     prompt_set: list[Any],
-    *,
-    config: Optional[RunConfig] = None,
     **probe_kwargs: Any,
 ) -> list[dict[str, Any]]:
     """Convenience function to run a probe on a model.
@@ -1193,23 +1226,20 @@ def run_probe(
         model: The model to test.
         probe: The probe to run.
         prompt_set: List of inputs to test.
-        config: Optional RunConfig with run settings.
         **probe_kwargs: Additional arguments for the probe.
 
     Returns:
         A list of result dictionaries.
     """
     runner = ProbeRunner(model, probe)
-    return runner.run(prompt_set, config=config, **probe_kwargs)
+    return runner.run(prompt_set, **probe_kwargs)
 
 
 async def run_probe_async(
     model: Model,
     probe: Probe,
     prompt_set: list[Any],
-    *,
-    config: Optional[RunConfig] = None,
-    concurrency: Optional[int] = None,
+    concurrency: int = 5,
     **probe_kwargs: Any,
 ) -> list[dict[str, Any]]:
     """Convenience function to run a probe asynchronously.
@@ -1218,15 +1248,14 @@ async def run_probe_async(
         model: The model to test.
         probe: The probe to run.
         prompt_set: List of inputs to test.
-        config: Optional RunConfig with run settings.
-        concurrency: Maximum concurrent executions (overrides config).
+        concurrency: Maximum concurrent executions.
         **probe_kwargs: Additional arguments for the probe.
 
     Returns:
         A list of result dictionaries.
     """
     runner = AsyncProbeRunner(model, probe)
-    return await runner.run(prompt_set, config=config, concurrency=concurrency, **probe_kwargs)
+    return await runner.run(prompt_set, concurrency=concurrency, **probe_kwargs)
 
 
 def load_config(path: Union[str, Path]) -> ConfigDict:
