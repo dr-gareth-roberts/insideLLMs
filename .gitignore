@@ -163,3 +163,7 @@ cython_debug/
 /.junie/
 /.claude/
 .idea/
+
+# Local artefacts
+_demo_outputs/
+wiki/

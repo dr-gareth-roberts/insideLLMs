@@ -31,6 +31,8 @@ from typing import (
     Union,
 )
 
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
+
 
 class ExportFormat(Enum):
     """Supported export formats."""
@@ -74,7 +76,7 @@ class ExportMetadata:
 
     export_time: str = field(default_factory=lambda: datetime.now().isoformat())
     version: str = "1.0"
-    schema_version: str = "1.0"
+    schema_version: str = DEFAULT_SCHEMA_VERSION
     source: str = "insideLLMs"
     record_count: int = 0
     format: str = ""
@@ -967,6 +969,11 @@ def create_export_bundle(
     formats: Optional[list[ExportFormat]] = None,
     include_schema: bool = True,
     compress: bool = True,
+    *,
+    validate_output: bool = False,
+    validate_schema_name: Optional[str] = None,
+    schema_version: str = DEFAULT_SCHEMA_VERSION,
+    validation_mode: str = "strict",
 ) -> Path:
     """Create export bundle with multiple formats.
 
@@ -1010,41 +1017,85 @@ def create_export_bundle(
     metadata = ExportMetadata(
         record_count=len(prepared),
         format=",".join(f.value for f in formats),
+        schema_version=schema_version,
     )
     metadata_path = bundle_dir / "metadata.json"
     with open(metadata_path, "w") as f:
-        json.dump(metadata.to_dict(), f, indent=2)
+        meta_dict = metadata.to_dict()
+
+        if validate_output:
+            from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+            registry = SchemaRegistry()
+            validator = OutputValidator(registry=registry)
+            validator.validate(
+                registry.EXPORT_METADATA,
+                meta_dict,
+                schema_version=schema_version,
+                mode=validation_mode,  # type: ignore[arg-type]
+            )
+
+            if validate_schema_name and prepared:
+                # Validate the actual payload if a schema is declared.
+                if isinstance(prepared, list):
+                    for item in prepared:
+                        validator.validate(
+                            validate_schema_name,
+                            item,
+                            schema_version=schema_version,
+                            mode=validation_mode,  # type: ignore[arg-type]
+                        )
+                else:
+                    validator.validate(
+                        validate_schema_name,
+                        prepared,
+                        schema_version=schema_version,
+                        mode=validation_mode,  # type: ignore[arg-type]
+                    )
+
+        json.dump(meta_dict, f, indent=2)
     files.append(metadata_path)
 
     # Add schema if requested
     if include_schema and prepared:
-        schema_fields = []
-        for key, value in prepared[0].items():
-            field_type = "any"
-            if isinstance(value, str):
-                field_type = "string"
-            elif isinstance(value, bool):
-                field_type = "bool"
-            elif isinstance(value, int):
-                field_type = "int"
-            elif isinstance(value, float):
-                field_type = "float"
-            elif isinstance(value, list):
-                field_type = "list"
-            elif isinstance(value, dict):
-                field_type = "dict"
+        if validate_schema_name:
+            # Prefer the versioned, stable schema contract.
+            from insideLLMs.schemas import SchemaRegistry
 
-            schema_fields.append(SchemaField(name=key, type=field_type))
+            registry = SchemaRegistry()
+            schema = registry.get_json_schema(validate_schema_name, schema_version)
+            schema_path = bundle_dir / "schema.json"
+            with open(schema_path, "w") as f:
+                json.dump(schema, f, indent=2)
+            files.append(schema_path)
+        else:
+            schema_fields = []
+            for key, value in prepared[0].items():
+                field_type = "any"
+                if isinstance(value, str):
+                    field_type = "string"
+                elif isinstance(value, bool):
+                    field_type = "bool"
+                elif isinstance(value, int):
+                    field_type = "int"
+                elif isinstance(value, float):
+                    field_type = "float"
+                elif isinstance(value, list):
+                    field_type = "list"
+                elif isinstance(value, dict):
+                    field_type = "dict"
 
-        schema = DataSchema(
-            name=name,
-            version="1.0",
-            fields=schema_fields,
-        )
-        schema_path = bundle_dir / "schema.json"
-        with open(schema_path, "w") as f:
-            json.dump(schema.to_dict(), f, indent=2)
-        files.append(schema_path)
+                schema_fields.append(SchemaField(name=key, type=field_type))
+
+            schema = DataSchema(
+                name=name,
+                version="1.0",
+                fields=schema_fields,
+            )
+            schema_path = bundle_dir / "schema.json"
+            with open(schema_path, "w") as f:
+                json.dump(schema.to_dict(), f, indent=2)
+            files.append(schema_path)
 
     # Compress if requested
     if compress:

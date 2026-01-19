@@ -19,6 +19,7 @@ testing, analysis, and reporting.
    models
    probes
    runner
+   schemas
    registry
 
 .. toctree::
