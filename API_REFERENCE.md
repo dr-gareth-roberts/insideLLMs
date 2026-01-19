@@ -3,11 +3,11 @@
 **Version:** 0.1.0  
 **Last Updated:** January 17, 2026
 
-This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library.
+This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the GitHub Wiki.
 
 ---
 
-For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md). For living documentation, see the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki).
 
 ---
 
@@ -1415,7 +1415,7 @@ Comprehensive collection of NLP utilities for text processing and analysis.
 
 **Installation:** Some utilities require optional dependencies:
 ```bash
-pip install insideLLMs[nlp]  # Install all NLP dependencies
+pip install -e ".[nlp]"
 ```
 
 ### Text Cleaning and Normalization

@@ -1,6 +1,18 @@
 # insideLLMs Documentation Index
 
-Welcome to the insideLLMs documentation! This index will help you find the information you need.
+Welcome to the insideLLMs documentation. Start with the GitHub Wiki for the latest guides and then use this index for local references.
+
+[GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+
+```mermaid
+flowchart LR
+  W[GitHub Wiki] --> R[README]
+  R --> Q[Quick Reference]
+  R --> A[Architecture]
+  R --> API[API Reference]
+  Q --> Examples[Examples]
+  A --> Schemas[Schemas]
+```
 
 ---
 
@@ -89,7 +101,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 → [API_REFERENCE.md - Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution)
 
 #### **Run a cross-model behavioural harness**
-→ [README.md](README.md#behavioural-harness), [docs/runner.rst](docs/runner.rst)
+→ [README.md](README.md#behavioural-harness), [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
 
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
@@ -181,7 +193,7 @@ Welcome to the insideLLMs documentation! This index will help you find the infor
 
 ### Use Case 5: Run a cross-model behavioural harness
 1. Read [README.md](README.md#behavioural-harness)
-2. See [Runner docs](docs/runner.rst#harness-runs)
+2. See the runner guide in the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
 
 ---
 

@@ -69,14 +69,8 @@ dev = [
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
 ]
-docs = [
-    "sphinx>=7.0.0",
-    "sphinx-autodoc-typehints>=1.24.0",
-    "furo>=2023.9.10",
-    "sphinx-autobuild>=2021.3.14",
-]
 all = [
-    "insideLLMs[nlp,visualization,dev,docs]",
+    "insideLLMs[nlp,visualization,dev]",
 ]
 
 [project.scripts]
@@ -85,7 +79,7 @@ insidellms = "insideLLMs.cli:main"
 [project.urls]
 Homepage = "https://github.com/dr-gareth-roberts/insideLLMs"
 Repository = "https://github.com/dr-gareth-roberts/insideLLMs"
-Documentation = "https://github.com/dr-gareth-roberts/insideLLMs/tree/main/docs"
+Documentation = "https://github.com/dr-gareth-roberts/insideLLMs/wiki"
 "Changelog" = "https://github.com/dr-gareth-roberts/insideLLMs/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/dr-gareth-roberts/insideLLMs/issues"
 
