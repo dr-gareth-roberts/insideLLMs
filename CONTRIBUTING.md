@@ -20,8 +20,8 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
 
 2. Create a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
 
 3. Install in development mode with all dependencies:
@@ -69,14 +69,7 @@ pytest -m "not slow and not integration"
 
 ### Documentation
 
-Build the documentation:
-```bash
-pip install -e ".[docs]"
-cd docs
-make html
-```
-
-View locally at `docs/_build/html/index.html`.
+We use the GitHub Wiki for guides and how-to content. If you update a user-facing workflow, please update the Wiki and link the relevant page from `README.md`.
 
 ## Making Changes
 
@@ -120,7 +113,7 @@ docs(readme): update installation instructions
 
 1. **One feature per PR**: Keep changes focused
 2. **Include tests**: Add tests for new functionality
-3. **Update documentation**: Update docs if needed
+3. **Update documentation**: Update the Wiki or local docs if needed
 4. **Pass CI**: Ensure all checks pass
 5. **Describe changes**: Write clear PR descriptions
 

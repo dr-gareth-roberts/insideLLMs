@@ -2,7 +2,8 @@
 
 A condensed reference for the most commonly used APIs in insideLLMs.
 
-For full documentation, see [API_REFERENCE.md](API_REFERENCE.md).
+For guides and workflows, see the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki).
+For full API detail, see [API_REFERENCE.md](API_REFERENCE.md).
 For system diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
@@ -11,10 +12,14 @@ For system diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Installation
 ```bash
-pip install insideLLMs
-pip install insideLLMs[nlp]  # With NLP utilities
-pip install insideLLMs[visualization]  # With visualization
+git clone https://github.com/dr-gareth-roberts/insideLLMs.git
+cd insideLLMs
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -e ".[all]"
 ```
+
+Extras are available for narrower installs: `.[nlp]`, `.[visualization]`, `.[dev]`.
 
 ### Basic Usage
 ```python

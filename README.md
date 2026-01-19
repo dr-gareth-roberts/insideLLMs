@@ -14,7 +14,6 @@
 <p align="center">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml"><img src="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/dr-gareth-roberts/insideLLMs"><img src="https://codecov.io/gh/dr-gareth-roberts/insideLLMs/branch/main/graph/badge.svg" alt="Coverage"></a>
-  <a href="https://pypi.org/project/insideLLMs/"><img src="https://img.shields.io/pypi/v/insideLLMs.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
@@ -58,27 +57,23 @@ results = ProbeRunner(model, LogicProbe()).run([
 
 ### Installation
 
-You can install `insideLLMs` using `pip`:
+This project is not published on PyPI yet. Install from source:
 
 ```bash
-# Base package
-pip install insideLLMs
-
-# With NLP utilities (nltk, spacy, scikit-learn, gensim)
-pip install insideLLMs[nlp]
-
-# With Visualization (matplotlib, pandas, seaborn)
-pip install insideLLMs[visualization]
-
-# All optional dependencies
-pip install insideLLMs[all]
+git clone https://github.com/dr-gareth-roberts/insideLLMs.git
+cd insideLLMs
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -e ".[all]"
 ```
 
 Alternatively, if you use [uv](https://github.com/astral-sh/uv):
 
 ```bash
-uv pip install insideLLMs[all]
+uv pip install -e ".[all]"
 ```
+
+Extras are available for narrower installs: `.[nlp]`, `.[visualization]`, `.[dev]`.
 
 ### Your First Evaluation
 
@@ -555,9 +550,7 @@ We maintain a large test suite covering core logic, model integrations, and edge
 To run the tests, you'll need the `dev` dependencies:
 
 ```bash
-pip install -r requirements-dev.txt
-# OR
-pip install .[dev]
+pip install -e ".[dev]"
 
 # Run all tests
 pytest
@@ -674,12 +667,21 @@ results = run_experiment_from_config("experiment.yaml")
 
 ## Documentation
 
+- **[GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)** - Living documentation and guides
 - **[Documentation Index](DOCUMENTATION_INDEX.md)** - Start here for guided navigation
 - **[API Reference](API_REFERENCE.md)** - API documentation
 - **[Quick Reference](QUICK_REFERENCE.md)** - Common patterns and snippets
 - **[Architecture](ARCHITECTURE.md)** - System diagrams and execution flows
-- **[Sphinx Docs](docs/)** - User guide and API reference
 - **[Examples](examples/)** - Working example scripts
+
+```mermaid
+flowchart LR
+  Wiki[GitHub Wiki] --> README
+  README --> QuickRef[Quick Reference]
+  README --> API[API Reference]
+  README --> Arch[Architecture]
+  QuickRef --> Examples
+```
 
 ---
 
@@ -700,7 +702,9 @@ We are constantly working to improve `insideLLMs`. Here are some things on our r
 ```bash
 git clone https://github.com/dr-gareth-roberts/insideLLMs
 cd insideLLMs
-pip install -r requirements-dev.txt
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -e ".[dev]"
 pytest 
 ```
 

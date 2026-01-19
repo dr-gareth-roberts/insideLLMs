@@ -248,7 +248,7 @@ sequenceDiagram
   R-->>U: results list
 ```
 
-Key behavior:
+Key behaviour:
 - `ProbeRunner` iterates a dataset and calls `Probe.run` per item.
 - `Probe.run` is responsible for formatting the prompt and calling the model.
 - Results are returned as a list of dictionaries with input/output/error/latency.
