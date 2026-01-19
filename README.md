@@ -62,9 +62,9 @@ pip install -e ".[all]"
 Run a harness and produce reports:
 
 ```bash
-insidellms harness harness.yaml
-insidellms report ./my_run
-insidellms diff ./baseline ./candidate --fail-on-regressions
+insidellms harness harness.yaml --run-dir ./runs/candidate
+insidellms report ./runs/candidate
+insidellms diff ./runs/baseline ./runs/candidate --fail-on-regressions
 ```
 
 ## Determinism Scope
