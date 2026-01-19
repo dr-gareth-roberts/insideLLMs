@@ -1566,13 +1566,21 @@ def cmd_harness(args: argparse.Namespace) -> int:
         from insideLLMs.runner import (
             _build_resolved_config_snapshot,
             _deterministic_base_time,
+            _deterministic_run_id_from_config_snapshot,
             _deterministic_run_times,
             _prepare_run_dir,
             _serialize_value,
         )
         from insideLLMs.schemas.registry import normalize_semver
 
-        resolved_run_id = args.run_id or result.get("run_id") or uuid.uuid4().hex
+        config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
+
+        resolved_run_id = args.run_id or result.get("run_id")
+        if not resolved_run_id:
+            resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                config_snapshot,
+                schema_version=args.schema_version,
+            )
 
         # Absolute paths reduce surprise when users pass relative paths.
         effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
@@ -1634,7 +1642,6 @@ def cmd_harness(args: argparse.Namespace) -> int:
         _ensure_run_sentinel(output_dir)
 
         # Write resolved config snapshot for reproducibility.
-        config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
         _atomic_write_yaml(output_dir / "config.resolved.yaml", config_snapshot)
 
         # Canonical record stream for validate/run-dir tooling.

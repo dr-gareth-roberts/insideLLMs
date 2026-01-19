@@ -1405,7 +1405,7 @@ def create_interactive_dashboard(
 
     # Chart 4: Success rate trend
     if success_rates:
-        for model in {sr[2] for sr in success_rates}:
+        for model in sorted({sr[2] for sr in success_rates}):
             model_rates = [(sr[0], sr[1]) for sr in success_rates if sr[2] == model]
             fig.add_trace(
                 go.Scatter(
