@@ -20,7 +20,7 @@
 
 ---
 
-**insideLLMs** is a cross-model behavioural probe harness for evaluating and comparing LLMs. It provides a consistent interface for models and probes, plus optional utilities for benchmarking, safety checks, and reporting.
+**insideLLMs** is a Python library and CLI for comparing LLM behaviour across models using shared probes and datasets. It produces deterministic run artefacts you can store, report on, and diff in CI.
 
 ```python
 from insideLLMs import DummyModel, LogicProbe, ProbeRunner
@@ -36,20 +36,18 @@ results = ProbeRunner(model, LogicProbe()).run([
 
 ## Why insideLLMs?
 
-| Challenge | insideLLMs Solution |
-|-----------|---------------------|
-| **"How do I compare models fairly?"** | Run the same probe suite across models with shared datasets |
-| **"How do I spot regressions?"** | JSONL outputs plus summary stats with confidence intervals |
-| **"How do I check safety risks?"** | Bias, injection, factuality, and safety probes |
-| **"How do I keep runs reproducible?"** | Config-driven runs and saved metadata |
-| **"How do I manage cost and latency?"** | Optional caching, rate limiting, and cost tracking |
+- Compare models on the same probes and datasets.
+- Record-first artefacts: `records.jsonl`, `summary.json`, `report.html`, `diff.json`.
+- Deterministic harness spine for CI gating (run -> report -> diff).
+- Pluggable adapters for hosted and local models, plus `DummyModel` for dry runs.
+- Optional utilities for caching, rate limiting, cost tracking, and safety checks.
 
 ---
 
 ## Requirements
 
 - **Python**: 3.10 or higher
-- **Operating System**: OS Independent (Tested on Linux, macOS, Windows)
+- **OS**: Tested on Linux, macOS, Windows
 
 ---
 
@@ -57,7 +55,7 @@ results = ProbeRunner(model, LogicProbe()).run([
 
 ### Installation
 
-This project is not published on PyPI yet. Install from source:
+Not published on PyPI yet. Install from source:
 
 ```bash
 git clone https://github.com/dr-gareth-roberts/insideLLMs.git
@@ -73,7 +71,7 @@ Alternatively, if you use [uv](https://github.com/astral-sh/uv):
 uv pip install -e ".[all]"
 ```
 
-Extras are available for narrower installs: `.[nlp]`, `.[visualization]`, `.[dev]`.
+Extras: `.[nlp]`, `.[visualization]`, `.[dev]`.
 
 ### Your First Evaluation
 
@@ -104,7 +102,7 @@ from insideLLMs.models import AnthropicModel, HuggingFaceModel, OpenAIModel
 
 # Ensure relevant API keys are set in the environment
 gpt4 = OpenAIModel(model_name="gpt-4o")
-claude = AnthropicModel(model_name="claude-3-opus-20240229")
+claude = AnthropicModel(model_name="claude-opus-4-5-20251101")
 
 hf = HuggingFaceModel(model_name="gpt2")
 
@@ -132,7 +130,7 @@ models:
       model_name: gpt-4o
   - type: anthropic
     args:
-      model_name: claude-3-opus-20240229
+      model_name: claude-opus-4-5-20251101
 probes:
   - type: logic
     args: {}
@@ -583,7 +581,7 @@ pytest --cov=insideLLMs
 | Provider | Models | Import |
 |----------|--------|--------|
 | **OpenAI** | GPT-4, GPT-3.5, etc. | `from insideLLMs.models import OpenAIModel` |
-| **Anthropic** | Claude 3 Opus/Sonnet/Haiku | `from insideLLMs.models import AnthropicModel` |
+| **Anthropic** | Claude Opus 4.5 / Haiku | `from insideLLMs.models import AnthropicModel` |
 | **Google** | Gemini Pro, Gemini Ultra | `from insideLLMs.models import GeminiModel` |
 | **Cohere** | Command, Command-R | `from insideLLMs.models import CohereModel` |
 | **HuggingFace** | Any Transformers model | `from insideLLMs.models import HuggingFaceModel` |
