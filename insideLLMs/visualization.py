@@ -7,6 +7,8 @@ This module provides tools for visualizing:
 - Rich plots with matplotlib (optional)
 """
 
+import hashlib
+import re
 from typing import Any, Optional
 
 from insideLLMs.types import ExperimentResult
@@ -1462,34 +1464,77 @@ def create_interactive_html_report(
     # Generate charts
     charts_html = []
 
+    def _stable_plotly_div_id(title: str) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "chart"
+        digest = hashlib.sha256(title.encode("utf-8")).hexdigest()[:8]
+        return f"chart-{slug}-{digest}"
+
+    def _stabilize_plotly_div_id(html: str, title: str) -> str:
+        match = re.search(r'<div id="([^"]+)" class="plotly-graph-div"', html)
+        if not match:
+            return html
+        old_id = match.group(1)
+        new_id = _stable_plotly_div_id(title)
+        if old_id == new_id:
+            return html
+        return html.replace(old_id, new_id)
+
     try:
         acc_fig = interactive_accuracy_comparison(experiments)
+        chart_title = "Accuracy Comparison"
         charts_html.append(
-            ("Accuracy Comparison", acc_fig.to_html(full_html=False, include_plotlyjs=False))
+            (
+                chart_title,
+                _stabilize_plotly_div_id(
+                    acc_fig.to_html(full_html=False, include_plotlyjs=False),
+                    chart_title,
+                ),
+            )
         )
     except ValueError:
         pass
 
     try:
         lat_fig = interactive_latency_distribution(experiments)
+        chart_title = "Latency Distribution"
         charts_html.append(
-            ("Latency Distribution", lat_fig.to_html(full_html=False, include_plotlyjs=False))
+            (
+                chart_title,
+                _stabilize_plotly_div_id(
+                    lat_fig.to_html(full_html=False, include_plotlyjs=False),
+                    chart_title,
+                ),
+            )
         )
     except ValueError:
         pass
 
     try:
         radar_fig = interactive_metric_radar(experiments)
+        chart_title = "Performance Radar"
         charts_html.append(
-            ("Performance Radar", radar_fig.to_html(full_html=False, include_plotlyjs=False))
+            (
+                chart_title,
+                _stabilize_plotly_div_id(
+                    radar_fig.to_html(full_html=False, include_plotlyjs=False),
+                    chart_title,
+                ),
+            )
         )
     except ValueError:
         pass
 
     try:
         heatmap_fig = interactive_heatmap(experiments)
+        chart_title = "Performance Heatmap"
         charts_html.append(
-            ("Performance Heatmap", heatmap_fig.to_html(full_html=False, include_plotlyjs=False))
+            (
+                chart_title,
+                _stabilize_plotly_div_id(
+                    heatmap_fig.to_html(full_html=False, include_plotlyjs=False),
+                    chart_title,
+                ),
+            )
         )
     except ValueError:
         pass
