@@ -19,7 +19,9 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import yaml
+from contextlib import ExitStack
 
+from insideLLMs.config_types import RunConfig
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
 from insideLLMs.registry import (
@@ -74,25 +76,28 @@ class ProbeRunner:
         self,
         prompt_set: list[Any],
         *,
+        config: Optional[RunConfig] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-        stop_on_error: bool = False,
-        validate_output: bool = False,
-        schema_version: str = DEFAULT_SCHEMA_VERSION,
-        validation_mode: str = "strict",
-        emit_run_artifacts: bool = True,
+        stop_on_error: Optional[bool] = None,
+        validate_output: Optional[bool] = None,
+        schema_version: Optional[str] = None,
+        validation_mode: Optional[str] = None,
+        emit_run_artifacts: Optional[bool] = None,
         run_dir: Optional[Union[str, Path]] = None,
         run_root: Optional[Union[str, Path]] = None,
         run_id: Optional[str] = None,
-        overwrite: bool = False,
+        overwrite: Optional[bool] = None,
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
-        store_messages: bool = True,
+        store_messages: Optional[bool] = None,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on the model for each item in the prompt set.
 
         Args:
             prompt_set: List of inputs to test.
+            config: Optional RunConfig with all run settings. Individual kwargs
+                override config values if both are provided.
             progress_callback: Optional callback(current, total) for progress updates.
             stop_on_error: If True, stop execution on first error.
             **probe_kwargs: Additional arguments passed to the probe.
@@ -103,6 +108,24 @@ class ProbeRunner:
         import time
 
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        # Resolve config: use provided config or create default
+        if config is None:
+            config = RunConfig()
+
+        # Override config with explicit kwargs (backward compatibility)
+        stop_on_error = stop_on_error if stop_on_error is not None else config.stop_on_error
+        validate_output = validate_output if validate_output is not None else config.validate_output
+        schema_version = schema_version if schema_version is not None else config.schema_version
+        validation_mode = validation_mode if validation_mode is not None else config.validation_mode
+        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        run_dir = run_dir if run_dir is not None else config.run_dir
+        run_root = run_root if run_root is not None else config.run_root
+        run_id = run_id if run_id is not None else config.run_id
+        overwrite = overwrite if overwrite is not None else config.overwrite
+        dataset_info = dataset_info if dataset_info is not None else config.dataset_info
+        config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
+        store_messages = store_messages if store_messages is not None else config.store_messages
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
@@ -259,14 +282,18 @@ class ProbeRunner:
 
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
-        records_fp = None
-        if emit_run_artifacts:
-            records_fp = open(records_path, "x", encoding="utf-8")
 
         results: list[dict[str, Any]] = []
         total = len(prompt_set)
 
-        try:
+        # Use ExitStack for deterministic resource cleanup
+        with ExitStack() as stack:
+            records_fp = None
+            if emit_run_artifacts:
+                records_fp = stack.enter_context(
+                    open(records_path, "x", encoding="utf-8")
+                )
+
             for i, item in enumerate(prompt_set):
                 if progress_callback:
                     progress_callback(i, total)
@@ -355,12 +382,7 @@ class ProbeRunner:
 
                     if stop_on_error:
                         break
-        finally:
-            if records_fp is not None:
-                try:
-                    records_fp.close()
-                except Exception:
-                    pass
+            # ExitStack automatically closes records_fp here
 
         if progress_callback:
             progress_callback(total, total)
@@ -816,25 +838,28 @@ class AsyncProbeRunner:
         self,
         prompt_set: list[Any],
         *,
-        concurrency: int = 5,
+        config: Optional[RunConfig] = None,
+        concurrency: Optional[int] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-        validate_output: bool = False,
-        schema_version: str = DEFAULT_SCHEMA_VERSION,
-        validation_mode: str = "strict",
-        emit_run_artifacts: bool = True,
+        validate_output: Optional[bool] = None,
+        schema_version: Optional[str] = None,
+        validation_mode: Optional[str] = None,
+        emit_run_artifacts: Optional[bool] = None,
         run_dir: Optional[Union[str, Path]] = None,
         run_root: Optional[Union[str, Path]] = None,
         run_id: Optional[str] = None,
-        overwrite: bool = False,
+        overwrite: Optional[bool] = None,
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
-        store_messages: bool = True,
+        store_messages: Optional[bool] = None,
         **probe_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Run the probe on all items with controlled concurrency.
 
         Args:
             prompt_set: List of inputs to test.
+            config: Optional RunConfig with all run settings. Individual kwargs
+                override config values if both are provided.
             concurrency: Maximum number of concurrent executions.
             progress_callback: Optional callback(current, total) for progress updates.
             **probe_kwargs: Additional arguments passed to the probe.
@@ -845,6 +870,24 @@ class AsyncProbeRunner:
         import time
 
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+        # Resolve config: use provided config or create default
+        if config is None:
+            config = RunConfig()
+
+        # Override config with explicit kwargs (backward compatibility)
+        concurrency = concurrency if concurrency is not None else config.concurrency
+        validate_output = validate_output if validate_output is not None else config.validate_output
+        schema_version = schema_version if schema_version is not None else config.schema_version
+        validation_mode = validation_mode if validation_mode is not None else config.validation_mode
+        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        run_dir = run_dir if run_dir is not None else config.run_dir
+        run_root = run_root if run_root is not None else config.run_root
+        run_id = run_id if run_id is not None else config.run_id
+        overwrite = overwrite if overwrite is not None else config.overwrite
+        dataset_info = dataset_info if dataset_info is not None else config.dataset_info
+        config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
+        store_messages = store_messages if store_messages is not None else config.store_messages
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
@@ -990,9 +1033,6 @@ class AsyncProbeRunner:
 
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
-        records_fp = None
-        if emit_run_artifacts:
-            records_fp = open(records_path, "x", encoding="utf-8")
 
         semaphore = asyncio.Semaphore(concurrency)
         results: list[dict[str, Any]] = [None] * len(prompt_set)  # type: ignore
@@ -1052,8 +1092,12 @@ class AsyncProbeRunner:
 
         _, run_completed_at = _deterministic_run_times(run_base_time, len(prompt_set))
 
-        if emit_run_artifacts and records_fp is not None:
-            try:
+        # Use ExitStack for deterministic resource cleanup
+        if emit_run_artifacts:
+            with ExitStack() as stack:
+                records_fp = stack.enter_context(
+                    open(records_path, "x", encoding="utf-8")
+                )
                 for i, item in enumerate(prompt_set):
                     result_obj = results[i] or {}
                     record = _build_result_record(
@@ -1081,11 +1125,7 @@ class AsyncProbeRunner:
                         )
                     records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
                     records_fp.flush()
-            finally:
-                try:
-                    records_fp.close()
-                except Exception:
-                    pass
+                # ExitStack automatically closes records_fp here
 
         if emit_run_artifacts:
             manifest = {
@@ -1218,6 +1258,8 @@ def run_probe(
     model: Model,
     probe: Probe,
     prompt_set: list[Any],
+    *,
+    config: Optional[RunConfig] = None,
     **probe_kwargs: Any,
 ) -> list[dict[str, Any]]:
     """Convenience function to run a probe on a model.
@@ -1226,20 +1268,23 @@ def run_probe(
         model: The model to test.
         probe: The probe to run.
         prompt_set: List of inputs to test.
+        config: Optional RunConfig with run settings.
         **probe_kwargs: Additional arguments for the probe.
 
     Returns:
         A list of result dictionaries.
     """
     runner = ProbeRunner(model, probe)
-    return runner.run(prompt_set, **probe_kwargs)
+    return runner.run(prompt_set, config=config, **probe_kwargs)
 
 
 async def run_probe_async(
     model: Model,
     probe: Probe,
     prompt_set: list[Any],
-    concurrency: int = 5,
+    *,
+    config: Optional[RunConfig] = None,
+    concurrency: Optional[int] = None,
     **probe_kwargs: Any,
 ) -> list[dict[str, Any]]:
     """Convenience function to run a probe asynchronously.
@@ -1248,14 +1293,15 @@ async def run_probe_async(
         model: The model to test.
         probe: The probe to run.
         prompt_set: List of inputs to test.
-        concurrency: Maximum concurrent executions.
+        config: Optional RunConfig with run settings.
+        concurrency: Maximum concurrent executions (overrides config).
         **probe_kwargs: Additional arguments for the probe.
 
     Returns:
         A list of result dictionaries.
     """
     runner = AsyncProbeRunner(model, probe)
-    return await runner.run(prompt_set, concurrency=concurrency, **probe_kwargs)
+    return await runner.run(prompt_set, config=config, concurrency=concurrency, **probe_kwargs)
 
 
 def load_config(path: Union[str, Path]) -> ConfigDict:

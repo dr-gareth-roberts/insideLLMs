@@ -385,3 +385,275 @@ class TestAsyncProbeRunner:
         assert len(results) == 1
         assert "input" in results[0]
         assert "status" in results[0]
+
+
+class TestResourceCleanup:
+    """Test that file handles are properly cleaned up, even on exceptions."""
+
+    def test_proberunner_closes_file_on_success(self, tmp_path):
+        """Test that ProbeRunner closes file handles after successful run."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        run_dir = tmp_path / "test_run"
+        results = runner.run(
+            ["Test?"],
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+        )
+
+        # Verify records file exists and is closed (can be read)
+        records_path = run_dir / "records.jsonl"
+        assert records_path.exists()
+        content = records_path.read_text()
+        assert len(content) > 0
+
+    def test_proberunner_closes_file_on_exception(self, tmp_path):
+        """Test that ProbeRunner closes file handles even when probe raises."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.probes.base import Probe
+        from insideLLMs.runner import ProbeRunner
+
+        class FailingModel(Model):
+            """Model that always fails."""
+
+            def __init__(self):
+                super().__init__(name="failing-model")
+
+            def generate(self, prompt, **kwargs):
+                raise RuntimeError("Intentional failure")
+
+        class SimpleProbe(Probe):
+            """Simple probe that just calls generate."""
+
+            def __init__(self):
+                super().__init__(name="simple-probe")
+
+            def run(self, model, item, **kwargs):
+                return model.generate(item)
+
+        model = FailingModel()
+        probe = SimpleProbe()
+        runner = ProbeRunner(model, probe)
+
+        run_dir = tmp_path / "test_run_fail"
+        # Should not raise - errors are captured
+        results = runner.run(
+            ["Test?"],
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            stop_on_error=False,
+        )
+
+        # Verify records file exists and is closed (can be read)
+        records_path = run_dir / "records.jsonl"
+        assert records_path.exists()
+        content = records_path.read_text()
+        assert "error" in content.lower()
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_closes_file_on_success(self, tmp_path):
+        """Test that AsyncProbeRunner closes file handles after successful run."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = AsyncProbeRunner(model, probe)
+
+        run_dir = tmp_path / "test_async_run"
+        results = await runner.run(
+            ["Test?"],
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+        )
+
+        # Verify records file exists and is closed (can be read)
+        records_path = run_dir / "records.jsonl"
+        assert records_path.exists()
+        content = records_path.read_text()
+        assert len(content) > 0
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_closes_file_on_exception(self, tmp_path):
+        """Test that AsyncProbeRunner closes file handles even when probe raises."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.probes.base import Probe
+        from insideLLMs.runner import AsyncProbeRunner
+
+        class FailingModel(Model):
+            """Model that always fails."""
+
+            def __init__(self):
+                super().__init__(name="failing-model")
+
+            def generate(self, prompt, **kwargs):
+                raise RuntimeError("Intentional failure")
+
+        class SimpleProbe(Probe):
+            """Simple probe that just calls generate."""
+
+            def __init__(self):
+                super().__init__(name="simple-probe")
+
+            def run(self, model, item, **kwargs):
+                return model.generate(item)
+
+        model = FailingModel()
+        probe = SimpleProbe()
+        runner = AsyncProbeRunner(model, probe)
+
+        run_dir = tmp_path / "test_async_run_fail"
+        # Should not raise - errors are captured
+        results = await runner.run(
+            ["Test?"],
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+        )
+
+        # Verify records file exists and is closed (can be read)
+        records_path = run_dir / "records.jsonl"
+        assert records_path.exists()
+        content = records_path.read_text()
+        assert "error" in content.lower()
+
+
+class TestRunConfig:
+    """Test the RunConfig dataclass."""
+
+    def test_runconfig_defaults(self):
+        """Test RunConfig has sensible defaults."""
+        from insideLLMs.config_types import RunConfig
+
+        config = RunConfig()
+        assert config.stop_on_error is False
+        assert config.validate_output is False
+        assert config.emit_run_artifacts is True
+        assert config.concurrency == 5
+        assert config.store_messages is True
+        assert config.validation_mode == "strict"
+
+    def test_runconfig_custom_values(self):
+        """Test RunConfig accepts custom values."""
+        from insideLLMs.config_types import RunConfig
+
+        config = RunConfig(
+            stop_on_error=True,
+            validate_output=True,
+            concurrency=10,
+            emit_run_artifacts=False,
+        )
+        assert config.stop_on_error is True
+        assert config.validate_output is True
+        assert config.concurrency == 10
+        assert config.emit_run_artifacts is False
+
+    def test_runconfig_validation_mode_invalid(self):
+        """Test RunConfig rejects invalid validation_mode."""
+        from insideLLMs.config_types import RunConfig
+
+        with pytest.raises(ValueError, match="validation_mode"):
+            RunConfig(validation_mode="invalid")
+
+    def test_runconfig_concurrency_invalid(self):
+        """Test RunConfig rejects invalid concurrency."""
+        from insideLLMs.config_types import RunConfig
+
+        with pytest.raises(ValueError, match="concurrency"):
+            RunConfig(concurrency=0)
+
+    def test_runconfig_from_kwargs(self):
+        """Test RunConfig.from_kwargs() creates config from kwargs."""
+        from insideLLMs.config_types import RunConfig
+
+        config = RunConfig.from_kwargs(
+            stop_on_error=True,
+            concurrency=20,
+        )
+        assert config.stop_on_error is True
+        assert config.concurrency == 20
+
+    def test_runconfig_from_kwargs_ignores_unknown(self):
+        """Test RunConfig.from_kwargs() ignores unknown kwargs with warning."""
+        from insideLLMs.config_types import RunConfig
+
+        with pytest.warns(UserWarning, match="Unknown RunConfig fields"):
+            config = RunConfig.from_kwargs(
+                stop_on_error=True,
+                unknown_field="ignored",
+            )
+        assert config.stop_on_error is True
+
+    def test_proberunner_with_runconfig(self, tmp_path):
+        """Test ProbeRunner.run() accepts RunConfig."""
+        from insideLLMs.config_types import RunConfig
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        config = RunConfig(
+            emit_run_artifacts=True,
+            run_dir=tmp_path / "config_run",
+        )
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        results = runner.run(["Test?"], config=config)
+        assert len(results) == 1
+        assert (tmp_path / "config_run" / "records.jsonl").exists()
+
+    def test_proberunner_kwargs_override_config(self, tmp_path):
+        """Test that explicit kwargs override RunConfig values."""
+        from insideLLMs.config_types import RunConfig
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        config = RunConfig(
+            emit_run_artifacts=False,  # Config says no artifacts
+        )
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        # But we override with explicit kwarg
+        results = runner.run(
+            ["Test?"],
+            config=config,
+            emit_run_artifacts=True,  # Override
+            run_dir=tmp_path / "override_run",
+        )
+        assert len(results) == 1
+        # Artifacts should exist because kwarg overrode config
+        assert (tmp_path / "override_run" / "records.jsonl").exists()
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_with_runconfig(self, tmp_path):
+        """Test AsyncProbeRunner.run() accepts RunConfig."""
+        from insideLLMs.config_types import RunConfig
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
+
+        config = RunConfig(
+            emit_run_artifacts=True,
+            run_dir=tmp_path / "async_config_run",
+            concurrency=2,
+        )
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = AsyncProbeRunner(model, probe)
+
+        results = await runner.run(["Test?"], config=config)
+        assert len(results) == 1
+        assert (tmp_path / "async_config_run" / "records.jsonl").exists()
