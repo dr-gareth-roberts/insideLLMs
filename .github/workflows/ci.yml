@@ -59,7 +59,15 @@ jobs:
           pip install -e .[nlp,visualization]
 
       - name: Test with coverage
-        run: pytest --cov=insideLLMs --cov-report=xml --cov-report=term --cov-fail-under=50
+        run: >
+          pytest --cov=insideLLMs --cov-report=xml --cov-report=term --cov-fail-under=50
+          --junitxml=junit.xml -o junit_family=legacy
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.10'
