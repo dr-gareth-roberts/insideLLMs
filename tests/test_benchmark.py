@@ -263,18 +263,21 @@ class TestBenchmarkEdgeCases:
     """Test edge cases in benchmarking."""
 
     def test_empty_prompt_set(self):
-        """Test running benchmark with empty prompt set."""
+        """Test running benchmark with empty prompt set raises ValidationError."""
+        import pytest
+
         from insideLLMs.benchmark import ModelBenchmark
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
+        from insideLLMs.validation import ValidationError
 
         models = [DummyModel()]
         probe = LogicProbe()
         benchmark = ModelBenchmark(models, probe)
 
-        results = benchmark.run([])
-        assert results is not None
-        assert results["models"][0]["metrics"]["total_items"] == 0
+        # Empty prompt sets should now raise ValidationError
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            benchmark.run([])
 
     def test_unicode_prompts(self):
         """Test benchmark with Unicode prompts."""
