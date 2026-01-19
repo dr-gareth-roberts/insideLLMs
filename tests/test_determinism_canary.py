@@ -22,6 +22,8 @@ def _write_harness_records(
     inputs: list[dict[str, Any]] | None = None,
     example_ids: list[str] | None = None,
     scores: list[float] | None = None,
+    scores_payloads: list[dict[str, Any]] | None = None,
+    primary_metrics: list[str | None] | None = None,
     statuses: list[str] | None = None,
     errors: list[str | None] | None = None,
 ) -> None:
@@ -64,6 +66,17 @@ def _write_harness_records(
         output_value = output_text
         output_text_value = output_text if isinstance(output_text, str) else None
 
+        primary_metric = (
+            primary_metrics[index]
+            if primary_metrics and index < len(primary_metrics)
+            else "score"
+        )
+        score_payload = (
+            scores_payloads[index]
+            if scores_payloads and index < len(scores_payloads)
+            else {"score": score}
+        )
+
         records.append(
             {
                 "schema_version": DEFAULT_SCHEMA_VERSION,
@@ -77,8 +90,8 @@ def _write_harness_records(
                 "input": input_item,
                 "output": output_value,
                 "output_text": output_text_value,
-                "scores": {"score": score},
-                "primary_metric": "score",
+                "scores": score_payload,
+                "primary_metric": primary_metric,
                 "usage": {},
                 "latency_ms": 1.0,
                 "status": status,
@@ -254,3 +267,38 @@ def test_diff_ignores_output_keys(tmp_path):
 
     assert "Other changes: 0" in output
     assert "output changed" not in output
+
+
+def test_diff_metric_mismatch_reason(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_id = "canary-harness"
+
+    baseline_dir = tmp_path / "baseline"
+    candidate_dir = tmp_path / "candidate"
+
+    _write_harness_records(
+        baseline_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"score": 1.0}],
+        primary_metrics=["score"],
+    )
+    _write_harness_records(
+        candidate_dir,
+        run_id,
+        ["same"],
+        scores_payloads=[{"accuracy": 0.9}],
+        primary_metrics=["accuracy"],
+    )
+
+    output = _run_cli(
+        ["diff", str(baseline_dir), str(candidate_dir)],
+        _seeded_env("0"),
+        repo_root,
+    )
+
+    assert "metrics_not_comparable:primary_metric_mismatch" in output
+    assert "baseline.primary_metric='score'" in output
+    assert "candidate.primary_metric='accuracy'" in output
+    assert "baseline.scores keys=['score']" in output
+    assert "candidate.scores keys=['accuracy']" in output
