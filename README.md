@@ -118,9 +118,11 @@ llama = OllamaModel(model_name="llama3.2")
 
 Run a multi-model, multi-probe sweep from a single config. The harness writes:
 
-- `results.jsonl`: one row per example per model per probe
+- `records.jsonl`: one row per example per model per probe
 - `summary.json`: aggregates and confidence intervals
 - `report.html`: human-readable comparison
+
+For backwards compatibility, `results.jsonl` is kept alongside `records.jsonl`.
 
 ```yaml
 # harness.yaml
@@ -167,268 +169,17 @@ graph LR
 
 ---
 
-## Features
+## Toolkit (Optional)
 
-### 1. Model Evaluation Probes
+Use only what you need:
 
-**Built-in Benchmark Datasets**
+- Probes for logic, factuality, bias, safety, code, and instruction-following.
+- Analysis helpers for calibration, sensitivity, and hallucination checks.
+- Operational tools for caching, rate limiting, retries, and cost tracking.
+- Tracking and export hooks (local, W&B, MLflow; CSV/JSON/Markdown).
+- Visualisation helpers (HTML report; Plotly dashboards if installed).
 
-```python
-from insideLLMs.benchmark_datasets import (
-    list_builtin_datasets,
-    load_builtin_dataset,
-    create_comprehensive_benchmark_suite,
-)
-
-# See all datasets
-for ds in list_builtin_datasets():
-    print(f"{ds['name']}: {ds['num_examples']} examples")
-
-# Example output:
-# reasoning: 50 examples
-# math: 100 examples
-# coding: 75 examples
-# safety: 60 examples
-```
-
-**Evaluation Probes**
-
-| Category | Probes |
-|----------|--------|
-| **Reasoning** | `LogicProbe`, `FactualityProbe`, `MultiStepTaskProbe` |
-| **Safety** | `BiasProbe`, `AttackProbe`, `PromptInjectionProbe`, `JailbreakProbe` |
-| **Code** | `CodeGenerationProbe`, `CodeExplanationProbe`, `CodeDebugProbe` |
-| **Instructions** | `InstructionFollowingProbe`, `ConstraintComplianceProbe` |
-
-### 2. Operational Utilities (Optional)
-
-**Caching**
-
-```python
-from insideLLMs.caching import PromptCache, memoize
-
-# Semantic similarity caching - finds similar prompts
-cache = PromptCache(similarity_threshold=0.9)
-
-# Or use the decorator
-@memoize(max_size=1000, ttl_seconds=3600)
-def call_llm(prompt):
-    return model.generate(prompt)
-```
-
-**Cost Tracking & Budgets**
-
-```python
-from insideLLMs.cost_tracking import BudgetManager, UsageTracker
-
-budget = BudgetManager(monthly_limit=100.00)
-tracker = UsageTracker()
-
-# Automatically tracks all API calls
-result = model.generate("Hello")
-print(f"Cost: ${tracker.total_cost:.4f}")
-print(f"Budget remaining: ${budget.remaining:.2f}")
-```
-
-**Context Window Management**
-
-```python
-from insideLLMs.context_window import ContextWindow, PriorityLevel
-
-window = ContextWindow(max_tokens=128000)
-window.add_message("system", "You are helpful", priority=PriorityLevel.CRITICAL)
-window.add_message("user", very_long_document, priority=PriorityLevel.LOW)
-
-# Intelligently truncates low-priority content first
-window.truncate(target_tokens=50000)
-```
-
-### 3. Safety & Security Analysis
-
-```python
-from insideLLMs.safety import (
-    detect_pii,
-    quick_safety_check,
-    ContentSafetyAnalyzer,
-)
-
-# Detect PII in responses
-pii_report = detect_pii("Contact john@email.com or call 555-1234")
-print(pii_report.found_types)  # ['email', 'phone']
-
-# Safety analysis
-analyzer = ContentSafetyAnalyzer()
-report = analyzer.analyze("Your text here")
-print(f"Risk level: {report.risk_level}")
-```
-
-```python
-from insideLLMs.injection import InjectionDetector, InputSanitizer
-
-# Detect prompt injection attempts
-detector = InjectionDetector()
-result = detector.detect("Ignore previous instructions and...")
-print(f"Injection detected: {result.is_injection}")
-
-# Sanitize user inputs
-sanitizer = InputSanitizer()
-safe_input = sanitizer.sanitize(user_input)
-```
-
-### 4. Experiment Tracking & Reproducibility
-
-**Multi-Backend Tracking**
-
-```python
-from insideLLMs.experiment_tracking import create_tracker, MultiTracker
-
-# Single backend
-tracker = create_tracker("wandb", project="llm-eval")
-
-# Or log to multiple backends simultaneously
-tracker = MultiTracker([
-    create_tracker("wandb", project="my-project"),
-    create_tracker("mlflow", experiment_name="llm-eval"),
-    create_tracker("local", output_dir="./experiments"),
-])
-
-with tracker:
-    tracker.log_params({"model": "gpt-4", "temperature": 0.7})
-    # ... run experiment ...
-    tracker.log_metrics({"accuracy": 0.95, "latency_ms": 120})
-```
-
-**Reproducibility Snapshots**
-
-```python
-from insideLLMs.reproducibility import (
-    ExperimentSnapshot,
-    set_global_seed,
-    capture_environment,
-)
-
-# Capture current state as a snapshot
-set_global_seed(42)
-snapshot = ExperimentSnapshot.capture(
-    name="my-experiment",
-    config=my_config,
-    seed=42
-)
-snapshot.save("experiment_v1.json")
-
-# Later: reproduce exactly
-loaded = ExperimentSnapshot.load("experiment_v1.json")
-```
-
-### 5. Analysis Tools
-
-**Reasoning Chain Analysis**
-
-```python
-from insideLLMs.reasoning import ReasoningExtractor, CoTEvaluator
-
-extractor = ReasoningExtractor()
-chain = extractor.extract(model_response)
-
-for step in chain.steps:
-    print(f"Step {step.number}: {step.content}")
-    print(f"  Type: {step.step_type}")
-    print(f"  Valid: {step.is_valid}")
-```
-
-**Hallucination Detection**
-
-```python
-from insideLLMs.hallucination import HallucinationDetector
-
-detector = HallucinationDetector()
-report = detector.detect(
-    response="The Eiffel Tower is 500 meters tall",
-    context="The Eiffel Tower is 330 meters tall"
-)
-print(f"Hallucination detected: {report.has_hallucination}")
-print(f"Severity: {report.severity}")
-```
-
-**Model Fingerprinting**
-
-```python
-from insideLLMs.fingerprinting import create_fingerprint, compare_fingerprints
-
-# Create capability profiles
-fp1 = create_fingerprint(model1, quick=True)
-fp2 = create_fingerprint(model2, quick=True)
-
-# Compare capabilities
-comparison = compare_fingerprints(fp1, fp2)
-print(comparison.summary())
-```
-
-### 6. Prompt Engineering Tools
-
-**Prompt Chains & Workflows**
-
-```python
-from insideLLMs.chains import ChainBuilder
-
-chain = (
-    ChainBuilder()
-    .add_llm_step("extract", "Extract key facts from: {input}")
-    .add_llm_step("analyze", "Analyze these facts: {extract_output}")
-    .add_llm_step("summarize", "Summarize the analysis: {analyze_output}")
-    .build()
-)
-
-result = chain.execute({"input": document})
-```
-
-**Template Versioning & A/B Testing**
-
-```python
-from insideLLMs.template_versioning import TemplateVersionManager, create_ab_test
-
-manager = TemplateVersionManager()
-manager.create_template("greeting", "Hello, {name}!")
-manager.create_version("greeting", "Hi there, {name}!")
-
-# A/B test templates
-test = create_ab_test(
-    template_name="greeting",
-    variants=["v1", "v2"],
-    metric="user_satisfaction"
-)
-```
-
-**Prompt Sensitivity Analysis**
-
-```python
-from insideLLMs.sensitivity import analyze_prompt_sensitivity
-
-report = analyze_prompt_sensitivity(
-    model=model,
-    prompt="Explain quantum computing",
-    perturbations=["rephrase", "typos", "case_change"]
-)
-print(f"Sensitivity score: {report.overall_sensitivity}")
-```
-
-### 7. Interactive Visualization
-
-```python
-from insideLLMs.visualization import (
-    create_interactive_dashboard,
-    interactive_accuracy_comparison,
-    ExperimentExplorer,
-)
-
-# Generate interactive HTML dashboard
-dashboard = create_interactive_dashboard(experiments)
-dashboard.write_html("dashboard.html")
-
-# Jupyter notebook exploration
-explorer = ExperimentExplorer(experiments)
-explorer.display()
-```
+See the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki) for the full module list and examples.
 
 ---
 
@@ -485,37 +236,6 @@ insidellms diff ./baseline ./candidate --format json --output diff.json
 insidellms schema DiffReport > diff.schema.json
 ```
 
-```bash
-# General help
-insidellms --help
-
-# Run an experiment from a YAML config
-insidellms run experiment.yaml
-
-# Run a cross-model behavioural harness (writes results.jsonl, summary.json, report.html)
-insidellms harness harness.yaml
-
-# List all available models and probes
-insidellms list models
-insidellms list probes
-
-# Initialize a new project structure
-insidellms init my_project
-
-# Run a quick test on a model
-insidellms quicktest "What is 2 + 2?" --model dummy
-insidellms quicktest "What is 2 + 2?" --model openai --model-args '{"model_name":"gpt-4o"}'
-
-# Benchmark a model against a dataset
-insidellms benchmark --models openai,anthropic --probes logic,bias
-
-# Compare two models
-insidellms compare --models openai,anthropic --input "Explain gradient descent"
-
-# Export results to another format
-insidellms export results.json --format markdown
-```
-
 ---
 
 ## Environment Variables
@@ -557,123 +277,45 @@ insideLLMs/
 
 ## Testing
 
-We maintain a large test suite covering core logic, model integrations, and edge cases.
-
-To run the tests, you'll need the `dev` dependencies:
-
 ```bash
 pip install -e ".[dev]"
 
-# Run all tests
 pytest
 
-# Run tests for a specific module
-pytest tests/test_models.py
-
-# Run tests with coverage report
+# Optional coverage
 pytest --cov=insideLLMs
 ```
 
 ---
 
-## Supported Models
+## Model Providers
 
-| Provider | Models | Import |
-|----------|--------|--------|
-| **OpenAI** | GPT-4, GPT-3.5, etc. | `from insideLLMs.models import OpenAIModel` |
-| **Anthropic** | Claude Opus 4.5 / Haiku | `from insideLLMs.models import AnthropicModel` |
-| **Google** | Gemini Pro, Gemini Ultra | `from insideLLMs.models import GeminiModel` |
-| **Cohere** | Command, Command-R | `from insideLLMs.models import CohereModel` |
-| **HuggingFace** | Any Transformers model | `from insideLLMs.models import HuggingFaceModel` |
-| **Ollama** | Llama, Mistral, etc. | `from insideLLMs.models import OllamaModel` |
-| **llama.cpp** | GGUF models | `from insideLLMs.models import LlamaCppModel` |
-| **vLLM** | High-throughput serving | `from insideLLMs.models import VLLMModel` |
-| **Testing** | Mock responses | `from insideLLMs import DummyModel` |
+Adapters are available for:
 
----
+- OpenAI (e.g. GPT-4o)
+- Anthropic (e.g. Claude Opus 4.5 / Haiku)
+- Google (Gemini)
+- Cohere (Command)
+- Hugging Face Transformers
+- Ollama, llama.cpp, vLLM
+- `DummyModel` for dry runs
 
-## Module Reference
-
-<details>
-<summary><strong>Click to expand full module list</strong></summary>
-
-| Module | Description |
-|--------|-------------|
-| `insideLLMs.models` | Model implementations for all providers |
-| `insideLLMs.probes` | Evaluation probes (logic, bias, safety, code) |
-| `insideLLMs.evaluation` | Metrics: BLEU, ROUGE, exact match, semantic similarity |
-| `insideLLMs.benchmark_datasets` | Built-in benchmark datasets |
-| `insideLLMs.caching` | LRU/LFU/TTL caching with semantic similarity |
-| `insideLLMs.safety` | PII detection, toxicity analysis, content safety |
-| `insideLLMs.injection` | Prompt injection detection and defense |
-| `insideLLMs.adversarial` | Adversarial testing and robustness analysis |
-| `insideLLMs.hallucination` | Hallucination detection and fact verification |
-| `insideLLMs.knowledge` | Knowledge probing and fact verification |
-| `insideLLMs.reasoning` | Chain-of-thought analysis and evaluation |
-| `insideLLMs.introspection` | Attention analysis and token importance |
-| `insideLLMs.fingerprinting` | Model capability profiling |
-| `insideLLMs.calibration` | Confidence calibration and estimation |
-| `insideLLMs.behavior` | Behavioural pattern analysis |
-| `insideLLMs.quality` | Response quality scoring |
-| `insideLLMs.diversity` | Output diversity and creativity metrics |
-| `insideLLMs.sensitivity` | Prompt sensitivity analysis |
-| `insideLLMs.optimization` | Prompt optimization and compression |
-| `insideLLMs.templates` | Prompt template library |
-| `insideLLMs.template_versioning` | Template versioning and A/B testing |
-| `insideLLMs.chains` | Prompt workflow orchestration |
-| `insideLLMs.conversation` | Multi-turn conversation analysis |
-| `insideLLMs.context_window` | Context window management |
-| `insideLLMs.streaming` | Output streaming utilities |
-| `insideLLMs.adapters` | Unified model adapter interface |
-| `insideLLMs.cost_tracking` | Cost estimation and budgeting |
-| `insideLLMs.rate_limiting` | Rate limiting and throttling |
-| `insideLLMs.retry` | Retry strategies with circuit breakers |
-| `insideLLMs.async_utils` | Async utilities and worker pools |
-| `insideLLMs.distributed` | Distributed execution |
-| `insideLLMs.experiment_tracking` | W&B, MLflow, TensorBoard integration |
-| `insideLLMs.reproducibility` | Experiment reproducibility |
-| `insideLLMs.statistics` | Statistical analysis tools |
-| `insideLLMs.visualization` | Charts, dashboards, and reports |
-| `insideLLMs.export` | Data export (CSV, JSON, Markdown) |
-| `insideLLMs.leaderboard` | Benchmark leaderboard generation |
-| `insideLLMs.ensemble` | Multi-model ensemble evaluation |
-| `insideLLMs.comparison` | Model comparison utilities |
-| `insideLLMs.debugging` | Prompt debugging and tracing |
-| `insideLLMs.logging_utils` | Structured logging |
-| `insideLLMs.exceptions` | Exception hierarchy |
-| `insideLLMs.types` | Type definitions |
-| `insideLLMs.config` | Configuration management |
-| `insideLLMs.registry` | Plugin registry system |
-| `insideLLMs.nlp.*` | NLP utilities (tokenization, similarity, etc.) |
-
-</details>
+Availability depends on credentials and optional provider dependencies.
 
 ---
 
-## Configuration-Driven Experiments
+## Module Map
 
-Run experiments from YAML configuration:
+Key packages:
 
-```yaml
-# experiment.yaml
-model:
-  type: openai
-  args:
-    model_name: gpt-4o
+- Core: `insideLLMs.runner`, `insideLLMs.models`, `insideLLMs.probes`
+- Datasets + metrics: `insideLLMs.benchmark_datasets`, `insideLLMs.evaluation`
+- Ops: `insideLLMs.caching`, `insideLLMs.rate_limiting`, `insideLLMs.cost_tracking`
+- Risk checks: `insideLLMs.safety`, `insideLLMs.injection`, `insideLLMs.hallucination`
+- Prompt tooling: `insideLLMs.templates`, `insideLLMs.chains`, `insideLLMs.template_versioning`
+- Outputs: `insideLLMs.visualization`, `insideLLMs.export`
 
-probe:
-  type: factuality
-
-dataset:
-  path: data/questions.jsonl
-  format: jsonl
-```
-
-```python
-from insideLLMs.runner import run_experiment_from_config
-
-results = run_experiment_from_config("experiment.yaml")
-```
+See the [API Reference](API_REFERENCE.md) for the full module list.
 
 ---
 
