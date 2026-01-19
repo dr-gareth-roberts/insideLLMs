@@ -37,7 +37,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      INSIDELLMS_RUN_ROOT: ${{ runner.temp }}/insidellms_runs
+      INSIDELLMS_RUN_ROOT: ${{ github.workspace }}/.tmp/insidellms_runs
     strategy:
       fail-fast: false
       matrix:
