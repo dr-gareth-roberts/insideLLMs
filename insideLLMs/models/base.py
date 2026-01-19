@@ -15,6 +15,7 @@ from typing import (
 )
 
 from insideLLMs.types import ModelInfo, ModelResponse
+from insideLLMs.validation import ValidationError, validate_prompt
 
 
 class ChatMessage(TypedDict, total=False):
@@ -101,6 +102,20 @@ class Model(ABC):
         self.model_id = model_id or name
         self._call_count = 0
         self._total_tokens = 0
+        self._validate_prompts = True  # Enable prompt validation by default
+
+    def _validate_prompt(self, prompt: str, *, allow_empty: bool = False) -> None:
+        """Validate a prompt before sending to the model.
+
+        Args:
+            prompt: The prompt to validate.
+            allow_empty: Whether to allow empty prompts.
+
+        Raises:
+            ValidationError: If the prompt is invalid.
+        """
+        if self._validate_prompts:
+            validate_prompt(prompt, field_name="prompt", allow_empty=allow_empty)
 
     @abstractmethod
     def generate(self, prompt: str, **kwargs: Any) -> str:
@@ -116,6 +131,7 @@ class Model(ABC):
 
         Raises:
             NotImplementedError: If not implemented by subclass.
+            ValidationError: If the prompt is invalid.
             Exception: Provider-specific errors (API errors, rate limits, etc.)
         """
         raise NotImplementedError("Subclasses must implement this method.")
@@ -132,9 +148,13 @@ class Model(ABC):
 
         Returns:
             A ModelResponse containing the response and metadata.
+
+        Raises:
+            ValidationError: If the prompt is invalid.
         """
         import time
 
+        self._validate_prompt(prompt)
         start = time.perf_counter()
         content = self.generate(prompt, **kwargs)
         latency_ms = (time.perf_counter() - start) * 1000

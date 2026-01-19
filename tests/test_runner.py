@@ -317,13 +317,15 @@ class TestEdgeCases:
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
         from insideLLMs.runner import ProbeRunner
+        from insideLLMs.validation import ValidationError
 
         model = DummyModel()
         probe = LogicProbe()
         runner = ProbeRunner(model, probe)
 
-        results = runner.run([])
-        assert len(results) == 0
+        # Empty prompt sets should now raise ValidationError
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            runner.run([])
 
     def test_unicode_inputs(self):
         """Test running with Unicode inputs."""
@@ -657,3 +659,159 @@ class TestRunConfig:
         results = await runner.run(["Test?"], config=config)
         assert len(results) == 1
         assert (tmp_path / "async_config_run" / "records.jsonl").exists()
+
+
+class TestValidation:
+    """Test input validation functionality."""
+
+    def test_validate_prompt_valid(self):
+        """Test validate_prompt with valid input."""
+        from insideLLMs.validation import validate_prompt
+
+        assert validate_prompt("Hello, world!") is True
+        assert validate_prompt("A" * 1000) is True
+
+    def test_validate_prompt_none(self):
+        """Test validate_prompt rejects None."""
+        from insideLLMs.validation import ValidationError, validate_prompt
+
+        with pytest.raises(ValidationError, match="cannot be None"):
+            validate_prompt(None)
+
+    def test_validate_prompt_empty(self):
+        """Test validate_prompt rejects empty strings by default."""
+        from insideLLMs.validation import ValidationError, validate_prompt
+
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            validate_prompt("")
+
+    def test_validate_prompt_empty_allowed(self):
+        """Test validate_prompt allows empty when configured."""
+        from insideLLMs.validation import validate_prompt
+
+        assert validate_prompt("", allow_empty=True) is True
+
+    def test_validate_prompt_wrong_type(self):
+        """Test validate_prompt rejects non-string types."""
+        from insideLLMs.validation import ValidationError, validate_prompt
+
+        with pytest.raises(ValidationError, match="must be a string"):
+            validate_prompt(123)
+
+        with pytest.raises(ValidationError, match="must be a string"):
+            validate_prompt(["list"])
+
+    def test_validate_prompt_max_length(self):
+        """Test validate_prompt enforces max_length."""
+        from insideLLMs.validation import ValidationError, validate_prompt
+
+        assert validate_prompt("short", max_length=100) is True
+
+        with pytest.raises(ValidationError, match="too long"):
+            validate_prompt("A" * 101, max_length=100)
+
+    def test_validate_prompt_set_valid(self):
+        """Test validate_prompt_set with valid input."""
+        from insideLLMs.validation import validate_prompt_set
+
+        assert validate_prompt_set(["Q1", "Q2"]) is True
+        assert validate_prompt_set(["Single"]) is True
+        # Dict items are allowed (structured prompts)
+        assert validate_prompt_set([{"text": "Q1"}]) is True
+
+    def test_validate_prompt_set_none(self):
+        """Test validate_prompt_set rejects None."""
+        from insideLLMs.validation import ValidationError, validate_prompt_set
+
+        with pytest.raises(ValidationError, match="cannot be None"):
+            validate_prompt_set(None)
+
+    def test_validate_prompt_set_empty(self):
+        """Test validate_prompt_set rejects empty sets by default."""
+        from insideLLMs.validation import ValidationError, validate_prompt_set
+
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            validate_prompt_set([])
+
+    def test_validate_prompt_set_wrong_type(self):
+        """Test validate_prompt_set rejects non-list types."""
+        from insideLLMs.validation import ValidationError, validate_prompt_set
+
+        with pytest.raises(ValidationError, match="must be a list"):
+            validate_prompt_set("not a list")
+
+    def test_validate_positive_int(self):
+        """Test validate_positive_int."""
+        from insideLLMs.validation import ValidationError, validate_positive_int
+
+        assert validate_positive_int(1) == 1
+        assert validate_positive_int(100) == 100
+
+        with pytest.raises(ValidationError, match="must be >= 1"):
+            validate_positive_int(0)
+
+        with pytest.raises(ValidationError, match="must be an integer"):
+            validate_positive_int("5")
+
+    def test_validate_choice(self):
+        """Test validate_choice."""
+        from insideLLMs.validation import ValidationError, validate_choice
+
+        assert validate_choice("a", ["a", "b", "c"]) == "a"
+
+        with pytest.raises(ValidationError, match="must be one of"):
+            validate_choice("d", ["a", "b", "c"])
+
+    def test_validation_error_message_format(self):
+        """Test ValidationError message formatting."""
+        from insideLLMs.validation import ValidationError
+
+        error = ValidationError(
+            "Test error",
+            field="test_field",
+            value="bad_value",
+            suggestions=["Try this", "Or that"],
+        )
+        msg = str(error)
+        assert "[test_field]" in msg
+        assert "Test error" in msg
+        assert "Suggestions:" in msg
+
+    def test_proberunner_validates_prompt_set(self, tmp_path):
+        """Test ProbeRunner validates prompt set before execution."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.validation import ValidationError
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        # None should fail
+        with pytest.raises(ValidationError, match="cannot be None"):
+            runner.run(None)
+
+        # Non-list should fail
+        with pytest.raises(ValidationError, match="must be a list"):
+            runner.run("not a list")
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_validates_prompt_set(self, tmp_path):
+        """Test AsyncProbeRunner validates prompt set before execution."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.validation import ValidationError
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = AsyncProbeRunner(model, probe)
+
+        # None should fail
+        with pytest.raises(ValidationError, match="cannot be None"):
+            await runner.run(None)
+
+        # Empty should fail
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            await runner.run([])
