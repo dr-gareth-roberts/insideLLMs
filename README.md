@@ -460,6 +460,11 @@ insidellms report ./my_run
 insidellms diff ./baseline ./candidate --fail-on-regressions
 ```
 
+Determinism scope (default stance):
+
+- The harness spine (run → records → report → diff) is deterministic by design, including run IDs and timestamps.
+- Other modules remain pragmatic (for example HITL, deployment, caching, orchestration) unless they become part of the CI gating surface.
+
 Baseline vs candidate example (avoid overwriting):
 
 ```bash
