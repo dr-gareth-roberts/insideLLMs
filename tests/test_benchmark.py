@@ -16,7 +16,7 @@ class TestModelBenchmark:
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
 
-        models = [DummyModel(), DummyModel()]
+        models = [DummyModel(name="DummyModelA"), DummyModel(name="DummyModelB")]
         probe = LogicProbe()
         benchmark = ModelBenchmark(models, probe)
 
@@ -63,7 +63,7 @@ class TestModelBenchmark:
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
 
-        models = [DummyModel(), DummyModel()]
+        models = [DummyModel(name="DummyModelA"), DummyModel(name="DummyModelB")]
         probe = LogicProbe()
         benchmark = ModelBenchmark(models, probe)
 
@@ -121,7 +121,7 @@ class TestModelBenchmark:
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
 
-        models = [DummyModel(), DummyModel()]
+        models = [DummyModel(name="DummyModelA"), DummyModel(name="DummyModelB")]
         probe = LogicProbe()
         benchmark = ModelBenchmark(models, probe)
 
