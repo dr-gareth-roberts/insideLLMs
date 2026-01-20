@@ -22,6 +22,7 @@ import yaml
 from contextlib import ExitStack
 
 from insideLLMs.config_types import RunConfig
+from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
 from insideLLMs.validation import ValidationError, validate_prompt_set
@@ -303,7 +304,23 @@ class ProbeRunner(_RunnerBase):
                         records_fp.flush()
 
                     if stop_on_error:
-                        break
+                        # Raise enhanced exception with full context
+                        prompt_str = str(item) if not isinstance(item, str) else item
+                        raise RunnerExecutionError(
+                            reason=str(e),
+                            model_id=model_spec.get("model_id"),
+                            probe_id=probe_spec.get("probe_id"),
+                            prompt=prompt_str,
+                            prompt_index=i,
+                            run_id=resolved_run_id,
+                            elapsed_seconds=latency_ms / 1000,
+                            original_error=e,
+                            suggestions=[
+                                "Check the model API credentials and connectivity",
+                                "Verify the prompt format is valid for this model",
+                                "Review the original error message above",
+                            ],
+                        ) from e
             # ExitStack automatically closes records_fp here
 
         if progress_callback:
