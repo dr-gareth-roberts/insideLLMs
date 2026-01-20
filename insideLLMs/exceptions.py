@@ -170,6 +170,94 @@ class ProbeExecutionError(ProbeError):
         self.original_error = original_error
 
 
+class RunnerExecutionError(ProbeError):
+    """Raised when runner execution fails with rich context.
+
+    This exception captures the full execution context including model,
+    probe, prompt, and timing information for easier debugging.
+
+    Attributes:
+        model_id: The model being used.
+        probe_id: The probe being run.
+        prompt: The prompt that caused the error (truncated).
+        prompt_index: Index of the prompt in the dataset.
+        run_id: The run identifier.
+        elapsed_seconds: Time elapsed before the error.
+        original_error: The underlying exception.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        model_id: Optional[str] = None,
+        probe_id: Optional[str] = None,
+        prompt: Optional[str] = None,
+        prompt_index: Optional[int] = None,
+        run_id: Optional[str] = None,
+        elapsed_seconds: Optional[float] = None,
+        original_error: Optional[Exception] = None,
+        suggestions: Optional[list[str]] = None,
+    ):
+        self.model_id = model_id
+        self.probe_id = probe_id
+        self.prompt = prompt
+        self.prompt_index = prompt_index
+        self.run_id = run_id
+        self.elapsed_seconds = elapsed_seconds
+        self.original_error = original_error
+        self.suggestions = suggestions or []
+
+        details: dict[str, Any] = {"reason": reason}
+        if model_id:
+            details["model_id"] = model_id
+        if probe_id:
+            details["probe_id"] = probe_id
+        if prompt:
+            details["prompt_preview"] = prompt[:100] + "..." if len(prompt) > 100 else prompt
+        if prompt_index is not None:
+            details["prompt_index"] = prompt_index
+        if run_id:
+            details["run_id"] = run_id
+        if elapsed_seconds is not None:
+            details["elapsed_seconds"] = round(elapsed_seconds, 3)
+        if original_error:
+            details["original_error_type"] = type(original_error).__name__
+            details["original_error_message"] = str(original_error)
+
+        super().__init__(f"Runner execution failed: {reason}", details)
+
+    def __str__(self) -> str:
+        parts = [self.message]
+
+        context_parts = []
+        if self.model_id:
+            context_parts.append(f"model={self.model_id}")
+        if self.probe_id:
+            context_parts.append(f"probe={self.probe_id}")
+        if self.prompt_index is not None:
+            context_parts.append(f"index={self.prompt_index}")
+        if self.run_id:
+            context_parts.append(f"run_id={self.run_id}")
+
+        if context_parts:
+            parts.append(f"Context: [{', '.join(context_parts)}]")
+
+        if self.prompt:
+            preview = self.prompt[:80] + "..." if len(self.prompt) > 80 else self.prompt
+            parts.append(f"Prompt: {preview!r}")
+
+        if self.original_error:
+            parts.append(f"Caused by: {type(self.original_error).__name__}: {self.original_error}")
+
+        if self.suggestions:
+            parts.append("Suggestions:")
+            for suggestion in self.suggestions:
+                parts.append(f"  - {suggestion}")
+
+        return "\n".join(parts)
+
+
 # Dataset-related errors
 
 

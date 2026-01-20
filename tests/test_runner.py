@@ -661,6 +661,101 @@ class TestRunConfig:
         assert (tmp_path / "async_config_run" / "records.jsonl").exists()
 
 
+class TestRunConfigBuilder:
+    """Test RunConfigBuilder fluent API."""
+
+    def test_builder_defaults(self):
+        """Test builder creates config with defaults."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = RunConfigBuilder().build()
+        assert config.stop_on_error is False
+        assert config.validate_output is False
+        assert config.emit_run_artifacts is True
+        assert config.concurrency == 5
+
+    def test_builder_with_validation(self):
+        """Test builder with_validation method."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = (
+            RunConfigBuilder()
+            .with_validation(enabled=True, schema_version="1.0.0", mode="lenient")
+            .build()
+        )
+        assert config.validate_output is True
+        assert config.schema_version == "1.0.0"
+        assert config.validation_mode == "lenient"
+
+    def test_builder_with_artifacts(self, tmp_path):
+        """Test builder with_artifacts method."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = (
+            RunConfigBuilder()
+            .with_artifacts(
+                enabled=True,
+                run_root=tmp_path,
+                run_id="test-run",
+                overwrite=True,
+            )
+            .build()
+        )
+        assert config.emit_run_artifacts is True
+        assert config.run_root == tmp_path
+        assert config.run_id == "test-run"
+        assert config.overwrite is True
+
+    def test_builder_with_concurrency(self):
+        """Test builder with_concurrency method."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = RunConfigBuilder().with_concurrency(20).build()
+        assert config.concurrency == 20
+
+    def test_builder_with_error_handling(self):
+        """Test builder with_error_handling method."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = RunConfigBuilder().with_error_handling(stop_on_error=True).build()
+        assert config.stop_on_error is True
+
+    def test_builder_with_dataset_info(self):
+        """Test builder with_dataset_info method."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        info = {"name": "test-dataset", "version": "1.0"}
+        config = RunConfigBuilder().with_dataset_info(info).build()
+        assert config.dataset_info == info
+
+    def test_builder_chaining(self, tmp_path):
+        """Test builder method chaining."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = (
+            RunConfigBuilder()
+            .with_validation(enabled=True)
+            .with_artifacts(run_root=tmp_path, run_id="chained-run")
+            .with_concurrency(15)
+            .with_error_handling(stop_on_error=True)
+            .with_message_storage(enabled=False)
+            .build()
+        )
+        assert config.validate_output is True
+        assert config.run_root == tmp_path
+        assert config.run_id == "chained-run"
+        assert config.concurrency == 15
+        assert config.stop_on_error is True
+        assert config.store_messages is False
+
+    def test_builder_validation_error(self):
+        """Test builder validates on build."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        with pytest.raises(ValueError, match="concurrency"):
+            RunConfigBuilder().with_concurrency(0).build()
+
+
 class TestValidation:
     """Test input validation functionality."""
 
@@ -815,3 +910,119 @@ class TestValidation:
         # Empty should fail
         with pytest.raises(ValidationError, match="cannot be empty"):
             await runner.run([])
+
+
+class TestRunnerExecutionError:
+    """Test enhanced error context in runner execution."""
+
+    def test_runner_execution_error_attributes(self):
+        """Test RunnerExecutionError has all expected attributes."""
+        from insideLLMs.exceptions import RunnerExecutionError
+
+        error = RunnerExecutionError(
+            reason="Test failure",
+            model_id="test-model",
+            probe_id="test-probe",
+            prompt="What is 2+2?",
+            prompt_index=5,
+            run_id="run-123",
+            elapsed_seconds=1.5,
+            original_error=ValueError("Original error"),
+            suggestions=["Try this", "Try that"],
+        )
+
+        assert error.model_id == "test-model"
+        assert error.probe_id == "test-probe"
+        assert error.prompt == "What is 2+2?"
+        assert error.prompt_index == 5
+        assert error.run_id == "run-123"
+        assert error.elapsed_seconds == 1.5
+        assert isinstance(error.original_error, ValueError)
+        assert len(error.suggestions) == 2
+
+    def test_runner_execution_error_str_format(self):
+        """Test RunnerExecutionError string formatting."""
+        from insideLLMs.exceptions import RunnerExecutionError
+
+        error = RunnerExecutionError(
+            reason="API timeout",
+            model_id="gpt-4",
+            probe_id="LogicProbe",
+            prompt="Test prompt",
+            prompt_index=3,
+            original_error=TimeoutError("Connection timed out"),
+            suggestions=["Check network", "Retry later"],
+        )
+
+        error_str = str(error)
+        assert "API timeout" in error_str
+        assert "model=gpt-4" in error_str
+        assert "probe=LogicProbe" in error_str
+        assert "index=3" in error_str
+        assert "Test prompt" in error_str
+        assert "TimeoutError" in error_str
+        assert "Check network" in error_str
+
+    def test_stop_on_error_raises_runner_execution_error(self, tmp_path):
+        """Test that stop_on_error=True raises RunnerExecutionError."""
+        from insideLLMs.exceptions import RunnerExecutionError
+        from insideLLMs.models.base import Model
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        class FailingModel(Model):
+            def __init__(self):
+                super().__init__(name="failing-model")
+
+            def generate(self, prompt: str, **kwargs) -> str:
+                raise ValueError("Simulated API failure")
+
+            def info(self):
+                return {"model_id": "failing-model"}
+
+        model = FailingModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        with pytest.raises(RunnerExecutionError) as exc_info:
+            runner.run(
+                ["Test prompt"],
+                stop_on_error=True,
+                emit_run_artifacts=False,
+            )
+
+        error = exc_info.value
+        assert error.model_id == "failing-model"
+        assert error.prompt_index == 0
+        assert "Simulated API failure" in str(error)
+        assert isinstance(error.original_error, ValueError)
+
+    def test_stop_on_error_false_does_not_raise(self, tmp_path):
+        """Test that stop_on_error=False collects errors without raising."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        class FailingModel(Model):
+            def __init__(self):
+                super().__init__(name="failing-model")
+
+            def generate(self, prompt: str, **kwargs) -> str:
+                raise ValueError("Simulated failure")
+
+            def info(self):
+                return {"model_id": "failing-model"}
+
+        model = FailingModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        # Should not raise, just collect errors
+        results = runner.run(
+            ["Test 1", "Test 2"],
+            stop_on_error=False,
+            emit_run_artifacts=False,
+        )
+
+        assert len(results) == 2
+        assert all(r["status"] == "error" for r in results)
