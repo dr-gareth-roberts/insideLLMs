@@ -21,8 +21,11 @@ from typing import Any, Callable, Optional, Union
 import yaml
 from contextlib import ExitStack
 
-from insideLLMs.config_types import RunConfig
+from insideLLMs.config_types import ProgressInfo, RunConfig
 from insideLLMs.exceptions import RunnerExecutionError
+
+# Type alias for progress callbacks - supports both simple (current, total) and rich ProgressInfo
+ProgressCallback = Union[Callable[[int, int], None], Callable[["ProgressInfo"], None]]
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
 from insideLLMs.validation import ValidationError, validate_prompt_set
@@ -43,6 +46,56 @@ from insideLLMs.types import (
     ProbeResult,
     ResultStatus,
 )
+
+
+import time as _time
+import inspect
+
+
+def _invoke_progress_callback(
+    callback: Optional[ProgressCallback],
+    current: int,
+    total: int,
+    start_time: float,
+    current_item: Optional[Any] = None,
+    current_index: Optional[int] = None,
+    status: Optional[str] = None,
+) -> None:
+    """Invoke a progress callback with the appropriate signature.
+
+    Supports both legacy (current, total) callbacks and new ProgressInfo callbacks.
+    Detects the callback signature and invokes accordingly.
+
+    Args:
+        callback: The progress callback to invoke.
+        current: Number of items completed.
+        total: Total number of items.
+        start_time: time.perf_counter() value at start.
+        current_item: The item currently being processed.
+        current_index: Index of current item.
+        status: Current status message.
+    """
+    if callback is None:
+        return
+
+    # Check callback signature to determine which style to use
+    sig = inspect.signature(callback)
+    params = list(sig.parameters.values())
+
+    # If callback takes 2 positional args, use legacy (current, total) style
+    if len(params) == 2:
+        callback(current, total)  # type: ignore
+    else:
+        # Use new ProgressInfo style
+        info = ProgressInfo.create(
+            current=current,
+            total=total,
+            start_time=start_time,
+            current_item=current_item,
+            current_index=current_index,
+            status=status,
+        )
+        callback(info)  # type: ignore
 
 
 class _RunnerBase:
@@ -100,7 +153,7 @@ class ProbeRunner(_RunnerBase):
         prompt_set: list[Any],
         *,
         config: Optional[RunConfig] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
         stop_on_error: Optional[bool] = None,
         validate_output: Optional[bool] = None,
         schema_version: Optional[str] = None,
@@ -121,7 +174,8 @@ class ProbeRunner(_RunnerBase):
             prompt_set: List of inputs to test.
             config: Optional RunConfig with all run settings. Individual kwargs
                 override config values if both are provided.
-            progress_callback: Optional callback(current, total) for progress updates.
+            progress_callback: Optional callback for progress updates. Supports both
+                legacy (current, total) signature and new ProgressInfo signature.
             stop_on_error: If True, stop execution on first error.
             **probe_kwargs: Additional arguments passed to the probe.
 
@@ -208,6 +262,7 @@ class ProbeRunner(_RunnerBase):
 
         results: list[dict[str, Any]] = []
         total = len(prompt_set)
+        run_start_time = time.perf_counter()  # For progress tracking
 
         # Use ExitStack for deterministic resource cleanup
         with ExitStack() as stack:
@@ -218,8 +273,15 @@ class ProbeRunner(_RunnerBase):
                 )
 
             for i, item in enumerate(prompt_set):
-                if progress_callback:
-                    progress_callback(i, total)
+                _invoke_progress_callback(
+                    progress_callback,
+                    current=i,
+                    total=total,
+                    start_time=run_start_time,
+                    current_item=item,
+                    current_index=i,
+                    status="processing",
+                )
 
                 item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
                 start_time = time.perf_counter()
@@ -323,8 +385,13 @@ class ProbeRunner(_RunnerBase):
                         ) from e
             # ExitStack automatically closes records_fp here
 
-        if progress_callback:
-            progress_callback(total, total)
+        _invoke_progress_callback(
+            progress_callback,
+            current=total,
+            total=total,
+            start_time=run_start_time,
+            status="complete",
+        )
 
         self._results = results
 
@@ -875,7 +942,7 @@ class AsyncProbeRunner(_RunnerBase):
         *,
         config: Optional[RunConfig] = None,
         concurrency: Optional[int] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
         validate_output: Optional[bool] = None,
         schema_version: Optional[str] = None,
         validation_mode: Optional[str] = None,
@@ -896,7 +963,8 @@ class AsyncProbeRunner(_RunnerBase):
             config: Optional RunConfig with all run settings. Individual kwargs
                 override config values if both are provided.
             concurrency: Maximum number of concurrent executions.
-            progress_callback: Optional callback(current, total) for progress updates.
+            progress_callback: Optional callback for progress updates. Supports both
+                legacy (current, total) signature and new ProgressInfo signature.
             **probe_kwargs: Additional arguments passed to the probe.
 
         Returns:
@@ -983,6 +1051,7 @@ class AsyncProbeRunner(_RunnerBase):
         errors: list[Optional[BaseException]] = [None] * len(prompt_set)
         completed = 0
         total = len(prompt_set)
+        run_start_time = time.perf_counter()  # For progress tracking
 
         async def run_single(index: int, item: Any) -> None:
             nonlocal completed
@@ -1024,8 +1093,15 @@ class AsyncProbeRunner(_RunnerBase):
                 finally:
                     completed_ats[index] = item_completed_at
                     completed += 1
-                    if progress_callback:
-                        progress_callback(completed, total)
+                    _invoke_progress_callback(
+                        progress_callback,
+                        current=completed,
+                        total=total,
+                        start_time=run_start_time,
+                        current_item=item,
+                        current_index=index,
+                        status="processing",
+                    )
 
         tasks = [run_single(i, item) for i, item in enumerate(prompt_set)]
         await asyncio.gather(*tasks)
