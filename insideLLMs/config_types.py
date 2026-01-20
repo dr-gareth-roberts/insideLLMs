@@ -305,5 +305,111 @@ class RunContext:
     dataset_spec: dict[str, Any] = field(default_factory=dict)
 
 
-__all__ = ["RunConfig", "RunConfigBuilder", "RunContext"]
+@dataclass
+class ProgressInfo:
+    """Structured progress information for callbacks.
+
+    Provides detailed progress information including timing, rate,
+    and ETA estimates for better progress reporting.
+
+    Example:
+        >>> def progress_callback(info: ProgressInfo):
+        ...     print(f"{info.current}/{info.total} ({info.percent:.1f}%)")
+        ...     print(f"Rate: {info.rate:.1f}/s, ETA: {info.eta_seconds:.0f}s")
+        >>> runner.run(prompts, progress_callback=progress_callback)
+
+    Attributes:
+        current: Number of items completed.
+        total: Total number of items.
+        elapsed_seconds: Time elapsed since start.
+        rate: Items per second (0 if no items completed yet).
+        eta_seconds: Estimated time remaining (None if cannot estimate).
+        current_item: The item currently being processed (optional).
+        current_index: Index of current item (optional).
+        status: Current status message (optional).
+    """
+
+    current: int
+    total: int
+    elapsed_seconds: float
+    rate: float = 0.0
+    eta_seconds: Optional[float] = None
+    current_item: Optional[Any] = None
+    current_index: Optional[int] = None
+    status: Optional[str] = None
+
+    @property
+    def percent(self) -> float:
+        """Percentage complete (0-100)."""
+        if self.total == 0:
+            return 100.0
+        return (self.current / self.total) * 100
+
+    @property
+    def remaining(self) -> int:
+        """Number of items remaining."""
+        return self.total - self.current
+
+    @property
+    def is_complete(self) -> bool:
+        """Whether all items are complete."""
+        return self.current >= self.total
+
+    @classmethod
+    def create(
+        cls,
+        current: int,
+        total: int,
+        start_time: float,
+        current_item: Optional[Any] = None,
+        current_index: Optional[int] = None,
+        status: Optional[str] = None,
+    ) -> "ProgressInfo":
+        """Create a ProgressInfo with calculated rate and ETA.
+
+        Args:
+            current: Number of items completed.
+            total: Total number of items.
+            start_time: time.perf_counter() value at start.
+            current_item: The item currently being processed.
+            current_index: Index of current item.
+            status: Current status message.
+
+        Returns:
+            A new ProgressInfo instance with calculated fields.
+        """
+        import time
+
+        elapsed = time.perf_counter() - start_time
+        rate = current / elapsed if elapsed > 0 and current > 0 else 0.0
+        remaining = total - current
+        eta = remaining / rate if rate > 0 else None
+
+        return cls(
+            current=current,
+            total=total,
+            elapsed_seconds=elapsed,
+            rate=rate,
+            eta_seconds=eta,
+            current_item=current_item,
+            current_index=current_index,
+            status=status,
+        )
+
+    def __str__(self) -> str:
+        """Human-readable progress string."""
+        parts = [f"{self.current}/{self.total} ({self.percent:.1f}%)"]
+        if self.rate > 0:
+            parts.append(f"{self.rate:.1f}/s")
+        if self.eta_seconds is not None:
+            if self.eta_seconds < 60:
+                parts.append(f"ETA: {self.eta_seconds:.0f}s")
+            else:
+                minutes = int(self.eta_seconds // 60)
+                seconds = int(self.eta_seconds % 60)
+                parts.append(f"ETA: {minutes}m{seconds}s")
+        return " | ".join(parts)
+
+
+__all__ = ["ProgressInfo", "RunConfig", "RunConfigBuilder", "RunContext"]
 

@@ -912,6 +912,136 @@ class TestValidation:
             await runner.run([])
 
 
+class TestProgressInfo:
+    """Test ProgressInfo dataclass."""
+
+    def test_progress_info_basic(self):
+        """Test ProgressInfo basic attributes."""
+        from insideLLMs.config_types import ProgressInfo
+
+        info = ProgressInfo(
+            current=5,
+            total=10,
+            elapsed_seconds=2.5,
+            rate=2.0,
+            eta_seconds=2.5,
+        )
+        assert info.current == 5
+        assert info.total == 10
+        assert info.percent == 50.0
+        assert info.remaining == 5
+        assert info.is_complete is False
+
+    def test_progress_info_complete(self):
+        """Test ProgressInfo when complete."""
+        from insideLLMs.config_types import ProgressInfo
+
+        info = ProgressInfo(
+            current=10,
+            total=10,
+            elapsed_seconds=5.0,
+            rate=2.0,
+        )
+        assert info.is_complete is True
+        assert info.remaining == 0
+        assert info.percent == 100.0
+
+    def test_progress_info_create(self):
+        """Test ProgressInfo.create() factory method."""
+        import time
+
+        from insideLLMs.config_types import ProgressInfo
+
+        start = time.perf_counter() - 2.0  # Simulate 2 seconds elapsed
+        info = ProgressInfo.create(
+            current=4,
+            total=10,
+            start_time=start,
+            current_item="test prompt",
+            current_index=3,
+        )
+
+        assert info.current == 4
+        assert info.total == 10
+        assert info.elapsed_seconds >= 2.0
+        assert info.rate > 0
+        assert info.eta_seconds is not None
+        assert info.current_item == "test prompt"
+        assert info.current_index == 3
+
+    def test_progress_info_str(self):
+        """Test ProgressInfo string representation."""
+        from insideLLMs.config_types import ProgressInfo
+
+        info = ProgressInfo(
+            current=5,
+            total=10,
+            elapsed_seconds=2.5,
+            rate=2.0,
+            eta_seconds=2.5,
+        )
+        s = str(info)
+        assert "5/10" in s
+        assert "50.0%" in s
+        assert "2.0/s" in s
+        assert "ETA:" in s
+
+    def test_progress_callback_with_progress_info(self, tmp_path):
+        """Test that runner accepts ProgressInfo callback."""
+        from insideLLMs.config_types import ProgressInfo
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        progress_updates: list[ProgressInfo] = []
+
+        def progress_callback(info: ProgressInfo):
+            progress_updates.append(info)
+
+        runner.run(
+            ["Test 1", "Test 2", "Test 3"],
+            progress_callback=progress_callback,
+            emit_run_artifacts=False,
+        )
+
+        # Should have 4 updates: 3 for processing + 1 for complete
+        assert len(progress_updates) == 4
+        assert progress_updates[0].current == 0
+        assert progress_updates[0].total == 3
+        assert progress_updates[-1].current == 3
+        assert progress_updates[-1].is_complete
+
+    def test_progress_callback_legacy_signature(self, tmp_path):
+        """Test that runner still accepts legacy (current, total) callback."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        progress_updates: list[tuple[int, int]] = []
+
+        def progress_callback(current: int, total: int):
+            progress_updates.append((current, total))
+
+        runner.run(
+            ["Test 1", "Test 2"],
+            progress_callback=progress_callback,
+            emit_run_artifacts=False,
+        )
+
+        # Should have 3 updates: 2 for processing + 1 for complete
+        assert len(progress_updates) == 3
+        assert progress_updates[0] == (0, 2)
+        assert progress_updates[-1] == (2, 2)
+
+
 class TestRunnerExecutionError:
     """Test enhanced error context in runner execution."""
 
