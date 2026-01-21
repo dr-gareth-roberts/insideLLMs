@@ -343,3 +343,281 @@ class TestModelDump:
         assert isinstance(dumped, dict)
         assert dumped["model_id"] == "gpt-4"
         assert dumped["temperature"] == 0.8
+
+
+class TestYamlIO:
+    """Tests for YAML configuration I/O."""
+
+    def test_load_yaml_config(self):
+        """Test loading YAML configuration from manually created YAML."""
+        try:
+            import yaml
+        except ImportError:
+            pytest.skip("PyYAML not installed")
+
+        from insideLLMs.config import load_config_from_yaml
+
+        # Create a simple YAML config manually (avoiding enum serialization issues)
+        yaml_content = """
+name: "YAML Test"
+model:
+  provider: "dummy"
+  model_id: "dummy-v1"
+  temperature: 0.7
+probe:
+  type: "logic"
+dataset:
+  source: "inline"
+  data:
+    - q: "test?"
+"""
+        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False, mode="w") as f:
+            f.write(yaml_content)
+            path = f.name
+
+        try:
+            loaded = load_config_from_yaml(path)
+            assert loaded.name == "YAML Test"
+            assert loaded.model.model_id == "dummy-v1"
+        finally:
+            Path(path).unlink()
+
+    def test_load_config_auto_detect_yaml(self):
+        """Test auto-detection of YAML format."""
+        try:
+            import yaml
+        except ImportError:
+            pytest.skip("PyYAML not installed")
+
+        yaml_content = """
+name: "Auto Detect Test"
+model:
+  provider: "dummy"
+  model_id: "test-model"
+probe:
+  type: "logic"
+dataset:
+  source: "inline"
+  data:
+    - q: "test"
+"""
+        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False, mode="w") as f:
+            f.write(yaml_content)
+            path = f.name
+
+        try:
+            loaded = load_config(path)
+            assert loaded.name == "Auto Detect Test"
+        finally:
+            Path(path).unlink()
+
+    def test_load_config_yml_extension(self):
+        """Test loading .yml extension."""
+        try:
+            import yaml
+        except ImportError:
+            pytest.skip("PyYAML not installed")
+
+        yaml_content = """
+name: "YML Extension Test"
+model:
+  provider: "dummy"
+  model_id: "test"
+probe:
+  type: "logic"
+dataset:
+  source: "inline"
+  data:
+    - q: "test"
+"""
+        with tempfile.NamedTemporaryFile(suffix=".yml", delete=False, mode="w") as f:
+            f.write(yaml_content)
+            path = f.name
+
+        try:
+            loaded = load_config(path)
+            assert loaded.name == "YML Extension Test"
+        finally:
+            Path(path).unlink()
+
+
+class TestRequirePydantic:
+    """Tests for _require_pydantic function."""
+
+    def test_require_pydantic_when_available(self):
+        """Test _require_pydantic when Pydantic is available."""
+        from insideLLMs.config import PYDANTIC_AVAILABLE, _require_pydantic
+
+        if PYDANTIC_AVAILABLE:
+            # Should not raise
+            _require_pydantic()
+
+
+class TestConfigFromDict:
+    """Tests for creating configs from dicts."""
+
+    def test_config_from_nested_dict(self):
+        """Test creating config from nested dict."""
+        data = {
+            "name": "Nested Test",
+            "model": {
+                "provider": "dummy",
+                "model_id": "dummy-v1",
+                "temperature": 0.5,
+                "max_tokens": 1000,
+            },
+            "probe": {
+                "type": "logic",
+                "name": "Logic Test",
+                "params": {"difficulty": "hard"},
+            },
+            "dataset": {
+                "source": "inline",
+                "data": [{"q": "test?", "a": "answer"}],
+            },
+            "runner": {
+                "concurrency": 4,
+                "output_dir": "custom_output",
+            },
+        }
+
+        config = validate_config(data)
+
+        assert config.name == "Nested Test"
+        assert config.model.temperature == 0.5
+        assert config.model.max_tokens == 1000
+        assert config.probe.params["difficulty"] == "hard"
+        assert config.runner.concurrency == 4
+
+
+class TestModelProviderEnum:
+    """Tests for ModelProvider enum."""
+
+    def test_provider_values(self):
+        """Test ModelProvider enum values."""
+        assert ModelProvider.OPENAI.value == "openai"
+        assert ModelProvider.ANTHROPIC.value == "anthropic"
+        assert ModelProvider.HUGGINGFACE.value == "huggingface"
+        assert ModelProvider.DUMMY.value == "dummy"
+        assert ModelProvider.CUSTOM.value == "custom"
+
+
+class TestProbeTypeEnum:
+    """Tests for ProbeType enum."""
+
+    def test_probe_type_values(self):
+        """Test ProbeType enum values."""
+        assert ProbeType.LOGIC.value == "logic"
+        assert ProbeType.FACTUALITY.value == "factuality"
+        assert ProbeType.BIAS.value == "bias"
+        assert ProbeType.ATTACK.value == "attack"
+        assert ProbeType.CUSTOM.value == "custom"
+
+
+class TestModelConfigOptionalFields:
+    """Tests for ModelConfig optional fields."""
+
+    def test_api_base(self):
+        """Test api_base field."""
+        config = ModelConfig(
+            provider="openai" if not PYDANTIC_AVAILABLE else ModelProvider.OPENAI,
+            model_id="gpt-4",
+            api_base="https://custom-endpoint.com",
+        )
+        assert config.api_base == "https://custom-endpoint.com"
+
+    def test_extra_params(self):
+        """Test extra_params field."""
+        config = ModelConfig(
+            provider="openai" if not PYDANTIC_AVAILABLE else ModelProvider.OPENAI,
+            model_id="gpt-4",
+            extra_params={"top_p": 0.9, "seed": 42},
+        )
+        assert config.extra_params["top_p"] == 0.9
+        assert config.extra_params["seed"] == 42
+
+
+class TestProbeConfigOptionalFields:
+    """Tests for ProbeConfig optional fields."""
+
+    def test_timeout_per_item(self):
+        """Test timeout_per_item field."""
+        config = ProbeConfig(
+            type="logic" if not PYDANTIC_AVAILABLE else ProbeType.LOGIC,
+            timeout_per_item=60.0,
+        )
+        assert config.timeout_per_item == 60.0
+
+    def test_stop_on_error(self):
+        """Test stop_on_error field."""
+        config = ProbeConfig(
+            type="logic" if not PYDANTIC_AVAILABLE else ProbeType.LOGIC,
+            stop_on_error=True,
+        )
+        assert config.stop_on_error is True
+
+    def test_description(self):
+        """Test description field."""
+        config = ProbeConfig(
+            type="logic" if not PYDANTIC_AVAILABLE else ProbeType.LOGIC,
+            description="Tests logical reasoning capabilities",
+        )
+        assert config.description == "Tests logical reasoning capabilities"
+
+
+class TestDatasetConfigOptionalFields:
+    """Tests for DatasetConfig optional fields."""
+
+    def test_sample_size(self):
+        """Test sample_size field."""
+        config = DatasetConfig(
+            source="inline",
+            data=[{"q": "test"}],
+            sample_size=10,
+        )
+        assert config.sample_size == 10
+
+    def test_shuffle_and_seed(self):
+        """Test shuffle and seed fields."""
+        config = DatasetConfig(
+            source="inline",
+            data=[{"q": "test"}],
+            shuffle=True,
+            seed=42,
+        )
+        assert config.shuffle is True
+        assert config.seed == 42
+
+
+class TestRunnerConfigOptionalFields:
+    """Tests for RunnerConfig optional fields."""
+
+    def test_save_intermediate(self):
+        """Test save_intermediate field."""
+        config = RunnerConfig(save_intermediate=True)
+        assert config.save_intermediate is True
+
+    def test_cache_responses(self):
+        """Test cache_responses field."""
+        config = RunnerConfig(cache_responses=True)
+        assert config.cache_responses is True
+
+
+class TestExperimentConfigOptionalFields:
+    """Tests for ExperimentConfig optional fields."""
+
+    def test_description(self):
+        """Test description field."""
+        config = ExperimentConfig(
+            name="Test",
+            description="A test experiment",
+            model=ModelConfig(
+                provider="dummy" if not PYDANTIC_AVAILABLE else ModelProvider.DUMMY,
+                model_id="dummy-v1",
+            ),
+            probe=ProbeConfig(
+                type="logic" if not PYDANTIC_AVAILABLE else ProbeType.LOGIC,
+            ),
+            dataset=DatasetConfig(source="inline", data=[{}]),
+        )
+        assert config.description == "A test experiment"

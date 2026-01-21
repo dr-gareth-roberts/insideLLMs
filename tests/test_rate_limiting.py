@@ -803,6 +803,300 @@ class TestEdgeCases:
         assert any(results)
 
 
+class TestMissingCoverage:
+    """Tests for missing coverage lines."""
+
+    def test_token_bucket_blocking_acquire(self):
+        """Test token bucket acquire with blocking."""
+        limiter = TokenBucketRateLimiter(rate=100.0, capacity=1)
+        # Drain the bucket
+        limiter.acquire(tokens=1, block=False)
+        # This should block briefly and succeed
+        start = time.time()
+        assert limiter.acquire(tokens=1, block=True)
+        elapsed = time.time() - start
+        # Should have waited some time
+        assert elapsed > 0
+
+    def test_sliding_window_blocking_acquire(self):
+        """Test sliding window acquire with blocking."""
+        limiter = SlidingWindowRateLimiter(requests_per_second=10.0, window_size_seconds=0.1)
+        # Fill the window
+        for _ in range(10):
+            limiter.acquire(block=False)
+        # This should block briefly and succeed after window expires
+        start = time.time()
+        assert limiter.acquire(block=True)
+        elapsed = time.time() - start
+        assert elapsed > 0
+
+    def test_retry_fibonacci_strategy(self):
+        """Test Fibonacci retry delay strategy."""
+        config = RetryConfig(
+            max_retries=5,
+            base_delay=0.1,
+            strategy=RetryStrategy.FIBONACCI,
+            jitter=False,
+        )
+        handler = RetryHandler(config)
+
+        # Fibonacci sequence: 0, 1, 1, 2, 3, 5, ...
+        delay0 = handler._calculate_delay(0)  # fib(1) = 1 -> 0.1
+        delay1 = handler._calculate_delay(1)  # fib(2) = 1 -> 0.1
+        delay2 = handler._calculate_delay(2)  # fib(3) = 2 -> 0.2
+        delay3 = handler._calculate_delay(3)  # fib(4) = 3 -> 0.3
+
+        assert delay1 >= delay0
+        assert delay2 >= delay1
+        assert delay3 >= delay2
+
+    def test_retry_with_retryable_errors(self):
+        """Test retry handler with specific retryable errors."""
+        config = RetryConfig(
+            max_retries=3,
+            base_delay=0.01,
+            retryable_errors=[ValueError],
+        )
+        handler = RetryHandler(config)
+
+        attempt_count = 0
+
+        def fail_with_type_error():
+            nonlocal attempt_count
+            attempt_count += 1
+            raise TypeError("Not retryable")
+
+        result = handler.execute(fail_with_type_error)
+
+        # Should not retry TypeError (only ValueError is retryable)
+        assert not result.success
+        assert attempt_count == 1  # Only one attempt
+
+    def test_retry_with_callback(self):
+        """Test retry handler on_retry callback."""
+        handler = RetryHandler(RetryConfig(max_retries=3, base_delay=0.01))
+        retry_attempts = []
+
+        def fail_twice():
+            if len(retry_attempts) < 2:
+                raise ValueError("Failing")
+            return "success"
+
+        def on_retry(attempt, error):
+            retry_attempts.append((attempt, str(error)))
+
+        result = handler.execute(fail_twice, on_retry=on_retry)
+
+        assert result.success
+        assert len(retry_attempts) == 2
+
+    @pytest.mark.asyncio
+    async def test_async_retry_with_callback(self):
+        """Test async retry handler with callback."""
+        handler = RetryHandler(RetryConfig(max_retries=3, base_delay=0.01))
+        retry_attempts = []
+
+        async def async_fail_once():
+            if len(retry_attempts) < 1:
+                raise ValueError("Failing")
+            return "success"
+
+        def on_retry(attempt, error):
+            retry_attempts.append((attempt, str(error)))
+
+        result = await handler.execute_async(async_fail_once, on_retry=on_retry)
+
+        assert result.success
+        assert len(retry_attempts) == 1
+
+    @pytest.mark.asyncio
+    async def test_async_retry_all_fail(self):
+        """Test async retry that fails all attempts."""
+        config = RetryConfig(
+            max_retries=2,
+            base_delay=0.01,
+            retryable_errors=[ValueError],
+        )
+        handler = RetryHandler(config)
+
+        async def always_fail():
+            raise ValueError("Always fails")
+
+        result = await handler.execute_async(always_fail)
+
+        assert not result.success
+        assert result.attempts == 3
+
+    @pytest.mark.asyncio
+    async def test_async_retry_non_retryable_error(self):
+        """Test async retry with non-retryable error."""
+        config = RetryConfig(
+            max_retries=3,
+            base_delay=0.01,
+            retryable_errors=[ValueError],
+        )
+        handler = RetryHandler(config)
+
+        attempt_count = 0
+
+        async def fail_with_type_error():
+            nonlocal attempt_count
+            attempt_count += 1
+            raise TypeError("Not retryable")
+
+        result = await handler.execute_async(fail_with_type_error)
+
+        assert not result.success
+        # Should stop early due to non-retryable error
+        assert attempt_count == 1
+
+    @pytest.mark.asyncio
+    async def test_sliding_window_async_blocking(self):
+        """Test sliding window async acquire with blocking."""
+        limiter = SlidingWindowRateLimiter(requests_per_second=10.0, window_size_seconds=0.1)
+        # Fill the window
+        for _ in range(10):
+            await limiter.acquire_async(block=False)
+        # This should block briefly
+        result = await limiter.acquire_async(block=True)
+        assert result
+
+    @pytest.mark.asyncio
+    async def test_token_bucket_async_blocking(self):
+        """Test token bucket async acquire with blocking."""
+        limiter = TokenBucketRateLimiter(rate=100.0, capacity=1)
+        # Drain the bucket
+        await limiter.acquire_async(tokens=1, block=False)
+        # This should block briefly and succeed
+        result = await limiter.acquire_async(tokens=1, block=True)
+        assert result
+
+    @pytest.mark.asyncio
+    async def test_request_queue_async_processing(self):
+        """Test request queue async processing."""
+        limiter = TokenBucketRateLimiter(rate=100.0, capacity=100)
+        queue = RequestQueue(rate_limiter=limiter)
+
+        async def async_task():
+            return "async_result"
+
+        queue.enqueue(async_task)
+        result = await queue.process_one_async()
+
+        assert result == "async_result"
+
+    def test_circuit_breaker_failure_in_half_open(self):
+        """Test circuit breaker failure during half-open state."""
+        breaker = CircuitBreaker(
+            failure_threshold=2,
+            recovery_timeout=0.05,
+            half_open_max_calls=3,
+        )
+
+        # Open the circuit
+        breaker.record_failure()
+        breaker.record_failure()
+
+        # Wait for recovery
+        time.sleep(0.1)
+
+        # Transition to half-open
+        breaker.can_execute()
+
+        # Record a failure in half-open state
+        breaker.record_failure()
+
+        # Should be open again
+        state = breaker.get_state()
+        assert state.state == CircuitState.OPEN
+
+    def test_circuit_breaker_success_in_closed_resets_failure(self):
+        """Test that success in closed state resets failure count."""
+        breaker = CircuitBreaker(failure_threshold=3)
+
+        # Record some failures (but not enough to open)
+        breaker.record_failure()
+        breaker.record_failure()
+
+        # Record a success
+        breaker.record_success()
+
+        # Failure count should be reset
+        state = breaker.get_state()
+        assert state.failure_count == 0
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_async_with_sync_func(self):
+        """Test circuit breaker async with sync function."""
+        breaker = CircuitBreaker()
+
+        def sync_func():
+            return "sync_in_async"
+
+        result = await breaker.execute_async(sync_func)
+        assert result == "sync_in_async"
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_async_failure(self):
+        """Test circuit breaker async with failure."""
+        breaker = CircuitBreaker(failure_threshold=1)
+
+        async def fail_func():
+            raise ValueError("Async failure")
+
+        with pytest.raises(ValueError):
+            await breaker.execute_async(fail_func)
+
+        state = breaker.get_state()
+        assert state.state == CircuitState.OPEN
+
+    def test_retry_max_delay_cap(self):
+        """Test retry delay is capped at max_delay."""
+        config = RetryConfig(
+            max_retries=10,
+            base_delay=1.0,
+            max_delay=5.0,
+            strategy=RetryStrategy.EXPONENTIAL,
+            jitter=False,
+        )
+        handler = RetryHandler(config)
+
+        # After many attempts, delay should be capped
+        delay = handler._calculate_delay(10)  # Would be 2^10 = 1024 without cap
+        assert delay <= 5.0
+
+    def test_rate_limit_stats_zero_requests(self):
+        """Test throttle rate with zero requests."""
+        stats = RateLimitStats()
+        assert stats.throttle_rate == 0.0
+
+    def test_sliding_window_get_state_when_limited(self):
+        """Test sliding window state when rate limited."""
+        limiter = SlidingWindowRateLimiter(requests_per_second=5.0, window_size_seconds=1.0)
+
+        # Fill the window
+        for _ in range(5):
+            limiter.acquire(block=False)
+
+        state = limiter.get_state()
+        assert state.is_limited
+        assert state.wait_time_ms > 0
+
+    def test_request_queue_process_all(self):
+        """Test processing all queued requests."""
+        limiter = TokenBucketRateLimiter(rate=100.0, capacity=100)
+        queue = RequestQueue(rate_limiter=limiter)
+
+        queue.enqueue(lambda: "a")
+        queue.enqueue(lambda: "b")
+        queue.enqueue(lambda: "c")
+
+        results = queue.process_all()
+
+        assert len(results) == 3
+        assert queue.get_queue_size() == 0
+
+
 class TestIntegration:
     """Integration tests."""
 

@@ -507,7 +507,8 @@ class TestModelEndpoint:
     @pytest.mark.asyncio
     async def test_generate_sync_model(self):
         """Test generate with sync model."""
-        model = Mock()
+        # Create a mock without agenerate to test sync path
+        model = Mock(spec=["generate"])
         model.generate.return_value = "Generated response"
 
         endpoint = ModelEndpoint(model)
@@ -531,7 +532,8 @@ class TestModelEndpoint:
     @pytest.mark.asyncio
     async def test_generate_with_params(self):
         """Test generate with parameters."""
-        model = Mock()
+        # Create a mock without agenerate to test sync path with params
+        model = Mock(spec=["generate"])
         model.generate.return_value = "Response"
 
         endpoint = ModelEndpoint(model)
@@ -549,7 +551,8 @@ class TestModelEndpoint:
     @pytest.mark.asyncio
     async def test_generate_error_handling(self):
         """Test error handling in generate."""
-        model = Mock()
+        # Create a mock without agenerate to test error handling on sync path
+        model = Mock(spec=["generate"])
         model.generate.side_effect = Exception("Model error")
 
         endpoint = ModelEndpoint(model)
@@ -561,7 +564,8 @@ class TestModelEndpoint:
 
     def test_get_stats(self):
         """Test endpoint statistics."""
-        model = Mock()
+        # Create a mock without agenerate to test stats collection
+        model = Mock(spec=["generate"])
         model.generate.return_value = "Response"
 
         endpoint = ModelEndpoint(model)
@@ -642,7 +646,8 @@ class TestBatchEndpoint:
     @pytest.mark.asyncio
     async def test_batch_generate(self):
         """Test batch generation."""
-        model = Mock()
+        # Create a mock without agenerate to test sync path
+        model = Mock(spec=["generate"])
         model.generate.side_effect = ["Response 1", "Response 2", "Response 3"]
 
         endpoint = BatchEndpoint(model, max_batch_size=10)
@@ -852,7 +857,8 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_model_endpoint_with_model_id(self):
         """Test model endpoint preserves model_id."""
-        model = Mock()
+        # Create a mock without agenerate to test sync path
+        model = Mock(spec=["generate", "model_id"])
         model.generate.return_value = "Response"
         model.model_id = "test-model-v1"
 

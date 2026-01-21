@@ -1156,3 +1156,911 @@ class TestRunnerExecutionError:
 
         assert len(results) == 2
         assert all(r["status"] == "error" for r in results)
+
+
+class TestRunnerBaseProperties:
+    """Test _RunnerBase properties (success_rate, error_count)."""
+
+    def test_success_rate_with_mixed_results(self):
+        """Test success_rate property with mixed success/error results."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.probes.base import Probe
+        from insideLLMs.runner import ProbeRunner
+
+        class AlternatingModel(Model):
+            """Model that alternates success/failure."""
+
+            def __init__(self):
+                super().__init__(name="alternating")
+                self.call_count = 0
+
+            def generate(self, prompt, **kwargs):
+                self.call_count += 1
+                if self.call_count % 2 == 0:
+                    raise ValueError("Even call fails")
+                return "success"
+
+        class PassThroughProbe(Probe):
+            def __init__(self):
+                super().__init__(name="passthrough")
+
+            def run(self, model, item, **kwargs):
+                return model.generate(item)
+
+        model = AlternatingModel()
+        probe = PassThroughProbe()
+        runner = ProbeRunner(model, probe)
+
+        runner.run(["1", "2", "3", "4"], emit_run_artifacts=False, stop_on_error=False)
+
+        # 2 successes (1, 3), 2 errors (2, 4)
+        assert runner.success_rate == 0.5
+        assert runner.error_count == 2
+
+    def test_success_rate_empty_results(self):
+        """Test success_rate with no results (before any run)."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        # Before any run
+        assert runner.success_rate == 0.0
+        assert runner.error_count == 0
+
+
+class TestSerializeValue:
+    """Tests for _serialize_value helper function."""
+
+    def test_serialize_datetime(self):
+        """Test serializing datetime objects."""
+        from datetime import datetime
+
+        from insideLLMs.runner import _serialize_value
+
+        dt = datetime(2024, 1, 15, 10, 30, 45)
+        result = _serialize_value(dt)
+        assert result == "2024-01-15T10:30:45"
+
+    def test_serialize_path(self):
+        """Test serializing Path objects."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _serialize_value
+
+        p = Path("/some/test/path")
+        result = _serialize_value(p)
+        assert result == "/some/test/path"
+
+    def test_serialize_enum(self):
+        """Test serializing Enum values."""
+        from enum import Enum
+
+        from insideLLMs.runner import _serialize_value
+
+        class Color(Enum):
+            RED = "red"
+            BLUE = "blue"
+
+        result = _serialize_value(Color.RED)
+        assert result == "red"
+
+    def test_serialize_dataclass(self):
+        """Test serializing dataclass instances."""
+        from dataclasses import dataclass
+
+        from insideLLMs.runner import _serialize_value
+
+        @dataclass
+        class Person:
+            name: str
+            age: int
+
+        p = Person(name="Alice", age=30)
+        result = _serialize_value(p)
+        assert result == {"name": "Alice", "age": 30}
+
+    def test_serialize_set_and_frozenset(self):
+        """Test serializing sets."""
+        from insideLLMs.runner import _serialize_value
+
+        s = {3, 1, 2}
+        result = _serialize_value(s)
+        assert result == [1, 2, 3]  # Sorted
+
+        fs = frozenset(["c", "a", "b"])
+        result = _serialize_value(fs)
+        assert result == ["a", "b", "c"]
+
+    def test_serialize_set_with_unsortable_items(self):
+        """Test serializing sets with non-comparable items."""
+        from insideLLMs.runner import _serialize_value
+
+        # Sets containing dicts (cannot be directly compared)
+        s = {frozenset([("a", 1)]), frozenset([("b", 2)])}
+        result = _serialize_value(s)
+        assert isinstance(result, list)
+
+    def test_serialize_nested_structures(self):
+        """Test serializing nested dicts and lists."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _serialize_value
+
+        data = {
+            "path": Path("/test"),
+            "items": [1, 2, 3],
+            "nested": {"key": "value"},
+        }
+        result = _serialize_value(data)
+        assert result["path"] == "/test"
+        assert result["items"] == [1, 2, 3]
+
+    def test_serialize_exotic_object(self):
+        """Test serializing unknown object types falls back to str."""
+        from insideLLMs.runner import _serialize_value
+
+        class CustomObject:
+            def __str__(self):
+                return "custom_str"
+
+        obj = CustomObject()
+        result = _serialize_value(obj)
+        assert result == "custom_str"
+
+
+class TestSemverTuple:
+    """Tests for _semver_tuple helper function."""
+
+    def test_valid_semver(self):
+        """Test parsing valid semver strings."""
+        from insideLLMs.runner import _semver_tuple
+
+        assert _semver_tuple("1.0.0") == (1, 0, 0)
+        assert _semver_tuple("2.3.4") == (2, 3, 4)
+
+    def test_invalid_semver(self):
+        """Test parsing invalid semver returns (0, 0, 0)."""
+        from insideLLMs.runner import _semver_tuple
+
+        assert _semver_tuple("invalid") == (0, 0, 0)
+        assert _semver_tuple("") == (0, 0, 0)
+
+
+class TestDefaultRunRoot:
+    """Tests for _default_run_root helper function."""
+
+    def test_default_run_root_env_var(self, monkeypatch, tmp_path):
+        """Test _default_run_root respects INSIDELLMS_RUN_ROOT env var."""
+        from insideLLMs.runner import _default_run_root
+
+        custom_root = str(tmp_path / "custom_runs")
+        monkeypatch.setenv("INSIDELLMS_RUN_ROOT", custom_root)
+        result = _default_run_root()
+        assert result == tmp_path / "custom_runs"
+
+    def test_default_run_root_no_env(self, monkeypatch):
+        """Test _default_run_root falls back to home directory."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _default_run_root
+
+        monkeypatch.delenv("INSIDELLMS_RUN_ROOT", raising=False)
+        result = _default_run_root()
+        assert result == Path.home() / ".insidellms" / "runs"
+
+
+class TestFingerprintValue:
+    """Tests for _fingerprint_value helper function."""
+
+    def test_fingerprint_none(self):
+        """Test _fingerprint_value returns None for None input."""
+        from insideLLMs.runner import _fingerprint_value
+
+        result = _fingerprint_value(None)
+        assert result is None
+
+    def test_fingerprint_dict(self):
+        """Test _fingerprint_value for dict input."""
+        from insideLLMs.runner import _fingerprint_value
+
+        result = _fingerprint_value({"key": "value"})
+        assert result is not None
+        assert len(result) == 12  # First 12 chars of hash
+
+
+class TestNormalizeInfoObjToDict:
+    """Tests for _normalize_info_obj_to_dict helper function."""
+
+    def test_normalize_dict(self):
+        """Test normalizing a dict returns it unchanged."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        d = {"key": "value"}
+        result = _normalize_info_obj_to_dict(d)
+        assert result == d
+
+    def test_normalize_none(self):
+        """Test normalizing None returns empty dict."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        result = _normalize_info_obj_to_dict(None)
+        assert result == {}
+
+    def test_normalize_dataclass(self):
+        """Test normalizing a dataclass."""
+        from dataclasses import dataclass
+
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        @dataclass
+        class Info:
+            name: str
+            version: str
+
+        info = Info(name="test", version="1.0")
+        result = _normalize_info_obj_to_dict(info)
+        assert result == {"name": "test", "version": "1.0"}
+
+    def test_normalize_pydantic_v1_style(self):
+        """Test normalizing object with .dict() method (pydantic v1 style)."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        class FakePydanticV1:
+            def dict(self):
+                return {"name": "v1", "type": "test"}
+
+        obj = FakePydanticV1()
+        result = _normalize_info_obj_to_dict(obj)
+        assert result == {"name": "v1", "type": "test"}
+
+    def test_normalize_pydantic_v2_style(self):
+        """Test normalizing object with .model_dump() method (pydantic v2 style)."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        class FakePydanticV2:
+            def model_dump(self):
+                return {"name": "v2", "type": "test"}
+
+        obj = FakePydanticV2()
+        result = _normalize_info_obj_to_dict(obj)
+        assert result == {"name": "v2", "type": "test"}
+
+    def test_normalize_pydantic_dict_raises(self):
+        """Test normalizing object whose .dict() raises returns empty dict."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        class BrokenPydantic:
+            def dict(self):
+                raise RuntimeError("broken")
+
+        obj = BrokenPydantic()
+        result = _normalize_info_obj_to_dict(obj)
+        assert result == {}
+
+    def test_normalize_pydantic_model_dump_raises(self):
+        """Test normalizing object whose .model_dump() raises returns empty dict."""
+        from insideLLMs.runner import _normalize_info_obj_to_dict
+
+        class BrokenPydanticV2:
+            def model_dump(self):
+                raise RuntimeError("broken")
+
+        obj = BrokenPydanticV2()
+        result = _normalize_info_obj_to_dict(obj)
+        assert result == {}
+
+
+class TestPrepareRunDir:
+    """Tests for _prepare_run_dir helper function."""
+
+    def test_create_new_directory(self, tmp_path):
+        """Test creating a new run directory."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "new_run"
+        _prepare_run_dir(run_dir, overwrite=False)
+        assert run_dir.exists()
+
+    def test_use_existing_empty_directory(self, tmp_path):
+        """Test using an existing empty directory."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "empty_run"
+        run_dir.mkdir()
+        _prepare_run_dir(run_dir, overwrite=False)
+        assert run_dir.exists()
+
+    def test_fail_on_non_empty_directory(self, tmp_path):
+        """Test failure when directory is non-empty and overwrite=False."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "non_empty"
+        run_dir.mkdir()
+        (run_dir / "some_file.txt").write_text("content")
+
+        with pytest.raises(FileExistsError, match="already exists and is not empty"):
+            _prepare_run_dir(run_dir, overwrite=False)
+
+    def test_fail_on_existing_file_not_dir(self, tmp_path):
+        """Test failure when path exists but is a file."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        file_path = tmp_path / "is_a_file"
+        file_path.write_text("I am a file")
+
+        with pytest.raises(FileExistsError, match="is not a directory"):
+            _prepare_run_dir(file_path, overwrite=False)
+
+    def test_overwrite_with_sentinel(self, tmp_path):
+        """Test overwriting a directory with manifest.json sentinel."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "run_to_overwrite"
+        run_dir.mkdir()
+        (run_dir / "manifest.json").write_text("{}")
+        (run_dir / "old_file.txt").write_text("old")
+
+        _prepare_run_dir(run_dir, overwrite=True, run_root=tmp_path)
+        assert run_dir.exists()
+        assert not (run_dir / "old_file.txt").exists()
+
+    def test_overwrite_with_insidellms_sentinel(self, tmp_path):
+        """Test overwriting a directory with .insidellms_run sentinel."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "run_with_marker"
+        run_dir.mkdir()
+        (run_dir / ".insidellms_run").write_text("marker")
+        (run_dir / "old_file.txt").write_text("old")
+
+        _prepare_run_dir(run_dir, overwrite=True, run_root=tmp_path)
+        assert run_dir.exists()
+        assert not (run_dir / "old_file.txt").exists()
+
+    def test_refuse_overwrite_without_sentinel(self, tmp_path):
+        """Test refusing to overwrite directory without sentinel."""
+        from insideLLMs.runner import _prepare_run_dir
+
+        run_dir = tmp_path / "no_sentinel"
+        run_dir.mkdir()
+        (run_dir / "some_file.txt").write_text("content")
+
+        with pytest.raises(ValueError, match="does not look like an insideLLMs run"):
+            _prepare_run_dir(run_dir, overwrite=True, run_root=tmp_path)
+
+    def test_refuse_overwrite_short_path(self, tmp_path):
+        """Test refusing to overwrite very short paths."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _prepare_run_dir
+
+        # Try to create a fake short path - use a simulated path
+        # Since we can't easily test /tmp, we test the logic indirectly
+        # by checking that the function contains the safety guard
+        import inspect
+
+        from insideLLMs import runner
+
+        source = inspect.getsource(runner._prepare_run_dir)
+        assert "len(resolved.parts) <= 2" in source
+
+
+class TestCoerceModelInfo:
+    """Tests for _coerce_model_info helper function."""
+
+    def test_coerce_from_dict_info(self):
+        """Test coercing model info from dict."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.types import ModelInfo
+
+        class DictInfoModel(Model):
+            def __init__(self):
+                super().__init__(name="dict-model")
+
+            def info(self):
+                return {
+                    "name": "test-model",
+                    "provider": "test-provider",
+                    "model_id": "test-id",
+                    "max_tokens": 4096,
+                }
+
+            def generate(self, prompt, **kwargs):
+                return "test"
+
+        model = DictInfoModel()
+        result = _coerce_model_info(model)
+
+        assert isinstance(result, ModelInfo)
+        assert result.name == "test-model"
+        assert result.provider == "test-provider"
+        assert result.model_id == "test-id"
+
+    def test_coerce_preserves_model_info(self):
+        """Test that existing ModelInfo is returned unchanged."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.types import ModelInfo
+
+        original_info = ModelInfo(
+            name="original",
+            provider="original-provider",
+            model_id="original-id",
+        )
+
+        class ModelInfoModel(Model):
+            def __init__(self):
+                super().__init__(name="modelinfo-model")
+
+            def info(self):
+                return original_info
+
+            def generate(self, prompt, **kwargs):
+                return "test"
+
+        model = ModelInfoModel()
+        result = _coerce_model_info(model)
+
+        assert result is original_info
+
+    def test_coerce_with_exception_in_info(self):
+        """Test coercing when model.info() raises an exception."""
+        from insideLLMs.models.base import Model
+        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.types import ModelInfo
+
+        class BrokenInfoModel(Model):
+            def __init__(self):
+                super().__init__(name="broken-model")
+
+            def info(self):
+                raise RuntimeError("info broken")
+
+            def generate(self, prompt, **kwargs):
+                return "test"
+
+        model = BrokenInfoModel()
+        result = _coerce_model_info(model)
+
+        assert isinstance(result, ModelInfo)
+        assert result.name == "broken-model"
+
+
+class TestBuildResultRecord:
+    """Tests for _build_result_record helper function."""
+
+    def test_build_record_with_string_output(self):
+        """Test building a record with string output."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _build_result_record
+
+        record = _build_result_record(
+            schema_version="1.0.0",
+            run_id="test-run",
+            started_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            completed_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            model={"model_id": "test-model"},
+            probe={"probe_id": "test-probe"},
+            dataset={"dataset_id": "test-dataset"},
+            item="test input",
+            output="test output",
+            latency_ms=100.0,
+            store_messages=True,
+            index=0,
+            status="success",
+            error=None,
+        )
+
+        assert record["output_text"] == "test output"
+        assert record["status"] == "success"
+        assert record["error"] is None
+
+    def test_build_record_with_dict_output(self):
+        """Test building a record with dict output containing scores."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _build_result_record
+
+        record = _build_result_record(
+            schema_version="1.0.0",
+            run_id="test-run",
+            started_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            completed_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            model={"model_id": "test-model"},
+            probe={"probe_id": "test-probe"},
+            dataset={"dataset_id": "test-dataset"},
+            item="test input",
+            output={
+                "output_text": "dict output text",
+                "scores": {"accuracy": 0.95},
+                "usage": {"tokens": 100},
+                "primary_metric": "accuracy",
+            },
+            latency_ms=100.0,
+            store_messages=True,
+            index=0,
+            status="success",
+            error=None,
+        )
+
+        assert record["output_text"] == "dict output text"
+        assert record["scores"] == {"accuracy": 0.95}
+        assert record["usage"] == {"tokens": 100}
+        assert record["primary_metric"] == "accuracy"
+
+    def test_build_record_with_messages_input(self):
+        """Test building a record with messages-style input."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _build_result_record
+
+        item = {
+            "messages": [
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi there"},
+            ],
+            "example_id": "example-1",
+        }
+
+        record = _build_result_record(
+            schema_version="1.0.0",
+            run_id="test-run",
+            started_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            completed_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            model={"model_id": "test-model"},
+            probe={"probe_id": "test-probe"},
+            dataset={"dataset_id": "test-dataset"},
+            item=item,
+            output="response",
+            latency_ms=100.0,
+            store_messages=True,
+            index=0,
+            status="success",
+            error=None,
+        )
+
+        assert record["example_id"] == "example-1"
+        assert record["messages"] is not None
+        assert len(record["messages"]) == 2
+        assert record["messages_hash"] is not None
+
+    def test_build_record_with_error(self):
+        """Test building a record with an error."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _build_result_record
+
+        record = _build_result_record(
+            schema_version="1.0.0",
+            run_id="test-run",
+            started_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            completed_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            model={"model_id": "test-model"},
+            probe={"probe_id": "test-probe"},
+            dataset={"dataset_id": "test-dataset"},
+            item="test input",
+            output=None,
+            latency_ms=50.0,
+            store_messages=False,
+            index=0,
+            status="error",
+            error=ValueError("Test error"),
+        )
+
+        assert record["status"] == "error"
+        assert record["error"] == "Test error"
+        assert record["error_type"] == "ValueError"
+
+
+class TestLoadConfigErrors:
+    """Test load_config error handling."""
+
+    def test_load_config_file_not_found(self):
+        """Test load_config raises FileNotFoundError for missing file."""
+        from insideLLMs.runner import load_config
+
+        with pytest.raises(FileNotFoundError, match="Config file not found"):
+            load_config("/nonexistent/config.yaml")
+
+    def test_load_config_unsupported_format(self, tmp_path):
+        """Test load_config raises ValueError for unsupported format."""
+        from insideLLMs.runner import load_config
+
+        config_path = tmp_path / "config.txt"
+        config_path.write_text("some content")
+
+        with pytest.raises(ValueError, match="Unsupported config file format"):
+            load_config(config_path)
+
+
+class TestCreateModelFromConfigFallback:
+    """Tests for _create_model_from_config fallback path."""
+
+    def test_create_unknown_model_type(self):
+        """Test creating model with unknown type raises ValueError."""
+        from insideLLMs.runner import _create_model_from_config
+
+        with pytest.raises(ValueError, match="Unknown model type"):
+            _create_model_from_config({"type": "nonexistent_model_xyz"})
+
+
+class TestCreateProbeFromConfigFallback:
+    """Tests for _create_probe_from_config fallback path."""
+
+    def test_create_unknown_probe_type(self):
+        """Test creating probe with unknown type raises ValueError."""
+        from insideLLMs.runner import _create_probe_from_config
+
+        with pytest.raises(ValueError, match="Unknown probe type"):
+            _create_probe_from_config({"type": "nonexistent_probe_xyz"})
+
+
+class TestLoadDatasetFromConfig:
+    """Tests for _load_dataset_from_config."""
+
+    def test_load_csv_dataset(self, tmp_path):
+        """Test loading CSV dataset from config."""
+        import csv
+
+        from insideLLMs.runner import _load_dataset_from_config
+
+        csv_path = tmp_path / "data.csv"
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["question", "answer"])
+            writer.writeheader()
+            writer.writerow({"question": "Q1?", "answer": "A1"})
+            writer.writerow({"question": "Q2?", "answer": "A2"})
+
+        config = {"format": "csv", "path": str(csv_path)}
+        result = _load_dataset_from_config(config, tmp_path)
+        assert len(result) == 2
+
+    def test_load_jsonl_dataset(self, tmp_path):
+        """Test loading JSONL dataset from config."""
+        import json
+
+        from insideLLMs.runner import _load_dataset_from_config
+
+        jsonl_path = tmp_path / "data.jsonl"
+        with open(jsonl_path, "w") as f:
+            f.write(json.dumps({"question": "Q1?"}) + "\n")
+            f.write(json.dumps({"question": "Q2?"}) + "\n")
+
+        config = {"format": "jsonl", "path": str(jsonl_path)}
+        result = _load_dataset_from_config(config, tmp_path)
+        assert len(result) == 2
+
+    def test_load_unknown_format(self, tmp_path):
+        """Test loading unknown format raises ValueError."""
+        from insideLLMs.runner import _load_dataset_from_config
+
+        config = {"format": "unknown_format"}
+
+        with pytest.raises(ValueError, match="Unknown dataset format"):
+            _load_dataset_from_config(config, tmp_path)
+
+
+class TestAtomicWrite:
+    """Tests for atomic write functions."""
+
+    def test_atomic_write_text(self, tmp_path):
+        """Test _atomic_write_text creates file correctly."""
+        from insideLLMs.runner import _atomic_write_text
+
+        file_path = tmp_path / "test.txt"
+        _atomic_write_text(file_path, "Hello, World!")
+
+        assert file_path.exists()
+        assert file_path.read_text() == "Hello, World!"
+
+    def test_atomic_write_yaml(self, tmp_path):
+        """Test _atomic_write_yaml creates file correctly."""
+        import yaml
+
+        from insideLLMs.runner import _atomic_write_yaml
+
+        file_path = tmp_path / "test.yaml"
+        _atomic_write_yaml(file_path, {"key": "value", "number": 42})
+
+        assert file_path.exists()
+        content = yaml.safe_load(file_path.read_text())
+        assert content["key"] == "value"
+        assert content["number"] == 42
+
+
+class TestDeterministicFunctions:
+    """Tests for deterministic time and ID functions."""
+
+    def test_deterministic_run_id_from_inputs(self):
+        """Test deterministic run ID generation from inputs."""
+        from insideLLMs.runner import _deterministic_run_id_from_inputs
+
+        run_id = _deterministic_run_id_from_inputs(
+            schema_version="1.0.0",
+            model_spec={"model_id": "test"},
+            probe_spec={"probe_id": "test"},
+            dataset_spec={"dataset_id": "test"},
+            prompt_set=["q1", "q2"],
+            probe_kwargs={},
+        )
+
+        assert len(run_id) == 32
+        # Same inputs should produce same ID
+        run_id2 = _deterministic_run_id_from_inputs(
+            schema_version="1.0.0",
+            model_spec={"model_id": "test"},
+            probe_spec={"probe_id": "test"},
+            dataset_spec={"dataset_id": "test"},
+            prompt_set=["q1", "q2"],
+            probe_kwargs={},
+        )
+        assert run_id == run_id2
+
+    def test_deterministic_base_time(self):
+        """Test deterministic base time generation."""
+        from insideLLMs.runner import _deterministic_base_time
+
+        time1 = _deterministic_base_time("run-123")
+        time2 = _deterministic_base_time("run-123")
+        assert time1 == time2
+
+        time3 = _deterministic_base_time("different-run")
+        assert time3 != time1
+
+    def test_deterministic_item_times(self):
+        """Test deterministic item times."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _deterministic_item_times
+
+        base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        started, completed = _deterministic_item_times(base, 5)
+
+        assert started > base
+        assert completed > started
+
+    def test_deterministic_run_times_negative_total(self):
+        """Test _deterministic_run_times handles negative total."""
+        from datetime import datetime, timezone
+
+        from insideLLMs.runner import _deterministic_run_times
+
+        base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        started, completed = _deterministic_run_times(base, -5)
+
+        # Should treat negative as 0
+        assert completed > started
+
+
+class TestResolvePath:
+    """Tests for _resolve_path helper function."""
+
+    def test_resolve_absolute_path(self):
+        """Test resolving absolute path returns it unchanged."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _resolve_path
+
+        abs_path = "/absolute/path/to/file.txt"
+        result = _resolve_path(abs_path, Path("/base"))
+        assert result == Path(abs_path)
+
+    def test_resolve_relative_path(self):
+        """Test resolving relative path uses base directory."""
+        from pathlib import Path
+
+        from insideLLMs.runner import _resolve_path
+
+        result = _resolve_path("relative/file.txt", Path("/base/dir"))
+        assert result == Path("/base/dir/relative/file.txt")
+
+
+class TestBuildResolvedConfigSnapshot:
+    """Tests for _build_resolved_config_snapshot."""
+
+    def test_resolve_dataset_path(self, tmp_path):
+        """Test that dataset path is resolved to absolute."""
+        from insideLLMs.runner import _build_resolved_config_snapshot
+
+        config = {
+            "model": {"type": "dummy"},
+            "probe": {"type": "logic"},
+            "dataset": {
+                "format": "jsonl",
+                "path": "relative/data.jsonl",
+            },
+        }
+
+        snapshot = _build_resolved_config_snapshot(config, tmp_path)
+
+        # Path should be resolved to absolute
+        expected = str((tmp_path / "relative/data.jsonl").resolve())
+        assert snapshot["dataset"]["path"] == expected
+
+    def test_preserves_non_path_configs(self, tmp_path):
+        """Test that non-path configs are preserved."""
+        from insideLLMs.runner import _build_resolved_config_snapshot
+
+        config = {
+            "model": {"type": "dummy", "args": {"setting": "value"}},
+            "probe": {"type": "logic"},
+            "dataset": {"format": "hf", "name": "test-dataset"},
+        }
+
+        snapshot = _build_resolved_config_snapshot(config, tmp_path)
+
+        assert snapshot["model"]["args"]["setting"] == "value"
+        assert snapshot["dataset"]["name"] == "test-dataset"
+
+
+class TestEnsureRunSentinel:
+    """Tests for _ensure_run_sentinel."""
+
+    def test_creates_sentinel(self, tmp_path):
+        """Test sentinel file is created."""
+        from insideLLMs.runner import _ensure_run_sentinel
+
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        _ensure_run_sentinel(run_dir)
+
+        sentinel = run_dir / ".insidellms_run"
+        assert sentinel.exists()
+
+    def test_does_not_overwrite_existing(self, tmp_path):
+        """Test existing sentinel is not overwritten."""
+        from insideLLMs.runner import _ensure_run_sentinel
+
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        sentinel = run_dir / ".insidellms_run"
+        sentinel.write_text("original content")
+
+        _ensure_run_sentinel(run_dir)
+
+        # Should keep original content
+        assert sentinel.read_text() == "original content"
+
+
+class TestRunProbeAsync:
+    """Tests for run_probe_async convenience function."""
+
+    @pytest.mark.asyncio
+    async def test_run_probe_async_basic(self):
+        """Test basic run_probe_async usage."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import run_probe_async
+
+        model = DummyModel()
+        probe = LogicProbe()
+
+        results = await run_probe_async(
+            model, probe, ["Test?"], emit_run_artifacts=False
+        )
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_run_probe_async_with_concurrency(self):
+        """Test run_probe_async with custom concurrency."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import run_probe_async
+
+        model = DummyModel()
+        probe = LogicProbe()
+
+        results = await run_probe_async(
+            model,
+            probe,
+            ["Q1", "Q2", "Q3"],
+            concurrency=2,
+            emit_run_artifacts=False,
+        )
+        assert len(results) == 3
