@@ -67,6 +67,16 @@ insidellms report ./runs/candidate
 insidellms diff ./runs/baseline ./runs/candidate --fail-on-regressions
 ```
 
+## CI Diff-Gating
+
+For PRs, you can gate on any behavioural drift by running a small deterministic harness on the
+base SHA and on the PR, then diffing the outputs:
+
+```bash
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/head --skip-report
+insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
+```
+
 ## Determinism Scope
 
 - The harness spine (run -> records -> report -> diff) is deterministic, including run IDs and timestamps.

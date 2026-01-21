@@ -221,8 +221,8 @@ class Registry(Generic[T]):
 
 
 # Global registries for the library
-from insideLLMs.models.base import Model
-from insideLLMs.probes.base import Probe
+from insideLLMs.models.base import Model  # noqa: E402
+from insideLLMs.probes.base import Probe  # noqa: E402
 
 model_registry: Registry[Model] = Registry("models")
 probe_registry: Registry[Probe] = Registry("probes")
@@ -261,37 +261,68 @@ def register_builtins() -> None:
     probe_registry.clear()
     dataset_registry.clear()
 
-    # Register models - use lazy loading for heavy dependencies
-    # DummyModel is lightweight, can import directly
+    # Register models - use lazy loading for optional/heavy dependencies.
+    # DummyModel is lightweight, can import directly.
     from insideLLMs.models import DummyModel
 
     model_registry.register("dummy", DummyModel)
 
-    # API models are relatively lightweight
+    # Hosted/API models (optional SDK dependencies).
     model_registry.register(
         "openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel")
     )
     model_registry.register(
         "anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel")
     )
+    model_registry.register(
+        "gemini", _lazy_import_factory("insideLLMs.models.gemini", "GeminiModel")
+    )
+    model_registry.register(
+        "cohere", _lazy_import_factory("insideLLMs.models.cohere", "CohereModel")
+    )
 
-    # HuggingFace is heavy - use lazy loading
+    # HuggingFace is heavy - use lazy loading.
     model_registry.register(
         "huggingface", _lazy_import_factory("insideLLMs.models.huggingface", "HuggingFaceModel")
     )
+
+    # Local models (optional deps / local services).
+    model_registry.register(
+        "llamacpp", _lazy_import_factory("insideLLMs.models.local", "LlamaCppModel")
+    )
+    model_registry.register(
+        "ollama", _lazy_import_factory("insideLLMs.models.local", "OllamaModel")
+    )
+    model_registry.register("vllm", _lazy_import_factory("insideLLMs.models.local", "VLLMModel"))
 
     # Register probes - these are generally lightweight
     from insideLLMs.probes import (
         AttackProbe,
         BiasProbe,
+        CodeDebugProbe,
+        CodeExplanationProbe,
+        CodeGenerationProbe,
+        ConstraintComplianceProbe,
         FactualityProbe,
+        InstructionFollowingProbe,
+        JailbreakProbe,
         LogicProbe,
+        MultiStepTaskProbe,
+        PromptInjectionProbe,
     )
 
     probe_registry.register("logic", LogicProbe)
     probe_registry.register("factuality", FactualityProbe)
     probe_registry.register("bias", BiasProbe)
     probe_registry.register("attack", AttackProbe)
+    probe_registry.register("prompt_injection", PromptInjectionProbe)
+    probe_registry.register("jailbreak", JailbreakProbe)
+    probe_registry.register("code_generation", CodeGenerationProbe)
+    probe_registry.register("code_explanation", CodeExplanationProbe)
+    probe_registry.register("code_debug", CodeDebugProbe)
+    probe_registry.register("instruction_following", InstructionFollowingProbe)
+    probe_registry.register("multi_step_task", MultiStepTaskProbe)
+    probe_registry.register("constraint_compliance", ConstraintComplianceProbe)
 
     # Register dataset loaders
     from insideLLMs.dataset_utils import (
