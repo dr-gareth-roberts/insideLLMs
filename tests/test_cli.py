@@ -1010,3 +1010,583 @@ class TestSupportsColor:
                 os.environ.pop("FORCE_COLOR", None)
             else:
                 os.environ["FORCE_COLOR"] = original_force_color
+
+
+class TestJsonDefault:
+    """Test the _json_default function."""
+
+    def test_datetime_serialization(self):
+        """Test datetime is serialized to ISO format."""
+        from datetime import datetime
+
+        from insideLLMs.cli import _json_default
+
+        dt = datetime(2026, 1, 21, 12, 0, 0)
+        result = _json_default(dt)
+        assert result == "2026-01-21T12:00:00"
+
+    def test_enum_serialization(self):
+        """Test enum is serialized to its value."""
+        from enum import Enum
+
+        from insideLLMs.cli import _json_default
+
+        class Color(Enum):
+            RED = "red"
+            GREEN = "green"
+
+        result = _json_default(Color.RED)
+        assert result == "red"
+
+    def test_path_serialization(self):
+        """Test Path is serialized to string."""
+        from insideLLMs.cli import _json_default
+
+        result = _json_default(Path("/foo/bar"))
+        assert result == "/foo/bar"
+
+    def test_set_serialization(self):
+        """Test set is serialized to sorted list."""
+        from insideLLMs.cli import _json_default
+
+        result = _json_default({3, 1, 2})
+        assert result == [1, 2, 3]
+
+    def test_frozenset_serialization(self):
+        """Test frozenset is serialized to sorted list."""
+        from insideLLMs.cli import _json_default
+
+        result = _json_default(frozenset(["c", "a", "b"]))
+        assert result == ["a", "b", "c"]
+
+    def test_fallback_to_str(self):
+        """Test fallback to str for unknown types."""
+        from insideLLMs.cli import _json_default
+
+        class CustomClass:
+            def __str__(self):
+                return "custom"
+
+        result = _json_default(CustomClass())
+        assert result == "custom"
+
+
+class TestFormatFunctions:
+    """Test formatting utility functions."""
+
+    def test_format_percent_with_value(self):
+        """Test _format_percent with a value."""
+        from insideLLMs.cli import _format_percent
+
+        assert _format_percent(0.5) == "50.0%"
+        assert _format_percent(0.123) == "12.3%"
+        assert _format_percent(1.0) == "100.0%"
+
+    def test_format_percent_with_none(self):
+        """Test _format_percent with None."""
+        from insideLLMs.cli import _format_percent
+
+        assert _format_percent(None) == "-"
+
+    def test_format_float_with_value(self):
+        """Test _format_float with a value."""
+        from insideLLMs.cli import _format_float
+
+        assert _format_float(0.5) == "0.500"
+        assert _format_float(1.23456) == "1.235"
+
+    def test_format_float_with_none(self):
+        """Test _format_float with None."""
+        from insideLLMs.cli import _format_float
+
+        assert _format_float(None) == "-"
+
+
+class TestParseDatetime:
+    """Test _parse_datetime function."""
+
+    def test_parse_datetime_object(self):
+        """Test passing a datetime object."""
+        from datetime import datetime
+
+        from insideLLMs.cli import _parse_datetime
+
+        dt = datetime(2026, 1, 21)
+        result = _parse_datetime(dt)
+        assert result == dt
+
+    def test_parse_datetime_string(self):
+        """Test parsing an ISO format string."""
+        from datetime import datetime
+
+        from insideLLMs.cli import _parse_datetime
+
+        result = _parse_datetime("2026-01-21T12:00:00")
+        assert result == datetime(2026, 1, 21, 12, 0, 0)
+
+    def test_parse_datetime_invalid_string(self):
+        """Test parsing an invalid string."""
+        from insideLLMs.cli import _parse_datetime
+
+        result = _parse_datetime("not a date")
+        assert result is None
+
+    def test_parse_datetime_non_string(self):
+        """Test parsing a non-string, non-datetime value."""
+        from insideLLMs.cli import _parse_datetime
+
+        result = _parse_datetime(12345)
+        assert result is None
+
+
+class TestStableJsonDumps:
+    """Test _stable_json_dumps function."""
+
+    def test_stable_output(self):
+        """Test that output is stable regardless of key order."""
+        from insideLLMs.cli import _stable_json_dumps
+
+        result1 = _stable_json_dumps({"b": 2, "a": 1})
+        result2 = _stable_json_dumps({"a": 1, "b": 2})
+        assert result1 == result2
+        assert result1 == '{"a":1,"b":2}'
+
+
+class TestFingerprintValue:
+    """Test _fingerprint_value function."""
+
+    def test_fingerprint_none(self):
+        """Test fingerprint of None."""
+        from insideLLMs.cli import _fingerprint_value
+
+        assert _fingerprint_value(None) is None
+
+    def test_fingerprint_string(self):
+        """Test fingerprint of string is consistent."""
+        from insideLLMs.cli import _fingerprint_value
+
+        result1 = _fingerprint_value("test")
+        result2 = _fingerprint_value("test")
+        assert result1 == result2
+        assert len(result1) == 12  # SHA256 truncated to 12 chars
+
+
+class TestStatusFromRecord:
+    """Test _status_from_record function."""
+
+    def test_status_from_record_enum(self):
+        """Test when value is already a ResultStatus."""
+        from insideLLMs.cli import _status_from_record
+        from insideLLMs.types import ResultStatus
+
+        result = _status_from_record(ResultStatus.SUCCESS)
+        assert result == ResultStatus.SUCCESS
+
+    def test_status_from_record_string(self):
+        """Test when value is a valid status string."""
+        from insideLLMs.cli import _status_from_record
+        from insideLLMs.types import ResultStatus
+
+        result = _status_from_record("success")
+        assert result == ResultStatus.SUCCESS
+
+    def test_status_from_record_invalid(self):
+        """Test when value is invalid returns ERROR."""
+        from insideLLMs.cli import _status_from_record
+        from insideLLMs.types import ResultStatus
+
+        result = _status_from_record("invalid_status")
+        assert result == ResultStatus.ERROR
+
+
+class TestProbeCategoryFromValue:
+    """Test _probe_category_from_value function."""
+
+    def test_probe_category_enum(self):
+        """Test when value is already a ProbeCategory."""
+        from insideLLMs.cli import _probe_category_from_value
+        from insideLLMs.types import ProbeCategory
+
+        result = _probe_category_from_value(ProbeCategory.REASONING)
+        assert result == ProbeCategory.REASONING
+
+    def test_probe_category_string(self):
+        """Test when value is a valid category string."""
+        from insideLLMs.cli import _probe_category_from_value
+        from insideLLMs.types import ProbeCategory
+
+        result = _probe_category_from_value("reasoning")
+        assert result == ProbeCategory.REASONING
+
+    def test_probe_category_invalid(self):
+        """Test when value is invalid returns CUSTOM."""
+        from insideLLMs.cli import _probe_category_from_value
+        from insideLLMs.types import ProbeCategory
+
+        result = _probe_category_from_value("invalid_category")
+        assert result == ProbeCategory.CUSTOM
+
+
+class TestReadJsonlRecords:
+    """Test _read_jsonl_records function."""
+
+    def test_read_valid_jsonl(self):
+        """Test reading a valid JSONL file."""
+        from insideLLMs.cli import _read_jsonl_records
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            f.write('{"id": 1, "name": "test1"}\n')
+            f.write('{"id": 2, "name": "test2"}\n')
+            path = Path(f.name)
+
+        try:
+            records = _read_jsonl_records(path)
+            assert len(records) == 2
+            assert records[0]["id"] == 1
+            assert records[1]["name"] == "test2"
+        finally:
+            path.unlink()
+
+    def test_read_jsonl_with_empty_lines(self):
+        """Test reading JSONL with empty lines."""
+        from insideLLMs.cli import _read_jsonl_records
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            f.write('{"id": 1}\n')
+            f.write('\n')  # empty line
+            f.write('{"id": 2}\n')
+            path = Path(f.name)
+
+        try:
+            records = _read_jsonl_records(path)
+            assert len(records) == 2
+        finally:
+            path.unlink()
+
+    def test_read_jsonl_invalid_json(self):
+        """Test reading JSONL with invalid JSON raises ValueError."""
+        from insideLLMs.cli import _read_jsonl_records
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            f.write('{"id": 1}\n')
+            f.write('not valid json\n')
+            path = Path(f.name)
+
+        try:
+            with pytest.raises(ValueError, match="Invalid JSON on line 2"):
+                _read_jsonl_records(path)
+        finally:
+            path.unlink()
+
+
+class TestRecordKey:
+    """Test _record_key function."""
+
+    def test_record_key_with_harness(self):
+        """Test record key extraction with harness metadata."""
+        from insideLLMs.cli import _record_key
+
+        record = {
+            "custom": {
+                "harness": {
+                    "model_id": "gpt-4",
+                    "probe_type": "logic",
+                },
+                "replicate_key": "rep-1",
+            }
+        }
+        model_id, probe_id, example_id = _record_key(record)
+        assert model_id == "gpt-4"
+        assert probe_id == "logic"
+        assert example_id == "rep-1"
+
+    def test_record_key_with_model_probe_spec(self):
+        """Test record key extraction from model/probe spec."""
+        from insideLLMs.cli import _record_key
+
+        record = {
+            "model": {"model_id": "claude-3"},
+            "probe": {"probe_id": "bias"},
+            "example_id": "ex-1",
+        }
+        model_id, probe_id, example_id = _record_key(record)
+        assert model_id == "claude-3"
+        assert probe_id == "bias"
+        assert example_id == "ex-1"
+
+
+class TestRecordLabel:
+    """Test _record_label function."""
+
+    def test_record_label_with_harness(self):
+        """Test record label extraction with harness metadata."""
+        from insideLLMs.cli import _record_label
+
+        record = {
+            "custom": {
+                "harness": {
+                    "model_name": "GPT-4",
+                    "model_id": "gpt-4-turbo",
+                    "probe_name": "Logic Test",
+                    "example_index": 5,
+                }
+            }
+        }
+        model_label, probe_name, example_id = _record_label(record)
+        assert "GPT-4" in model_label
+        assert "gpt-4-turbo" in model_label
+        assert probe_name == "Logic Test"
+        assert example_id == "5"
+
+
+class TestStatusString:
+    """Test _status_string function."""
+
+    def test_status_string_with_status(self):
+        """Test _status_string with status present."""
+        from insideLLMs.cli import _status_string
+
+        assert _status_string({"status": "success"}) == "success"
+
+    def test_status_string_without_status(self):
+        """Test _status_string without status."""
+        from insideLLMs.cli import _status_string
+
+        assert _status_string({}) == "unknown"
+
+
+class TestOutputText:
+    """Test _output_text function."""
+
+    def test_output_text_direct(self):
+        """Test output_text extraction from direct field."""
+        from insideLLMs.cli import _output_text
+
+        assert _output_text({"output_text": "Hello"}) == "Hello"
+
+    def test_output_text_from_output_field(self):
+        """Test output_text extraction from output field."""
+        from insideLLMs.cli import _output_text
+
+        assert _output_text({"output": "World"}) == "World"
+
+    def test_output_text_from_nested(self):
+        """Test output_text extraction from nested output dict."""
+        from insideLLMs.cli import _output_text
+
+        assert _output_text({"output": {"output_text": "Nested"}}) == "Nested"
+
+    def test_output_text_none(self):
+        """Test output_text returns None when not found."""
+        from insideLLMs.cli import _output_text
+
+        assert _output_text({}) is None
+
+
+class TestStripVolatileKeys:
+    """Test _strip_volatile_keys function."""
+
+    def test_strip_keys_from_dict(self):
+        """Test stripping keys from a dict."""
+        from insideLLMs.cli import _strip_volatile_keys
+
+        data = {"id": 1, "timestamp": "2026-01-21", "name": "test"}
+        result = _strip_volatile_keys(data, {"timestamp"})
+        assert result == {"id": 1, "name": "test"}
+
+    def test_strip_keys_from_nested(self):
+        """Test stripping keys from nested structure."""
+        from insideLLMs.cli import _strip_volatile_keys
+
+        data = {"outer": {"timestamp": "2026-01-21", "value": 42}}
+        result = _strip_volatile_keys(data, {"timestamp"})
+        assert result == {"outer": {"value": 42}}
+
+    def test_strip_keys_from_list(self):
+        """Test stripping keys from list of dicts."""
+        from insideLLMs.cli import _strip_volatile_keys
+
+        data = [{"id": 1, "timestamp": "a"}, {"id": 2, "timestamp": "b"}]
+        result = _strip_volatile_keys(data, {"timestamp"})
+        assert result == [{"id": 1}, {"id": 2}]
+
+
+class TestTrimText:
+    """Test _trim_text function."""
+
+    def test_trim_short_text(self):
+        """Test that short text is not trimmed."""
+        from insideLLMs.cli import _trim_text
+
+        assert _trim_text("short", limit=200) == "short"
+
+    def test_trim_long_text(self):
+        """Test that long text is trimmed with ellipsis."""
+        from insideLLMs.cli import _trim_text
+
+        result = _trim_text("a" * 300, limit=200)
+        assert len(result) == 203  # 200 + "..."
+        assert result.endswith("...")
+
+
+class TestOutputSummary:
+    """Test _output_summary function."""
+
+    def test_output_summary_text(self):
+        """Test output summary for text output."""
+        from insideLLMs.cli import _output_summary
+
+        record = {"output_text": "Hello world"}
+        result = _output_summary(record, None)
+        assert result["type"] == "text"
+        assert result["preview"] == "Hello world"
+        assert result["length"] == 11
+
+    def test_output_summary_structured(self):
+        """Test output summary for structured output."""
+        from insideLLMs.cli import _output_summary
+
+        record = {"output": {"key": "value"}}
+        result = _output_summary(record, None)
+        assert result["type"] == "structured"
+        assert "fingerprint" in result
+
+    def test_output_summary_none(self):
+        """Test output summary when no output."""
+        from insideLLMs.cli import _output_summary
+
+        result = _output_summary({}, None)
+        assert result is None
+
+
+class TestPrimaryScore:
+    """Test _primary_score function."""
+
+    def test_primary_score_with_metric(self):
+        """Test extracting primary score with primary_metric set."""
+        from insideLLMs.cli import _primary_score
+
+        record = {
+            "primary_metric": "accuracy",
+            "scores": {"accuracy": 0.95, "f1": 0.9}
+        }
+        metric, value = _primary_score(record)
+        assert metric == "accuracy"
+        assert value == 0.95
+
+    def test_primary_score_default_score(self):
+        """Test extracting default 'score' when no primary_metric."""
+        from insideLLMs.cli import _primary_score
+
+        record = {"scores": {"score": 0.8}}
+        metric, value = _primary_score(record)
+        assert metric == "score"
+        assert value == 0.8
+
+    def test_primary_score_none(self):
+        """Test when no scores available."""
+        from insideLLMs.cli import _primary_score
+
+        metric, value = _primary_score({})
+        assert metric is None
+        assert value is None
+
+
+class TestMetricMismatchReason:
+    """Test _metric_mismatch_reason function."""
+
+    def test_type_mismatch_non_dict(self):
+        """Test when scores are not dicts."""
+        from insideLLMs.cli import _metric_mismatch_reason
+
+        result = _metric_mismatch_reason({"scores": "not dict"}, {"scores": {}})
+        assert result == "type_mismatch"
+
+    def test_missing_scores(self):
+        """Test when scores are empty."""
+        from insideLLMs.cli import _metric_mismatch_reason
+
+        result = _metric_mismatch_reason({"scores": {}}, {"scores": {}})
+        assert result == "missing_scores"
+
+    def test_primary_metric_mismatch(self):
+        """Test when primary metrics differ."""
+        from insideLLMs.cli import _metric_mismatch_reason
+
+        record_a = {"primary_metric": "accuracy", "scores": {"accuracy": 0.9}}
+        record_b = {"primary_metric": "f1", "scores": {"f1": 0.85}}
+        result = _metric_mismatch_reason(record_a, record_b)
+        assert result == "primary_metric_mismatch"
+
+
+class TestWriteJsonl:
+    """Test _write_jsonl function."""
+
+    def test_write_jsonl_basic(self):
+        """Test writing JSONL file."""
+        from insideLLMs.cli import _write_jsonl
+
+        records = [{"id": 1, "name": "test1"}, {"id": 2, "name": "test2"}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "output.jsonl"
+            _write_jsonl(records, output_path)
+
+            lines = output_path.read_text().strip().split("\n")
+            assert len(lines) == 2
+            assert json.loads(lines[0]) == {"id": 1, "name": "test1"}
+            assert json.loads(lines[1]) == {"id": 2, "name": "test2"}
+
+
+class TestSpinnerMethods:
+    """Test additional Spinner methods."""
+
+    def test_spinner_spin(self, capsys):
+        """Test spinner spin method."""
+        from insideLLMs.cli import Spinner
+
+        spinner = Spinner(message="Processing")
+        spinner.spin()
+        captured = capsys.readouterr()
+        assert "Processing" in captured.out
+
+    def test_spinner_stop_success(self, capsys):
+        """Test spinner stop with success."""
+        from insideLLMs.cli import Spinner
+
+        spinner = Spinner(message="Processing")
+        spinner.stop(success=True)
+        captured = capsys.readouterr()
+        assert "done" in captured.out
+
+    def test_spinner_stop_failure(self, capsys):
+        """Test spinner stop with failure."""
+        from insideLLMs.cli import Spinner
+
+        spinner = Spinner(message="Processing")
+        spinner.stop(success=False)
+        captured = capsys.readouterr()
+        assert "failed" in captured.out
+
+
+class TestProgressBarRender:
+    """Test ProgressBar render methods."""
+
+    def test_progress_bar_render(self, capsys):
+        """Test progress bar rendering."""
+        from insideLLMs.cli import ProgressBar
+
+        bar = ProgressBar(total=10, show_eta=False)
+        bar.update(5)
+        captured = capsys.readouterr()
+        assert "50.0%" in captured.out
+        assert "5/10" in captured.out
+
+    def test_progress_bar_zero_total(self, capsys):
+        """Test progress bar with zero total."""
+        from insideLLMs.cli import ProgressBar
+
+        bar = ProgressBar(total=0, show_eta=False)
+        bar.update(0)
+        captured = capsys.readouterr()
+        assert "100" in captured.out  # Should show 100%

@@ -612,3 +612,400 @@ class TestOTelNotInstalled:
     def test_otel_availability_flag(self):
         """Test OTEL_AVAILABLE flag is boolean."""
         assert isinstance(OTEL_AVAILABLE, bool)
+
+
+# =============================================================================
+# Additional Coverage Tests
+# =============================================================================
+
+
+class TestTelemetryCollectorExtended:
+    """Extended tests for TelemetryCollector to improve coverage."""
+
+    def test_callback_error_handling(self):
+        """Test that callback errors don't break the collector."""
+        collector = TelemetryCollector()
+        now = datetime.now()
+
+        def failing_callback(record):
+            raise ValueError("Callback failed!")
+
+        collector.add_callback(failing_callback)
+
+        # Should not raise despite callback error
+        record = CallRecord(
+            model_name="test",
+            operation="generate",
+            start_time=now,
+            end_time=now,
+            latency_ms=100.0,
+            success=True,
+        )
+        collector.record(record)
+
+        # Record should still be stored
+        assert len(collector.get_records()) == 1
+
+    def test_get_stats_by_operation(self):
+        """Test filtering stats by operation type."""
+        collector = TelemetryCollector()
+        now = datetime.now()
+
+        # Add records with different operations
+        for op in ["generate", "generate", "chat"]:
+            collector.record(
+                CallRecord(
+                    model_name="test",
+                    operation=op,
+                    start_time=now,
+                    end_time=now,
+                    latency_ms=100.0,
+                    success=True,
+                )
+            )
+
+        stats = collector.get_stats(operation="generate")
+        assert stats["total_calls"] == 2
+
+        stats = collector.get_stats(operation="chat")
+        assert stats["total_calls"] == 1
+
+    def test_get_stats_by_since(self):
+        """Test filtering stats by time."""
+        collector = TelemetryCollector()
+        now = datetime.now()
+        old_time = now - timedelta(hours=2)
+
+        # Add an old record
+        collector.record(
+            CallRecord(
+                model_name="test",
+                operation="generate",
+                start_time=old_time,
+                end_time=old_time,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
+
+        # Add a recent record
+        collector.record(
+            CallRecord(
+                model_name="test",
+                operation="generate",
+                start_time=now,
+                end_time=now,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
+
+        # Filter by since
+        since_time = now - timedelta(hours=1)
+        stats = collector.get_stats(since=since_time)
+        assert stats["total_calls"] == 1
+
+    def test_get_stats_empty(self):
+        """Test stats when collector is empty or filtered to empty."""
+        collector = TelemetryCollector()
+
+        # Empty collector
+        stats = collector.get_stats()
+        assert stats["total_calls"] == 0
+        assert stats["success_rate"] == 0.0
+        assert stats["avg_latency_ms"] == 0.0
+
+        # Add record but filter by non-matching model
+        now = datetime.now()
+        collector.record(
+            CallRecord(
+                model_name="gpt-4",
+                operation="generate",
+                start_time=now,
+                end_time=now,
+                latency_ms=100.0,
+                success=True,
+            )
+        )
+        stats = collector.get_stats(model_name="claude")
+        assert stats["total_calls"] == 0
+
+    def test_get_records_with_model_filter(self):
+        """Test get_records with model name filter."""
+        collector = TelemetryCollector()
+        now = datetime.now()
+
+        for model in ["gpt-4", "gpt-4", "claude"]:
+            collector.record(
+                CallRecord(
+                    model_name=model,
+                    operation="generate",
+                    start_time=now,
+                    end_time=now,
+                    latency_ms=100.0,
+                    success=True,
+                )
+            )
+
+        records = collector.get_records(model_name="gpt-4")
+        assert len(records) == 2
+        assert all(r.model_name == "gpt-4" for r in records)
+
+
+class TestTokenEstimationExtended:
+    """Extended token estimation tests."""
+
+    def test_estimate_tokens_with_invalid_model(self):
+        """Test token estimation with unknown model falls back gracefully."""
+        text = "Hello world"
+        tokens = estimate_tokens(text, model="nonexistent-model-xyz")
+        assert tokens > 0
+
+
+class TestTracedModelExtended:
+    """Extended TracedModel tests for coverage."""
+
+    def test_traced_model_stream_error(self):
+        """Test traced model stream handles errors."""
+        from insideLLMs.models.base import Model
+
+        class StreamErrorModel(Model):
+            def __init__(self):
+                super().__init__(name="stream-error")
+
+            def generate(self, prompt, **kwargs):
+                return "test"
+
+            def stream(self, prompt, **kwargs):
+                yield "chunk1"
+                raise ValueError("Stream error")
+
+        collector = TelemetryCollector()
+        model = StreamErrorModel()
+        traced = TracedModel(model, collector)
+
+        chunks = []
+        with pytest.raises(ValueError, match="Stream error"):
+            for chunk in traced.stream("Hello"):
+                chunks.append(chunk)
+
+        assert chunks == ["chunk1"]
+        records = collector.get_records()
+        assert len(records) == 1
+        assert records[0].success is False
+        assert "Stream error" in records[0].error
+
+    def test_traced_model_chat_not_supported(self):
+        """Test traced model chat when model doesn't support it."""
+        from unittest.mock import MagicMock
+
+        mock_model = MagicMock(spec=[])  # Empty spec = no attributes
+        mock_model.name = "test-model"
+
+        collector = TelemetryCollector()
+        traced = TracedModel(mock_model, collector)
+
+        with pytest.raises(NotImplementedError, match="does not support chat"):
+            traced.chat([{"role": "user", "content": "Hello"}])
+
+    def test_traced_model_stream_not_supported(self):
+        """Test traced model stream when model doesn't support it."""
+        from unittest.mock import MagicMock
+
+        mock_model = MagicMock()
+        mock_model.name = "test-model"
+        del mock_model.stream  # Remove stream attribute
+
+        collector = TelemetryCollector()
+        traced = TracedModel(mock_model, collector)
+
+        with pytest.raises(NotImplementedError, match="does not support streaming"):
+            list(traced.stream("Hello"))
+
+    def test_traced_model_info(self):
+        """Test traced model info method."""
+        model = DummyModel()
+        traced = TracedModel(model)
+
+        info = traced.info()
+        assert info is not None
+
+    def test_traced_model_attribute_delegation(self):
+        """Test that traced model delegates unknown attributes."""
+        model = DummyModel()
+        model.custom_attr = "custom_value"
+        traced = TracedModel(model)
+
+        assert traced.custom_attr == "custom_value"
+
+
+class TestTraceFunctionExtended:
+    """Extended trace_function tests."""
+
+    def test_trace_function_with_args(self):
+        """Test function tracing with include_args=True."""
+        collector = TelemetryCollector()
+        set_collector(collector)
+
+        @trace_function(include_args=True)
+        def function_with_args(x, y, z=10):
+            return x + y + z
+
+        result = function_with_args(1, 2, z=3)
+
+        assert result == 6
+        records = collector.get_records()
+        assert len(records) >= 1
+        # Check metadata contains args
+        last_record = records[-1]
+        assert "args" in last_record.metadata
+        assert "kwargs" in last_record.metadata
+
+
+class TestOpenTelemetrySetup:
+    """Tests for OpenTelemetry setup functions."""
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_setup_otel_tracing(self):
+        """Test setting up OpenTelemetry tracing."""
+        from insideLLMs.observability import setup_otel_tracing
+
+        config = TracingConfig(
+            service_name="test-service",
+            console_export=True,
+        )
+        # Should not raise
+        setup_otel_tracing(config)
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_generate(self):
+        """Test OTelTracedModel generate."""
+        from insideLLMs.observability import OTelTracedModel
+
+        model = DummyModel()
+        traced = OTelTracedModel(model)
+
+        response = traced.generate("Hello")
+        assert response is not None
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_generate_with_prompts(self):
+        """Test OTelTracedModel generate with log_prompts enabled."""
+        from insideLLMs.observability import OTelTracedModel
+
+        config = TracingConfig(log_prompts=True, log_responses=True)
+        model = DummyModel()
+        traced = OTelTracedModel(model, config)
+
+        response = traced.generate("Hello")
+        assert response is not None
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_generate_error(self):
+        """Test OTelTracedModel generate error handling."""
+        from insideLLMs.observability import OTelTracedModel
+        from insideLLMs.models.base import Model
+
+        class FailingModel(Model):
+            def __init__(self):
+                super().__init__(name="failing")
+
+            def generate(self, prompt, **kwargs):
+                raise ValueError("Generate failed")
+
+        model = FailingModel()
+        traced = OTelTracedModel(model)
+
+        with pytest.raises(ValueError, match="Generate failed"):
+            traced.generate("Hello")
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_chat(self):
+        """Test OTelTracedModel chat."""
+        from insideLLMs.observability import OTelTracedModel
+
+        model = DummyModel()
+        traced = OTelTracedModel(model)
+
+        response = traced.chat([{"role": "user", "content": "Hello"}])
+        assert response is not None
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_chat_not_supported(self):
+        """Test OTelTracedModel chat when not supported."""
+        from unittest.mock import MagicMock
+
+        from insideLLMs.observability import OTelTracedModel
+
+        mock_model = MagicMock()
+        mock_model.name = "test-model"
+        del mock_model.chat
+
+        traced = OTelTracedModel(mock_model)
+
+        with pytest.raises(NotImplementedError, match="does not support chat"):
+            traced.chat([{"role": "user", "content": "Hello"}])
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_chat_error(self):
+        """Test OTelTracedModel chat error handling."""
+        from insideLLMs.observability import OTelTracedModel
+        from insideLLMs.models.base import Model
+
+        class FailingChatModel(Model):
+            def __init__(self):
+                super().__init__(name="failing-chat")
+
+            def generate(self, prompt, **kwargs):
+                return "test"
+
+            def chat(self, messages, **kwargs):
+                raise ValueError("Chat failed")
+
+        model = FailingChatModel()
+        traced = OTelTracedModel(model)
+
+        with pytest.raises(ValueError, match="Chat failed"):
+            traced.chat([{"role": "user", "content": "Hello"}])
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_info(self):
+        """Test OTelTracedModel info method."""
+        from insideLLMs.observability import OTelTracedModel
+
+        model = DummyModel()
+        traced = OTelTracedModel(model)
+
+        info = traced.info()
+        assert info is not None
+
+    @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
+    def test_otel_traced_model_attribute_delegation(self):
+        """Test OTelTracedModel attribute delegation."""
+        from insideLLMs.observability import OTelTracedModel
+
+        model = DummyModel()
+        model.custom_attr = "custom_value"
+        traced = OTelTracedModel(model)
+
+        assert traced.custom_attr == "custom_value"
+
+    def test_setup_otel_without_package(self):
+        """Test setup_otel_tracing raises when OTEL not installed."""
+        # This test relies on OTEL not being installed in some envs
+        # For now, just test the import error path is covered
+        if not OTEL_AVAILABLE:
+            from insideLLMs.observability import setup_otel_tracing
+
+            config = TracingConfig()
+            with pytest.raises(ImportError, match="OpenTelemetry is required"):
+                setup_otel_tracing(config)
+
+    def test_otel_traced_model_without_package(self):
+        """Test OTelTracedModel raises when OTEL not installed."""
+        if not OTEL_AVAILABLE:
+            from insideLLMs.observability import OTelTracedModel
+
+            model = DummyModel()
+            with pytest.raises(ImportError, match="OpenTelemetry is required"):
+                OTelTracedModel(model)
