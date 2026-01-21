@@ -360,7 +360,8 @@ class TestCreateInteractiveHtmlReport:
         )
 
         content = save_path.read_text()
-        assert "<table>" in content
+        # Table may have id attribute, so check for table element more flexibly
+        assert "<table" in content
         assert "GPT-4" in content or "Claude" in content
 
     def test_custom_title(self, mock_experiments, tmp_path):
