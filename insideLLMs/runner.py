@@ -6,12 +6,13 @@ or from configuration files. Supports async execution for parallel processing.
 
 import asyncio
 import hashlib
+import inspect
 import json
 import os
 import platform
 import shutil
 import sys
-import warnings
+from contextlib import ExitStack
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -19,16 +20,11 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import yaml
-from contextlib import ExitStack
 
 from insideLLMs.config_types import ProgressInfo, RunConfig
 from insideLLMs.exceptions import RunnerExecutionError
-
-# Type alias for progress callbacks - supports both simple (current, total) and rich ProgressInfo
-ProgressCallback = Union[Callable[[int, int], None], Callable[["ProgressInfo"], None]]
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
-from insideLLMs.validation import ValidationError, validate_prompt_set
 from insideLLMs.registry import (
     NotFoundError,
     dataset_registry,
@@ -46,10 +42,10 @@ from insideLLMs.types import (
     ProbeResult,
     ResultStatus,
 )
+from insideLLMs.validation import validate_prompt_set
 
-
-import time as _time
-import inspect
+# Type alias for progress callbacks - supports both simple (current, total) and rich ProgressInfo
+ProgressCallback = Union[Callable[[int, int], None], Callable[["ProgressInfo"], None]]
 
 
 def _invoke_progress_callback(
@@ -195,7 +191,9 @@ class ProbeRunner(_RunnerBase):
         validate_output = validate_output if validate_output is not None else config.validate_output
         schema_version = schema_version if schema_version is not None else config.schema_version
         validation_mode = validation_mode if validation_mode is not None else config.validation_mode
-        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        emit_run_artifacts = (
+            emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        )
         run_dir = run_dir if run_dir is not None else config.run_dir
         run_root = run_root if run_root is not None else config.run_root
         run_id = run_id if run_id is not None else config.run_id
@@ -268,9 +266,7 @@ class ProbeRunner(_RunnerBase):
         with ExitStack() as stack:
             records_fp = None
             if emit_run_artifacts:
-                records_fp = stack.enter_context(
-                    open(records_path, "x", encoding="utf-8")
-                )
+                records_fp = stack.enter_context(open(records_path, "x", encoding="utf-8"))
 
             for i, item in enumerate(prompt_set):
                 _invoke_progress_callback(
@@ -609,9 +605,7 @@ def _build_model_spec(model: Any) -> dict[str, Any]:
 def _build_probe_spec(probe: Any) -> dict[str, Any]:
     """Build probe specification dict from a probe object."""
     probe_id = (
-        getattr(probe, "name", None)
-        or getattr(probe, "probe_id", None)
-        or probe.__class__.__name__
+        getattr(probe, "name", None) or getattr(probe, "probe_id", None) or probe.__class__.__name__
     )
     probe_version = getattr(probe, "version", None) or getattr(probe, "probe_version", None)
     return {"probe_id": str(probe_id), "probe_version": probe_version, "params": {}}
@@ -983,7 +977,9 @@ class AsyncProbeRunner(_RunnerBase):
         validate_output = validate_output if validate_output is not None else config.validate_output
         schema_version = schema_version if schema_version is not None else config.schema_version
         validation_mode = validation_mode if validation_mode is not None else config.validation_mode
-        emit_run_artifacts = emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        emit_run_artifacts = (
+            emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
+        )
         run_dir = run_dir if run_dir is not None else config.run_dir
         run_root = run_root if run_root is not None else config.run_root
         run_id = run_id if run_id is not None else config.run_id
@@ -1113,9 +1109,7 @@ class AsyncProbeRunner(_RunnerBase):
         # Use ExitStack for deterministic resource cleanup
         if emit_run_artifacts:
             with ExitStack() as stack:
-                records_fp = stack.enter_context(
-                    open(records_path, "x", encoding="utf-8")
-                )
+                records_fp = stack.enter_context(open(records_path, "x", encoding="utf-8"))
                 for i, item in enumerate(prompt_set):
                     result_obj = results[i] or {}
                     record = _build_result_record(
@@ -1401,9 +1395,14 @@ def _create_model_from_config(config: ConfigDict) -> Model:
         # Fallback to direct import for backwards compatibility
         from insideLLMs.models import (
             AnthropicModel,
+            CohereModel,
             DummyModel,
+            GeminiModel,
             HuggingFaceModel,
+            LlamaCppModel,
+            OllamaModel,
             OpenAIModel,
+            VLLMModel,
         )
 
         model_map = {
@@ -1411,6 +1410,11 @@ def _create_model_from_config(config: ConfigDict) -> Model:
             "openai": OpenAIModel,
             "huggingface": HuggingFaceModel,
             "anthropic": AnthropicModel,
+            "gemini": GeminiModel,
+            "cohere": CohereModel,
+            "llamacpp": LlamaCppModel,
+            "ollama": OllamaModel,
+            "vllm": VLLMModel,
         }
 
         if model_type not in model_map:
@@ -1436,8 +1440,16 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
         from insideLLMs.probes import (
             AttackProbe,
             BiasProbe,
+            CodeDebugProbe,
+            CodeExplanationProbe,
+            CodeGenerationProbe,
+            ConstraintComplianceProbe,
             FactualityProbe,
+            InstructionFollowingProbe,
+            JailbreakProbe,
             LogicProbe,
+            MultiStepTaskProbe,
+            PromptInjectionProbe,
         )
 
         probe_map = {
@@ -1445,6 +1457,14 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
             "bias": BiasProbe,
             "attack": AttackProbe,
             "factuality": FactualityProbe,
+            "prompt_injection": PromptInjectionProbe,
+            "jailbreak": JailbreakProbe,
+            "code_generation": CodeGenerationProbe,
+            "code_explanation": CodeExplanationProbe,
+            "code_debug": CodeDebugProbe,
+            "instruction_following": InstructionFollowingProbe,
+            "multi_step_task": MultiStepTaskProbe,
+            "constraint_compliance": ConstraintComplianceProbe,
         }
 
         if probe_type not in probe_map:
@@ -1531,10 +1551,6 @@ def run_experiment_from_config(
     base_dir = config_path.parent
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
-    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
-        config_snapshot,
-        schema_version=schema_version,
-    )
     resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
         config_snapshot,
         schema_version=schema_version,
@@ -1842,6 +1858,10 @@ async def run_experiment_from_config_async(
     base_dir = config_path.parent
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
+    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+        config_snapshot,
+        schema_version=schema_version,
+    )
 
     model = _create_model_from_config(config["model"])
     probe = _create_probe_from_config(config["probe"])

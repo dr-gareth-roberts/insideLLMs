@@ -14,7 +14,6 @@ import platform
 import shutil
 import sys
 import time
-import uuid
 from dataclasses import is_dataclass
 from datetime import datetime
 from enum import Enum
@@ -33,8 +32,8 @@ from insideLLMs.runner import (
     run_experiment_from_config_async,
     run_harness_from_config,
 )
-from insideLLMs.statistics import generate_summary_report
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
+from insideLLMs.statistics import generate_summary_report
 from insideLLMs.types import (
     ExperimentResult,
     ModelInfo,
@@ -317,9 +316,8 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
 
 
 def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
-    harness = (
-        record.get("custom", {}).get("harness") if isinstance(record.get("custom"), dict) else {}
-    )
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
     model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
     probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
 
@@ -376,7 +374,9 @@ def _trim_text(text: str, limit: int = 200) -> str:
     return text[:limit] + "..."
 
 
-def _output_summary(record: dict[str, Any], ignore_keys: Optional[set[str]]) -> Optional[dict[str, Any]]:
+def _output_summary(
+    record: dict[str, Any], ignore_keys: Optional[set[str]]
+) -> Optional[dict[str, Any]]:
     output_text = _output_text(record)
     if isinstance(output_text, str):
         return {"type": "text", "preview": _trim_text(output_text), "length": len(output_text)}
@@ -389,7 +389,9 @@ def _output_summary(record: dict[str, Any], ignore_keys: Optional[set[str]]) -> 
     }
 
 
-def _output_fingerprint(record: dict[str, Any], ignore_keys: Optional[set[str]] = None) -> Optional[str]:
+def _output_fingerprint(
+    record: dict[str, Any], ignore_keys: Optional[set[str]] = None
+) -> Optional[str]:
     output = record.get("output")
     if ignore_keys:
         custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
@@ -1189,6 +1191,14 @@ def create_parser() -> argparse.ArgumentParser:
         "--fail-on-regressions",
         action="store_true",
         help="Exit with non-zero status if regressions are detected",
+    )
+    diff_parser.add_argument(
+        "--fail-on-changes",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if any differences are detected "
+            "(regressions, changes, or missing/extra records)"
+        ),
     )
     diff_parser.add_argument(
         "--output-fingerprint-ignore",
@@ -2531,6 +2541,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             print(payload)
         if args.fail_on_regressions and regressions:
             return 2
+        if args.fail_on_changes and (regressions or changes or only_a or only_b):
+            return 2
         return 0
 
     print_header("Behavioural Diff")
@@ -2571,6 +2583,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             print(colorize(f"  ... and {len(only_b) - args.limit} more", Colors.DIM))
 
     if args.fail_on_regressions and regressions:
+        return 2
+    if args.fail_on_changes and (regressions or changes or only_a or only_b):
         return 2
     return 0
 
@@ -3003,14 +3017,10 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             print_success(f"Results saved to: {results_file}")
 
             if args.html_report:
-                try:
-                    from insideLLMs.visualization import create_interactive_html_report
-
-                    output_dir / "benchmark_report.html"
-                    # Note: Would need to convert results to ExperimentResult objects
-                    print_info("HTML report generation requires ExperimentResult format")
-                except ImportError:
-                    print_warning("HTML report generation requires plotly")
+                print_info(
+                    "HTML report generation for `benchmark` requires ExperimentResult format; "
+                    "use `insidellms harness` + `insidellms report`."
+                )
 
         return 0
 
@@ -3435,15 +3445,11 @@ def cmd_export(args: argparse.Namespace) -> int:
                 f.write(content)
 
         elif args.format == "html":
-            try:
-                from insideLLMs.visualization import create_interactive_html_report
-
-                # Would need ExperimentResult conversion
-                print_warning("HTML export requires ExperimentResult format")
-                return 1
-            except ImportError:
-                print_error("HTML export requires plotly")
-                return 1
+            print_error(
+                "HTML export requires plotly and ExperimentResult format; "
+                "use `insidellms report <run_dir>` to produce report.html."
+            )
+            return 1
 
         elif args.format == "latex":
             # Generate LaTeX table

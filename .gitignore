@@ -166,6 +166,8 @@ cython_debug/
 
 # Local artefacts
 _demo_outputs/
+.backups/
+.tmp/
 wiki/
 diff.schema.json
 
