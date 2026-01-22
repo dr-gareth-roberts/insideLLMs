@@ -412,6 +412,25 @@ def _output_fingerprint(
     return _fingerprint_value(output)
 
 
+def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
+    """Extract trace fingerprint from record.custom.trace_fingerprint."""
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    fp = custom.get("trace_fingerprint")
+    return fp if isinstance(fp, str) else None
+
+
+def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract trace violations from record.custom.trace_violations."""
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    violations = custom.get("trace_violations")
+    return violations if isinstance(violations, list) else []
+
+
+def _trace_violation_count(record: dict[str, Any]) -> int:
+    """Count trace violations in a record."""
+    return len(_trace_violations(record))
+
+
 def _primary_score(record: dict[str, Any]) -> tuple[Optional[str], Optional[float]]:
     scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
     metric = record.get("primary_metric")
@@ -1207,6 +1226,22 @@ def create_parser() -> argparse.ArgumentParser:
         help=(
             "Comma-separated output keys to ignore when fingerprinting structured outputs "
             "(repeatable)."
+        ),
+    )
+    diff_parser.add_argument(
+        "--fail-on-trace-violations",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if trace violations increase "
+            "(candidate has more violations than baseline for any record)"
+        ),
+    )
+    diff_parser.add_argument(
+        "--fail-on-trace-drift",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if trace fingerprints differ between baseline and candidate "
+            "(even if output text stays the same)"
         ),
     )
 
@@ -2336,6 +2371,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
     changes_json: list[dict[str, Any]] = []
     only_a_json: list[dict[str, Any]] = []
     only_b_json: list[dict[str, Any]] = []
+    # Trace tracking
+    trace_drifts: list[tuple[str, str, str, str]] = []
+    trace_drifts_json: list[dict[str, Any]] = []
+    trace_violation_increases: list[tuple[str, str, str, str]] = []
+    trace_violation_increases_json: list[dict[str, Any]] = []
 
     for key in sorted(all_keys):
         record_a = index_a.get(key)
@@ -2505,6 +2545,37 @@ def cmd_diff(args: argparse.Namespace) -> int:
                 }
             )
 
+        # Trace drift detection
+        trace_fp_a = _trace_fingerprint(record_a)
+        trace_fp_b = _trace_fingerprint(record_b)
+        if trace_fp_a and trace_fp_b and trace_fp_a != trace_fp_b:
+            trace_drifts.append((*label, f"trace {trace_fp_a[:12]} -> {trace_fp_b[:12]}"))
+            trace_drifts_json.append(
+                {
+                    **identity,
+                    "kind": "trace_drift",
+                    "baseline_trace_fingerprint": trace_fp_a,
+                    "candidate_trace_fingerprint": trace_fp_b,
+                }
+            )
+
+        # Trace violation comparison
+        violations_a = _trace_violation_count(record_a)
+        violations_b = _trace_violation_count(record_b)
+        if violations_b > violations_a:
+            trace_violation_increases.append(
+                (*label, f"violations {violations_a} -> {violations_b}")
+            )
+            trace_violation_increases_json.append(
+                {
+                    **identity,
+                    "kind": "trace_violations_increased",
+                    "baseline_violations": violations_a,
+                    "candidate_violations": violations_b,
+                    "candidate_violation_details": _trace_violations(record_b),
+                }
+            )
+
     diff_report = {
         "schema_version": DEFAULT_SCHEMA_VERSION,
         "baseline": str(run_dir_a),
@@ -2524,6 +2595,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             "regressions": len(regressions),
             "improvements": len(improvements),
             "other_changes": len(changes),
+            "trace_drifts": len(trace_drifts),
+            "trace_violation_increases": len(trace_violation_increases),
         },
         "duplicates": {"baseline": dup_a, "candidate": dup_b},
         "regressions": regressions_json,
@@ -2531,6 +2604,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
         "changes": changes_json,
         "only_baseline": only_a_json,
         "only_candidate": only_b_json,
+        "trace_drifts": trace_drifts_json,
+        "trace_violation_increases": trace_violation_increases_json,
     }
 
     if output_format == "json":
@@ -2543,6 +2618,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
             return 2
         if args.fail_on_changes and (regressions or changes or only_a or only_b):
             return 2
+        if args.fail_on_trace_violations and trace_violation_increases:
+            return 3
+        if args.fail_on_trace_drift and trace_drifts:
+            return 4
         return 0
 
     print_header("Behavioural Diff")
@@ -2554,6 +2633,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_key_value("Regressions", diff_report["counts"]["regressions"])
     print_key_value("Improvements", diff_report["counts"]["improvements"])
     print_key_value("Other changes", diff_report["counts"]["other_changes"])
+    if trace_drifts:
+        print_key_value("Trace drifts", diff_report["counts"]["trace_drifts"])
+    if trace_violation_increases:
+        print_key_value("Trace violation increases", diff_report["counts"]["trace_violation_increases"])
 
     def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
         if not items:
@@ -2567,6 +2650,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_section("Regressions", regressions)
     print_section("Improvements", improvements)
     print_section("Other Changes", changes)
+    print_section("Trace Drifts", trace_drifts)
+    print_section("Trace Violation Increases", trace_violation_increases)
 
     if only_a:
         print_subheader("Missing in Comparison")
@@ -2586,6 +2671,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
         return 2
     if args.fail_on_changes and (regressions or changes or only_a or only_b):
         return 2
+    if args.fail_on_trace_violations and trace_violation_increases:
+        return 3
+    if args.fail_on_trace_drift and trace_drifts:
+        return 4
     return 0
 
 
