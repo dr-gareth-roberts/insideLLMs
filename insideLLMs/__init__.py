@@ -224,6 +224,14 @@ def __getattr__(name: str):
         "BaseCache": "insideLLMs.cache",
         "CacheEntry": "insideLLMs.cache",
         "CacheStats": "insideLLMs.cache",
+        # Pipeline (Model Middleware)
+        "ModelPipeline": "insideLLMs.pipeline",
+        "Middleware": "insideLLMs.pipeline",
+        "PassthroughMiddleware": "insideLLMs.pipeline",
+        "CacheMiddleware": "insideLLMs.pipeline",
+        "RateLimitMiddleware": "insideLLMs.pipeline",
+        "RetryMiddleware": "insideLLMs.pipeline",
+        "CostTrackingMiddleware": "insideLLMs.pipeline",
         # Evaluation
         "Evaluator": "insideLLMs.evaluation",
         "ExactMatchEvaluator": "insideLLMs.evaluation",

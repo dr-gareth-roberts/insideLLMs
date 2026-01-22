@@ -12,7 +12,14 @@ from collections.abc import Iterator
 from typing import Any, Dict, List
 
 # Import lightweight core components directly
-from insideLLMs.models.base import AsyncModel, ChatMessage, Model, ModelProtocol, ModelWrapper
+from insideLLMs.models.base import (
+    AsyncModel,
+    BatchModelProtocol,
+    ChatMessage,
+    Model,
+    ModelProtocol,
+    ModelWrapper,
+)
 from insideLLMs.types import ModelInfo
 
 
