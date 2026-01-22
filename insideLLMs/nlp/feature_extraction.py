@@ -30,7 +30,7 @@ def create_bow(
     check_sklearn()
     from sklearn.feature_extraction.text import CountVectorizer
 
-    vectorizer = CountVectorizer(max_features=max_features)
+    vectorizer = CountVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
     X = vectorizer.fit_transform(texts)
     return X.toarray().tolist(), vectorizer.get_feature_names_out().tolist()
 
@@ -42,7 +42,7 @@ def create_tfidf(
     check_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
 
-    vectorizer = TfidfVectorizer(max_features=max_features)
+    vectorizer = TfidfVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
     X = vectorizer.fit_transform(texts)
     return X.toarray().tolist(), vectorizer.get_feature_names_out().tolist()
 

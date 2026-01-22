@@ -34,7 +34,13 @@ def cosine_similarity_texts(text1: str, text2: str) -> float:
     tfidf_matrix = vectorizer.fit_transform([text1, text2])
 
     similarity = sklearn_cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
-    return float(similarity[0][0])
+    score = float(similarity[0][0])
+    # Numerical precision can push results slightly outside [0, 1].
+    if score < 0.0:
+        return 0.0
+    if score > 1.0:
+        return 1.0
+    return score
 
 
 def jaccard_similarity(text1: str, text2: str, tokenizer: Callable = simple_tokenize) -> float:
