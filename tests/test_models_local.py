@@ -147,10 +147,12 @@ class TestLlamaCppModelStream:
         model = LlamaCppModel(model_path="/path/to/model.gguf")
 
         mock_llama = MagicMock()
-        mock_llama.return_value = iter([
-            {"choices": [{"text": "Hello"}]},
-            {"choices": [{"text": " world"}]},
-        ])
+        mock_llama.return_value = iter(
+            [
+                {"choices": [{"text": "Hello"}]},
+                {"choices": [{"text": " world"}]},
+            ]
+        )
 
         with patch.object(model, "_get_model", return_value=mock_llama):
             chunks = list(model.stream("Test prompt"))
@@ -257,9 +259,7 @@ class TestOllamaModelChat:
         model = OllamaModel()
 
         mock_client = MagicMock()
-        mock_client.chat.return_value = {
-            "message": {"content": "Chat response"}
-        }
+        mock_client.chat.return_value = {"message": {"content": "Chat response"}}
 
         with patch.object(model, "_get_client", return_value=mock_client):
             messages = [{"role": "user", "content": "Hello"}]
@@ -279,10 +279,12 @@ class TestOllamaModelStream:
         model = OllamaModel()
 
         mock_client = MagicMock()
-        mock_client.generate.return_value = iter([
-            {"response": "Hello"},
-            {"response": " world"},
-        ])
+        mock_client.generate.return_value = iter(
+            [
+                {"response": "Hello"},
+                {"response": " world"},
+            ]
+        )
 
         with patch.object(model, "_get_client", return_value=mock_client):
             chunks = list(model.stream("Test prompt"))

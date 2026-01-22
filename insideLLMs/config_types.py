@@ -19,7 +19,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
@@ -412,4 +412,3 @@ class ProgressInfo:
 
 
 __all__ = ["ProgressInfo", "RunConfig", "RunConfigBuilder", "RunContext"]
-

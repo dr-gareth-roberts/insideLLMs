@@ -42,10 +42,12 @@ class TestBiasProbeRun:
         """Test basic run with prompt pairs."""
         probe = BiasProbe()
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(side_effect=[
-            "The doctor is skilled.",
-            "The doctor is skilled.",
-        ])
+        mock_model.generate = MagicMock(
+            side_effect=[
+                "The doctor is skilled.",
+                "The doctor is skilled.",
+            ]
+        )
 
         pairs = [("The male doctor is...", "The female doctor is...")]
         results = probe.run(mock_model, pairs)
@@ -59,11 +61,16 @@ class TestBiasProbeRun:
         """Test run with multiple prompt pairs."""
         probe = BiasProbe()
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(side_effect=[
-            "Response A1", "Response B1",
-            "Response A2", "Response B2",
-            "Response A3", "Response B3",
-        ])
+        mock_model.generate = MagicMock(
+            side_effect=[
+                "Response A1",
+                "Response B1",
+                "Response A2",
+                "Response B2",
+                "Response A3",
+                "Response B3",
+            ]
+        )
 
         pairs = [
             ("Prompt A1", "Prompt B1"),
@@ -165,25 +172,19 @@ class TestBiasProbeSentiment:
     def test_sentiment_positive(self):
         """Test positive sentiment detection."""
         probe = BiasProbe()
-        sentiment = probe._simple_sentiment(
-            "This is excellent and wonderful work"
-        )
+        sentiment = probe._simple_sentiment("This is excellent and wonderful work")
         assert sentiment > 0
 
     def test_sentiment_negative(self):
         """Test negative sentiment detection."""
         probe = BiasProbe()
-        sentiment = probe._simple_sentiment(
-            "This is terrible and awful work"
-        )
+        sentiment = probe._simple_sentiment("This is terrible and awful work")
         assert sentiment < 0
 
     def test_sentiment_neutral(self):
         """Test neutral sentiment."""
         probe = BiasProbe()
-        sentiment = probe._simple_sentiment(
-            "The sky is blue and the grass is green"
-        )
+        sentiment = probe._simple_sentiment("The sky is blue and the grass is green")
         assert sentiment == 0.0
 
     def test_sentiment_empty_text(self):
@@ -363,15 +364,17 @@ class TestBiasProbeScore:
             ),
             ProbeResult(
                 input=("C", "D"),
-                output=[BiasResult(
-                    prompt_a="C",
-                    prompt_b="D",
-                    response_a="R1",
-                    response_b="R2",
-                    bias_dimension="test",
-                    length_diff=0,
-                    sentiment_diff=0.0,
-                )],
+                output=[
+                    BiasResult(
+                        prompt_a="C",
+                        prompt_b="D",
+                        response_a="R1",
+                        response_b="R2",
+                        bias_dimension="test",
+                        length_diff=0,
+                        sentiment_diff=0.0,
+                    )
+                ],
                 status=ResultStatus.SUCCESS,
             ),
         ]
@@ -414,14 +417,14 @@ class TestBiasProbeIntegration:
         mock_model = MagicMock()
 
         # Simulate biased responses
-        mock_model.generate = MagicMock(side_effect=[
-            "He is an excellent and capable professional",
-            "She does okay work",
-        ])
+        mock_model.generate = MagicMock(
+            side_effect=[
+                "He is an excellent and capable professional",
+                "She does okay work",
+            ]
+        )
 
-        pairs = [
-            ("Describe his work style", "Describe her work style")
-        ]
+        pairs = [("Describe his work style", "Describe her work style")]
 
         # Run probe
         results = probe.run(mock_model, pairs)

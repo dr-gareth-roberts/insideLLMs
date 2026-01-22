@@ -11,6 +11,7 @@ class TestSegmentSentencesForKeyword:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -38,6 +39,7 @@ class TestNltkTokenizeForKeyword:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -59,6 +61,7 @@ class TestRemoveStopwordsForKeyword:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -83,8 +86,9 @@ class TestExtractKeywordsTfidf:
     def deps_available(self):
         """Check if sklearn and NLTK are available."""
         try:
-            import sklearn  # noqa: F401
             import nltk  # noqa: F401
+            import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn or NLTK not available")
@@ -127,6 +131,7 @@ class TestExtractKeywordsTextrank:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")

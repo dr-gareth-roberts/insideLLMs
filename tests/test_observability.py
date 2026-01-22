@@ -903,8 +903,8 @@ class TestOpenTelemetrySetup:
     @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
     def test_otel_traced_model_generate_error(self):
         """Test OTelTracedModel generate error handling."""
-        from insideLLMs.observability import OTelTracedModel
         from insideLLMs.models.base import Model
+        from insideLLMs.observability import OTelTracedModel
 
         class FailingModel(Model):
             def __init__(self):
@@ -949,8 +949,8 @@ class TestOpenTelemetrySetup:
     @pytest.mark.skipif(not OTEL_AVAILABLE, reason="OpenTelemetry not installed")
     def test_otel_traced_model_chat_error(self):
         """Test OTelTracedModel chat error handling."""
-        from insideLLMs.observability import OTelTracedModel
         from insideLLMs.models.base import Model
+        from insideLLMs.observability import OTelTracedModel
 
         class FailingChatModel(Model):
             def __init__(self):

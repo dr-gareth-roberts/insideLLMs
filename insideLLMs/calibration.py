@@ -381,7 +381,7 @@ class TemperatureScaler:
 
         for _ in range(n_iterations):
             # Forward pass: softmax with temperature
-            scaled_probs = [self._sigmoid(l / temp) for l in logits]
+            scaled_probs = [self._sigmoid(logit_value / temp) for logit_value in logits]
 
             # Compute gradient
             grad = 0.0
@@ -458,8 +458,10 @@ class PlattScaler:
             probs = [self._sigmoid(a * s + b) for s in scores]
 
             # Compute gradients
-            grad_a = sum((p - l) * s for p, l, s in zip(probs, labels, scores)) / len(scores)
-            grad_b = sum(p - l for p, l in zip(probs, labels)) / len(scores)
+            grad_a = sum((p - label) * s for p, label, s in zip(probs, labels, scores)) / len(
+                scores
+            )
+            grad_b = sum(p - label for p, label in zip(probs, labels)) / len(scores)
 
             # Update parameters
             a -= learning_rate * grad_a

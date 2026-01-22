@@ -44,7 +44,6 @@ if TYPE_CHECKING:
 # Try to import OpenTelemetry
 try:
     from opentelemetry import metrics, trace
-    from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter

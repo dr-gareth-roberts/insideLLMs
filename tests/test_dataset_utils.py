@@ -116,7 +116,9 @@ class TestLoadHfDataset:
         with patch("insideLLMs.dataset_utils.HF_DATASETS_AVAILABLE", False):
             # Need to reimport to pick up the patched value
             from importlib import reload
+
             import insideLLMs.dataset_utils as du
+
             reload(du)
 
             if not du.HF_DATASETS_AVAILABLE:

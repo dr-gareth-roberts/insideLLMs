@@ -729,7 +729,7 @@ class EmbeddingClusterer:
         # Build cluster info
         clusters = []
         for c in range(n_clusters):
-            member_indices = [i for i, l in enumerate(labels) if l == c]
+            member_indices = [i for i, label in enumerate(labels) if label == c]
             member_texts = [texts[i] for i in member_indices]
 
             if member_texts:

@@ -403,7 +403,7 @@ class TestResourceCleanup:
         runner = ProbeRunner(model, probe)
 
         run_dir = tmp_path / "test_run"
-        results = runner.run(
+        runner.run(
             ["Test?"],
             emit_run_artifacts=True,
             run_dir=run_dir,
@@ -445,7 +445,7 @@ class TestResourceCleanup:
 
         run_dir = tmp_path / "test_run_fail"
         # Should not raise - errors are captured
-        results = runner.run(
+        runner.run(
             ["Test?"],
             emit_run_artifacts=True,
             run_dir=run_dir,
@@ -470,7 +470,7 @@ class TestResourceCleanup:
         runner = AsyncProbeRunner(model, probe)
 
         run_dir = tmp_path / "test_async_run"
-        results = await runner.run(
+        await runner.run(
             ["Test?"],
             emit_run_artifacts=True,
             run_dir=run_dir,
@@ -513,7 +513,7 @@ class TestResourceCleanup:
 
         run_dir = tmp_path / "test_async_run_fail"
         # Should not raise - errors are captured
-        results = await runner.run(
+        await runner.run(
             ["Test?"],
             emit_run_artifacts=True,
             run_dir=run_dir,
@@ -1534,16 +1534,14 @@ class TestPrepareRunDir:
 
     def test_refuse_overwrite_short_path(self, tmp_path):
         """Test refusing to overwrite very short paths."""
-        from pathlib import Path
-
-        from insideLLMs.runner import _prepare_run_dir
-
         # Try to create a fake short path - use a simulated path
         # Since we can't easily test /tmp, we test the logic indirectly
         # by checking that the function contains the safety guard
         import inspect
+        from pathlib import Path
 
         from insideLLMs import runner
+        from insideLLMs.runner import _prepare_run_dir
 
         source = inspect.getsource(runner._prepare_run_dir)
         assert "len(resolved.parts) <= 2" in source
@@ -2041,9 +2039,7 @@ class TestRunProbeAsync:
         model = DummyModel()
         probe = LogicProbe()
 
-        results = await run_probe_async(
-            model, probe, ["Test?"], emit_run_artifacts=False
-        )
+        results = await run_probe_async(model, probe, ["Test?"], emit_run_artifacts=False)
         assert len(results) == 1
 
     @pytest.mark.asyncio

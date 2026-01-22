@@ -17,7 +17,6 @@ from pydantic import Field
 
 from insideLLMs.schemas import v1_0_0
 
-
 SCHEMA_VERSION = "1.0.1"
 
 

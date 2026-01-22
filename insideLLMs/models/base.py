@@ -15,7 +15,7 @@ from typing import (
 )
 
 from insideLLMs.types import ModelInfo, ModelResponse
-from insideLLMs.validation import ValidationError, validate_prompt
+from insideLLMs.validation import validate_prompt
 
 
 class ChatMessage(TypedDict, total=False):

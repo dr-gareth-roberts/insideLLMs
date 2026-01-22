@@ -65,6 +65,7 @@ class TestCountSentences:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -112,6 +113,7 @@ class TestCalculateAvgSentenceLength:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -205,6 +207,7 @@ class TestNltkTokenize:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -226,6 +229,7 @@ class TestSegmentSentences:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
@@ -255,6 +259,7 @@ class TestFleschKincaid:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")
