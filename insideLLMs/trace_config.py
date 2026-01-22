@@ -140,3 +140,122 @@ class TraceConfig:
     store: TraceStoreConfig = field(default_factory=TraceStoreConfig)
     contracts: TraceContractsConfig = field(default_factory=TraceContractsConfig)
     on_violation: OnViolationConfig = field(default_factory=OnViolationConfig)
+
+
+def load_trace_config(yaml_dict: dict[str, Any]) -> TraceConfig:
+    """Load TraceConfig from a YAML-parsed dictionary.
+
+    Args:
+        yaml_dict: Dictionary parsed from YAML trace: block.
+
+    Returns:
+        TraceConfig with values from dict, defaults for missing keys.
+
+    Example:
+        >>> config = load_trace_config({"enabled": True, "store": {"mode": "full"}})
+        >>> config.enabled
+        True
+    """
+    if not yaml_dict:
+        return TraceConfig()
+
+    # Parse store config
+    store_dict = yaml_dict.get("store", {})
+    redact_dict = store_dict.get("redact", {})
+    redact = TraceRedactConfig(
+        enabled=redact_dict.get("enabled", False),
+        json_pointers=redact_dict.get("json_pointers", []),
+        replacement=redact_dict.get("replacement", "<redacted>"),
+    )
+    store = TraceStoreConfig(
+        mode=StoreMode(store_dict.get("mode", "full")),
+        max_events=store_dict.get("max_events", 5000),
+        include_payloads=store_dict.get("include_payloads", True),
+        redact=redact,
+    )
+
+    # Parse contracts config
+    contracts_dict = yaml_dict.get("contracts", {})
+    contracts = _parse_contracts_config(contracts_dict)
+
+    # Parse on_violation config
+    on_violation_dict = yaml_dict.get("on_violation", {})
+    mode_str = on_violation_dict.get("mode", "record")
+    on_violation = OnViolationConfig(mode=OnViolationMode(mode_str))
+
+    return TraceConfig(
+        enabled=yaml_dict.get("enabled", True),
+        store=store,
+        contracts=contracts,
+        on_violation=on_violation,
+    )
+
+
+def _parse_contracts_config(contracts_dict: dict[str, Any]) -> TraceContractsConfig:
+    """Parse the contracts section of config."""
+    if not contracts_dict:
+        return TraceContractsConfig()
+
+    # Generate boundaries
+    gen_dict = contracts_dict.get("generate_boundaries", {})
+    generate_boundaries = GenerateBoundariesConfig(
+        enabled=gen_dict.get("enabled", True),
+        start_kind=gen_dict.get("start_kind", "generate_start"),
+        end_kind=gen_dict.get("end_kind", "generate_end"),
+    )
+
+    # Stream boundaries
+    stream_dict = contracts_dict.get("stream_boundaries", {})
+    stream_boundaries = StreamBoundariesConfig(
+        enabled=stream_dict.get("enabled", True),
+        start_kind=stream_dict.get("start_kind", "stream_start"),
+        chunk_kind=stream_dict.get("chunk_kind", "stream_chunk"),
+        end_kind=stream_dict.get("end_kind", "stream_end"),
+        stream_id_key=stream_dict.get("stream_id_key", "stream_id"),
+        chunk_index_key=stream_dict.get("chunk_index_key", "chunk_index"),
+        first_chunk_index=stream_dict.get("first_chunk_index", 0),
+        require_end=stream_dict.get("require_end", True),
+        require_monotonic_chunks=stream_dict.get("require_monotonic_chunks", True),
+    )
+
+    # Tool results
+    results_dict = contracts_dict.get("tool_results", {})
+    tool_results = ToolResultsConfig(
+        enabled=results_dict.get("enabled", True),
+        call_start_kind=results_dict.get("call_start_kind", "tool_call_start"),
+        call_result_kind=results_dict.get("call_result_kind", "tool_result"),
+        call_id_key=results_dict.get("call_id_key", "call_id"),
+        require_exactly_one_result=results_dict.get("require_exactly_one_result", True),
+    )
+
+    # Tool payloads
+    payloads_dict = contracts_dict.get("tool_payloads", {})
+    tools_dict = payloads_dict.get("tools", {})
+    tools = {
+        name: ToolPayloadSchemaConfig(args_schema=spec.get("args_schema", {}))
+        for name, spec in tools_dict.items()
+    }
+    tool_payloads = ToolPayloadsConfig(
+        enabled=payloads_dict.get("enabled", True),
+        tool_key=payloads_dict.get("tool_key", "tool"),
+        args_key=payloads_dict.get("args_key", "args"),
+        tools=tools,
+    )
+
+    # Tool order
+    order_dict = contracts_dict.get("tool_order", {})
+    tool_order = ToolOrderConfig(
+        enabled=order_dict.get("enabled", True),
+        must_follow=order_dict.get("must_follow", {}),
+        must_precede=order_dict.get("must_precede", {}),
+        forbidden_sequences=order_dict.get("forbidden_sequences", []),
+    )
+
+    return TraceContractsConfig(
+        enabled=contracts_dict.get("enabled", True),
+        generate_boundaries=generate_boundaries,
+        stream_boundaries=stream_boundaries,
+        tool_results=tool_results,
+        tool_payloads=tool_payloads,
+        tool_order=tool_order,
+    )
