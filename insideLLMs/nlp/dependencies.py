@@ -1,8 +1,8 @@
 """Shared dependency helpers for NLP modules."""
 
+import os
 from collections.abc import Iterable
 from functools import lru_cache
-import os
 from pathlib import Path
 
 

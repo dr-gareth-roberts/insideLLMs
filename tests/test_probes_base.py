@@ -43,10 +43,7 @@ class TestProbeInitialization:
 
     def test_init_with_custom_description(self):
         """Test probe initialization with custom description."""
-        probe = SimpleProbe(
-            name="TestProbe",
-            description="Custom description for testing"
-        )
+        probe = SimpleProbe(name="TestProbe", description="Custom description for testing")
         assert probe.description == "Custom description for testing"
 
     def test_init_inherits_default_category(self):
@@ -138,9 +135,7 @@ class TestProbeRunBatch:
         """Test batch processing with rate limit error."""
         probe = SimpleProbe(name="Test")
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(
-            side_effect=Exception("Rate limit exceeded (429)")
-        )
+        mock_model.generate = MagicMock(side_effect=Exception("Rate limit exceeded (429)"))
 
         dataset = ["input1"]
         results = probe.run_batch(mock_model, dataset)
@@ -196,9 +191,7 @@ class TestProbeScore:
         """Test score calculation with failures."""
         probe = SimpleProbe(name="Test")
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(
-            side_effect=["output", ValueError("Error")]
-        )
+        mock_model.generate = MagicMock(side_effect=["output", ValueError("Error")])
 
         results = probe.run_batch(mock_model, ["input1", "input2"])
         score = probe.score(results)

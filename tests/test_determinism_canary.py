@@ -40,11 +40,7 @@ def _write_harness_records(
         error = error_values[index] if index < len(error_values) else error_values[-1]
         started_at, completed_at = _deterministic_item_times(base_time, index)
         input_item = inputs[index] if inputs and index < len(inputs) else {"question": f"Q{index}?"}
-        example_id = (
-            example_ids[index]
-            if example_ids and index < len(example_ids)
-            else str(index)
-        )
+        example_id = example_ids[index] if example_ids and index < len(example_ids) else str(index)
         input_hash = _fingerprint_value(input_item)
         model_spec = {"model_id": "dummy-1", "provider": "dummy", "params": {}}
         probe_spec = {"probe_id": "logic", "probe_version": None, "params": {}}
@@ -67,9 +63,7 @@ def _write_harness_records(
         output_text_value = output_text if isinstance(output_text, str) else None
 
         primary_metric = (
-            primary_metrics[index]
-            if primary_metrics and index < len(primary_metrics)
-            else "score"
+            primary_metrics[index] if primary_metrics and index < len(primary_metrics) else "score"
         )
         score_payload = (
             scores_payloads[index]

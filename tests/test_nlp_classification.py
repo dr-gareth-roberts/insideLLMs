@@ -10,11 +10,13 @@ class TestCheckFunctions:
         """Test check_nltk when NLTK with VADER is available."""
         try:
             import nltk
+
             nltk.data.find("sentiment/vader_lexicon")
         except (ImportError, LookupError):
             pytest.skip("NLTK with VADER lexicon not available")
 
         from insideLLMs.nlp.classification import check_nltk
+
         check_nltk()  # Should not raise
 
     def test_check_sklearn_available(self):
@@ -25,6 +27,7 @@ class TestCheckFunctions:
             pytest.skip("sklearn not available")
 
         from insideLLMs.nlp.classification import check_sklearn
+
         check_sklearn()  # Should not raise
 
 
@@ -36,6 +39,7 @@ class TestNaiveBayesClassify:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -81,6 +85,7 @@ class TestSvmClassify:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -126,6 +131,7 @@ class TestSentimentAnalysisBasic:
         """Check if NLTK with VADER is available."""
         try:
             import nltk
+
             nltk.data.find("sentiment/vader_lexicon")
             return True
         except (ImportError, LookupError):

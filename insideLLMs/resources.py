@@ -19,9 +19,9 @@ Example:
 from __future__ import annotations
 
 import os
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import IO, Any, Iterator, Optional
+from typing import IO, Any, Iterator
 
 import yaml
 
@@ -154,9 +154,6 @@ def managed_run_directory(
     yield run_dir
 
 
-# Re-export ExitStack for convenience
-from contextlib import ExitStack
-
 __all__ = [
     "open_records_file",
     "atomic_write_text",
@@ -165,4 +162,3 @@ __all__ = [
     "managed_run_directory",
     "ExitStack",
 ]
-

@@ -68,6 +68,7 @@ class TestDetectLanguageByStopwords:
         """Check if NLTK with required resources is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             nltk.data.find("corpora/stopwords")
             return True

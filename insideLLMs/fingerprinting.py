@@ -205,11 +205,11 @@ class ModelFingerprint:
             "fingerprint_hash": self.fingerprint_hash,
             "category_scores": {k.value: v for k, v in self.category_scores.items()},
             "skill_profiles": {k.value: v.to_dict() for k, v in self.skill_profiles.items()},
-            "limitations": [l.to_dict() for l in self.limitations],
+            "limitations": [limitation.to_dict() for limitation in self.limitations],
             "top_capabilities": [
                 {"skill": s.value, "score": sc} for s, sc in self.top_capabilities
             ],
-            "main_limitations": [l.value for l in self.main_limitations],
+            "main_limitations": [limitation.value for limitation in self.main_limitations],
             "overall_capability_score": self.overall_capability_score,
             "capability_signature": self.capability_signature,
             "metadata": self.metadata,
@@ -815,7 +815,9 @@ class FingerprintGenerator:
         top_capabilities = sorted(all_skills, key=lambda x: x[1], reverse=True)[:5]
 
         # Identify main limitations
-        main_limitations = [l.limitation_type for l in limitations if l.severity > 0.5]
+        main_limitations = [
+            limitation.limitation_type for limitation in limitations if limitation.severity > 0.5
+        ]
 
         # Calculate overall score
         if category_scores:

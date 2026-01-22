@@ -14,6 +14,7 @@ class TestEnsureNltk:
             pytest.skip("NLTK not available")
 
         from insideLLMs.nlp.dependencies import ensure_nltk
+
         ensure_nltk.cache_clear()
         result = ensure_nltk(())
         # Should return nltk module
@@ -23,11 +24,13 @@ class TestEnsureNltk:
         """Test ensuring NLTK with punkt tokenizer."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
         except (ImportError, LookupError):
             pytest.skip("NLTK with punkt not available")
 
         from insideLLMs.nlp.dependencies import ensure_nltk
+
         ensure_nltk.cache_clear()
         result = ensure_nltk(("tokenizers/punkt",))
         assert result is not None
@@ -36,12 +39,14 @@ class TestEnsureNltk:
         """Test ensuring NLTK with multiple resources."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             nltk.data.find("corpora/stopwords")
         except (ImportError, LookupError):
             pytest.skip("NLTK resources not available")
 
         from insideLLMs.nlp.dependencies import ensure_nltk
+
         ensure_nltk.cache_clear()
         result = ensure_nltk(("tokenizers/punkt", "corpora/stopwords"))
         assert result is not None
@@ -58,6 +63,7 @@ class TestEnsureSpacy:
             pytest.skip("spaCy not installed")
 
         from insideLLMs.nlp.dependencies import ensure_spacy
+
         ensure_spacy.cache_clear()
 
         with pytest.raises(ImportError, match="model.*not found"):
@@ -67,11 +73,13 @@ class TestEnsureSpacy:
         """Test when spaCy and model are available."""
         try:
             import spacy
+
             spacy.load("en_core_web_sm")
         except (ImportError, OSError):
             pytest.skip("spaCy or en_core_web_sm not available")
 
         from insideLLMs.nlp.dependencies import ensure_spacy
+
         ensure_spacy.cache_clear()
         result = ensure_spacy("en_core_web_sm")
         assert result is not None
@@ -88,6 +96,7 @@ class TestEnsureSklearn:
             pytest.skip("sklearn not available")
 
         from insideLLMs.nlp.dependencies import ensure_sklearn
+
         ensure_sklearn.cache_clear()
         result = ensure_sklearn()
         assert result is None  # Returns None on success
@@ -104,6 +113,7 @@ class TestEnsureGensim:
             pytest.skip("gensim not available")
 
         from insideLLMs.nlp.dependencies import ensure_gensim
+
         ensure_gensim.cache_clear()
         result = ensure_gensim()
         assert result is None  # Returns None on success

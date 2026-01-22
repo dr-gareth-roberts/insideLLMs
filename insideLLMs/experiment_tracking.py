@@ -40,7 +40,6 @@ except ImportError:
 
 try:
     import mlflow
-    from mlflow.entities import Metric, Param
 
     MLFLOW_AVAILABLE = True
 except ImportError:

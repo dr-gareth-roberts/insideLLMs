@@ -39,9 +39,7 @@ class TestValidationError:
 
     def test_error_with_suggestions(self):
         """Test ValidationError with suggestions."""
-        error = ValidationError(
-            "Invalid value", suggestions=["Try this", "Or this"]
-        )
+        error = ValidationError("Invalid value", suggestions=["Try this", "Or this"])
         assert "Suggestions:" in str(error)
         assert "Try this" in str(error)
 
@@ -269,6 +267,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_valid_prompt(self):
         """Test decorator passes with valid prompt."""
+
         @validates_prompt("prompt")
         def my_func(prompt):
             return prompt.upper()
@@ -278,6 +277,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_invalid_prompt(self):
         """Test decorator rejects invalid prompt (non-string)."""
+
         @validates_prompt("prompt")
         def my_func(prompt):
             return str(prompt)
@@ -288,6 +288,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_empty_prompt(self):
         """Test decorator rejects empty prompt."""
+
         @validates_prompt("prompt")
         def my_func(prompt):
             return prompt
@@ -297,6 +298,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_kwargs(self):
         """Test decorator works with keyword arguments."""
+
         @validates_prompt("prompt")
         def my_func(prompt):
             return prompt.upper()
@@ -306,6 +308,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_validation_kwargs(self):
         """Test decorator with validation kwargs."""
+
         @validates_prompt("prompt", max_length=5)
         def my_func(prompt):
             return prompt
@@ -315,6 +318,7 @@ class TestValidatesPromptDecorator:
 
     def test_decorator_with_none_skipped(self):
         """Test decorator skips validation when value is None in call."""
+
         @validates_prompt("prompt")
         def my_func(other, prompt=None):
             return other
@@ -329,6 +333,7 @@ class TestValidatesPromptSetDecorator:
 
     def test_decorator_with_valid_set(self):
         """Test decorator passes with valid prompt set."""
+
         @validates_prompt_set("prompts")
         def my_func(prompts):
             return len(prompts)
@@ -338,6 +343,7 @@ class TestValidatesPromptSetDecorator:
 
     def test_decorator_with_invalid_set(self):
         """Test decorator rejects invalid prompt set (non-list)."""
+
         @validates_prompt_set("prompts")
         def my_func(prompts):
             return len(prompts)
@@ -347,6 +353,7 @@ class TestValidatesPromptSetDecorator:
 
     def test_decorator_with_kwargs(self):
         """Test decorator works with keyword arguments."""
+
         @validates_prompt_set("prompts")
         def my_func(prompts):
             return len(prompts)
@@ -356,6 +363,7 @@ class TestValidatesPromptSetDecorator:
 
     def test_decorator_with_empty_set(self):
         """Test decorator rejects empty set by default."""
+
         @validates_prompt_set("prompts")
         def my_func(prompts):
             return len(prompts)
@@ -365,6 +373,7 @@ class TestValidatesPromptSetDecorator:
 
     def test_decorator_allows_empty_set(self):
         """Test decorator allows empty set when configured."""
+
         @validates_prompt_set("prompts", allow_empty_set=True)
         def my_func(prompts):
             return len(prompts)

@@ -13,7 +13,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Sequence, TypeVar, Union
+from typing import Any, Callable, Optional, Sequence, TypeVar
 
 T = TypeVar("T")
 
@@ -333,9 +333,7 @@ def validates_prompt(param_name: str = "prompt", **validation_kwargs: Any) -> Ca
     return decorator
 
 
-def validates_prompt_set(
-    param_name: str = "prompt_set", **validation_kwargs: Any
-) -> Callable:
+def validates_prompt_set(param_name: str = "prompt_set", **validation_kwargs: Any) -> Callable:
     """Decorator to validate a prompt set parameter.
 
     Args:
@@ -384,4 +382,3 @@ __all__ = [
     "validates_prompt",
     "validates_prompt_set",
 ]
-

@@ -514,7 +514,7 @@ class PromptScorer:
 
                     json.loads(response)
                     return 1.0
-                except:
+                except json.JSONDecodeError:
                     # Check for JSON-like structure
                     if "{" in response and "}" in response:
                         return 0.5

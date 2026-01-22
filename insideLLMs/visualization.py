@@ -9,6 +9,7 @@ This module provides tools for visualizing:
 
 import hashlib
 import re
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
@@ -40,7 +41,7 @@ except ImportError:
 
 try:
     import ipywidgets as widgets
-    from IPython.display import HTML, display
+    from IPython.display import display
 
     IPYWIDGETS_AVAILABLE = True
 except ImportError:
@@ -118,7 +119,7 @@ def text_bar_chart(
         lines.append("")
 
     max_val = max(values) if values else 1
-    max_label_len = max(len(str(l)) for l in labels) if labels else 0
+    max_label_len = max(len(str(label)) for label in labels) if labels else 0
 
     for label, value in zip(labels, values):
         bar_len = int((value / max_val) * width) if max_val > 0 else 0
@@ -1468,6 +1469,7 @@ def create_interactive_html_report(
     include_raw_results: bool = True,
     include_individual_results: bool = True,
     embed_plotly_js: bool = False,
+    generated_at: Optional[datetime] = None,
 ) -> str:
     """Create a comprehensive interactive HTML report with embedded Plotly charts.
 
@@ -1498,8 +1500,6 @@ def create_interactive_html_report(
         >>> print(f"Report saved to {path}")
     """
     check_plotly_deps()
-    import json
-    from enum import Enum
 
     # Serialize experiment data for embedding
     experiments_json = _serialize_experiments_to_json(experiments)
@@ -1630,7 +1630,6 @@ def create_interactive_html_report(
     total_experiments = len(experiments)
     total_results = sum(exp.total_count for exp in experiments)
     total_success = sum(exp.success_count for exp in experiments)
-    total_errors = sum(exp.error_count for exp in experiments)
     avg_accuracy = 0.0
     acc_count = 0
     total_tokens = 0
@@ -1658,7 +1657,7 @@ def create_interactive_html_report(
 
     # Plotly JS source
     if embed_plotly_js:
-        plotly_script = '<script>/* Plotly.js would be embedded here */</script>'
+        plotly_script = "<script>/* Plotly.js would be embedded here */</script>"
         # Note: Full embedding would make file very large (~3MB)
         # For now, we use CDN but with integrity check
         plotly_script = (
@@ -2372,7 +2371,7 @@ def create_interactive_html_report(
         html += f"""                <div class="comparison-card" data-model="{model}">
                     <div class="comparison-header">
                         <span class="comparison-model">{model}</span>
-                        <span class="status-badge status-success">{stats['provider']}</span>
+                        <span class="status-badge status-success">{stats["provider"]}</span>
                     </div>
                     <div class="comparison-metrics">
                         <div class="comparison-metric">
@@ -2388,7 +2387,7 @@ def create_interactive_html_report(
                             <div class="comparison-metric-label">Success Rate</div>
                         </div>
                         <div class="comparison-metric">
-                            <div class="comparison-metric-value">{stats['tokens']:,}</div>
+                            <div class="comparison-metric-value">{stats["tokens"]:,}</div>
                             <div class="comparison-metric-label">Total Tokens</div>
                         </div>
                     </div>
@@ -2427,10 +2426,18 @@ def create_interactive_html_report(
         for i, exp in enumerate(experiments):
             acc = f"{exp.score.accuracy * 100:.1f}%" if exp.score and exp.score.accuracy else "N/A"
             acc_val = exp.score.accuracy * 100 if exp.score and exp.score.accuracy else 0
-            lat = f"{exp.score.mean_latency_ms:.0f}ms" if exp.score and exp.score.mean_latency_ms else "N/A"
+            lat = (
+                f"{exp.score.mean_latency_ms:.0f}ms"
+                if exp.score and exp.score.mean_latency_ms
+                else "N/A"
+            )
             lat_val = exp.score.mean_latency_ms if exp.score and exp.score.mean_latency_ms else 0
             tokens = exp.score.total_tokens if exp.score and exp.score.total_tokens else 0
-            category = exp.probe_category.value if hasattr(exp.probe_category, "value") else str(exp.probe_category)
+            category = (
+                exp.probe_category.value
+                if hasattr(exp.probe_category, "value")
+                else str(exp.probe_category)
+            )
 
             row_class = "expandable-row" if include_individual_results else ""
             html += f"""                        <tr class="{row_class}" data-row="{i}"
@@ -2473,8 +2480,14 @@ def create_interactive_html_report(
 """
                 # Show first 5 results
                 for j, result in enumerate(exp.results[:5]):
-                    status_class = "status-success" if result.status.value == "success" else "status-error"
-                    input_preview = str(result.input)[:100] + "..." if len(str(result.input)) > 100 else str(result.input)
+                    status_class = (
+                        "status-success" if result.status.value == "success" else "status-error"
+                    )
+                    input_preview = (
+                        str(result.input)[:100] + "..."
+                        if len(str(result.input)) > 100
+                        else str(result.input)
+                    )
                     html += f"""                                            <div class="result-item">
                                                 <span class="status-badge {status_class}">{result.status.value}</span>
                                                 <span style="margin-left: 8px;">{input_preview}</span>
@@ -2499,12 +2512,15 @@ def create_interactive_html_report(
 """
 
     # Footer
-    from datetime import datetime
-
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if generated_at is None:
+        generated_at = max(
+            (exp.completed_at for exp in experiments if getattr(exp, "completed_at", None)),
+            default=None,
+        )
+    generated_at_str = (generated_at or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
     html += f"""
         <footer class="footer">
-            <p>Generated by insideLLMs on {generated_at}</p>
+            <p>Generated by insideLLMs on {generated_at_str}</p>
             <p>Report contains {total_experiments} experiments across {len(unique_models)} models</p>
         </footer>
     </main>

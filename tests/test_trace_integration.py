@@ -4,22 +4,23 @@ These tests verify the complete flow from YAML config through
 validation and AgentProbe execution.
 """
 
-import pytest
 from typing import Any
+
+import pytest
 
 from insideLLMs import (
     AgentProbe,
     AgentProbeResult,
-    ToolDefinition,
-    TraceConfig,
-    load_trace_config,
-    validate_with_config,
-    TracePayloadNormaliser,
     OnViolationMode,
     StoreMode,
+    ToolDefinition,
+    TraceConfig,
+    TracePayloadNormaliser,
+    load_trace_config,
+    validate_with_config,
 )
-from insideLLMs.tracing import TraceRecorder, TraceEvent, trace_fingerprint
 from insideLLMs.trace_contracts import ViolationCode
+from insideLLMs.tracing import TraceEvent, TraceRecorder, trace_fingerprint
 
 
 class MockAgentModel:
@@ -333,12 +334,14 @@ class TestFullIntegration:
             # Missing stream_end and generate_end
         ]
 
-        config = load_trace_config({
-            "contracts": {
-                "generate_boundaries": {"enabled": True},
-                "stream_boundaries": {"enabled": True},
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "generate_boundaries": {"enabled": True},
+                    "stream_boundaries": {"enabled": True},
+                },
+            }
+        )
 
         violations = validate_with_config(events, config)
 
@@ -353,11 +356,13 @@ class TestFullIntegration:
             # Missing generate_end - but generate_boundaries is disabled
         ]
 
-        config = load_trace_config({
-            "contracts": {
-                "generate_boundaries": {"enabled": False},
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "generate_boundaries": {"enabled": False},
+                },
+            }
+        )
 
         violations = validate_with_config(events, config)
 
@@ -427,12 +432,8 @@ class TestYAMLConfigLoading:
 
         assert config.contracts.enabled is True
         assert "search" in config.contracts.tool_payloads.tools
-        assert config.contracts.tool_order.must_follow == {
-            "summarize": ["search", "retrieve"]
-        }
-        assert config.contracts.tool_order.forbidden_sequences == [
-            ["delete", "commit"]
-        ]
+        assert config.contracts.tool_order.must_follow == {"summarize": ["search", "retrieve"]}
+        assert config.contracts.tool_order.forbidden_sequences == [["delete", "commit"]]
 
         assert config.on_violation.mode == OnViolationMode.FAIL_PROBE
 

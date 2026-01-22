@@ -3,20 +3,22 @@
 import pytest
 
 from insideLLMs.trace_config import (
-    TraceConfig,
-    TraceStoreConfig,
-    TraceContractsConfig,
-    TraceRedactConfig,
+    FingerprintConfig,
+    NormaliserConfig,
+    NormaliserKind,
     OnViolationMode,
     StoreMode,
-    NormaliserKind,
-    NormaliserConfig,
-    FingerprintConfig,
-    load_trace_config,
+    TraceConfig,
+    TraceContractsConfig,
     TracePayloadNormaliser,
-    validate_with_config,
+    TraceRedactConfig,
+    TraceStoreConfig,
+    load_trace_config,
     make_structural_v1_normaliser,
+    validate_with_config,
 )
+from insideLLMs.trace_contracts import ToolOrderRule, ToolSchema, ViolationCode
+from insideLLMs.tracing import TraceEvent
 
 
 class TestTraceConfigStructure:
@@ -141,9 +143,6 @@ class TestLoadTraceConfig:
         assert config.enabled is True  # default
 
 
-from insideLLMs.trace_contracts import ToolSchema, ToolOrderRule
-
-
 class TestTraceConfigToContracts:
     """Tests for TraceConfig.to_contracts() compiler."""
 
@@ -157,24 +156,26 @@ class TestTraceConfigToContracts:
 
     def test_to_contracts_with_tool_schemas(self):
         """Test compilation with tool schemas."""
-        config = load_trace_config({
-            "contracts": {
-                "tool_payloads": {
-                    "tools": {
-                        "search": {
-                            "args_schema": {
-                                "type": "object",
-                                "required": ["query", "top_k"],
-                                "properties": {
-                                    "query": {"type": "string"},
-                                    "top_k": {"type": "integer"},
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "tool_payloads": {
+                        "tools": {
+                            "search": {
+                                "args_schema": {
+                                    "type": "object",
+                                    "required": ["query", "top_k"],
+                                    "properties": {
+                                        "query": {"type": "string"},
+                                        "top_k": {"type": "integer"},
+                                    },
                                 },
                             },
                         },
                     },
                 },
-            },
-        })
+            }
+        )
         result = config.to_contracts()
         schemas = result["tool_schemas"]
         assert "search" in schemas
@@ -184,15 +185,17 @@ class TestTraceConfigToContracts:
 
     def test_to_contracts_with_tool_order(self):
         """Test compilation with tool order rules."""
-        config = load_trace_config({
-            "contracts": {
-                "tool_order": {
-                    "must_follow": {"summarise": ["search"]},
-                    "must_precede": {"search": ["summarise"]},
-                    "forbidden_sequences": [["send_email", "search"]],
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "tool_order": {
+                        "must_follow": {"summarise": ["search"]},
+                        "must_precede": {"search": ["summarise"]},
+                        "forbidden_sequences": [["send_email", "search"]],
+                    },
                 },
-            },
-        })
+            }
+        )
         result = config.to_contracts()
         rules = result["tool_order_rules"]
         assert isinstance(rules, ToolOrderRule)
@@ -201,12 +204,14 @@ class TestTraceConfigToContracts:
 
     def test_to_contracts_toggles(self):
         """Test toggles are set correctly."""
-        config = load_trace_config({
-            "contracts": {
-                "generate_boundaries": {"enabled": False},
-                "stream_boundaries": {"enabled": True},
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "generate_boundaries": {"enabled": False},
+                    "stream_boundaries": {"enabled": True},
+                },
+            }
+        )
         result = config.to_contracts()
         toggles = result["toggles"]
         assert toggles["generate_boundaries"] is False
@@ -278,28 +283,27 @@ class TestTracePayloadNormaliser:
         result2 = normaliser.normalise(payload2)
         # Should produce identical output
         import json
+
         assert json.dumps(result1, sort_keys=True) == json.dumps(result2, sort_keys=True)
 
     def test_from_config(self):
         """Test creating normaliser from TraceConfig."""
-        config = load_trace_config({
-            "store": {
-                "redact": {
-                    "enabled": True,
-                    "json_pointers": ["/secret"],
-                    "replacement": "[HIDDEN]",
+        config = load_trace_config(
+            {
+                "store": {
+                    "redact": {
+                        "enabled": True,
+                        "json_pointers": ["/secret"],
+                        "replacement": "[HIDDEN]",
+                    },
                 },
-            },
-        })
+            }
+        )
         normaliser = TracePayloadNormaliser.from_config(config)
         payload = {"secret": "password", "public": "data"}
         result = normaliser.normalise(payload)
         assert result["secret"] == "[HIDDEN]"
         assert result["public"] == "data"
-
-
-from insideLLMs.tracing import TraceEvent
-from insideLLMs.trace_contracts import ViolationCode
 
 
 class TestValidateWithConfig:
@@ -326,12 +330,14 @@ class TestValidateWithConfig:
 
     def test_respects_toggle_disabled(self):
         """Test toggle disables specific validator."""
-        config = load_trace_config({
-            "contracts": {
-                "generate_boundaries": {"enabled": False},
-                "stream_boundaries": {"enabled": True},
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "generate_boundaries": {"enabled": False},
+                    "stream_boundaries": {"enabled": True},
+                },
+            }
+        )
         events = [
             # generate_start without end - should NOT cause violation (disabled)
             TraceEvent(seq=0, kind="generate_start", payload={}),
@@ -371,11 +377,13 @@ class TestValidateWithConfig:
 
     def test_fail_fast_stops_early(self):
         """Test fail_fast option stops on first violation."""
-        config = load_trace_config({
-            "contracts": {
-                "fail_fast": True,
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "fail_fast": True,
+                },
+            }
+        )
         events = [
             # Multiple violations: missing generate_end, stream_end, tool_result
             TraceEvent(seq=0, kind="generate_start", payload={}),
@@ -389,11 +397,13 @@ class TestValidateWithConfig:
 
     def test_fail_fast_disabled_finds_all(self):
         """Test fail_fast=False finds all violations."""
-        config = load_trace_config({
-            "contracts": {
-                "fail_fast": False,
-            },
-        })
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "fail_fast": False,
+                },
+            }
+        )
         events = [
             TraceEvent(seq=0, kind="generate_start", payload={}),
             TraceEvent(seq=1, kind="stream_start", payload={}),
@@ -569,15 +579,19 @@ class TestVersionAndFailFast:
 
     def test_fail_fast_in_contracts(self):
         """Test fail_fast is loaded correctly."""
-        config = load_trace_config({
-            "contracts": {"fail_fast": True},
-        })
+        config = load_trace_config(
+            {
+                "contracts": {"fail_fast": True},
+            }
+        )
         assert config.contracts.fail_fast is True
 
     def test_fail_fast_in_to_contracts(self):
         """Test fail_fast is compiled to contracts."""
-        config = load_trace_config({
-            "contracts": {"fail_fast": True},
-        })
+        config = load_trace_config(
+            {
+                "contracts": {"fail_fast": True},
+            }
+        )
         result = config.to_contracts()
         assert result["fail_fast"] is True

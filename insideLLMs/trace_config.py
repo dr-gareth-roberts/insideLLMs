@@ -22,7 +22,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Mapping, Optional, Union
+from typing import Any, Callable, Mapping, Optional
 
 # Type alias for event-kind-aware normaliser function
 TracePayloadNormaliserFunc = Callable[[str, Mapping[str, Any]], Mapping[str, Any]]
@@ -30,16 +30,18 @@ TracePayloadNormaliserFunc = Callable[[str, Mapping[str, Any]], Mapping[str, Any
 
 class OnViolationMode(str, Enum):
     """What to do when contracts are violated."""
-    RECORD = "record"       # Write violations, continue
+
+    RECORD = "record"  # Write violations, continue
     FAIL_PROBE = "fail_probe"  # Mark example as error
-    FAIL_RUN = "fail_run"   # Stop harness early
+    FAIL_RUN = "fail_run"  # Stop harness early
 
 
 class StoreMode(str, Enum):
     """How much trace data to persist."""
-    NONE = "none"           # No storage (renamed from OFF for clarity)
-    COMPACT = "compact"     # Hash + violations only (renamed from FINGERPRINT)
-    FULL = "full"           # Full events + fingerprint
+
+    NONE = "none"  # No storage (renamed from OFF for clarity)
+    COMPACT = "compact"  # Hash + violations only (renamed from FINGERPRINT)
+    FULL = "full"  # Full events + fingerprint
     # Keep old names as aliases for backwards compatibility
     OFF = "none"
     FINGERPRINT = "compact"
@@ -47,8 +49,9 @@ class StoreMode(str, Enum):
 
 class NormaliserKind(str, Enum):
     """Type of normaliser to use."""
-    BUILTIN = "builtin"     # Library-provided normaliser
-    IMPORT = "import"       # User-imported function
+
+    BUILTIN = "builtin"  # Library-provided normaliser
+    IMPORT = "import"  # User-imported function
 
 
 # =============================================================================
@@ -72,12 +75,13 @@ class NormaliserConfig:
         hash_paths: Dotpaths to hash instead of storing raw
         hash_strings_over: Hash strings longer than this length
     """
+
     kind: NormaliserKind = NormaliserKind.BUILTIN
     name: str = "structural_v1"
     import_path: Optional[str] = None
-    drop_keys: list[str] = field(default_factory=lambda: [
-        "request_id", "response_id", "created", "timestamp", "latency_ms"
-    ])
+    drop_keys: list[str] = field(
+        default_factory=lambda: ["request_id", "response_id", "created", "timestamp", "latency_ms"]
+    )
     drop_key_regex: list[str] = field(default_factory=lambda: [])
     hash_paths: list[str] = field(default_factory=lambda: ["result", "raw"])
     hash_strings_over: int = 512
@@ -92,6 +96,7 @@ class FingerprintConfig:
         algorithm: Hash algorithm (currently only sha256)
         normaliser: Normaliser configuration
     """
+
     enabled: bool = True
     algorithm: str = "sha256"
     normaliser: NormaliserConfig = field(default_factory=NormaliserConfig)
@@ -105,6 +110,7 @@ class FingerprintConfig:
 @dataclass
 class TraceRedactConfig:
     """Configuration for payload redaction (legacy, use normaliser instead)."""
+
     enabled: bool = False
     json_pointers: list[str] = field(default_factory=list)
     replacement: str = "<redacted>"
@@ -121,6 +127,7 @@ class TraceStoreConfig:
         include_payloads: Whether to include payloads in storage
         redact: Legacy redaction config (use fingerprint.normaliser instead)
     """
+
     mode: StoreMode = StoreMode.FULL
     max_events: Optional[int] = None
     max_event_payload_bytes: Optional[int] = None
@@ -136,6 +143,7 @@ class TraceStoreConfig:
 @dataclass
 class GenerateBoundariesConfig:
     """Configuration for generate boundary validation."""
+
     enabled: bool = True
     start_kind: str = "generate_start"
     end_kind: str = "generate_end"
@@ -144,6 +152,7 @@ class GenerateBoundariesConfig:
 @dataclass
 class StreamBoundariesConfig:
     """Configuration for stream boundary validation."""
+
     enabled: bool = True
     start_kind: str = "stream_start"
     chunk_kind: str = "stream_chunk"
@@ -158,6 +167,7 @@ class StreamBoundariesConfig:
 @dataclass
 class ToolResultsConfig:
     """Configuration for tool result validation."""
+
     enabled: bool = True
     call_start_kind: str = "tool_call_start"
     call_result_kind: str = "tool_result"
@@ -168,6 +178,7 @@ class ToolResultsConfig:
 @dataclass
 class ToolPayloadSchemaConfig:
     """JSON Schema for a tool's arguments."""
+
     args_schema: dict[str, Any] = field(default_factory=dict)
     required: bool = True
 
@@ -175,6 +186,7 @@ class ToolPayloadSchemaConfig:
 @dataclass
 class ToolPayloadsConfig:
     """Configuration for tool payload validation."""
+
     enabled: bool = True
     tool_key: str = "tool"
     args_key: str = "args"
@@ -184,6 +196,7 @@ class ToolPayloadsConfig:
 @dataclass
 class ToolOrderConfig:
     """Configuration for tool ordering validation."""
+
     enabled: bool = True
     allow_unknown_tools: bool = False
     must_follow: dict[str, list[str]] = field(default_factory=dict)
@@ -204,14 +217,11 @@ class TraceContractsConfig:
         tool_payloads: Config for tool payload validation
         tool_order: Config for tool ordering validation
     """
+
     enabled: bool = True
     fail_fast: bool = False
-    generate_boundaries: GenerateBoundariesConfig = field(
-        default_factory=GenerateBoundariesConfig
-    )
-    stream_boundaries: StreamBoundariesConfig = field(
-        default_factory=StreamBoundariesConfig
-    )
+    generate_boundaries: GenerateBoundariesConfig = field(default_factory=GenerateBoundariesConfig)
+    stream_boundaries: StreamBoundariesConfig = field(default_factory=StreamBoundariesConfig)
     tool_results: ToolResultsConfig = field(default_factory=ToolResultsConfig)
     tool_payloads: ToolPayloadsConfig = field(default_factory=ToolPayloadsConfig)
     tool_order: ToolOrderConfig = field(default_factory=ToolOrderConfig)
@@ -220,6 +230,7 @@ class TraceContractsConfig:
 @dataclass
 class OnViolationConfig:
     """Configuration for violation handling."""
+
     mode: OnViolationMode = OnViolationMode.RECORD
 
 
@@ -244,6 +255,7 @@ class TraceConfig:
         contracts: Contract validation configuration
         on_violation: Violation handling configuration
     """
+
     version: int = 1
     enabled: bool = True
     store: TraceStoreConfig = field(default_factory=TraceStoreConfig)
@@ -261,7 +273,7 @@ class TraceConfig:
             - toggles: dict[str, bool] for each validator
             - fail_fast: bool for early termination
         """
-        from insideLLMs.trace_contracts import ToolSchema, ToolOrderRule
+        from insideLLMs.trace_contracts import ToolOrderRule, ToolSchema
 
         # If contracts disabled, return empty
         if not self.contracts.enabled:
@@ -303,9 +315,7 @@ class TraceConfig:
                     arg_types[arg_name] = dict
 
             # Determine optional args (in properties but not required)
-            optional_args = [
-                name for name in properties if name not in required_args
-            ]
+            optional_args = [name for name in properties if name not in required_args]
 
             tool_schemas[tool_name] = ToolSchema(
                 name=tool_name,
@@ -597,9 +607,14 @@ def make_structural_v1_normaliser(
         Configured TracePayloadNormaliser
     """
     return TracePayloadNormaliser(
-        drop_keys=drop_keys or [
-            "request_id", "response_id", "created", "timestamp",
-            "latency_ms", "x-request-id",
+        drop_keys=drop_keys
+        or [
+            "request_id",
+            "response_id",
+            "created",
+            "timestamp",
+            "latency_ms",
+            "x-request-id",
         ],
         drop_key_regex=drop_key_regex or ["^x-.*", ".*_request_id$"],
         hash_paths=hash_paths or ["result", "raw"],
@@ -664,9 +679,9 @@ def load_trace_config(yaml_dict: dict[str, Any]) -> TraceConfig:
         kind=NormaliserKind(norm_dict.get("kind", "builtin")),
         name=norm_dict.get("name", "structural_v1"),
         import_path=norm_dict.get("import"),
-        drop_keys=norm_dict.get("config", {}).get("drop_keys", [
-            "request_id", "response_id", "created", "timestamp", "latency_ms"
-        ]),
+        drop_keys=norm_dict.get("config", {}).get(
+            "drop_keys", ["request_id", "response_id", "created", "timestamp", "latency_ms"]
+        ),
         drop_key_regex=norm_dict.get("config", {}).get("drop_key_regex", []),
         hash_paths=norm_dict.get("config", {}).get("hash_paths", ["result", "raw"]),
         hash_strings_over=norm_dict.get("config", {}).get("hash_strings_over", 512),
@@ -798,12 +813,12 @@ def validate_with_config(
         >>> violations = validate_with_config(events, config)
     """
     from insideLLMs.trace_contracts import (
+        Violation,
         validate_generate_boundaries,
         validate_stream_boundaries,
-        validate_tool_results,
-        validate_tool_payloads,
         validate_tool_order,
-        Violation,
+        validate_tool_payloads,
+        validate_tool_results,
     )
 
     if not config.enabled or not config.contracts.enabled:
