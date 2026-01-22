@@ -2,6 +2,8 @@
 
 from collections.abc import Iterable
 from functools import lru_cache
+import os
+from pathlib import Path
 
 
 @lru_cache
@@ -14,12 +16,29 @@ def ensure_nltk(resources: Iterable[str] = ()):
             "NLTK is not installed. Please install it with: pip install nltk"
         ) from exc
 
+    expanded_resources: list[str] = []
     for resource in resources:
+        expanded_resources.append(resource)
+        # NLTK 3.8+ may require `punkt_tab` for `sent_tokenize` even when `punkt` exists.
+        if resource == "tokenizers/punkt" or resource.startswith("tokenizers/punkt/"):
+            expanded_resources.append("tokenizers/punkt_tab")
+
+    nltk_data_env = os.environ.get("NLTK_DATA", "")
+    download_dir = None
+    if nltk_data_env:
+        # NLTK_DATA can be a path list; pick the first entry as a download target.
+        first_path = nltk_data_env.split(os.pathsep)[0]
+        if first_path:
+            download_dir = first_path
+            Path(download_dir).mkdir(parents=True, exist_ok=True)
+
+    for resource in expanded_resources:
         try:
             nltk.data.find(resource)
         except LookupError:
             # resource is like "tokenizers/punkt" -> download last segment
-            nltk.download(resource.split("/")[-1])
+            package = resource.strip("/").split("/")[-1]
+            nltk.download(package, download_dir=download_dir, quiet=True)
     return nltk
 
 

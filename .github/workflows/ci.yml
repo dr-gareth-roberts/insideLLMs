@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -63,20 +64,20 @@ jobs:
           --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.10' && secrets.CODECOV_TOKEN }}
+        if: ${{ !cancelled() && matrix.python-version == '3.10' }}
+        continue-on-error: true
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.10' && secrets.CODECOV_TOKEN }}
+        if: ${{ !cancelled() && matrix.python-version == '3.10' }}
+        continue-on-error: true
         uses: codecov/codecov-action@v5
         with:
           files: ./junit.xml
           report_type: test_results
           fail_ci_if_error: false
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
