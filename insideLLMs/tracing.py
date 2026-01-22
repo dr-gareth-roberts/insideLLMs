@@ -125,6 +125,7 @@ class TraceRecorder:
         self._example_id = example_id
         self._events: list[TraceEvent] = []
         self._seq_counter = 0
+        self._tool_step_counter = 0  # Track tool invocation sequence
 
     @property
     def run_id(self) -> Optional[str]:
@@ -280,6 +281,7 @@ class TraceRecorder:
         tool_name: str,
         arguments: dict[str, Any],
         tool_call_id: Optional[str] = None,
+        step: Optional[int] = None,
     ) -> TraceEvent:
         """Record a tool/function call.
 
@@ -287,13 +289,20 @@ class TraceRecorder:
             tool_name: Name of the tool being called.
             arguments: Arguments passed to the tool.
             tool_call_id: Optional unique ID for the call.
+            step: Optional explicit step number. If not provided, auto-incremented.
 
         Returns:
             The recorded event.
         """
+        # Auto-increment step if not provided
+        if step is None:
+            step = self._tool_step_counter
+            self._tool_step_counter += 1
+
         payload: dict[str, Any] = {
             "tool_name": tool_name,
             "arguments": arguments,
+            "step": step,
         }
         if tool_call_id:
             payload["tool_call_id"] = tool_call_id
@@ -305,6 +314,7 @@ class TraceRecorder:
         result: Any,
         tool_call_id: Optional[str] = None,
         error: Optional[str] = None,
+        ok: Optional[bool] = None,
     ) -> TraceEvent:
         """Record a tool/function result.
 
@@ -313,13 +323,19 @@ class TraceRecorder:
             result: The tool's return value.
             tool_call_id: Optional unique ID for the call.
             error: Optional error message if the tool failed.
+            ok: Optional success flag. If not provided, inferred from error.
 
         Returns:
             The recorded event.
         """
+        # Infer ok from error if not explicitly provided
+        if ok is None:
+            ok = error is None
+
         payload: dict[str, Any] = {
             "tool_name": tool_name,
             "result": result,
+            "ok": ok,
         }
         if tool_call_id:
             payload["tool_call_id"] = tool_call_id
@@ -351,9 +367,10 @@ class TraceRecorder:
         return self.record(TraceEventKind.ERROR, payload)
 
     def clear(self) -> None:
-        """Clear all recorded events and reset sequence counter."""
+        """Clear all recorded events and reset counters."""
         self._events.clear()
         self._seq_counter = 0
+        self._tool_step_counter = 0
 
     def to_list(self) -> list[dict[str, Any]]:
         """Convert all events to a list of dictionaries."""

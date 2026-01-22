@@ -386,3 +386,105 @@ class TestTraceEventKind:
         """Test enum values compare equal to strings."""
         assert TraceEventKind.GENERATE_START == "generate_start"
         assert TraceEventKind.ERROR == "error"
+
+
+class TestToolStepAndOkFields:
+    """Tests for step/ok fields in tool payloads."""
+
+    def test_tool_call_includes_step(self):
+        """Test tool_call_start includes step field."""
+        recorder = TraceRecorder()
+        event = recorder.record_tool_call("search", {"query": "test"})
+
+        assert "step" in event.payload
+        assert event.payload["step"] == 0
+
+    def test_tool_call_step_auto_increments(self):
+        """Test step auto-increments across tool calls."""
+        recorder = TraceRecorder()
+        e1 = recorder.record_tool_call("search", {})
+        recorder.record_tool_result("search", {})
+        e2 = recorder.record_tool_call("summarize", {})
+        recorder.record_tool_result("summarize", {})
+        e3 = recorder.record_tool_call("email", {})
+
+        assert e1.payload["step"] == 0
+        assert e2.payload["step"] == 1
+        assert e3.payload["step"] == 2
+
+    def test_tool_call_explicit_step(self):
+        """Test explicit step overrides auto-increment."""
+        recorder = TraceRecorder()
+        event = recorder.record_tool_call("search", {}, step=42)
+
+        assert event.payload["step"] == 42
+
+    def test_tool_result_includes_ok(self):
+        """Test tool_result includes ok field."""
+        recorder = TraceRecorder()
+        event = recorder.record_tool_result("search", {"data": "result"})
+
+        assert "ok" in event.payload
+        assert event.payload["ok"] is True
+
+    def test_tool_result_ok_false_on_error(self):
+        """Test ok=False when error is present."""
+        recorder = TraceRecorder()
+        event = recorder.record_tool_result(
+            "search",
+            None,
+            error="API rate limit exceeded",
+        )
+
+        assert event.payload["ok"] is False
+        assert event.payload["error"] == "API rate limit exceeded"
+
+    def test_tool_result_explicit_ok(self):
+        """Test explicit ok overrides inference."""
+        recorder = TraceRecorder()
+        # Force ok=False even without error
+        event = recorder.record_tool_result("search", {"data": "partial"}, ok=False)
+
+        assert event.payload["ok"] is False
+
+    def test_clear_resets_tool_step_counter(self):
+        """Test clear resets the tool step counter."""
+        recorder = TraceRecorder()
+        recorder.record_tool_call("search", {})
+        recorder.record_tool_call("summarize", {})
+
+        recorder.clear()
+
+        event = recorder.record_tool_call("new_search", {})
+        assert event.payload["step"] == 0
+
+    def test_step_ok_workflow(self):
+        """Test complete workflow with step/ok fields."""
+        recorder = TraceRecorder()
+
+        # Simulate a multi-tool workflow
+        recorder.record_generate_start("Find weather in NYC")
+
+        # Tool 1: search (success)
+        t1 = recorder.record_tool_call("search", {"query": "NYC weather"})
+        r1 = recorder.record_tool_result("search", {"temp": 72})
+
+        # Tool 2: format (failure)
+        t2 = recorder.record_tool_call("format", {"data": {"temp": 72}})
+        r2 = recorder.record_tool_result("format", None, error="Invalid template")
+
+        # Tool 3: summarize (success)
+        t3 = recorder.record_tool_call("summarize", {"text": "fallback"})
+        r3 = recorder.record_tool_result("summarize", {"summary": "NYC: 72F"})
+
+        recorder.record_generate_end("The weather in NYC is 72F")
+
+        # Verify step progression
+        assert t1.payload["step"] == 0
+        assert t2.payload["step"] == 1
+        assert t3.payload["step"] == 2
+
+        # Verify ok status
+        assert r1.payload["ok"] is True
+        assert r2.payload["ok"] is False
+        assert r3.payload["ok"] is True
