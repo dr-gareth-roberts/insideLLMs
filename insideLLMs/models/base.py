@@ -45,6 +45,15 @@ class ModelProtocol(Protocol):
 
 
 @runtime_checkable
+class BatchModelProtocol(ModelProtocol, Protocol):
+    """Protocol for models that support batch generation."""
+
+    def batch_generate(self, prompts: list[str], **kwargs: Any) -> list[str]:
+        """Generate responses for multiple prompts in a batch."""
+        ...
+
+
+@runtime_checkable
 class ChatModelProtocol(ModelProtocol, Protocol):
     """Protocol for models that support multi-turn chat."""
 
@@ -196,6 +205,33 @@ class Model(ABC):
         """
         raise NotImplementedError("This model does not support streaming.")
 
+    def batch_generate(self, prompts: list[str], **kwargs: Any) -> list[str]:
+        """Generate responses for multiple prompts in a batch.
+
+        Default implementation processes prompts sequentially. Subclasses
+        can override this to provide true batch API support for better performance.
+
+        Args:
+            prompts: List of input prompts to send to the model.
+            **kwargs: Additional arguments specific to the model provider.
+
+        Returns:
+            List of model responses, one for each prompt.
+
+        Raises:
+            ValidationError: If any prompt is invalid.
+
+        Example:
+            >>> model = OpenAIModel(model_name="gpt-4")
+            >>> prompts = ["What is 2+2?", "What is 3+3?"]
+            >>> responses = model.batch_generate(prompts)
+            >>> print(responses)
+            ["2+2 equals 4.", "3+3 equals 6."]
+        """
+        # Default implementation: sequential processing
+        # Subclasses can override for parallel/batch processing
+        return [self.generate(prompt, **kwargs) for prompt in prompts]
+
     def info(self) -> ModelInfo:
         """Return model metadata/info.
 
@@ -288,6 +324,31 @@ class AsyncModel(Model):
         """
         raise NotImplementedError("This model does not support async streaming.")
         yield  # Make this a generator
+
+    async def abatch_generate(self, prompts: list[str], **kwargs: Any) -> list[str]:
+        """Asynchronously generate responses for multiple prompts.
+
+        Default implementation uses asyncio.gather for concurrent execution.
+        Subclasses can override for API-specific batch endpoints.
+
+        Args:
+            prompts: List of input prompts to send to the model.
+            **kwargs: Additional arguments specific to the model provider.
+
+        Returns:
+            List of model responses, one for each prompt.
+
+        Example:
+            >>> async def run():
+            ...     model = AsyncOpenAIModel(model_name="gpt-4")
+            ...     prompts = ["What is 2+2?", "What is 3+3?"]
+            ...     responses = await model.abatch_generate(prompts)
+            ...     return responses
+        """
+        import asyncio
+
+        # Default: concurrent execution using gather
+        return await asyncio.gather(*[self.agenerate(prompt, **kwargs) for prompt in prompts])
 
 
 class ModelWrapper:
