@@ -14,6 +14,7 @@ class TestCheckFunctions:
             pytest.skip("sklearn not available")
 
         from insideLLMs.nlp.feature_extraction import check_sklearn
+
         check_sklearn()  # Should not raise
 
     def test_check_gensim_available(self):
@@ -24,17 +25,20 @@ class TestCheckFunctions:
             pytest.skip("gensim not available")
 
         from insideLLMs.nlp.feature_extraction import check_gensim
+
         check_gensim()  # Should not raise
 
     def test_check_spacy_available(self):
         """Test check_spacy when spaCy is available."""
         try:
             import spacy
+
             spacy.load("en_core_web_sm")
         except (ImportError, OSError):
             pytest.skip("spaCy or en_core_web_sm not available")
 
         from insideLLMs.nlp.feature_extraction import check_spacy
+
         result = check_spacy()
         assert result is not None
 
@@ -47,6 +51,7 @@ class TestCreateBow:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -81,6 +86,7 @@ class TestCreateTfidf:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -115,6 +121,7 @@ class TestCreateWordEmbeddings:
         """Check if gensim is available."""
         try:
             import gensim  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("gensim not available")
@@ -141,9 +148,7 @@ class TestCreateWordEmbeddings:
         from insideLLMs.nlp.feature_extraction import create_word_embeddings
 
         sentences = [["a", "b", "c"], ["a", "d", "e"], ["b", "c", "d"]]
-        embeddings = create_word_embeddings(
-            sentences, vector_size=50, window=3, min_count=1
-        )
+        embeddings = create_word_embeddings(sentences, vector_size=50, window=3, min_count=1)
 
         for vec in embeddings.values():
             assert len(vec) == 50
@@ -157,6 +162,7 @@ class TestExtractPosTags:
         """Check if spaCy and model are available."""
         try:
             import spacy  # noqa: F401
+
             # Try to load the model
             spacy.load("en_core_web_sm")
             return True
@@ -185,6 +191,7 @@ class TestExtractDependencies:
         """Check if spaCy and model are available."""
         try:
             import spacy  # noqa: F401
+
             spacy.load("en_core_web_sm")
             return True
         except (ImportError, OSError):

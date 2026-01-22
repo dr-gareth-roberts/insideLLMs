@@ -120,10 +120,12 @@ class TestInstructionFollowingProbe:
     def test_format_constraints_keywords(self):
         """Test formatting keyword constraints."""
         probe = InstructionFollowingProbe()
-        result = probe._format_constraints({
-            "include_keywords": ["apple", "banana"],
-            "exclude_keywords": ["orange"],
-        })
+        result = probe._format_constraints(
+            {
+                "include_keywords": ["apple", "banana"],
+                "exclude_keywords": ["orange"],
+            }
+        )
         assert "apple" in result
         assert "banana" in result
         assert "orange" in result
@@ -131,10 +133,12 @@ class TestInstructionFollowingProbe:
     def test_format_constraints_language_and_tone(self):
         """Test formatting language and tone constraints."""
         probe = InstructionFollowingProbe()
-        result = probe._format_constraints({
-            "language": "Spanish",
-            "tone": "formal",
-        })
+        result = probe._format_constraints(
+            {
+                "language": "Spanish",
+                "tone": "formal",
+            }
+        )
         assert "Spanish" in result
         assert "formal" in result
 
@@ -147,19 +151,19 @@ class TestInstructionFollowingProbe:
     def test_check_format_json_invalid_but_looks_like(self):
         """Test checking invalid JSON that looks JSON-like."""
         probe = InstructionFollowingProbe()
-        result = probe._check_format('{key: value}', "json")
+        result = probe._check_format("{key: value}", "json")
         assert result == 0.5
 
     def test_check_format_json_array_like(self):
         """Test checking array-like invalid JSON."""
         probe = InstructionFollowingProbe()
-        result = probe._check_format('[item1, item2]', "json")
+        result = probe._check_format("[item1, item2]", "json")
         assert result == 0.5
 
     def test_check_format_json_completely_invalid(self):
         """Test checking completely invalid JSON."""
         probe = InstructionFollowingProbe()
-        result = probe._check_format('just some text', "json")
+        result = probe._check_format("just some text", "json")
         assert result == 0.0
 
     def test_check_format_numbered_list(self):
@@ -450,7 +454,10 @@ class TestConstraintComplianceProbe:
 
     def test_initialization_with_validator(self):
         """Test initialization with custom validator."""
-        validator = lambda x: x.islower()
+
+        def validator(x: str) -> bool:
+            return x.islower()
+
         probe = ConstraintComplianceProbe(
             constraint_type="custom",
             validator=validator,
@@ -557,7 +564,10 @@ class TestConstraintComplianceProbe:
 
     def test_evaluate_single_with_validator_pass(self):
         """Test evaluating with passing validator."""
-        validator = lambda x: x.startswith("Hello")
+
+        def validator(x: str) -> bool:
+            return x.startswith("Hello")
+
         probe = ConstraintComplianceProbe(
             constraint_type="custom",
             validator=validator,
@@ -569,7 +579,10 @@ class TestConstraintComplianceProbe:
 
     def test_evaluate_single_with_validator_fail(self):
         """Test evaluating with failing validator."""
-        validator = lambda x: x.startswith("Hello")
+
+        def validator(x: str) -> bool:
+            return x.startswith("Hello")
+
         probe = ConstraintComplianceProbe(
             constraint_type="custom",
             validator=validator,

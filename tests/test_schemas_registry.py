@@ -49,8 +49,7 @@ class TestSchemaRegistry:
         assert versions == []
 
     @pytest.mark.skipif(
-        importlib.util.find_spec("pydantic") is None,
-        reason="pydantic not installed"
+        importlib.util.find_spec("pydantic") is None, reason="pydantic not installed"
     )
     def test_get_model_caching(self, registry):
         """Test that get_model caches models."""
@@ -59,8 +58,7 @@ class TestSchemaRegistry:
         assert model1 is model2
 
     @pytest.mark.skipif(
-        importlib.util.find_spec("pydantic") is None,
-        reason="pydantic not installed"
+        importlib.util.find_spec("pydantic") is None, reason="pydantic not installed"
     )
     def test_get_model_version_normalization(self, registry):
         """Test that get_model normalizes versions."""
@@ -69,8 +67,7 @@ class TestSchemaRegistry:
         assert model1 is model2
 
     @pytest.mark.skipif(
-        importlib.util.find_spec("pydantic") is None,
-        reason="pydantic not installed"
+        importlib.util.find_spec("pydantic") is None, reason="pydantic not installed"
     )
     def test_get_model_unknown_version_raises(self, registry):
         """Test that get_model raises for unknown versions."""
@@ -78,8 +75,7 @@ class TestSchemaRegistry:
             registry.get_model(SchemaRegistry.RESULT_RECORD, "9.9.9")
 
     @pytest.mark.skipif(
-        importlib.util.find_spec("pydantic") is None,
-        reason="pydantic not installed"
+        importlib.util.find_spec("pydantic") is None, reason="pydantic not installed"
     )
     def test_get_json_schema(self, registry):
         """Test get_json_schema returns valid schema."""
@@ -91,10 +87,7 @@ class TestSchemaRegistry:
         """Test migrate with same version returns data unchanged."""
         data = {"key": "value"}
         result = registry.migrate(
-            SchemaRegistry.RESULT_RECORD,
-            data,
-            from_version="1.0.0",
-            to_version="1.0.0"
+            SchemaRegistry.RESULT_RECORD, data, from_version="1.0.0", to_version="1.0.0"
         )
         assert result == data
 
@@ -102,10 +95,7 @@ class TestSchemaRegistry:
         """Test migrate normalizes versions before comparing."""
         data = {"key": "value"}
         result = registry.migrate(
-            SchemaRegistry.RESULT_RECORD,
-            data,
-            from_version="1.0",
-            to_version="1.0.0"
+            SchemaRegistry.RESULT_RECORD, data, from_version="1.0", to_version="1.0.0"
         )
         assert result == data
 
@@ -121,7 +111,7 @@ class TestSchemaRegistry:
             data,
             from_version="1.0.0",
             to_version="1.0.0",
-            custom_migration=custom_migrate
+            custom_migration=custom_migrate,
         )
         assert result == {"key": "value", "migrated": True}
 
@@ -130,10 +120,7 @@ class TestSchemaRegistry:
         data = {"key": "value"}
         with pytest.raises(NotImplementedError, match="No migration registered"):
             registry.migrate(
-                SchemaRegistry.RESULT_RECORD,
-                data,
-                from_version="1.0.0",
-                to_version="2.0.0"
+                SchemaRegistry.RESULT_RECORD, data, from_version="1.0.0", to_version="2.0.0"
             )
 
 

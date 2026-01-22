@@ -39,17 +39,18 @@ import asyncio
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from insideLLMs.exceptions import ModelError, RateLimitError, TimeoutError
 from insideLLMs.models.base import (
-    AsyncModel,
     AsyncModelProtocol,
     ChatMessage,
     Model,
     ModelProtocol,
 )
-from insideLLMs.types import ModelResponse, TokenUsage
+
+if TYPE_CHECKING:
+    from insideLLMs.tracing import TraceRecorder
 
 
 class Middleware(ABC):
@@ -68,11 +69,7 @@ class Middleware(ABC):
         self.model: Optional[ModelProtocol] = None
 
     @abstractmethod
-    def process_generate(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> str:
+    def process_generate(self, prompt: str, **kwargs: Any) -> str:
         """Process a generate request.
 
         Args:
@@ -87,11 +84,7 @@ class Middleware(ABC):
         """
         raise NotImplementedError
 
-    def process_chat(
-        self,
-        messages: list[ChatMessage],
-        **kwargs: Any
-    ) -> str:
+    def process_chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Process a chat request.
 
         Args:
@@ -111,11 +104,7 @@ class Middleware(ABC):
             return self.model.chat(messages, **kwargs)
         raise ModelError("No chat implementation available")
 
-    def process_stream(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> Iterator[str]:
+    def process_stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Process a streaming request.
 
         Args:
@@ -138,11 +127,7 @@ class Middleware(ABC):
 
     # Async methods - default implementations delegate to sync or use executor
 
-    async def aprocess_generate(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> str:
+    async def aprocess_generate(self, prompt: str, **kwargs: Any) -> str:
         """Asynchronously process a generate request.
 
         Default implementation runs sync method in executor. Subclasses
@@ -165,16 +150,10 @@ class Middleware(ABC):
                 return await self.model.agenerate(prompt, **kwargs)
             # Fall back to running sync method in executor
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None, lambda: self.model.generate(prompt, **kwargs)
-            )
+            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
         raise ModelError("No model available in pipeline")
 
-    async def aprocess_chat(
-        self,
-        messages: list[ChatMessage],
-        **kwargs: Any
-    ) -> str:
+    async def aprocess_chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Asynchronously process a chat request.
 
         Args:
@@ -194,16 +173,10 @@ class Middleware(ABC):
                 return await self.model.achat(messages, **kwargs)
             if hasattr(self.model, "chat"):
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
-                    None, lambda: self.model.chat(messages, **kwargs)
-                )
+                return await loop.run_in_executor(None, lambda: self.model.chat(messages, **kwargs))
         raise ModelError("No chat implementation available")
 
-    async def aprocess_stream(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> AsyncIterator[str]:
+    async def aprocess_stream(self, prompt: str, **kwargs: Any) -> AsyncIterator[str]:
         """Asynchronously process a streaming request.
 
         Args:
@@ -258,10 +231,298 @@ class PassthroughMiddleware(Middleware):
             if isinstance(self.model, AsyncModelProtocol):
                 return await self.model.agenerate(prompt, **kwargs)
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None, lambda: self.model.generate(prompt, **kwargs)
-            )
+            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
         raise ModelError("No model available in pipeline")
+
+
+class TraceMiddleware(PassthroughMiddleware):
+    """Middleware for capturing execution traces.
+
+    Records trace events for generate, chat, and stream operations.
+    Uses the TraceRecorder from insideLLMs.tracing for deterministic
+    event sequencing (no wall-clock time).
+
+    The recorder can be accessed after execution to get trace data
+    for validation or storage in ResultRecord.custom.
+
+    Args:
+        run_id: Optional run ID for trace context.
+        example_id: Optional example ID for trace context.
+
+    Example:
+        >>> from insideLLMs.tracing import TraceRecorder
+        >>> trace_mw = TraceMiddleware(run_id="run_001")
+        >>> pipeline = ModelPipeline(model, middlewares=[trace_mw])
+        >>> response = pipeline.generate("Hello")
+        >>> events = trace_mw.recorder.events
+        >>> print(f"Captured {len(events)} trace events")
+    """
+
+    # Reserved kwargs that should not leak to providers
+    _RESERVED_KWARGS = {"_trace", "_trace_recorder", "_run_id", "_example_id"}
+
+    def __init__(
+        self,
+        run_id: Optional[str] = None,
+        example_id: Optional[str] = None,
+    ):
+        """Initialize the trace middleware.
+
+        Args:
+            run_id: Optional run ID for trace context.
+            example_id: Optional example ID for trace context.
+        """
+        super().__init__()
+        # Lazy import to avoid circular dependencies
+        from insideLLMs.tracing import TraceRecorder
+
+        self._recorder = TraceRecorder(run_id=run_id, example_id=example_id)
+
+    @property
+    def recorder(self) -> "TraceRecorder":
+        """Get the trace recorder."""
+        return self._recorder
+
+    def reset(
+        self,
+        run_id: Optional[str] = None,
+        example_id: Optional[str] = None,
+    ) -> None:
+        """Reset the recorder for a new execution.
+
+        Args:
+            run_id: Optional new run ID.
+            example_id: Optional new example ID.
+        """
+        from insideLLMs.tracing import TraceRecorder
+
+        self._recorder = TraceRecorder(run_id=run_id, example_id=example_id)
+
+    def _strip_reserved_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Remove reserved trace kwargs before passing to providers."""
+        return {k: v for k, v in kwargs.items() if k not in self._RESERVED_KWARGS}
+
+    def process_generate(self, prompt: str, **kwargs: Any) -> str:
+        """Trace-wrapped generate."""
+        # Strip reserved kwargs
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record start
+        self._recorder.record_generate_start(prompt, **clean_kwargs)
+
+        try:
+            # Delegate to next middleware or model
+            if self.next_middleware:
+                response = self.next_middleware.process_generate(prompt, **clean_kwargs)
+            elif self.model:
+                response = self.model.generate(prompt, **clean_kwargs)
+            else:
+                raise ModelError("No model available in pipeline")
+
+            # Record end
+            self._recorder.record_generate_end(response)
+            return response
+
+        except Exception as e:
+            # Record error
+            self._recorder.record_error(
+                str(e),
+                error_type=type(e).__name__,
+            )
+            raise
+
+    async def aprocess_generate(self, prompt: str, **kwargs: Any) -> str:
+        """Async trace-wrapped generate."""
+        # Strip reserved kwargs
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record start
+        self._recorder.record_generate_start(prompt, **clean_kwargs)
+
+        try:
+            # Delegate to next middleware or model
+            if self.next_middleware:
+                response = await self.next_middleware.aprocess_generate(prompt, **clean_kwargs)
+            elif self.model:
+                if isinstance(self.model, AsyncModelProtocol):
+                    response = await self.model.agenerate(prompt, **clean_kwargs)
+                else:
+                    loop = asyncio.get_running_loop()
+                    response = await loop.run_in_executor(
+                        None, lambda: self.model.generate(prompt, **clean_kwargs)
+                    )
+            else:
+                raise ModelError("No model available in pipeline")
+
+            # Record end
+            self._recorder.record_generate_end(response)
+            return response
+
+        except Exception as e:
+            # Record error
+            self._recorder.record_error(
+                str(e),
+                error_type=type(e).__name__,
+            )
+            raise
+
+    def process_chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+        """Trace-wrapped chat."""
+        from insideLLMs.tracing import TraceEventKind
+
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record chat start
+        self._recorder.record(
+            TraceEventKind.CHAT_START,
+            {"message_count": len(messages), "params": clean_kwargs},
+        )
+
+        try:
+            # Delegate
+            if self.next_middleware:
+                response = self.next_middleware.process_chat(messages, **clean_kwargs)
+            elif self.model and hasattr(self.model, "chat"):
+                response = self.model.chat(messages, **clean_kwargs)
+            else:
+                raise ModelError("No chat implementation available")
+
+            # Record chat end
+            self._recorder.record(
+                TraceEventKind.CHAT_END,
+                {"response": response},
+            )
+            return response
+
+        except Exception as e:
+            self._recorder.record_error(str(e), error_type=type(e).__name__)
+            raise
+
+    async def aprocess_chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+        """Async trace-wrapped chat."""
+        from insideLLMs.tracing import TraceEventKind
+
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record chat start
+        self._recorder.record(
+            TraceEventKind.CHAT_START,
+            {"message_count": len(messages), "params": clean_kwargs},
+        )
+
+        try:
+            # Delegate
+            if self.next_middleware:
+                response = await self.next_middleware.aprocess_chat(messages, **clean_kwargs)
+            elif self.model:
+                if hasattr(self.model, "achat"):
+                    response = await self.model.achat(messages, **clean_kwargs)
+                elif hasattr(self.model, "chat"):
+                    loop = asyncio.get_running_loop()
+                    response = await loop.run_in_executor(
+                        None, lambda: self.model.chat(messages, **clean_kwargs)
+                    )
+                else:
+                    raise ModelError("No chat implementation available")
+            else:
+                raise ModelError("No chat implementation available")
+
+            # Record chat end
+            self._recorder.record(
+                TraceEventKind.CHAT_END,
+                {"response": response},
+            )
+            return response
+
+        except Exception as e:
+            self._recorder.record_error(str(e), error_type=type(e).__name__)
+            raise
+
+    def process_stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
+        """Trace-wrapped streaming."""
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record stream start
+        self._recorder.record_stream_start(prompt, **clean_kwargs)
+
+        chunk_index = 0
+        accumulated = []
+
+        try:
+            # Delegate to next middleware or model
+            if self.next_middleware:
+                stream = self.next_middleware.process_stream(prompt, **clean_kwargs)
+            elif self.model and hasattr(self.model, "stream"):
+                stream = self.model.stream(prompt, **clean_kwargs)
+            else:
+                raise ModelError("No streaming implementation available")
+
+            for chunk in stream:
+                # Record each chunk
+                self._recorder.record_stream_chunk(chunk, chunk_index)
+                accumulated.append(chunk)
+                chunk_index += 1
+                yield chunk
+
+            # Record stream end
+            self._recorder.record_stream_end(
+                full_response="".join(accumulated),
+                chunk_count=chunk_index,
+            )
+
+        except Exception as e:
+            self._recorder.record_error(str(e), error_type=type(e).__name__)
+            raise
+
+    async def aprocess_stream(self, prompt: str, **kwargs: Any) -> AsyncIterator[str]:
+        """Async trace-wrapped streaming."""
+        clean_kwargs = self._strip_reserved_kwargs(kwargs)
+
+        # Record stream start
+        self._recorder.record_stream_start(prompt, **clean_kwargs)
+
+        chunk_index = 0
+        accumulated = []
+
+        try:
+            # Delegate to next middleware or model
+            if self.next_middleware:
+                async for chunk in self.next_middleware.aprocess_stream(prompt, **clean_kwargs):
+                    self._recorder.record_stream_chunk(chunk, chunk_index)
+                    accumulated.append(chunk)
+                    chunk_index += 1
+                    yield chunk
+            elif self.model:
+                if hasattr(self.model, "astream"):
+                    async for chunk in self.model.astream(prompt, **clean_kwargs):
+                        self._recorder.record_stream_chunk(chunk, chunk_index)
+                        accumulated.append(chunk)
+                        chunk_index += 1
+                        yield chunk
+                elif hasattr(self.model, "stream"):
+                    loop = asyncio.get_running_loop()
+                    sync_chunks = await loop.run_in_executor(
+                        None, lambda: list(self.model.stream(prompt, **clean_kwargs))
+                    )
+                    for chunk in sync_chunks:
+                        self._recorder.record_stream_chunk(chunk, chunk_index)
+                        accumulated.append(chunk)
+                        chunk_index += 1
+                        yield chunk
+                else:
+                    raise ModelError("No streaming implementation available")
+            else:
+                raise ModelError("No streaming implementation available")
+
+            # Record stream end
+            self._recorder.record_stream_end(
+                full_response="".join(accumulated),
+                chunk_count=chunk_index,
+            )
+
+        except Exception as e:
+            self._recorder.record_error(str(e), error_type=type(e).__name__)
+            raise
 
 
 class CacheMiddleware(Middleware):
@@ -391,11 +652,7 @@ class RateLimitMiddleware(Middleware):
         burst_size: Maximum burst size (default: same as rate).
     """
 
-    def __init__(
-        self,
-        requests_per_minute: int = 60,
-        burst_size: Optional[int] = None
-    ):
+    def __init__(self, requests_per_minute: int = 60, burst_size: Optional[int] = None):
         """Initialize the rate limiter."""
         super().__init__()
         self.rate = requests_per_minute / 60.0  # requests per second
@@ -461,9 +718,7 @@ class RateLimitMiddleware(Middleware):
             if isinstance(self.model, AsyncModelProtocol):
                 return await self.model.agenerate(prompt, **kwargs)
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None, lambda: self.model.generate(prompt, **kwargs)
-            )
+            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
         raise ModelError("No model available in pipeline")
 
 
@@ -497,10 +752,7 @@ class RetryMiddleware(Middleware):
         """Calculate delay with exponential backoff and jitter."""
         import random
 
-        delay = min(
-            self.initial_delay * (self.exponential_base ** attempt),
-            self.max_delay
-        )
+        delay = min(self.initial_delay * (self.exponential_base**attempt), self.max_delay)
         # Add jitter
         jitter = random.uniform(0, delay * 0.1)
         return delay + jitter
@@ -531,8 +783,7 @@ class RetryMiddleware(Middleware):
 
         # All retries failed
         raise ModelError(
-            f"Failed after {self.max_retries} retries",
-            details={"original_error": str(last_error)}
+            f"Failed after {self.max_retries} retries", details={"original_error": str(last_error)}
         )
 
     async def aprocess_generate(self, prompt: str, **kwargs: Any) -> str:
@@ -566,8 +817,7 @@ class RetryMiddleware(Middleware):
 
         # All retries failed
         raise ModelError(
-            f"Failed after {self.max_retries} retries",
-            details={"original_error": str(last_error)}
+            f"Failed after {self.max_retries} retries", details={"original_error": str(last_error)}
         )
 
 
@@ -595,12 +845,7 @@ class CostTrackingMiddleware(Middleware):
         self.total_output_tokens = 0
         self.estimated_cost = 0.0
 
-    def _estimate_cost(
-        self,
-        model_name: str,
-        input_tokens: int,
-        output_tokens: int
-    ) -> float:
+    def _estimate_cost(self, model_name: str, input_tokens: int, output_tokens: int) -> float:
         """Estimate cost based on model and token counts."""
         # Try to match model name to known pricing
         model_key = None
@@ -777,9 +1022,7 @@ class ModelPipeline(Model):
             return await self.base_model.agenerate(prompt, **kwargs)
         # Fall back to executor for sync model
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None, lambda: self.base_model.generate(prompt, **kwargs)
-        )
+        return await loop.run_in_executor(None, lambda: self.base_model.generate(prompt, **kwargs))
 
     async def achat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Asynchronously chat through the middleware pipeline."""
@@ -850,10 +1093,7 @@ class ModelPipeline(Model):
                     else:
                         raise
 
-        tasks = [
-            asyncio.create_task(process(i, prompt))
-            for i, prompt in enumerate(prompts)
-        ]
+        tasks = [asyncio.create_task(process(i, prompt)) for i, prompt in enumerate(prompts)]
         await asyncio.gather(*tasks, return_exceptions=return_exceptions)
         return results
 
@@ -915,8 +1155,8 @@ class AsyncModelPipeline(ModelPipeline):
         prompts: list[str],
         *,
         max_concurrency: int = 10,
-        on_progress: Optional[callable] = None,
-        on_result: Optional[callable] = None,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        on_result: Optional[Callable[[int, str], None]] = None,
         **kwargs: Any,
     ) -> list[str]:
         """Generate with progress and result callbacks.
@@ -953,10 +1193,7 @@ class AsyncModelPipeline(ModelPipeline):
                     if on_progress:
                         on_progress(completed, total)
 
-        tasks = [
-            asyncio.create_task(process(i, prompt))
-            for i, prompt in enumerate(prompts)
-        ]
+        tasks = [asyncio.create_task(process(i, prompt)) for i, prompt in enumerate(prompts)]
         await asyncio.gather(*tasks)
         return results
 
@@ -994,10 +1231,7 @@ class AsyncModelPipeline(ModelPipeline):
                 except Exception as e:
                     await queue.put((index, f"Error: {e}"))
 
-        tasks = [
-            asyncio.create_task(process(i, prompt))
-            for i, prompt in enumerate(prompts)
-        ]
+        tasks = [asyncio.create_task(process(i, prompt)) for i, prompt in enumerate(prompts)]
 
         # Yield results as they complete
         for _ in range(len(prompts)):
@@ -1034,8 +1268,7 @@ class AsyncModelPipeline(ModelPipeline):
                 try:
                     if timeout:
                         result = await asyncio.wait_for(
-                            self.agenerate(prompt, **kwargs),
-                            timeout=timeout
+                            self.agenerate(prompt, **kwargs), timeout=timeout
                         )
                     else:
                         result = await self.agenerate(prompt, **kwargs)

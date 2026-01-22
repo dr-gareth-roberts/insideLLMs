@@ -412,6 +412,25 @@ def _output_fingerprint(
     return _fingerprint_value(output)
 
 
+def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
+    """Extract trace fingerprint from record.custom.trace_fingerprint."""
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    fp = custom.get("trace_fingerprint")
+    return fp if isinstance(fp, str) else None
+
+
+def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract trace violations from record.custom.trace_violations."""
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    violations = custom.get("trace_violations")
+    return violations if isinstance(violations, list) else []
+
+
+def _trace_violation_count(record: dict[str, Any]) -> int:
+    """Count trace violations in a record."""
+    return len(_trace_violations(record))
+
+
 def _primary_score(record: dict[str, Any]) -> tuple[Optional[str], Optional[float]]:
     scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
     metric = record.get("primary_metric")
@@ -645,12 +664,12 @@ def _build_experiments_from_records(
         )
         return experiments, derived_config, schema_version
 
-    groups: dict[str, list[dict[str, Any]]] = {}
+    run_groups: dict[str, list[dict[str, Any]]] = {}
     for record in records:
         run_id = record.get("run_id") or "run"
-        groups.setdefault(str(run_id), []).append(record)
+        run_groups.setdefault(str(run_id), []).append(record)
 
-    for run_id, group_records in groups.items():
+    for run_id, group_records in run_groups.items():
         first = group_records[0]
         model_spec = first.get("model", {}) if isinstance(first.get("model"), dict) else {}
         probe_spec = first.get("probe", {}) if isinstance(first.get("probe"), dict) else {}
@@ -1207,6 +1226,22 @@ def create_parser() -> argparse.ArgumentParser:
         help=(
             "Comma-separated output keys to ignore when fingerprinting structured outputs "
             "(repeatable)."
+        ),
+    )
+    diff_parser.add_argument(
+        "--fail-on-trace-violations",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if trace violations increase "
+            "(candidate has more violations than baseline for any record)"
+        ),
+    )
+    diff_parser.add_argument(
+        "--fail-on-trace-drift",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if trace fingerprints differ between baseline and candidate "
+            "(even if output text stays the same)"
         ),
     )
 
@@ -1982,6 +2017,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     result["experiments"],
                     title=report_title,
                     save_path=str(report_path),
+                    generated_at=created_at,
                 )
             except ImportError:
                 report_html = _build_basic_harness_report(
@@ -2217,6 +2253,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             experiments,
             title=report_title,
             save_path=str(report_path),
+            generated_at=generated_at,
         )
     except ImportError:
         report_html = _build_basic_harness_report(
@@ -2336,6 +2373,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
     changes_json: list[dict[str, Any]] = []
     only_a_json: list[dict[str, Any]] = []
     only_b_json: list[dict[str, Any]] = []
+    # Trace tracking
+    trace_drifts: list[tuple[str, str, str, str]] = []
+    trace_drifts_json: list[dict[str, Any]] = []
+    trace_violation_increases: list[tuple[str, str, str, str]] = []
+    trace_violation_increases_json: list[dict[str, Any]] = []
 
     for key in sorted(all_keys):
         record_a = index_a.get(key)
@@ -2505,6 +2547,37 @@ def cmd_diff(args: argparse.Namespace) -> int:
                 }
             )
 
+        # Trace drift detection
+        trace_fp_a = _trace_fingerprint(record_a)
+        trace_fp_b = _trace_fingerprint(record_b)
+        if trace_fp_a and trace_fp_b and trace_fp_a != trace_fp_b:
+            trace_drifts.append((*label, f"trace {trace_fp_a[:12]} -> {trace_fp_b[:12]}"))
+            trace_drifts_json.append(
+                {
+                    **identity,
+                    "kind": "trace_drift",
+                    "baseline_trace_fingerprint": trace_fp_a,
+                    "candidate_trace_fingerprint": trace_fp_b,
+                }
+            )
+
+        # Trace violation comparison
+        violations_a = _trace_violation_count(record_a)
+        violations_b = _trace_violation_count(record_b)
+        if violations_b > violations_a:
+            trace_violation_increases.append(
+                (*label, f"violations {violations_a} -> {violations_b}")
+            )
+            trace_violation_increases_json.append(
+                {
+                    **identity,
+                    "kind": "trace_violations_increased",
+                    "baseline_violations": violations_a,
+                    "candidate_violations": violations_b,
+                    "candidate_violation_details": _trace_violations(record_b),
+                }
+            )
+
     diff_report = {
         "schema_version": DEFAULT_SCHEMA_VERSION,
         "baseline": str(run_dir_a),
@@ -2524,6 +2597,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             "regressions": len(regressions),
             "improvements": len(improvements),
             "other_changes": len(changes),
+            "trace_drifts": len(trace_drifts),
+            "trace_violation_increases": len(trace_violation_increases),
         },
         "duplicates": {"baseline": dup_a, "candidate": dup_b},
         "regressions": regressions_json,
@@ -2531,6 +2606,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
         "changes": changes_json,
         "only_baseline": only_a_json,
         "only_candidate": only_b_json,
+        "trace_drifts": trace_drifts_json,
+        "trace_violation_increases": trace_violation_increases_json,
     }
 
     if output_format == "json":
@@ -2543,6 +2620,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
             return 2
         if args.fail_on_changes and (regressions or changes or only_a or only_b):
             return 2
+        if args.fail_on_trace_violations and trace_violation_increases:
+            return 3
+        if args.fail_on_trace_drift and trace_drifts:
+            return 4
         return 0
 
     print_header("Behavioural Diff")
@@ -2554,6 +2635,12 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_key_value("Regressions", diff_report["counts"]["regressions"])
     print_key_value("Improvements", diff_report["counts"]["improvements"])
     print_key_value("Other changes", diff_report["counts"]["other_changes"])
+    if trace_drifts:
+        print_key_value("Trace drifts", diff_report["counts"]["trace_drifts"])
+    if trace_violation_increases:
+        print_key_value(
+            "Trace violation increases", diff_report["counts"]["trace_violation_increases"]
+        )
 
     def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
         if not items:
@@ -2567,6 +2654,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_section("Regressions", regressions)
     print_section("Improvements", improvements)
     print_section("Other Changes", changes)
+    print_section("Trace Drifts", trace_drifts)
+    print_section("Trace Violation Increases", trace_violation_increases)
 
     if only_a:
         print_subheader("Missing in Comparison")
@@ -2586,6 +2675,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
         return 2
     if args.fail_on_changes and (regressions or changes or only_a or only_b):
         return 2
+    if args.fail_on_trace_violations and trace_violation_increases:
+        return 3
+    if args.fail_on_trace_drift and trace_drifts:
+        return 4
     return 0
 
 
@@ -3344,32 +3437,32 @@ def cmd_validate(args: argparse.Namespace) -> int:
         with open(config_path) as f:
             config = yaml.safe_load(f) if config_path.suffix in (".yaml", ".yml") else json.load(f)
 
-        errors: list[str] = []
+        config_errors: list[str] = []
         warnings: list[str] = []
 
         # Validate model
         if "model" not in config:
-            errors.append("Missing required field: model")
+            config_errors.append("Missing required field: model")
         else:
             model_config = config["model"]
             if "type" not in model_config:
-                errors.append("Missing model.type")
+                config_errors.append("Missing model.type")
             else:
                 ensure_builtins_registered()
                 if model_config["type"] not in model_registry.list():
-                    errors.append(f"Unknown model type: {model_config['type']}")
+                    config_errors.append(f"Unknown model type: {model_config['type']}")
 
         # Validate probe
         if "probe" not in config:
-            errors.append("Missing required field: probe")
+            config_errors.append("Missing required field: probe")
         else:
             probe_config = config["probe"]
             if "type" not in probe_config:
-                errors.append("Missing probe.type")
+                config_errors.append("Missing probe.type")
             else:
                 ensure_builtins_registered()
                 if probe_config["type"] not in probe_registry.list():
-                    errors.append(f"Unknown probe type: {probe_config['type']}")
+                    config_errors.append(f"Unknown probe type: {probe_config['type']}")
 
         # Validate dataset
         if "dataset" not in config:
@@ -3382,9 +3475,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     warnings.append(f"Dataset file not found: {ds_path}")
 
         # Report results
-        if errors:
+        if config_errors:
             print_subheader("Errors")
-            for e in errors:
+            for e in config_errors:
                 print(f"  {colorize('ERROR', Colors.RED)} {e}")
 
         if warnings:
@@ -3392,13 +3485,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
             for w in warnings:
                 print(f"  {colorize('WARN', Colors.YELLOW)} {w}")
 
-        if not errors:
+        if not config_errors:
             print()
             print_success("Configuration is valid!")
             return 0
         else:
             print()
-            print_error(f"Configuration has {len(errors)} error(s)")
+            print_error(f"Configuration has {len(config_errors)} error(s)")
             return 1
 
     except Exception as e:

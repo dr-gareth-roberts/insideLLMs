@@ -30,8 +30,9 @@ class TestCohereModelInit:
         from insideLLMs.models.cohere import CohereModel
 
         # Clear API key env vars
-        env_without_keys = {k: v for k, v in os.environ.items()
-                          if k not in ("CO_API_KEY", "COHERE_API_KEY")}
+        env_without_keys = {
+            k: v for k, v in os.environ.items() if k not in ("CO_API_KEY", "COHERE_API_KEY")
+        }
         with patch.dict(os.environ, env_without_keys, clear=True):
             with pytest.raises(ValueError, match="API key required"):
                 CohereModel(model_name="command-r")
@@ -97,12 +98,11 @@ class TestCohereModelClientInit:
 
     def test_get_client_raises_without_cohere(self):
         """Test that _get_client raises ImportError without cohere package."""
-        from insideLLMs.models.cohere import CohereModel
-
-        model = CohereModel(api_key="test_key")
-
         # Mock the import to fail
         import sys
+
+        from insideLLMs.models.cohere import CohereModel
+
         with patch.dict(sys.modules, {"cohere": None}):
             # Need to make the import fail
             def mock_import(name, *args):
@@ -110,7 +110,9 @@ class TestCohereModelClientInit:
                     raise ImportError("No module named 'cohere'")
                 return original_import(name, *args)
 
-            original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+            original_import = (
+                __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+            )
 
             # Skip this test - it's complex to mock imports properly
             pytest.skip("Complex import mocking")

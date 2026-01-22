@@ -10,6 +10,8 @@ import yaml
 
 from insideLLMs.resources import (
     ExitStack as ResourcesExitStack,
+)
+from insideLLMs.resources import (
     atomic_write_text,
     atomic_write_yaml,
     ensure_run_sentinel,
@@ -179,13 +181,9 @@ class TestAtomicWriteYaml:
         """Test writing nested data structures."""
         file_path = tmp_path / "config.yaml"
         data = {
-            "level1": {
-                "level2": {
-                    "level3": "value"
-                }
-            },
+            "level1": {"level2": {"level3": "value"}},
             "list": [1, 2, 3],
-            "mixed": {"items": ["a", "b", "c"]}
+            "mixed": {"items": ["a", "b", "c"]},
         }
 
         atomic_write_yaml(file_path, data)
@@ -317,7 +315,7 @@ class TestExitStackReExport:
         run_dir.mkdir()
 
         with ExitStack() as stack:
-            path = stack.enter_context(managed_run_directory(run_dir))
+            stack.enter_context(managed_run_directory(run_dir))
             fp = stack.enter_context(open_records_file(records_path))
             fp.write('{"test": "data"}\n')
 
@@ -343,7 +341,9 @@ class TestEdgeCases:
 
         assert file_path.exists()
         loaded = yaml.safe_load(file_path.read_text())
-        assert loaded == {} or loaded is None  # yaml.safe_load returns None for empty dict sometimes
+        assert (
+            loaded == {} or loaded is None
+        )  # yaml.safe_load returns None for empty dict sometimes
 
     def test_very_long_content(self, tmp_path):
         """Test writing very long content."""

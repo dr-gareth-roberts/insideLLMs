@@ -93,7 +93,7 @@ class TestLogicProbeEvaluateSingle:
         result = probe.evaluate_single(
             model_output="After analyzing, the answer is 42",
             reference="42",
-            input_data="What is the answer?"
+            input_data="What is the answer?",
         )
 
         assert result["is_correct"] is True
@@ -104,9 +104,7 @@ class TestLogicProbeEvaluateSingle:
         """Test evaluation with incorrect answer."""
         probe = LogicProbe()
         result = probe.evaluate_single(
-            model_output="The answer is 100",
-            reference="42",
-            input_data="What is the answer?"
+            model_output="The answer is 100", reference="42", input_data="What is the answer?"
         )
 
         assert result["is_correct"] is False
@@ -115,9 +113,7 @@ class TestLogicProbeEvaluateSingle:
         """Test evaluation without reference."""
         probe = LogicProbe()
         result = probe.evaluate_single(
-            model_output="Some response",
-            reference=None,
-            input_data="Problem"
+            model_output="Some response", reference=None, input_data="Problem"
         )
 
         assert result["evaluated"] is False
@@ -128,7 +124,7 @@ class TestLogicProbeEvaluateSingle:
         result = probe.evaluate_single(
             model_output="First, let's analyze. Then, we conclude. Therefore, the answer is yes.",
             reference="yes",
-            input_data="Problem"
+            input_data="Problem",
         )
 
         assert result["has_reasoning"] is True
@@ -307,7 +303,7 @@ class TestLogicProbeIntegration:
         evaluation = probe.evaluate_single(
             model_output=response,
             reference="a is greater than c",  # Case insensitive matching
-            input_data="If A > B and B > C, what is the relationship?"
+            input_data="If A > B and B > C, what is the relationship?",
         )
 
         assert evaluation["is_correct"] is True
@@ -318,11 +314,13 @@ class TestLogicProbeIntegration:
         """Test batch processing workflow."""
         probe = LogicProbe()
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(side_effect=[
-            "First, analyze. Therefore, yes.",
-            "The answer is no.",
-            "Step 1: Consider. Thus, maybe."
-        ])
+        mock_model.generate = MagicMock(
+            side_effect=[
+                "First, analyze. Therefore, yes.",
+                "The answer is no.",
+                "Step 1: Consider. Thus, maybe.",
+            ]
+        )
 
         problems = ["Problem 1", "Problem 2", "Problem 3"]
         results = probe.run_batch(mock_model, problems)
@@ -332,4 +330,4 @@ class TestLogicProbeIntegration:
 
         score = probe.score(results)
         # 2 of 3 have reasoning (first and third)
-        assert score.custom_metrics["reasoning_rate"] == 2/3
+        assert score.custom_metrics["reasoning_rate"] == 2 / 3

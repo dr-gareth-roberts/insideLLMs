@@ -68,9 +68,7 @@ __all__ = [
 
 # Check for FastAPI availability
 try:
-    from fastapi import Depends, FastAPI, HTTPException, Request, Response
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
+    from fastapi import Depends, FastAPI, HTTPException
     from pydantic import BaseModel, Field
 
     FASTAPI_AVAILABLE = True

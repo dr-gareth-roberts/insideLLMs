@@ -11,6 +11,7 @@ class TestNaiveBayesClassify:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -56,6 +57,7 @@ class TestSvmClassify:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -101,6 +103,7 @@ class TestSentimentAnalysisBasic:
         """Check if NLTK is available."""
         try:
             import nltk  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("NLTK not available")

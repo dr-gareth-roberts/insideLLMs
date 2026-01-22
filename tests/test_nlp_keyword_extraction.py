@@ -18,12 +18,14 @@ class TestCheckFunctions:
         """Test check_nltk when NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             nltk.data.find("corpora/stopwords")
         except (ImportError, LookupError):
             pytest.skip("NLTK not available")
 
         from insideLLMs.nlp.keyword_extraction import check_nltk
+
         check_nltk()  # Should not raise
 
     def test_check_sklearn_available(self):
@@ -34,6 +36,7 @@ class TestCheckFunctions:
             pytest.skip("sklearn not available")
 
         from insideLLMs.nlp.keyword_extraction import check_sklearn
+
         check_sklearn()  # Should not raise
 
 
@@ -45,6 +48,7 @@ class TestSegmentSentences:
         """Check if NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             return True
         except (ImportError, LookupError):
@@ -77,6 +81,7 @@ class TestNltkTokenize:
         """Check if NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             return True
         except (ImportError, LookupError):
@@ -104,6 +109,7 @@ class TestRemoveStopwords:
         """Check if NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("corpora/stopwords")
             return True
         except (ImportError, LookupError):
@@ -139,6 +145,7 @@ class TestExtractKeywordsTfidf:
         try:
             import nltk
             import sklearn
+
             nltk.data.find("tokenizers/punkt")
             return True
         except (ImportError, LookupError):
@@ -178,6 +185,7 @@ class TestExtractKeywordsTextrank:
         """Check if NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             nltk.data.find("corpora/stopwords")
             return True

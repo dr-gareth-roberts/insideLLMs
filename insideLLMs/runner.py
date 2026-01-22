@@ -564,16 +564,24 @@ def _ensure_run_sentinel(run_dir_path: Path) -> None:
 
 def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
     """Normalize model/probe info object to a dict."""
+    if info_obj is None:
+        return {}
     if isinstance(info_obj, dict):
         return info_obj
     if is_dataclass(info_obj) and not isinstance(info_obj, type):
         return asdict(info_obj)
     if hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
         # pydantic v1 compatibility
-        return info_obj.dict()
+        try:
+            return info_obj.dict()
+        except Exception:
+            return {}
     if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
         # pydantic v2 compatibility
-        return info_obj.model_dump()
+        try:
+            return info_obj.model_dump()
+        except Exception:
+            return {}
     return {}
 
 
@@ -705,34 +713,6 @@ def _deterministic_run_times(base_time: datetime, total: int) -> tuple[datetime,
     started_at = base_time
     completed_at = base_time + timedelta(microseconds=completed_offset)
     return started_at, completed_at
-
-
-def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
-    """Best-effort normalization for model.info()-like objects.
-
-    Some integrations return dicts / dataclasses / Pydantic models. The rest of the
-    runner stack assumes we can treat info as a mapping.
-    """
-
-    if info_obj is None:
-        return {}
-    if isinstance(info_obj, dict):
-        return info_obj
-    if is_dataclass(info_obj) and not isinstance(info_obj, type):
-        return asdict(info_obj)
-    if hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
-        # pydantic v1 compatibility
-        try:
-            return info_obj.dict()
-        except Exception:
-            return {}
-    if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
-        # pydantic v2 compatibility
-        try:
-            return info_obj.model_dump()
-        except Exception:
-            return {}
-    return {}
 
 
 def _coerce_model_info(model: Model) -> ModelInfo:

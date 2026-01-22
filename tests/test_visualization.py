@@ -551,8 +551,8 @@ class TestExperimentSummaryEdgeCases:
 
     def test_experiment_summary_no_score(self):
         """Test summary when experiment has no score."""
-        from insideLLMs.visualization import experiment_summary_text
         from insideLLMs.types import ExperimentResult, ModelInfo, ProbeCategory
+        from insideLLMs.visualization import experiment_summary_text
 
         experiment = ExperimentResult(
             experiment_id="test_exp",
@@ -582,7 +582,7 @@ class TestExperimentSummaryEdgeCases:
     def test_experiment_summary_with_duration(self):
         """Test summary includes duration when available."""
         from datetime import datetime
-        from insideLLMs.visualization import experiment_summary_text
+
         from insideLLMs.types import (
             ExperimentResult,
             ModelInfo,
@@ -591,6 +591,7 @@ class TestExperimentSummaryEdgeCases:
             ProbeScore,
             ResultStatus,
         )
+        from insideLLMs.visualization import experiment_summary_text
 
         # Create an experiment with started_at/completed_at for duration
         results = [
@@ -993,7 +994,7 @@ class TestInteractiveHtmlReport:
         assert Path(result_path).exists()
         content = Path(result_path).read_text()
         assert "Test Dashboard" in content
-        assert "<html>" in content.lower()
+        assert "<html" in content.lower()
 
 
 class TestVisualizationFlags:

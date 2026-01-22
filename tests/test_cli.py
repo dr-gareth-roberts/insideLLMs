@@ -1253,7 +1253,7 @@ class TestReadJsonlRecords:
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             f.write('{"id": 1}\n')
-            f.write('\n')  # empty line
+            f.write("\n")  # empty line
             f.write('{"id": 2}\n')
             path = Path(f.name)
 
@@ -1269,7 +1269,7 @@ class TestReadJsonlRecords:
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             f.write('{"id": 1}\n')
-            f.write('not valid json\n')
+            f.write("not valid json\n")
             path = Path(f.name)
 
         try:
@@ -1466,10 +1466,7 @@ class TestPrimaryScore:
         """Test extracting primary score with primary_metric set."""
         from insideLLMs.cli import _primary_score
 
-        record = {
-            "primary_metric": "accuracy",
-            "scores": {"accuracy": 0.95, "f1": 0.9}
-        }
+        record = {"primary_metric": "accuracy", "scores": {"accuracy": 0.95, "f1": 0.9}}
         metric, value = _primary_score(record)
         assert metric == "accuracy"
         assert value == 0.95
