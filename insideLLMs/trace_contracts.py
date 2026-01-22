@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from insideLLMs.tracing import TraceEvent, TraceEventKind
 
@@ -172,61 +172,71 @@ def validate_stream_boundaries(
 
         if kind == TraceEventKind.STREAM_START.value:
             if stream_active:
-                violations.append(Violation(
-                    code=ViolationCode.GENERATE_NESTED.value,
-                    event_seq=seq,
-                    detail="Nested stream_start without prior stream_end",
-                    event_kind=kind,
-                    context={"prior_start_seq": stream_start_seq},
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.GENERATE_NESTED.value,
+                        event_seq=seq,
+                        detail="Nested stream_start without prior stream_end",
+                        event_kind=kind,
+                        context={"prior_start_seq": stream_start_seq},
+                    )
+                )
             stream_active = True
             stream_start_seq = seq
             last_chunk_index = -1
 
         elif kind == TraceEventKind.STREAM_CHUNK.value:
             if not stream_active:
-                violations.append(Violation(
-                    code=ViolationCode.STREAM_CHUNK_BEFORE_START.value,
-                    event_seq=seq,
-                    detail="stream_chunk without prior stream_start",
-                    event_kind=kind,
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.STREAM_CHUNK_BEFORE_START.value,
+                        event_seq=seq,
+                        detail="stream_chunk without prior stream_start",
+                        event_kind=kind,
+                    )
+                )
             else:
                 # Check chunk index continuity
                 chunk_index = event.payload.get("chunk_index", -1)
                 expected_index = last_chunk_index + 1
                 if chunk_index != expected_index:
-                    violations.append(Violation(
-                        code=ViolationCode.STREAM_CHUNK_INDEX_MISMATCH.value,
-                        event_seq=seq,
-                        detail=f"Expected chunk_index {expected_index}, got {chunk_index}",
-                        event_kind=kind,
-                        context={
-                            "expected": expected_index,
-                            "actual": chunk_index,
-                        },
-                    ))
+                    violations.append(
+                        Violation(
+                            code=ViolationCode.STREAM_CHUNK_INDEX_MISMATCH.value,
+                            event_seq=seq,
+                            detail=f"Expected chunk_index {expected_index}, got {chunk_index}",
+                            event_kind=kind,
+                            context={
+                                "expected": expected_index,
+                                "actual": chunk_index,
+                            },
+                        )
+                    )
                 last_chunk_index = chunk_index
 
         elif kind == TraceEventKind.STREAM_END.value:
             if not stream_active:
-                violations.append(Violation(
-                    code=ViolationCode.STREAM_NO_START.value,
-                    event_seq=seq,
-                    detail="stream_end without prior stream_start",
-                    event_kind=kind,
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.STREAM_NO_START.value,
+                        event_seq=seq,
+                        detail="stream_end without prior stream_start",
+                        event_kind=kind,
+                    )
+                )
             stream_active = False
             stream_start_seq = None
 
     # Check for unclosed stream
     if stream_active and stream_start_seq is not None:
-        violations.append(Violation(
-            code=ViolationCode.STREAM_NO_END.value,
-            event_seq=stream_start_seq,
-            detail="stream_start without matching stream_end",
-            event_kind=TraceEventKind.STREAM_START.value,
-        ))
+        violations.append(
+            Violation(
+                code=ViolationCode.STREAM_NO_END.value,
+                event_seq=stream_start_seq,
+                detail="stream_start without matching stream_end",
+                event_kind=TraceEventKind.STREAM_START.value,
+            )
+        )
 
     # Sort by event sequence for stable ordering
     violations.sort(key=lambda v: v.event_seq)
@@ -262,12 +272,14 @@ def validate_tool_payloads(
         arguments = event.payload.get("arguments", {})
 
         if not tool_name:
-            violations.append(Violation(
-                code=ViolationCode.INVALID_PAYLOAD.value,
-                event_seq=event.seq,
-                detail="tool_call_start missing tool_name",
-                event_kind=event.kind,
-            ))
+            violations.append(
+                Violation(
+                    code=ViolationCode.INVALID_PAYLOAD.value,
+                    event_seq=event.seq,
+                    detail="tool_call_start missing tool_name",
+                    event_kind=event.kind,
+                )
+            )
             continue
 
         # Check if we have a schema for this tool
@@ -279,33 +291,37 @@ def validate_tool_payloads(
         # Check required arguments
         for req_arg in schema.required_args:
             if req_arg not in arguments:
-                violations.append(Violation(
-                    code=ViolationCode.TOOL_MISSING_REQUIRED_ARG.value,
-                    event_seq=event.seq,
-                    detail=f"Tool '{tool_name}' missing required argument: {req_arg}",
-                    event_kind=event.kind,
-                    context={"tool_name": tool_name, "missing_arg": req_arg},
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.TOOL_MISSING_REQUIRED_ARG.value,
+                        event_seq=event.seq,
+                        detail=f"Tool '{tool_name}' missing required argument: {req_arg}",
+                        event_kind=event.kind,
+                        context={"tool_name": tool_name, "missing_arg": req_arg},
+                    )
+                )
 
         # Check argument types
         for arg_name, expected_type in schema.arg_types.items():
             if arg_name in arguments:
                 actual_value = arguments[arg_name]
                 if not isinstance(actual_value, expected_type):
-                    violations.append(Violation(
-                        code=ViolationCode.TOOL_INVALID_ARG_TYPE.value,
-                        event_seq=event.seq,
-                        detail=f"Tool '{tool_name}' argument '{arg_name}': "
-                               f"expected {expected_type.__name__}, "
-                               f"got {type(actual_value).__name__}",
-                        event_kind=event.kind,
-                        context={
-                            "tool_name": tool_name,
-                            "arg_name": arg_name,
-                            "expected_type": expected_type.__name__,
-                            "actual_type": type(actual_value).__name__,
-                        },
-                    ))
+                    violations.append(
+                        Violation(
+                            code=ViolationCode.TOOL_INVALID_ARG_TYPE.value,
+                            event_seq=event.seq,
+                            detail=f"Tool '{tool_name}' argument '{arg_name}': "
+                            f"expected {expected_type.__name__}, "
+                            f"got {type(actual_value).__name__}",
+                            event_kind=event.kind,
+                            context={
+                                "tool_name": tool_name,
+                                "arg_name": arg_name,
+                                "expected_type": expected_type.__name__,
+                                "actual_type": type(actual_value).__name__,
+                            },
+                        )
+                    )
 
     violations.sort(key=lambda v: v.event_seq)
     return violations
@@ -340,8 +356,6 @@ def validate_tool_order(
             tool_calls.append((event.seq, tool_name))
 
     tool_sequence = [name for _, name in tool_calls]
-    tool_positions = {seq: i for i, (seq, _) in enumerate(tool_calls)}
-
     # Check must_precede constraints
     for tool, must_come_after in ruleset.must_precede.items():
         tool_indices = [i for i, t in enumerate(tool_sequence) if t == tool]
@@ -352,20 +366,22 @@ def validate_tool_order(
                     if ti >= ai:
                         # tool should come before after_tool, but it doesn't
                         seq = tool_calls[ti][0]
-                        violations.append(Violation(
-                            code=ViolationCode.TOOL_ORDER_VIOLATION.value,
-                            event_seq=seq,
-                            detail=f"'{tool}' must precede '{after_tool}' but "
-                                   f"appeared at position {ti} vs {ai}",
-                            event_kind=TraceEventKind.TOOL_CALL_START.value,
-                            context={
-                                "rule_name": ruleset.name,
-                                "tool": tool,
-                                "must_precede": after_tool,
-                                "tool_position": ti,
-                                "after_position": ai,
-                            },
-                        ))
+                        violations.append(
+                            Violation(
+                                code=ViolationCode.TOOL_ORDER_VIOLATION.value,
+                                event_seq=seq,
+                                detail=f"'{tool}' must precede '{after_tool}' but "
+                                f"appeared at position {ti} vs {ai}",
+                                event_kind=TraceEventKind.TOOL_CALL_START.value,
+                                context={
+                                    "rule_name": ruleset.name,
+                                    "tool": tool,
+                                    "must_precede": after_tool,
+                                    "tool_position": ti,
+                                    "after_position": ai,
+                                },
+                            )
+                        )
 
     # Check must_follow constraints
     for tool, must_come_before in ruleset.must_follow.items():
@@ -377,17 +393,19 @@ def validate_tool_order(
                 has_required_predecessor = any(bi < ti for bi in before_indices)
                 if not has_required_predecessor and before_indices:
                     seq = tool_calls[ti][0]
-                    violations.append(Violation(
-                        code=ViolationCode.TOOL_ORDER_VIOLATION.value,
-                        event_seq=seq,
-                        detail=f"'{tool}' must follow '{before_tool}'",
-                        event_kind=TraceEventKind.TOOL_CALL_START.value,
-                        context={
-                            "rule_name": ruleset.name,
-                            "tool": tool,
-                            "must_follow": before_tool,
-                        },
-                    ))
+                    violations.append(
+                        Violation(
+                            code=ViolationCode.TOOL_ORDER_VIOLATION.value,
+                            event_seq=seq,
+                            detail=f"'{tool}' must follow '{before_tool}'",
+                            event_kind=TraceEventKind.TOOL_CALL_START.value,
+                            context={
+                                "rule_name": ruleset.name,
+                                "tool": tool,
+                                "must_follow": before_tool,
+                            },
+                        )
+                    )
 
     # Check forbidden sequences
     for forbidden in ruleset.forbidden_sequences:
@@ -395,20 +413,22 @@ def validate_tool_order(
             continue
         # Look for this sequence in tool_sequence
         for i in range(len(tool_sequence) - len(forbidden) + 1):
-            window = tool_sequence[i:i + len(forbidden)]
+            window = tool_sequence[i : i + len(forbidden)]
             if window == forbidden:
                 seq = tool_calls[i][0]
-                violations.append(Violation(
-                    code=ViolationCode.TOOL_ORDER_VIOLATION.value,
-                    event_seq=seq,
-                    detail=f"Forbidden tool sequence: {' -> '.join(forbidden)}",
-                    event_kind=TraceEventKind.TOOL_CALL_START.value,
-                    context={
-                        "rule_name": ruleset.name,
-                        "forbidden_sequence": forbidden,
-                        "position": i,
-                    },
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.TOOL_ORDER_VIOLATION.value,
+                        event_seq=seq,
+                        detail=f"Forbidden tool sequence: {' -> '.join(forbidden)}",
+                        event_kind=TraceEventKind.TOOL_CALL_START.value,
+                        context={
+                            "rule_name": ruleset.name,
+                            "forbidden_sequence": forbidden,
+                            "position": i,
+                        },
+                    )
+                )
 
     violations.sort(key=lambda v: v.event_seq)
     return violations
@@ -442,24 +462,28 @@ def validate_generate_boundaries(
 
         if kind == TraceEventKind.GENERATE_START.value:
             if generate_active:
-                violations.append(Violation(
-                    code=ViolationCode.GENERATE_NESTED.value,
-                    event_seq=seq,
-                    detail="Nested generate_start without prior generate_end",
-                    event_kind=kind,
-                    context={"prior_start_seq": generate_start_seq},
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.GENERATE_NESTED.value,
+                        event_seq=seq,
+                        detail="Nested generate_start without prior generate_end",
+                        event_kind=kind,
+                        context={"prior_start_seq": generate_start_seq},
+                    )
+                )
             generate_active = True
             generate_start_seq = seq
 
         elif kind == TraceEventKind.GENERATE_END.value:
             if not generate_active:
-                violations.append(Violation(
-                    code=ViolationCode.GENERATE_NO_START.value,
-                    event_seq=seq,
-                    detail="generate_end without prior generate_start",
-                    event_kind=kind,
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.GENERATE_NO_START.value,
+                        event_seq=seq,
+                        detail="generate_end without prior generate_start",
+                        event_kind=kind,
+                    )
+                )
             generate_active = False
             generate_start_seq = None
 
@@ -471,12 +495,14 @@ def validate_generate_boundaries(
 
     # Check for unclosed generate
     if generate_active and generate_start_seq is not None:
-        violations.append(Violation(
-            code=ViolationCode.GENERATE_NO_END.value,
-            event_seq=generate_start_seq,
-            detail="generate_start without matching generate_end",
-            event_kind=TraceEventKind.GENERATE_START.value,
-        ))
+        violations.append(
+            Violation(
+                code=ViolationCode.GENERATE_NO_END.value,
+                event_seq=generate_start_seq,
+                detail="generate_start without matching generate_end",
+                event_kind=TraceEventKind.GENERATE_START.value,
+            )
+        )
 
     violations.sort(key=lambda v: v.event_seq)
     return violations
@@ -519,25 +545,29 @@ def validate_tool_results(
             key = tool_call_id or tool_name
 
             if key not in pending_calls:
-                violations.append(Violation(
-                    code=ViolationCode.TOOL_RESULT_BEFORE_CALL.value,
-                    event_seq=seq,
-                    detail=f"tool_result for '{tool_name}' without prior tool_call_start",
-                    event_kind=kind,
-                    context={"tool_name": tool_name},
-                ))
+                violations.append(
+                    Violation(
+                        code=ViolationCode.TOOL_RESULT_BEFORE_CALL.value,
+                        event_seq=seq,
+                        detail=f"tool_result for '{tool_name}' without prior tool_call_start",
+                        event_kind=kind,
+                        context={"tool_name": tool_name},
+                    )
+                )
             else:
                 del pending_calls[key]
 
     # Check for calls without results
     for key, start_seq in pending_calls.items():
-        violations.append(Violation(
-            code=ViolationCode.TOOL_NO_RESULT.value,
-            event_seq=start_seq,
-            detail=f"tool_call_start for '{key}' without tool_result",
-            event_kind=TraceEventKind.TOOL_CALL_START.value,
-            context={"tool_key": key},
-        ))
+        violations.append(
+            Violation(
+                code=ViolationCode.TOOL_NO_RESULT.value,
+                event_seq=start_seq,
+                detail=f"tool_call_start for '{key}' without tool_result",
+                event_kind=TraceEventKind.TOOL_CALL_START.value,
+                context={"tool_key": key},
+            )
+        )
 
     violations.sort(key=lambda v: v.event_seq)
     return violations

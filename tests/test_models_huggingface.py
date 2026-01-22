@@ -10,22 +10,18 @@ class TestHuggingFaceModelInit:
 
     def test_init_loads_components(self):
         """Test that init loads all components correctly."""
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
             MockModel.from_pretrained.return_value = MagicMock()
             mock_pipeline.return_value = MagicMock()
 
-            model = HuggingFaceModel(
-                name="TestModel", model_name="gpt2", device=0
-            )
+            model = HuggingFaceModel(name="TestModel", model_name="gpt2", device=0)
 
             assert model.name == "TestModel"
             assert model.model_name == "gpt2"
@@ -37,14 +33,10 @@ class TestHuggingFaceModelInit:
         """Test that tokenizer error raises ModelInitializationError."""
         from insideLLMs.exceptions import ModelInitializationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer:
+        with patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer:
             from insideLLMs.models.huggingface import HuggingFaceModel
 
-            MockTokenizer.from_pretrained.side_effect = Exception(
-                "Tokenizer error"
-            )
+            MockTokenizer.from_pretrained.side_effect = Exception("Tokenizer error")
 
             with pytest.raises(ModelInitializationError) as exc_info:
                 HuggingFaceModel(model_name="bad-model")
@@ -55,11 +47,10 @@ class TestHuggingFaceModelInit:
         """Test that model error raises ModelInitializationError."""
         from insideLLMs.exceptions import ModelInitializationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -74,13 +65,11 @@ class TestHuggingFaceModelInit:
         """Test that pipeline error raises ModelInitializationError."""
         from insideLLMs.exceptions import ModelInitializationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -98,13 +87,11 @@ class TestHuggingFaceModelGenerate:
 
     def test_generate_basic(self):
         """Test basic generation."""
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -124,13 +111,11 @@ class TestHuggingFaceModelGenerate:
         """Test that generation errors are wrapped."""
         from insideLLMs.exceptions import ModelGenerationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -151,13 +136,11 @@ class TestHuggingFaceModelChat:
 
     def test_chat_basic(self):
         """Test basic chat."""
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -177,13 +160,11 @@ class TestHuggingFaceModelChat:
         """Test that chat errors are wrapped."""
         from insideLLMs.exceptions import ModelGenerationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -205,13 +186,11 @@ class TestHuggingFaceModelStream:
 
     def test_stream_basic(self):
         """Test basic streaming."""
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -230,13 +209,11 @@ class TestHuggingFaceModelStream:
         """Test that stream errors are wrapped."""
         from insideLLMs.exceptions import ModelGenerationError
 
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()
@@ -257,13 +234,11 @@ class TestHuggingFaceModelInfo:
 
     def test_info_returns_model_info(self):
         """Test info returns correct ModelInfo."""
-        with patch(
-            "insideLLMs.models.huggingface.AutoTokenizer"
-        ) as MockTokenizer, patch(
-            "insideLLMs.models.huggingface.AutoModelForCausalLM"
-        ) as MockModel, patch(
-            "insideLLMs.models.huggingface.pipeline"
-        ) as mock_pipeline:
+        with (
+            patch("insideLLMs.models.huggingface.AutoTokenizer") as MockTokenizer,
+            patch("insideLLMs.models.huggingface.AutoModelForCausalLM") as MockModel,
+            patch("insideLLMs.models.huggingface.pipeline") as mock_pipeline,
+        ):
             from insideLLMs.models.huggingface import HuggingFaceModel
 
             MockTokenizer.from_pretrained.return_value = MagicMock()

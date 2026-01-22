@@ -109,6 +109,7 @@ class TestNltkDependentFunctions:
         """Check if NLTK is available."""
         try:
             import nltk
+
             nltk.data.find("tokenizers/punkt")
             nltk.data.find("corpora/stopwords")
             nltk.data.find("corpora/wordnet")
@@ -167,6 +168,7 @@ class TestSpacyDependentFunctions:
         """Check if spaCy is available."""
         try:
             import spacy
+
             spacy.load("en_core_web_sm")
             return True
         except (ImportError, OSError):

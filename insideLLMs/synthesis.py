@@ -37,11 +37,15 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Optional,
     Union,
 )
+
+if TYPE_CHECKING:
+    from insideLLMs.models.base import Model
 
 # =============================================================================
 # Configuration and Types

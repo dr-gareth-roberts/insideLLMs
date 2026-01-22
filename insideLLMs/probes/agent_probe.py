@@ -23,15 +23,14 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from insideLLMs.probes.base import Probe
-from insideLLMs.tracing import TraceRecorder, TraceEvent, TraceEventKind
 from insideLLMs.trace_config import (
+    OnViolationMode,
     TraceConfig,
+    TracePayloadNormaliser,
     load_trace_config,
     validate_with_config,
-    OnViolationMode,
-    TracePayloadNormaliser,
 )
-from insideLLMs.trace_contracts import Violation
+from insideLLMs.tracing import TraceEventKind, TraceRecorder
 from insideLLMs.types import ProbeCategory, ProbeResult, ProbeScore, ResultStatus
 
 
@@ -212,9 +211,7 @@ class AgentProbe(Probe[AgentProbeResult]):
         # Normalise payloads if configured
         if self._trace_config.store.redact.enabled:
             for event_dict in event_dicts:
-                event_dict["payload"] = self._normaliser.normalise(
-                    event_dict.get("payload", {})
-                )
+                event_dict["payload"] = self._normaliser.normalise(event_dict.get("payload", {}))
 
         # Compute fingerprint
         fingerprint = trace_fingerprint(events)
@@ -246,9 +243,7 @@ class AgentProbe(Probe[AgentProbeResult]):
 
         # Handle violations based on config
         if violations and self._trace_config.on_violation.mode == OnViolationMode.FAIL_PROBE:
-            raise ValueError(
-                f"Trace contract violations: {[v.detail for v in violations]}"
-            )
+            raise ValueError(f"Trace contract violations: {[v.detail for v in violations]}")
 
         return result
 
@@ -276,9 +271,7 @@ class AgentProbe(Probe[AgentProbeResult]):
                     violation_count += 1
 
         if total_with_output > 0:
-            base_score.custom_metrics["violation_rate"] = (
-                violation_count / total_with_output
-            )
+            base_score.custom_metrics["violation_rate"] = violation_count / total_with_output
 
         return base_score
 
@@ -299,9 +292,7 @@ class AgentProbe(Probe[AgentProbeResult]):
     def info(self) -> dict[str, Any]:
         """Return probe metadata including tool info."""
         base_info = super().info()
-        base_info["tools"] = [
-            {"name": t.name, "description": t.description} for t in self.tools
-        ]
+        base_info["tools"] = [{"name": t.name, "description": t.description} for t in self.tools]
         base_info["trace_enabled"] = self._trace_config.enabled
         base_info["contracts_enabled"] = self._trace_config.contracts.enabled
         return base_info

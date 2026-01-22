@@ -254,14 +254,14 @@ class InstructionFollowingProbe(ScoredProbe[str]):
 
         elif expected_format == "numbered_list":
             pattern = r"^\s*\d+[\.\)]\s+"
-            lines = [l for l in output.split("\n") if l.strip()]
-            numbered_lines = sum(1 for l in lines if re.match(pattern, l))
+            lines = [line for line in output.split("\n") if line.strip()]
+            numbered_lines = sum(1 for line in lines if re.match(pattern, line))
             return numbered_lines / len(lines) if lines else 0.0
 
         elif expected_format == "bullet_list":
             pattern = r"^\s*[-*•]\s+"
-            lines = [l for l in output.split("\n") if l.strip()]
-            bullet_lines = sum(1 for l in lines if re.match(pattern, l))
+            lines = [line for line in output.split("\n") if line.strip()]
+            bullet_lines = sum(1 for line in lines if re.match(pattern, line))
             return bullet_lines / len(lines) if lines else 0.0
 
         elif expected_format == "single_word":

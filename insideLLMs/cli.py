@@ -664,12 +664,12 @@ def _build_experiments_from_records(
         )
         return experiments, derived_config, schema_version
 
-    groups: dict[str, list[dict[str, Any]]] = {}
+    run_groups: dict[str, list[dict[str, Any]]] = {}
     for record in records:
         run_id = record.get("run_id") or "run"
-        groups.setdefault(str(run_id), []).append(record)
+        run_groups.setdefault(str(run_id), []).append(record)
 
-    for run_id, group_records in groups.items():
+    for run_id, group_records in run_groups.items():
         first = group_records[0]
         model_spec = first.get("model", {}) if isinstance(first.get("model"), dict) else {}
         probe_spec = first.get("probe", {}) if isinstance(first.get("probe"), dict) else {}
@@ -2017,6 +2017,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     result["experiments"],
                     title=report_title,
                     save_path=str(report_path),
+                    generated_at=created_at,
                 )
             except ImportError:
                 report_html = _build_basic_harness_report(
@@ -2252,6 +2253,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             experiments,
             title=report_title,
             save_path=str(report_path),
+            generated_at=generated_at,
         )
     except ImportError:
         report_html = _build_basic_harness_report(
@@ -2636,7 +2638,9 @@ def cmd_diff(args: argparse.Namespace) -> int:
     if trace_drifts:
         print_key_value("Trace drifts", diff_report["counts"]["trace_drifts"])
     if trace_violation_increases:
-        print_key_value("Trace violation increases", diff_report["counts"]["trace_violation_increases"])
+        print_key_value(
+            "Trace violation increases", diff_report["counts"]["trace_violation_increases"]
+        )
 
     def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
         if not items:
@@ -3433,32 +3437,32 @@ def cmd_validate(args: argparse.Namespace) -> int:
         with open(config_path) as f:
             config = yaml.safe_load(f) if config_path.suffix in (".yaml", ".yml") else json.load(f)
 
-        errors: list[str] = []
+        config_errors: list[str] = []
         warnings: list[str] = []
 
         # Validate model
         if "model" not in config:
-            errors.append("Missing required field: model")
+            config_errors.append("Missing required field: model")
         else:
             model_config = config["model"]
             if "type" not in model_config:
-                errors.append("Missing model.type")
+                config_errors.append("Missing model.type")
             else:
                 ensure_builtins_registered()
                 if model_config["type"] not in model_registry.list():
-                    errors.append(f"Unknown model type: {model_config['type']}")
+                    config_errors.append(f"Unknown model type: {model_config['type']}")
 
         # Validate probe
         if "probe" not in config:
-            errors.append("Missing required field: probe")
+            config_errors.append("Missing required field: probe")
         else:
             probe_config = config["probe"]
             if "type" not in probe_config:
-                errors.append("Missing probe.type")
+                config_errors.append("Missing probe.type")
             else:
                 ensure_builtins_registered()
                 if probe_config["type"] not in probe_registry.list():
-                    errors.append(f"Unknown probe type: {probe_config['type']}")
+                    config_errors.append(f"Unknown probe type: {probe_config['type']}")
 
         # Validate dataset
         if "dataset" not in config:
@@ -3471,9 +3475,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     warnings.append(f"Dataset file not found: {ds_path}")
 
         # Report results
-        if errors:
+        if config_errors:
             print_subheader("Errors")
-            for e in errors:
+            for e in config_errors:
                 print(f"  {colorize('ERROR', Colors.RED)} {e}")
 
         if warnings:
@@ -3481,13 +3485,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
             for w in warnings:
                 print(f"  {colorize('WARN', Colors.YELLOW)} {w}")
 
-        if not errors:
+        if not config_errors:
             print()
             print_success("Configuration is valid!")
             return 0
         else:
             print()
-            print_error(f"Configuration has {len(errors)} error(s)")
+            print_error(f"Configuration has {len(config_errors)} error(s)")
             return 1
 
     except Exception as e:

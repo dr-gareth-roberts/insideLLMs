@@ -125,7 +125,9 @@ class TestValidateStreamBoundaries:
         events = [
             TraceEvent(seq=0, kind="stream_start", payload={}),
             TraceEvent(seq=1, kind="stream_chunk", payload={"chunk": "a", "chunk_index": 0}),
-            TraceEvent(seq=2, kind="stream_chunk", payload={"chunk": "b", "chunk_index": 2}),  # Should be 1
+            TraceEvent(
+                seq=2, kind="stream_chunk", payload={"chunk": "b", "chunk_index": 2}
+            ),  # Should be 1
             TraceEvent(seq=3, kind="stream_end", payload={}),
         ]
         violations = validate_stream_boundaries(events)
@@ -267,9 +269,6 @@ class TestValidateToolOrder:
 
     def test_must_follow(self):
         """Test must_follow constraint."""
-        events = [
-            TraceEvent(seq=0, kind="tool_call_start", payload={"tool_name": "summarize"}),
-        ]
         ruleset = ToolOrderRule(
             name="test_rules",
             must_follow={"summarize": ["search"]},  # summarize must follow search

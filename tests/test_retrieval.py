@@ -8,8 +8,8 @@ from insideLLMs.retrieval import (
     InMemoryVectorStore,
     RAGChain,
     RAGResponse,
-    Retriever,
     RetrievalResult,
+    Retriever,
     SimpleEmbedding,
     TextChunker,
     create_rag_chain,
@@ -117,6 +117,7 @@ class TestSimpleEmbedding:
 
         # Check normalization (magnitude should be close to 1)
         import math
+
         magnitude = math.sqrt(sum(x * x for x in embedding))
         assert abs(magnitude - 1.0) < 0.01 or magnitude == 0  # Allow for zero vectors
 
@@ -139,6 +140,7 @@ class TestSimpleEmbedding:
             return dot / (norm_a * norm_b)
 
         import math
+
         sim_12 = cosine_sim(emb1, emb2)
         sim_13 = cosine_sim(emb1, emb3)
 
@@ -406,11 +408,13 @@ class TestRetriever:
         store = InMemoryVectorStore()
         retriever = Retriever(embedding, store)
 
-        retriever.add_texts([
-            "The cat sat on the mat",
-            "Dogs love to play fetch",
-            "Birds fly in the sky",
-        ])
+        retriever.add_texts(
+            [
+                "The cat sat on the mat",
+                "Dogs love to play fetch",
+                "Birds fly in the sky",
+            ]
+        )
 
         results = retriever.retrieve("cat", k=2)
 
@@ -471,6 +475,7 @@ class TestRAGChain:
 
     def test_create_rag_chain_with_defaults(self):
         """Test creating RAG chain with default components."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Generated response"
@@ -483,6 +488,7 @@ class TestRAGChain:
 
     def test_add_documents_as_strings(self):
         """Test adding documents as strings."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Response"
@@ -494,6 +500,7 @@ class TestRAGChain:
 
     def test_add_documents_as_document_objects(self):
         """Test adding documents as Document objects."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Response"
@@ -506,6 +513,7 @@ class TestRAGChain:
 
     def test_query(self):
         """Test querying the RAG chain."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return f"Answer based on: {prompt[:50]}"
@@ -522,6 +530,7 @@ class TestRAGChain:
 
     def test_query_with_custom_k(self):
         """Test querying with custom k."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Answer"
@@ -535,6 +544,7 @@ class TestRAGChain:
 
     def test_query_with_chat(self):
         """Test query_with_chat method."""
+
         class MockModel:
             def chat(self, messages, **kwargs):
                 return "Chat response"
@@ -548,6 +558,7 @@ class TestRAGChain:
 
     def test_query_with_chat_fallback_to_generate(self):
         """Test that query_with_chat falls back to generate if chat not available."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Generate response"
@@ -561,6 +572,7 @@ class TestRAGChain:
 
     def test_format_context(self):
         """Test internal context formatting."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Answer"
@@ -588,6 +600,7 @@ class TestRAGChain:
 
     def test_custom_prompt_template(self):
         """Test using a custom prompt template."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return prompt
@@ -607,6 +620,7 @@ class TestCreateRagChain:
 
     def test_create_with_defaults(self):
         """Test creating RAG chain with defaults."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Response"
@@ -618,6 +632,7 @@ class TestCreateRagChain:
 
     def test_create_with_documents(self):
         """Test creating RAG chain with initial documents."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Response"
@@ -633,6 +648,7 @@ class TestCreateRagChain:
 
     def test_create_with_custom_config(self):
         """Test creating RAG chain with custom configuration."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "Response"
@@ -652,6 +668,7 @@ class TestIntegration:
 
     def test_full_rag_pipeline(self):
         """Test complete RAG pipeline from documents to query."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 if "Paris" in prompt:
@@ -662,11 +679,13 @@ class TestIntegration:
         rag = RAGChain(model=MockModel())
 
         # Add documents
-        rag.add_documents([
-            "Paris is the capital of France. It is known for the Eiffel Tower.",
-            "Berlin is the capital of Germany. It has a rich history.",
-            "Tokyo is the capital of Japan. It is a modern metropolis.",
-        ])
+        rag.add_documents(
+            [
+                "Paris is the capital of France. It is known for the Eiffel Tower.",
+                "Berlin is the capital of Germany. It has a rich history.",
+                "Tokyo is the capital of Japan. It is a modern metropolis.",
+            ]
+        )
 
         # Query
         response = rag.query("What is the capital of France?", k=2)
@@ -676,6 +695,7 @@ class TestIntegration:
 
     def test_empty_retriever_query(self):
         """Test querying with no documents added."""
+
         class MockModel:
             def generate(self, prompt, **kwargs):
                 return "No context available"

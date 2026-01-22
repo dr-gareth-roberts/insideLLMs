@@ -356,9 +356,7 @@ class AsyncCountingMiddleware(Middleware):
             return await self.next_middleware.aprocess_generate(prompt, **kwargs)
         if self.model:
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None, lambda: self.model.generate(prompt, **kwargs)
-            )
+            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
         raise ModelError("No model available")
 
 
@@ -427,8 +425,6 @@ async def test_async_rate_limit_middleware():
     rate_limiter = RateLimitMiddleware(requests_per_minute=120)
     pipeline = ModelPipeline(model, middlewares=[rate_limiter])
 
-    start = time.time()
-
     # Run concurrent requests
     results = await asyncio.gather(
         pipeline.agenerate("test1"),
@@ -436,7 +432,6 @@ async def test_async_rate_limit_middleware():
         pipeline.agenerate("test3"),
     )
 
-    elapsed = time.time() - start
     assert len(results) == 3
     assert all(isinstance(r, str) for r in results)
 
@@ -513,8 +508,6 @@ async def test_async_pipeline_concurrency_limit():
 
     max_concurrent = 0
     current_concurrent = 0
-    lock = asyncio.Lock()
-
     original_generate = model.generate
 
     def tracking_generate(prompt, **kwargs):

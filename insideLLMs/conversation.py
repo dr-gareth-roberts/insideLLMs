@@ -815,7 +815,7 @@ class ConsistencyChecker:
             lengths = [t.assistant_response.word_count for t in turns]
             if len(lengths) > 1:
                 mean_len = sum(lengths) / len(lengths)
-                variance = sum((l - mean_len) ** 2 for l in lengths) / len(lengths)
+                variance = sum((length - mean_len) ** 2 for length in lengths) / len(lengths)
                 # Lower variance = higher consistency
                 stylistic_score = max(0, 1 - (variance / max(mean_len**2, 1)))
             else:
@@ -891,7 +891,9 @@ class EngagementAnalyzer:
         response_lengths = [t.assistant_response.word_count for t in turns]
         avg_length = sum(response_lengths) / len(response_lengths)
         if len(response_lengths) > 1:
-            variance = sum((l - avg_length) ** 2 for l in response_lengths) / len(response_lengths)
+            variance = sum((length - avg_length) ** 2 for length in response_lengths) / len(
+                response_lengths
+            )
         else:
             variance = 0
 

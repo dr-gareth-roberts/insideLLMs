@@ -70,6 +70,7 @@ class TestJaccardSimilarity:
 
     def test_custom_tokenizer(self):
         """Test with custom tokenizer."""
+
         def char_tokenizer(text):
             return list(text)
 
@@ -254,6 +255,7 @@ class TestCosineSimilarityTexts:
         """Check if sklearn is available."""
         try:
             import sklearn  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("sklearn not available")
@@ -265,18 +267,12 @@ class TestCosineSimilarityTexts:
 
     def test_similar_texts(self, sklearn_available):
         """Test cosine similarity of similar texts."""
-        similarity = cosine_similarity_texts(
-            "the cat sat on the mat",
-            "the cat sat on the rug"
-        )
+        similarity = cosine_similarity_texts("the cat sat on the mat", "the cat sat on the rug")
         assert 0.5 < similarity < 1.0
 
     def test_different_texts(self, sklearn_available):
         """Test cosine similarity of different texts."""
-        similarity = cosine_similarity_texts(
-            "apple banana orange",
-            "car truck bicycle"
-        )
+        similarity = cosine_similarity_texts("apple banana orange", "car truck bicycle")
         assert similarity < 0.5
 
     def test_result_is_float(self, sklearn_available):

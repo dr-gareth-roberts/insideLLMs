@@ -98,22 +98,6 @@ from insideLLMs.probes import (
 )
 
 # =============================================================================
-# Trace Configuration (For deterministic CI enforcement)
-# =============================================================================
-from insideLLMs.trace_config import (
-    TraceConfig,
-    load_trace_config,
-    validate_with_config,
-    TracePayloadNormaliser,
-    OnViolationMode,
-    StoreMode,
-    NormaliserKind,
-    NormaliserConfig,
-    FingerprintConfig,
-    make_structural_v1_normaliser,
-)
-
-# =============================================================================
 # Registry (For plugin system)
 # =============================================================================
 from insideLLMs.registry import (
@@ -140,6 +124,22 @@ from insideLLMs.runner import (
     create_experiment_result,
     run_harness_from_config,
     run_probe,
+)
+
+# =============================================================================
+# Trace Configuration (For deterministic CI enforcement)
+# =============================================================================
+from insideLLMs.trace_config import (
+    FingerprintConfig,
+    NormaliserConfig,
+    NormaliserKind,
+    OnViolationMode,
+    StoreMode,
+    TraceConfig,
+    TracePayloadNormaliser,
+    load_trace_config,
+    make_structural_v1_normaliser,
+    validate_with_config,
 )
 from insideLLMs.types import (
     ExperimentResult,

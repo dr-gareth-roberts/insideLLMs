@@ -1,15 +1,16 @@
 """Tests for AgentProbe class."""
 
-import pytest
 from typing import Any
+
+import pytest
 
 from insideLLMs.probes.agent_probe import (
     AgentProbe,
     AgentProbeResult,
     ToolDefinition,
 )
-from insideLLMs.tracing import TraceRecorder, TraceEventKind
-from insideLLMs.trace_config import TraceConfig, load_trace_config, OnViolationMode
+from insideLLMs.trace_config import OnViolationMode, TraceConfig, load_trace_config
+from insideLLMs.tracing import TraceEventKind, TraceRecorder
 from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 
 
@@ -181,6 +182,7 @@ class TestAgentProbe:
 
     def test_run_validates_contracts(self):
         """Test that violations are detected."""
+
         class BadAgentProbe(AgentProbe):
             """Probe that creates invalid traces."""
 
@@ -201,6 +203,7 @@ class TestAgentProbe:
 
     def test_run_fail_probe_on_violation(self):
         """Test fail_probe mode raises on violation."""
+
         class BadAgentProbe(AgentProbe):
             def run_agent(self, model, prompt, tools, recorder, **kwargs):
                 recorder.record_generate_start(prompt)
@@ -301,6 +304,7 @@ class TestAgentProbePayloadRedaction:
 
     def test_redacts_sensitive_payloads(self):
         """Test that sensitive data is redacted in trace."""
+
         class SecretAgentProbe(AgentProbe):
             def run_agent(self, model, prompt, tools, recorder, **kwargs):
                 recorder.record_generate_start(prompt)

@@ -415,7 +415,9 @@ class CoherenceScorer:
         avg_length = sum(sentence_lengths) / len(sentence_lengths) if sentence_lengths else 0
 
         # Check for very short or very long sentences
-        problematic_sentences = sum(1 for l in sentence_lengths if l < 3 or l > 50)
+        problematic_sentences = sum(
+            1 for sentence_length in sentence_lengths if sentence_length < 3 or sentence_length > 50
+        )
 
         # Check for repeated starts (sign of incoherence)
         sentence_starts = [s.split()[0].lower() if s.split() else "" for s in sentences]

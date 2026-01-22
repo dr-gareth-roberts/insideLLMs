@@ -501,7 +501,9 @@ class ConsistencyAnalyzer:
         lengths = [len(r.split()) for r in responses]
         avg_length = sum(lengths) / len(lengths)
         length_variance = (
-            sum((l - avg_length) ** 2 for l in lengths) / len(lengths) if len(lengths) > 1 else 0
+            sum((length - avg_length) ** 2 for length in lengths) / len(lengths)
+            if len(lengths) > 1
+            else 0
         )
         min(1.0, length_variance / (avg_length**2 + 1))
 

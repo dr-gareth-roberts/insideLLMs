@@ -144,11 +144,11 @@ class TestExtractJson:
         """Test extracting JSON from code block."""
         from insideLLMs.structured import extract_json
 
-        text = '''Here is the data:
+        text = """Here is the data:
 ```json
 {"name": "John", "age": 30}
 ```
-'''
+"""
         result = extract_json(text)
         assert json.loads(result) == {"name": "John", "age": 30}
 
@@ -164,7 +164,7 @@ class TestExtractJson:
         """Test extracting JSON array."""
         from insideLLMs.structured import extract_json
 
-        text = 'Here is the list: [1, 2, 3]'
+        text = "Here is the list: [1, 2, 3]"
         result = extract_json(text)
         assert json.loads(result) == [1, 2, 3]
 
@@ -198,9 +198,9 @@ class TestParseJson:
         """Test parsing JSON from markdown."""
         from insideLLMs.structured import parse_json
 
-        text = '''```json
+        text = """```json
 {"items": [1, 2, 3]}
-```'''
+```"""
         result = parse_json(text)
         assert result == {"items": [1, 2, 3]}
 
@@ -260,6 +260,7 @@ class TestPydanticIntegration:
         """Check if Pydantic is available."""
         try:
             from pydantic import BaseModel  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("Pydantic not available")
@@ -313,6 +314,7 @@ class TestUnionTypes:
     def test_union_multiple_types(self):
         """Test Union with multiple non-None types."""
         from typing import Union
+
         from insideLLMs.structured import _python_type_to_json_schema
 
         result = _python_type_to_json_schema(Union[str, int])
@@ -322,6 +324,7 @@ class TestUnionTypes:
     def test_union_with_none(self):
         """Test Union with None (Optional)."""
         from typing import Union
+
         from insideLLMs.structured import _python_type_to_json_schema
 
         result = _python_type_to_json_schema(Union[str, None])
@@ -362,11 +365,11 @@ class TestExtractJsonEdgeCases:
         """Test extracting from generic code block without json specifier."""
         from insideLLMs.structured import extract_json
 
-        text = '''Here is the result:
+        text = """Here is the result:
 ```
 {"status": "ok"}
 ```
-'''
+"""
         result = extract_json(text)
         assert json.loads(result) == {"status": "ok"}
 
@@ -374,10 +377,10 @@ class TestExtractJsonEdgeCases:
         """Test that invalid JSON in code block tries next pattern."""
         from insideLLMs.structured import extract_json
 
-        text = '''```json
+        text = """```json
 this is not valid json
 ```
-The actual result is {"valid": true}'''
+The actual result is {"valid": true}"""
         result = extract_json(text)
         assert json.loads(result) == {"valid": True}
 
@@ -417,6 +420,7 @@ class TestDataclassWithDefaults:
     def test_dataclass_with_default_factory(self):
         """Test dataclass with default_factory."""
         from dataclasses import dataclass, field
+
         from insideLLMs.structured import dataclass_to_json_schema
 
         @dataclass
@@ -433,6 +437,7 @@ class TestDataclassWithDefaults:
     def test_dataclass_all_defaults(self):
         """Test dataclass where all fields have defaults."""
         from dataclasses import dataclass
+
         from insideLLMs.structured import dataclass_to_json_schema
 
         @dataclass
@@ -744,7 +749,7 @@ class TestStructuredOutputGenerator:
 
     def test_build_prompt_without_examples(self):
         """Test building prompt without examples."""
-        from insideLLMs.structured import StructuredOutputGenerator, StructuredOutputConfig
+        from insideLLMs.structured import StructuredOutputConfig, StructuredOutputGenerator
 
         @dataclass
         class Item:
@@ -761,7 +766,7 @@ class TestStructuredOutputGenerator:
 
     def test_build_prompt_with_examples(self):
         """Test building prompt with examples."""
-        from insideLLMs.structured import StructuredOutputGenerator, StructuredOutputConfig
+        from insideLLMs.structured import StructuredOutputConfig, StructuredOutputGenerator
 
         @dataclass
         class Item:
@@ -819,7 +824,7 @@ class TestStructuredOutputGenerator:
 
     def test_generate_retries_on_failure(self):
         """Test generate retries on parsing failure."""
-        from insideLLMs.structured import StructuredOutputGenerator, StructuredOutputConfig
+        from insideLLMs.structured import StructuredOutputConfig, StructuredOutputGenerator
 
         @dataclass
         class Item:
@@ -827,9 +832,7 @@ class TestStructuredOutputGenerator:
 
         mock_model = MagicMock()
         # First call fails, second succeeds
-        mock_model.chat = MagicMock(
-            side_effect=["invalid json", '{"name": "Widget"}']
-        )
+        mock_model.chat = MagicMock(side_effect=["invalid json", '{"name": "Widget"}'])
 
         config = StructuredOutputConfig(max_retries=2)
         generator = StructuredOutputGenerator(mock_model, Item, config)
@@ -840,7 +843,11 @@ class TestStructuredOutputGenerator:
 
     def test_generate_fails_after_max_retries(self):
         """Test generate fails after max retries."""
-        from insideLLMs.structured import StructuredOutputGenerator, StructuredOutputConfig, ParsingError
+        from insideLLMs.structured import (
+            ParsingError,
+            StructuredOutputConfig,
+            StructuredOutputGenerator,
+        )
 
         @dataclass
         class Item:
@@ -866,9 +873,7 @@ class TestStructuredOutputGenerator:
             name: str
 
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(
-            side_effect=['{"name": "Alice"}', '{"name": "Bob"}']
-        )
+        mock_model.chat = MagicMock(side_effect=['{"name": "Alice"}', '{"name": "Bob"}'])
 
         generator = StructuredOutputGenerator(mock_model, Person)
         results = generator.generate_batch(["Alice info", "Bob info"])
@@ -911,7 +916,7 @@ class TestParseToTypeBasicTypes:
 
     def test_parse_dataclass_failure(self):
         """Test parsing to dataclass with invalid data."""
-        from insideLLMs.structured import parse_to_type, ParsingError
+        from insideLLMs.structured import ParsingError, parse_to_type
 
         @dataclass
         class Person:
@@ -923,7 +928,7 @@ class TestParseToTypeBasicTypes:
 
     def test_parse_to_custom_type_failure(self):
         """Test parsing to unsupported type fails gracefully."""
-        from insideLLMs.structured import parse_to_type, ParsingError
+        from insideLLMs.structured import ParsingError, parse_to_type
 
         class CustomType:
             def __init__(self, value):
@@ -1028,6 +1033,7 @@ class TestPydanticValidationError:
         """Check if Pydantic is available."""
         try:
             from pydantic import BaseModel  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("Pydantic not available")
@@ -1035,7 +1041,8 @@ class TestPydanticValidationError:
     def test_validation_error_raises_wrapper(self, pydantic_available):
         """Test that Pydantic validation error is wrapped."""
         from pydantic import BaseModel
-        from insideLLMs.structured import parse_to_type, ValidationErrorWrapper
+
+        from insideLLMs.structured import ValidationErrorWrapper, parse_to_type
 
         class Person(BaseModel):
             name: str
@@ -1047,6 +1054,7 @@ class TestPydanticValidationError:
     def test_pydantic_nested_model_schema(self, pydantic_available):
         """Test JSON schema for nested Pydantic model."""
         from pydantic import BaseModel
+
         from insideLLMs.structured import _python_type_to_json_schema
 
         class Address(BaseModel):
@@ -1068,6 +1076,7 @@ class TestStructuredResultWithPydantic:
         """Check if Pydantic is available."""
         try:
             from pydantic import BaseModel  # noqa: F401
+
             return True
         except ImportError:
             pytest.skip("Pydantic not available")
@@ -1075,6 +1084,7 @@ class TestStructuredResultWithPydantic:
     def test_to_dict_with_pydantic_v2(self, pydantic_available):
         """Test to_dict with Pydantic v2 model."""
         from pydantic import BaseModel
+
         from insideLLMs.structured import StructuredResult
 
         class Person(BaseModel):
@@ -1146,18 +1156,16 @@ class TestBatchExtract:
 
     def test_batch_extract_basic(self):
         """Test basic batch extraction."""
-        from insideLLMs.structured import batch_extract, StructuredResult
+        from insideLLMs.structured import StructuredResult, batch_extract
 
         @dataclass
         class Item:
             name: str
 
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(side_effect=[
-            '{"name": "Apple"}',
-            '{"name": "Banana"}',
-            '{"name": "Cherry"}'
-        ])
+        mock_model.chat = MagicMock(
+            side_effect=['{"name": "Apple"}', '{"name": "Banana"}', '{"name": "Cherry"}']
+        )
         mock_model.name = "test-model"
 
         texts = ["apple text", "banana text", "cherry text"]
@@ -1178,11 +1186,13 @@ class TestBatchExtract:
             name: str
 
         mock_model = MagicMock()
-        mock_model.chat = MagicMock(side_effect=[
-            '{"name": "Valid"}',
-            'invalid json',  # This will cause an error
-            '{"name": "Another"}'
-        ])
+        mock_model.chat = MagicMock(
+            side_effect=[
+                '{"name": "Valid"}',
+                "invalid json",  # This will cause an error
+                '{"name": "Another"}',
+            ]
+        )
         mock_model.name = "test-model"
 
         texts = ["valid", "invalid", "another"]
@@ -1244,7 +1254,7 @@ class TestResultsToDataframe:
         except ImportError:
             pytest.skip("pandas not available")
 
-        from insideLLMs.structured import results_to_dataframe, StructuredResult
+        from insideLLMs.structured import StructuredResult, results_to_dataframe
 
         results = [
             StructuredResult(
@@ -1273,7 +1283,7 @@ class TestResultsToDataframe:
         except ImportError:
             pytest.skip("pandas not available")
 
-        from insideLLMs.structured import results_to_dataframe, StructuredResult
+        from insideLLMs.structured import StructuredResult, results_to_dataframe
 
         results = [
             StructuredResult(
@@ -1299,7 +1309,7 @@ class TestResultsToHtmlReport:
 
     def test_results_to_html_report_basic(self):
         """Test generating HTML report from results."""
-        from insideLLMs.structured import results_to_html_report, StructuredResult
+        from insideLLMs.structured import StructuredResult, results_to_html_report
 
         results = [
             StructuredResult(
@@ -1326,7 +1336,7 @@ class TestResultsToHtmlReport:
 
     def test_results_to_html_report_with_none_data(self):
         """Test HTML report skips results with None data."""
-        from insideLLMs.structured import results_to_html_report, StructuredResult
+        from insideLLMs.structured import StructuredResult, results_to_html_report
 
         results = [
             StructuredResult(
@@ -1404,19 +1414,19 @@ class TestStructuredResultNoneData:
         assert "<html>" in html
 
 
-class TestExtractJsonEdgeCases:
-    """Test extract_json with various edge cases."""
+class TestExtractJsonEdgeCasesMarkdown:
+    """Test extract_json with markdown-embedded edge cases."""
 
     def test_extract_json_with_markdown_code_block(self):
         """Test extracting JSON from markdown code block."""
         from insideLLMs.structured import extract_json
 
-        text = '''
+        text = """
         Here is the response:
         ```json
         {"name": "Test", "value": 42}
         ```
-        '''
+        """
         result = extract_json(text)
         assert result == '{"name": "Test", "value": 42}'
 
@@ -1432,9 +1442,9 @@ class TestExtractJsonEdgeCases:
         """Test extracting JSON array."""
         from insideLLMs.structured import extract_json
 
-        text = '[1, 2, 3]'
+        text = "[1, 2, 3]"
         result = extract_json(text)
-        assert result == '[1, 2, 3]'
+        assert result == "[1, 2, 3]"
 
     def test_extract_json_nested(self):
         """Test extracting nested JSON."""
@@ -1450,7 +1460,7 @@ class TestParseJsonEdgeCases:
 
     def test_parse_json_with_trailing_comma(self):
         """Test parsing JSON-like with trailing comma is handled."""
-        from insideLLMs.structured import parse_json, ParsingError
+        from insideLLMs.structured import ParsingError, parse_json
 
         # Standard JSON doesn't allow trailing commas
         # Function should try to handle or raise ParsingError
