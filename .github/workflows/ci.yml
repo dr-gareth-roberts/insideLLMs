@@ -63,7 +63,7 @@ jobs:
           --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.10' && secrets.CODECOV_TOKEN }}
+        if: ${{ !cancelled() && matrix['python-version'] == '3.10' && secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -72,7 +72,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.10' && secrets.CODECOV_TOKEN }}
+        if: ${{ !cancelled() && matrix['python-version'] == '3.10' && secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
           files: ./junit.xml
