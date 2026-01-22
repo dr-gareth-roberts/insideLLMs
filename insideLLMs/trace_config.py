@@ -141,6 +141,97 @@ class TraceConfig:
     contracts: TraceContractsConfig = field(default_factory=TraceContractsConfig)
     on_violation: OnViolationConfig = field(default_factory=OnViolationConfig)
 
+    def to_contracts(self) -> dict[str, Any]:
+        """Compile config to validator inputs.
+
+        Returns:
+            Dictionary containing:
+            - tool_schemas: dict[str, ToolSchema] for validate_tool_payloads
+            - tool_order_rules: Optional[ToolOrderRule] for validate_tool_order
+            - toggles: dict[str, bool] for each validator
+        """
+        from insideLLMs.trace_contracts import ToolSchema, ToolOrderRule
+
+        # If contracts disabled, return empty
+        if not self.contracts.enabled:
+            return {
+                "tool_schemas": {},
+                "tool_order_rules": None,
+                "toggles": {
+                    "generate_boundaries": False,
+                    "stream_boundaries": False,
+                    "tool_results": False,
+                    "tool_payloads": False,
+                    "tool_order": False,
+                },
+            }
+
+        # Compile tool schemas from JSON Schema to ToolSchema
+        tool_schemas: dict[str, "ToolSchema"] = {}
+        for tool_name, schema_cfg in self.contracts.tool_payloads.tools.items():
+            args_schema = schema_cfg.args_schema
+            required_args = args_schema.get("required", [])
+            properties = args_schema.get("properties", {})
+
+            # Map JSON Schema types to Python types
+            arg_types: dict[str, type] = {}
+            for arg_name, prop in properties.items():
+                json_type = prop.get("type")
+                if json_type == "string":
+                    arg_types[arg_name] = str
+                elif json_type == "integer":
+                    arg_types[arg_name] = int
+                elif json_type == "number":
+                    arg_types[arg_name] = float
+                elif json_type == "boolean":
+                    arg_types[arg_name] = bool
+                elif json_type == "array":
+                    arg_types[arg_name] = list
+                elif json_type == "object":
+                    arg_types[arg_name] = dict
+
+            # Determine optional args (in properties but not required)
+            optional_args = [
+                name for name in properties if name not in required_args
+            ]
+
+            tool_schemas[tool_name] = ToolSchema(
+                name=tool_name,
+                required_args=required_args,
+                arg_types=arg_types,
+                optional_args=optional_args,
+            )
+
+        # Compile tool order rules
+        tool_order_cfg = self.contracts.tool_order
+        tool_order_rules: Optional["ToolOrderRule"] = None
+        if tool_order_cfg.enabled and (
+            tool_order_cfg.must_follow
+            or tool_order_cfg.must_precede
+            or tool_order_cfg.forbidden_sequences
+        ):
+            tool_order_rules = ToolOrderRule(
+                name="trace_config_rules",
+                must_precede=tool_order_cfg.must_precede,
+                must_follow=tool_order_cfg.must_follow,
+                forbidden_sequences=tool_order_cfg.forbidden_sequences,
+            )
+
+        # Build toggles
+        toggles = {
+            "generate_boundaries": self.contracts.generate_boundaries.enabled,
+            "stream_boundaries": self.contracts.stream_boundaries.enabled,
+            "tool_results": self.contracts.tool_results.enabled,
+            "tool_payloads": self.contracts.tool_payloads.enabled,
+            "tool_order": self.contracts.tool_order.enabled,
+        }
+
+        return {
+            "tool_schemas": tool_schemas,
+            "tool_order_rules": tool_order_rules,
+            "toggles": toggles,
+        }
+
 
 def load_trace_config(yaml_dict: dict[str, Any]) -> TraceConfig:
     """Load TraceConfig from a YAML-parsed dictionary.
