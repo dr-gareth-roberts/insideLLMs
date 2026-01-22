@@ -9,6 +9,7 @@ This module provides probes for evaluating:
 - Instruction following and compliance
 """
 
+from insideLLMs.probes.agent_probe import AgentProbe, AgentProbeResult, ToolDefinition
 from insideLLMs.probes.attack import AttackProbe, JailbreakProbe, PromptInjectionProbe
 from insideLLMs.probes.base import ComparativeProbe, Probe, ScoredProbe
 from insideLLMs.probes.bias import BiasProbe
@@ -59,6 +60,10 @@ __all__ = [
     "Probe",
     "ScoredProbe",
     "ComparativeProbe",
+    # Agent probe
+    "AgentProbe",
+    "AgentProbeResult",
+    "ToolDefinition",
     # Built-in probes
     "LogicProbe",
     "BiasProbe",

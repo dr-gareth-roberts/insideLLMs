@@ -86,12 +86,31 @@ from insideLLMs.models.base import (
 # Core Probes (Most commonly used)
 # =============================================================================
 from insideLLMs.probes import (
+    AgentProbe,
+    AgentProbeResult,
     AttackProbe,
     BiasProbe,
     CustomProbe,
     FactualityProbe,
     LogicProbe,
     Probe,
+    ToolDefinition,
+)
+
+# =============================================================================
+# Trace Configuration (For deterministic CI enforcement)
+# =============================================================================
+from insideLLMs.trace_config import (
+    TraceConfig,
+    load_trace_config,
+    validate_with_config,
+    TracePayloadNormaliser,
+    OnViolationMode,
+    StoreMode,
+    NormaliserKind,
+    NormaliserConfig,
+    FingerprintConfig,
+    make_structural_v1_normaliser,
 )
 
 # =============================================================================
@@ -158,12 +177,26 @@ __all__ = [
     "Model",
     "ModelProtocol",
     # Core Probes
+    "AgentProbe",
+    "AgentProbeResult",
     "AttackProbe",
     "BiasProbe",
     "CustomProbe",
     "FactualityProbe",
     "LogicProbe",
     "Probe",
+    "ToolDefinition",
+    # Trace Configuration
+    "TraceConfig",
+    "load_trace_config",
+    "validate_with_config",
+    "TracePayloadNormaliser",
+    "OnViolationMode",
+    "StoreMode",
+    "NormaliserKind",
+    "NormaliserConfig",
+    "FingerprintConfig",
+    "make_structural_v1_normaliser",
     # Runner
     "AsyncProbeRunner",
     "ProbeRunner",
