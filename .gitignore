@@ -179,3 +179,4 @@ bench_run/
 /deep_dive_tier1_tier2.txt
 /deep_dive_tier3.txt
 /repo_summary.txt
+.DS_Store
