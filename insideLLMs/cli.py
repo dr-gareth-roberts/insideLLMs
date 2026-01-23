@@ -2101,6 +2101,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
             registry.COMPARISON_REPORT,
             registry.DIFF_REPORT,
             registry.EXPORT_METADATA,
+            registry.CUSTOM_TRACE,
         ]
         for name in schema_names:
             versions = registry.available_versions(name)

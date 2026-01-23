@@ -17,7 +17,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 
 class TraceEventKind(str, Enum):
@@ -424,29 +424,115 @@ def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
     return f"sha256:{digest}"
 
 
-def trace_to_custom_field(recorder: TraceRecorder) -> dict[str, Any]:
-    """Convert a TraceRecorder to a custom field dictionary.
+TRACE_BUNDLE_V1_TOP_ORDER = [
+    "schema_version",
+    "mode",
+    "counts",
+    "fingerprint",
+    "normaliser",
+    "contracts",
+    "violations",
+    "events_view",
+    "events",
+    "truncation",
+    "derived",
+]
 
-    This produces the format expected by ResultRecord.custom for storing
-    trace data without breaking the schema.
+TRACE_COUNTS_ORDER = ["events_total", "events_stored", "by_kind"]
+TRACE_FP_ORDER = ["enabled", "alg", "value", "basis"]
+TRACE_NORM_ORDER = ["kind", "name", "import", "config_hash"]
+TRACE_CONTRACTS_ORDER = ["enabled", "fail_fast", "violations_total", "violations_stored", "by_code"]
 
-    Args:
-        recorder: The TraceRecorder with recorded events.
+TRACE_EVENT_ORDER = ["seq", "kind", "payload"]
+TRACE_VIOLATION_ORDER = ["code", "message", "event_seq", "path", "meta"]
 
-    Returns:
-        Dictionary suitable for ResultRecord.custom field.
+TRUNC_EVENTS_ORDER = ["applied", "policy", "max_events", "dropped", "dropped_by_kind"]
+TRUNC_PAYLOADS_ORDER = ["applied", "max_bytes", "omitted_fields"]
+TRUNC_VIOLS_ORDER = ["applied", "max_violations", "dropped"]
+TRUNCATION_ORDER = ["events", "payloads", "violations"]
 
-    Example:
-        >>> recorder = TraceRecorder()
-        >>> recorder.record("generate_start", {"prompt": "Hello"})
-        >>> custom = trace_to_custom_field(recorder)
-        >>> "trace_fingerprint" in custom
-        True
-    """
-    events = recorder.events
-    return {
-        "trace_fingerprint": trace_fingerprint(events),
-        "trace_violations": [],  # Placeholder for trace_contracts validation
-        "tool_sequence": recorder.get_tool_sequence(),
-        "trace_event_count": len(events),
+DERIVED_TOOL_CALLS_ORDER = ["count", "sequence", "by_tool"]
+DERIVED_ORDER = ["tool_calls"]
+
+
+def _ordered_map(keys_in_order: Iterable[str], data: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a new dict with ordered keys, then remaining keys sorted."""
+    out: dict[str, Any] = {}
+    seen = set()
+
+    for k in keys_in_order:
+        if k in data:
+            out[k] = data[k]
+            seen.add(k)
+
+    for k in sorted(data.keys()):
+        if k not in seen:
+            out[k] = data[k]
+
+    return out
+
+
+def _sorted_int_map(m: Mapping[str, int]) -> dict[str, int]:
+    return {k: int(m[k]) for k in sorted(m.keys())}
+
+
+def trace_to_custom_field(
+    *,
+    schema_version: str,
+    mode: str,
+    counts: dict[str, Any],
+    fingerprint: dict[str, Any],
+    normaliser: dict[str, Any],
+    contracts: dict[str, Any],
+    violations: list[dict[str, Any]],
+    events_view: Optional[str],
+    events: Optional[list[dict[str, Any]]],
+    truncation: dict[str, Any],
+    derived: dict[str, Any],
+) -> dict[str, Any]:
+    """Emit insideLLMs.custom.trace@1 with a stable, human-oriented key order."""
+    counts = dict(counts)
+    counts["by_kind"] = _sorted_int_map(counts.get("by_kind", {}))
+
+    contracts = dict(contracts)
+    contracts["by_code"] = _sorted_int_map(contracts.get("by_code", {}))
+
+    derived = dict(derived)
+    tool_calls = dict(derived.get("tool_calls") or {})
+    tool_calls["by_tool"] = _sorted_int_map(tool_calls.get("by_tool", {}))
+    derived["tool_calls"] = _ordered_map(DERIVED_TOOL_CALLS_ORDER, tool_calls)
+    derived = _ordered_map(DERIVED_ORDER, derived)
+
+    truncation = dict(truncation)
+    trunc_events = dict(truncation.get("events") or {})
+    trunc_payloads = dict(truncation.get("payloads") or {})
+    trunc_viols = dict(truncation.get("violations") or {})
+
+    trunc_events["dropped_by_kind"] = _sorted_int_map(trunc_events.get("dropped_by_kind", {}))
+    truncation["events"] = _ordered_map(TRUNC_EVENTS_ORDER, trunc_events)
+    truncation["payloads"] = _ordered_map(TRUNC_PAYLOADS_ORDER, trunc_payloads)
+    truncation["violations"] = _ordered_map(TRUNC_VIOLS_ORDER, trunc_viols)
+    truncation = _ordered_map(TRUNCATION_ORDER, truncation)
+
+    if events is not None:
+        events = [_ordered_map(TRACE_EVENT_ORDER, e) for e in events]
+    violations = [_ordered_map(TRACE_VIOLATION_ORDER, v) for v in violations]
+
+    out = {
+        "schema_version": schema_version,
+        "mode": mode,
+        "counts": _ordered_map(TRACE_COUNTS_ORDER, counts),
+        "fingerprint": _ordered_map(TRACE_FP_ORDER, fingerprint),
+        "normaliser": _ordered_map(TRACE_NORM_ORDER, normaliser),
+        "contracts": _ordered_map(TRACE_CONTRACTS_ORDER, contracts),
+        "violations": violations,
+        "truncation": truncation,
+        "derived": derived,
     }
+
+    if events_view is not None:
+        out["events_view"] = events_view
+    if events is not None:
+        out["events"] = events
+
+    return _ordered_map(TRACE_BUNDLE_V1_TOP_ORDER, out)
