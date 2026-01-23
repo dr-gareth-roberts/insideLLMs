@@ -5,6 +5,12 @@ models, probes, and datasets to be registered and retrieved by name.
 Supports both direct registration and decorator-based registration.
 """
 
+from __future__ import annotations
+
+import os
+import warnings
+from importlib import metadata
+from inspect import Signature, signature
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 T = TypeVar("T")
@@ -228,6 +234,8 @@ model_registry: Registry[Model] = Registry("models")
 probe_registry: Registry[Probe] = Registry("probes")
 dataset_registry: Registry[Any] = Registry("datasets")
 
+PLUGIN_ENTRYPOINT_GROUP = "insidellms.plugins"
+
 
 def _lazy_import_factory(module_path: str, class_name: str):
     """Create a factory that lazily imports a class when called.
@@ -338,11 +346,89 @@ def register_builtins() -> None:
 
 # Auto-register on import (deferred to avoid circular imports at module level)
 _builtins_registered = False
+_plugins_loaded = False
+
+
+def _call_plugin_register(fn: Callable[..., Any]) -> None:
+    sig: Signature
+    try:
+        sig = signature(fn)
+    except Exception:
+        fn()
+        return
+
+    if len(sig.parameters) == 0:
+        fn()
+        return
+
+    fn(
+        model_registry=model_registry,
+        probe_registry=probe_registry,
+        dataset_registry=dataset_registry,
+    )
+
+
+def load_entrypoint_plugins(
+    *,
+    group: str = PLUGIN_ENTRYPOINT_GROUP,
+    enabled: Optional[bool] = None,
+) -> dict[str, str]:
+    """Load and execute plugin registration entry points.
+
+    Plugins are discovered via Python entry points. Each entry point should
+    resolve to a callable that registers models/probes/datasets using the
+    provided registries (or by importing insideLLMs and registering globally).
+
+    By default, plugins are enabled unless INSIDELLMS_DISABLE_PLUGINS=1.
+
+    Returns:
+        Mapping of entry point name -> entry point value (import path).
+    """
+    if enabled is None:
+        enabled = os.environ.get("INSIDELLMS_DISABLE_PLUGINS", "").strip() not in {
+            "1",
+            "true",
+            "yes",
+        }
+    if not enabled:
+        return {}
+
+    loaded: dict[str, str] = {}
+
+    try:
+        eps = metadata.entry_points()
+        if hasattr(eps, "select"):
+            selected = list(eps.select(group=group))
+        else:  # pragma: no cover (older Python)
+            selected = list(eps.get(group, []))  # type: ignore[attr-defined]
+    except Exception:
+        return {}
+
+    for ep in selected:
+        try:
+            fn = ep.load()
+            if not callable(fn):
+                warnings.warn(
+                    f"Plugin entry point {ep.name!r} did not resolve to a callable: {ep.value}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                continue
+            _call_plugin_register(fn)
+            loaded[ep.name] = ep.value
+        except Exception as e:
+            warnings.warn(
+                f"Failed to load plugin {ep.name!r} ({ep.value}): {e}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+    return loaded
 
 
 def ensure_builtins_registered() -> None:
     """Ensure built-in registrations are loaded. Called lazily."""
-    global _builtins_registered
+    global _builtins_registered, _plugins_loaded
     if not _builtins_registered:
         try:
             register_builtins()
@@ -350,3 +436,7 @@ def ensure_builtins_registered() -> None:
         except ImportError:
             # Some dependencies might not be installed
             pass
+
+    if _builtins_registered and not _plugins_loaded:
+        load_entrypoint_plugins()
+        _plugins_loaded = True

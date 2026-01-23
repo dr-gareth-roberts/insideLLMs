@@ -159,8 +159,7 @@ class Probe(ABC, Generic[T]):
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 results: list[ProbeResult[T]] = [None] * len(dataset)  # type: ignore
                 futures = {
-                    executor.submit(process_item, item): index
-                    for index, item in enumerate(dataset)
+                    executor.submit(process_item, item): index for index, item in enumerate(dataset)
                 }
                 for future in as_completed(futures):
                     index = futures[future]
