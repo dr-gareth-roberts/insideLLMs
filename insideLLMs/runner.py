@@ -1424,10 +1424,10 @@ class AsyncProbeRunner(_RunnerBase):
                     )
                     await write_ready_records()
 
-        try:
+        with ExitStack() as stack:
             if emit_run_artifacts:
                 mode = "a" if resume else "x"
-                records_fp = open(records_path, mode, encoding="utf-8")
+                records_fp = stack.enter_context(open(records_path, mode, encoding="utf-8"))
 
             if use_probe_batch:
                 remaining_items = prompt_set[completed:]
@@ -1473,9 +1473,6 @@ class AsyncProbeRunner(_RunnerBase):
                 if tasks:
                     await asyncio.gather(*tasks)
                 await write_ready_records()
-        finally:
-            if records_fp is not None:
-                records_fp.close()
 
         if any(result is None for result in results):
             raise RuntimeError("Runner did not produce results for all items.")

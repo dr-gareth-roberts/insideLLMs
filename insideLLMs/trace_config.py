@@ -297,8 +297,8 @@ class TraceConfig:
             required_args = args_schema.get("required", [])
             properties = args_schema.get("properties", {})
 
-            # Map JSON Schema types to Python types
-            arg_types: dict[str, type] = {}
+            # Map JSON Schema types to Python types (for isinstance checks).
+            arg_types: dict[str, type | tuple[type, ...]] = {}
             for arg_name, prop in properties.items():
                 json_type = prop.get("type")
                 if json_type == "string":
@@ -306,7 +306,8 @@ class TraceConfig:
                 elif json_type == "integer":
                     arg_types[arg_name] = int
                 elif json_type == "number":
-                    arg_types[arg_name] = float
+                    # JSON Schema "number" includes integers as well.
+                    arg_types[arg_name] = (int, float)
                 elif json_type == "boolean":
                     arg_types[arg_name] = bool
                 elif json_type == "array":

@@ -173,7 +173,6 @@ diff.schema.json
 
 # Benchmark run artifacts
 bench_run/
-/.github/
 /complete_file_list.txt
 /deep_dive_analysis.txt
 /deep_dive_tier1_tier2.txt
