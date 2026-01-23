@@ -179,3 +179,5 @@ bench_run/
 /deep_dive_tier3.txt
 /repo_summary.txt
 .DS_Store
+web/
+!/deep_dive_analysis.txt

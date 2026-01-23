@@ -44,6 +44,8 @@ from typing import (
     Union,
 )
 
+from insideLLMs.logging_utils import logger
+
 if TYPE_CHECKING:
     from insideLLMs.models.base import Model
 
@@ -465,6 +467,7 @@ class PromptVariator:
                     for var in variations[:num_variations]
                 ]
             except Exception:
+                logger.debug("Variation generation attempt failed", exc_info=True)
                 continue
 
         return []
@@ -611,6 +614,7 @@ class AdversarialGenerator:
 
                 return examples[:num_examples]
             except Exception:
+                logger.debug("Adversarial generation attempt failed", exc_info=True)
                 continue
 
         return []
@@ -808,7 +812,7 @@ class DataAugmenter:
                         }
                     )
             except Exception:
-                pass
+                logger.debug("Expand augmentation generation failed", exc_info=True)
 
         return dataset
 
@@ -855,7 +859,7 @@ class DataAugmenter:
                         }
                     )
             except Exception:
-                pass
+                logger.debug("Diversify augmentation generation failed", exc_info=True)
 
         return dataset
 
@@ -919,7 +923,7 @@ class DataAugmenter:
                             }
                         )
                 except Exception:
-                    pass
+                    logger.debug("Balance augmentation generation failed", exc_info=True)
 
         return dataset
 
@@ -1069,7 +1073,7 @@ Return as a JSON array of strings."""
                         new_example["synthetic"] = True
                         dataset.add(new_example)
                 except Exception:
-                    pass
+                    logger.debug("Template example generation failed", exc_info=True)
 
         return dataset
 

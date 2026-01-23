@@ -1,3 +1,7 @@
 """Compatibility shim for insideLLMs.analysis.visualization."""
 
-from insideLLMs.analysis.visualization import *  # noqa: F401,F403
+import sys
+
+from insideLLMs.analysis import visualization as _visualization
+
+sys.modules[__name__] = _visualization
