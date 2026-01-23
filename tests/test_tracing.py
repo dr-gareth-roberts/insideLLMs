@@ -1,5 +1,7 @@
 """Tests for insideLLMs.tracing module."""
 
+import importlib.util
+
 import pytest
 
 from insideLLMs.tracing import (
@@ -9,6 +11,86 @@ from insideLLMs.tracing import (
     trace_fingerprint,
     trace_to_custom_field,
 )
+
+
+def _has_pydantic_v2() -> bool:
+    if importlib.util.find_spec("pydantic") is None:
+        return False
+    import pydantic
+
+    return hasattr(pydantic.BaseModel, "model_validate")
+
+
+def _build_trace_bundle(*, mode: str) -> dict[str, object]:
+    events = None
+    events_view = None
+    events_total = 2
+    events_stored = 0
+
+    if mode == "full":
+        events = [
+            {"kind": "generate_start", "payload": {"prompt": "Hello"}, "seq": 0},
+            {"payload": {"response": "Hi"}, "seq": 1, "kind": "generate_end"},
+        ]
+        events_view = "raw"
+        events_stored = len(events)
+
+    return trace_to_custom_field(
+        schema_version="insideLLMs.custom.trace@1",
+        mode=mode,
+        counts={
+            "events_total": events_total,
+            "events_stored": events_stored,
+            "by_kind": {"b": 1, "a": 1},
+        },
+        fingerprint={
+            "enabled": True,
+            "alg": "sha256",
+            "value": "sha256:" + ("0" * 64),
+            "basis": "normalised_full_trace",
+        },
+        normaliser={
+            "kind": "builtin",
+            "name": "structural_v1",
+            "config_hash": "1" * 64,
+        },
+        contracts={
+            "enabled": True,
+            "fail_fast": False,
+            "violations_total": 1,
+            "violations_stored": 1,
+            "by_code": {"Z": 1, "A": 0},
+        },
+        violations=[
+            {
+                "message": "missing end",
+                "code": "STREAM_NO_END",
+                "meta": {"note": "test"},
+                "path": "/events/1",
+                "event_seq": 1,
+            }
+        ],
+        events_view=events_view,
+        events=events,
+        truncation={
+            "payloads": {"max_bytes": None, "omitted_fields": 0, "applied": False},
+            "events": {
+                "policy": "head",
+                "max_events": None,
+                "applied": False,
+                "dropped": 0,
+                "dropped_by_kind": {"b": 1, "a": 0},
+            },
+            "violations": {"max_violations": None, "dropped": 0, "applied": False},
+        },
+        derived={
+            "tool_calls": {
+                "sequence": ["search", "summarize"],
+                "count": 2,
+                "by_tool": {"summarize": 1, "search": 1},
+            }
+        },
+    )
 
 
 class TestTraceEvent:
@@ -339,33 +421,84 @@ class TestTraceFingerprint:
 class TestTraceToCustomField:
     """Tests for trace_to_custom_field function."""
 
-    def test_basic_conversion(self):
-        """Test basic conversion to custom field."""
-        recorder = TraceRecorder()
-        recorder.record("generate_start", {"prompt": "Hello"})
-        recorder.record("generate_end", {"response": "Hi"})
+    def test_compact_key_order(self):
+        trace = _build_trace_bundle(mode="compact")
 
-        custom = trace_to_custom_field(recorder)
+        assert list(trace.keys()) == [
+            "schema_version",
+            "mode",
+            "counts",
+            "fingerprint",
+            "normaliser",
+            "contracts",
+            "violations",
+            "truncation",
+            "derived",
+        ]
 
-        assert "trace_fingerprint" in custom
-        assert custom["trace_fingerprint"].startswith("sha256:")
-        assert "trace_violations" in custom
-        assert custom["trace_violations"] == []
-        assert "tool_sequence" in custom
-        assert custom["tool_sequence"] == []
-        assert custom["trace_event_count"] == 2
+    def test_full_key_order_and_schema(self):
+        if not _has_pydantic_v2():
+            pytest.skip("pydantic v2 not installed")
 
-    def test_with_tool_calls(self):
-        """Test conversion with tool calls."""
-        recorder = TraceRecorder()
-        recorder.record_tool_call("search", {"q": "test"})
-        recorder.record_tool_result("search", {})
-        recorder.record_tool_call("summarize", {})
+        from insideLLMs.schemas.custom_trace_v1 import TraceBundleV1
 
-        custom = trace_to_custom_field(recorder)
+        trace = _build_trace_bundle(mode="full")
+        TraceBundleV1.model_validate(trace)
 
-        assert custom["tool_sequence"] == ["search", "summarize"]
-        assert custom["trace_event_count"] == 3
+        assert list(trace.keys()) == [
+            "schema_version",
+            "mode",
+            "counts",
+            "fingerprint",
+            "normaliser",
+            "contracts",
+            "violations",
+            "events_view",
+            "events",
+            "truncation",
+            "derived",
+        ]
+        assert list(trace["counts"].keys()) == ["events_total", "events_stored", "by_kind"]
+        assert list(trace["counts"]["by_kind"].keys()) == ["a", "b"]
+        assert list(trace["fingerprint"].keys()) == ["enabled", "alg", "value", "basis"]
+        assert list(trace["normaliser"].keys()) == ["kind", "name", "config_hash"]
+        assert list(trace["contracts"].keys()) == [
+            "enabled",
+            "fail_fast",
+            "violations_total",
+            "violations_stored",
+            "by_code",
+        ]
+        assert list(trace["contracts"]["by_code"].keys()) == ["A", "Z"]
+        assert list(trace["violations"][0].keys()) == [
+            "code",
+            "message",
+            "event_seq",
+            "path",
+            "meta",
+        ]
+        assert list(trace["events"][0].keys()) == ["seq", "kind", "payload"]
+        assert list(trace["truncation"].keys()) == ["events", "payloads", "violations"]
+        assert list(trace["truncation"]["events"].keys()) == [
+            "applied",
+            "policy",
+            "max_events",
+            "dropped",
+            "dropped_by_kind",
+        ]
+        assert list(trace["truncation"]["events"]["dropped_by_kind"].keys()) == ["a", "b"]
+        assert list(trace["truncation"]["payloads"].keys()) == [
+            "applied",
+            "max_bytes",
+            "omitted_fields",
+        ]
+        assert list(trace["truncation"]["violations"].keys()) == [
+            "applied",
+            "max_violations",
+            "dropped",
+        ]
+        assert list(trace["derived"].keys()) == ["tool_calls"]
+        assert list(trace["derived"]["tool_calls"].keys()) == ["count", "sequence", "by_tool"]
 
 
 class TestTraceEventKind:
