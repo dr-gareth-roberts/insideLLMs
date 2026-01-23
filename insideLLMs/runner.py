@@ -672,7 +672,9 @@ def _result_dict_from_probe_result(
     return payload
 
 
-def _record_index_from_record(record: dict[str, Any], default: Optional[int] = None) -> Optional[int]:
+def _record_index_from_record(
+    record: dict[str, Any], default: Optional[int] = None
+) -> Optional[int]:
     custom = record.get("custom")
     if isinstance(custom, dict):
         index = custom.get("record_index")
@@ -1467,11 +1469,7 @@ class AsyncProbeRunner(_RunnerBase):
                         )
                     await write_ready_records()
             else:
-                tasks = [
-                    run_single(i, item)
-                    for i, item in enumerate(prompt_set)
-                    if i >= completed
-                ]
+                tasks = [run_single(i, item) for i, item in enumerate(prompt_set) if i >= completed]
                 if tasks:
                     await asyncio.gather(*tasks)
                 await write_ready_records()
@@ -1502,9 +1500,7 @@ class AsyncProbeRunner(_RunnerBase):
                 "probe": probe_spec,
                 "dataset": dataset_spec,
                 "record_count": len(final_results),
-                "success_count": sum(
-                    1 for r in final_results if r.get("status") == "success"
-                ),
+                "success_count": sum(1 for r in final_results if r.get("status") == "success"),
                 "error_count": sum(1 for r in final_results if r.get("status") == "error"),
                 "records_file": "records.jsonl",
                 "schemas": {
@@ -2402,6 +2398,7 @@ def create_experiment_result(
     Returns:
         An ExperimentResult with structured data and scores.
     """
+
     def _coerce_status(value: Any) -> ResultStatus:
         if isinstance(value, ResultStatus):
             return value

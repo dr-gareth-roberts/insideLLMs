@@ -29,6 +29,17 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
    pip install -e ".[all]"
    ```
 
+   If you want a lighter setup, start with:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+   and add extras as needed (`.[nlp]`, `.[visualization]`).
+
+4. Optional: sanity-check your environment:
+   ```bash
+   insidellms doctor
+   ```
+
 4. Install pre-commit hooks:
    ```bash
    pre-commit install
@@ -70,6 +81,10 @@ pytest -m "not slow and not integration"
 ### Documentation
 
 We use the GitHub Wiki for guides and how-to content. If you update a user-facing workflow, please update the Wiki and link the relevant page from `README.md`.
+
+Local contributor-facing policies and extension guidance:
+- `docs/STABILITY.md`
+- `docs/PLUGINS.md`
 
 ## Making Changes
 

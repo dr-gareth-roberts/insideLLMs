@@ -75,8 +75,7 @@ class TraceFingerprint(BaseModel):
             return None
         if not HEX64_RE.match(v):
             raise ValueError(
-                "fingerprint.value must be a 64-hex sha256 "
-                "(optionally prefixed with 'sha256:')"
+                "fingerprint.value must be a 64-hex sha256 (optionally prefixed with 'sha256:')"
             )
         return v.lower()
 
@@ -231,8 +230,7 @@ class TruncationViolations(BaseModel):
     def _validate_applied(self) -> "TruncationViolations":
         if self.applied and self.max_violations is None:
             raise ValueError(
-                "truncation.violations.applied=true requires "
-                "truncation.violations.max_violations"
+                "truncation.violations.applied=true requires truncation.violations.max_violations"
             )
         return self
 

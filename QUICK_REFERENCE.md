@@ -21,6 +21,15 @@ pip install -e ".[all]"
 
 Extras are available for narrower installs: `.[nlp]`, `.[visualization]`, `.[dev]`.
 
+### Offline Golden Path (No API Keys)
+```bash
+insidellms doctor
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite
+insidellms report .tmp/runs/baseline
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite
+insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
+```
+
 ### Basic Usage
 ```python
 from insideLLMs.models import OpenAIModel
