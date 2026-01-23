@@ -1049,6 +1049,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Allow overwriting an existing non-empty run directory (DANGEROUS).",
     )
     run_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from an existing run directory if records.jsonl is present.",
+    )
+    run_parser.add_argument(
         "--async",
         dest="use_async",
         action="store_true",
@@ -1650,6 +1655,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                     run_root=str(effective_run_root),
                     run_id=resolved_run_id,
                     overwrite=bool(args.overwrite),
+                    resume=bool(args.resume),
                 )
             )
         else:
@@ -1664,6 +1670,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 run_root=str(effective_run_root),
                 run_id=resolved_run_id,
                 overwrite=bool(args.overwrite),
+                resume=bool(args.resume),
             )
 
         elapsed = time.time() - start_time
@@ -1671,10 +1678,27 @@ def cmd_run(args: argparse.Namespace) -> int:
         if progress_bar:
             progress_bar.finish()
 
-        # Calculate summary
-        success_count = sum(1 for r in results if r.get("status") == "success")
-        error_count = sum(1 for r in results if r.get("status") == "error")
-        total = len(results)
+        experiment_result = results if isinstance(results, ExperimentResult) else None
+        if experiment_result is not None:
+            raw_results = [
+                {
+                    "input": r.input,
+                    "output": r.output,
+                    "error": r.error,
+                    "status": r.status.value if isinstance(r.status, Enum) else str(r.status),
+                    "latency_ms": r.latency_ms,
+                    "metadata": r.metadata,
+                }
+                for r in experiment_result.results
+            ]
+            success_count = experiment_result.success_count
+            error_count = experiment_result.error_count
+            total = experiment_result.total_count
+        else:
+            raw_results = results
+            success_count = sum(1 for r in results if r.get("status") == "success")
+            error_count = sum(1 for r in results if r.get("status") == "error")
+            total = len(results)
 
         # Output results
         if args.output:
@@ -1688,9 +1712,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print_success(f"Results saved to: {args.output}")
 
         if args.format == "json":
-            print(json.dumps(results, indent=2, default=str))
+            print(json.dumps(results, indent=2, default=_json_default))
         elif args.format == "markdown":
-            print(results_to_markdown(results))
+            print(results_to_markdown(raw_results))
         elif args.format == "summary":
             # Minimal summary output
             print(
@@ -1705,9 +1729,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             print_key_value("Errors", f"{error_count} ({error_count / max(1, total) * 100:.1f}%)")
             print_key_value("Duration", f"{elapsed:.2f}s")
 
-            if results:
+            if raw_results:
                 latencies = [
-                    r.get("latency_ms", 0) for r in results if r.get("status") == "success"
+                    r.get("latency_ms", 0)
+                    for r in raw_results
+                    if r.get("status") == "success"
                 ]
                 if latencies:
                     avg_latency = sum(latencies) / len(latencies)
@@ -1718,7 +1744,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
             # Show first few results
             print_subheader("Sample Results")
-            for i, r in enumerate(results[:5]):
+            for i, r in enumerate(raw_results[:5]):
                 status_icon = (
                     colorize("OK", Colors.GREEN)
                     if r.get("status") == "success"
@@ -1729,8 +1755,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                     inp += "..."
                 print(f"  {status_icon} [{i + 1}] {inp}")
 
-            if len(results) > 5:
-                print(colorize(f"  ... and {len(results) - 5} more", Colors.DIM))
+            if len(raw_results) > 5:
+                print(colorize(f"  ... and {len(raw_results) - 5} more", Colors.DIM))
 
         # UX sugar: make it obvious where artifacts landed and how to validate.
         # Keep stdout JSON clean when --format json.

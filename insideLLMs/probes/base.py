@@ -5,7 +5,7 @@ specific aspects of LLM behavior such as logic, factuality, bias, and safety.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Optional, Protocol, TypeVar, runtime_checkable
+from typing import Any, Callable, Generic, Optional, Protocol, TypeVar, runtime_checkable
 
 from insideLLMs.types import (
     ProbeCategory,
@@ -99,6 +99,7 @@ class Probe(ABC, Generic[T]):
         model: Any,
         dataset: list[Any],
         max_workers: int = 1,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
         **kwargs: Any,
     ) -> list[ProbeResult[T]]:
         """Run the probe on a batch of inputs.
@@ -110,13 +111,14 @@ class Probe(ABC, Generic[T]):
             model: The model to test.
             dataset: A list of input items to test.
             max_workers: Number of concurrent workers (default: 1).
+            progress_callback: Optional callback with (current, total).
             **kwargs: Additional arguments passed to run().
 
         Returns:
             A list of ProbeResult objects containing outputs or errors.
         """
         import time
-        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def process_item(item: Any) -> ProbeResult[T]:
             start = time.perf_counter()
@@ -134,6 +136,7 @@ class Probe(ABC, Generic[T]):
                     input=item,
                     status=ResultStatus.TIMEOUT,
                     error="Request timed out",
+                    metadata={"error_type": "TimeoutError"},
                 )
             except Exception as e:
                 error_type = type(e).__name__
@@ -146,13 +149,32 @@ class Probe(ABC, Generic[T]):
                     input=item,
                     status=status,
                     error=f"{error_type}: {str(e)}",
+                    metadata={"error_type": error_type},
                 )
+
+        completed = 0
+        total = len(dataset)
 
         if max_workers > 1:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                results = list(executor.map(process_item, dataset))
+                results: list[ProbeResult[T]] = [None] * len(dataset)  # type: ignore
+                futures = {
+                    executor.submit(process_item, item): index
+                    for index, item in enumerate(dataset)
+                }
+                for future in as_completed(futures):
+                    index = futures[future]
+                    results[index] = future.result()
+                    completed += 1
+                    if progress_callback:
+                        progress_callback(completed, total)
         else:
-            results = [process_item(item) for item in dataset]
+            results = []
+            for item in dataset:
+                results.append(process_item(item))
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, total)
 
         return results
 

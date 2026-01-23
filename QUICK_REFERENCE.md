@@ -282,6 +282,15 @@ model:
   type: openai
   args:
     model_name: gpt-4o
+  pipeline:
+    async: true
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 500
+      - type: retry
+        args:
+          max_retries: 2
 probe:
   type: logic
   args: {}
@@ -321,6 +330,7 @@ results = run_experiment_from_config("config.yaml")
 ```
 
 ```bash
+insidellms run config.yaml --resume
 insidellms harness harness.yaml
 ```
 
