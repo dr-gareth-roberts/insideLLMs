@@ -35,6 +35,7 @@ class ViolationCode(str, Enum):
     # Stream violations
     STREAM_NO_START = "STREAM_NO_START"
     STREAM_NO_END = "STREAM_NO_END"
+    STREAM_NESTED = "STREAM_NESTED"
     STREAM_CHUNK_BEFORE_START = "STREAM_CHUNK_BEFORE_START"
     STREAM_CHUNK_AFTER_END = "STREAM_CHUNK_AFTER_END"
     STREAM_SEQ_DISCONTINUITY = "STREAM_SEQ_DISCONTINUITY"
@@ -174,7 +175,7 @@ def validate_stream_boundaries(
             if stream_active:
                 violations.append(
                     Violation(
-                        code=ViolationCode.GENERATE_NESTED.value,
+                        code=ViolationCode.STREAM_NESTED.value,
                         event_seq=seq,
                         detail="Nested stream_start without prior stream_end",
                         event_kind=kind,
@@ -391,7 +392,7 @@ def validate_tool_order(
             for ti in tool_indices:
                 # Check if any before_tool comes before this tool
                 has_required_predecessor = any(bi < ti for bi in before_indices)
-                if not has_required_predecessor and before_indices:
+                if not has_required_predecessor:
                     seq = tool_calls[ti][0]
                     violations.append(
                         Violation(
@@ -526,8 +527,9 @@ def validate_tool_results(
     violations: list[Violation] = []
     normalized = _normalize_events(events)
 
-    # Track pending tool calls by tool_call_id or tool_name
-    pending_calls: dict[str, int] = {}  # key -> start_seq
+    # Track pending tool calls by tool_call_id or tool_name.
+    # When tool_call_id is missing, multiple calls to the same tool can be in-flight.
+    pending_calls: dict[str, list[int]] = {}  # key -> [start_seq...]
 
     for event in normalized:
         kind = event.kind
@@ -537,14 +539,14 @@ def validate_tool_results(
             tool_call_id = event.payload.get("tool_call_id")
             tool_name = event.payload.get("tool_name", "unknown")
             key = tool_call_id or tool_name
-            pending_calls[key] = seq
+            pending_calls.setdefault(key, []).append(seq)
 
         elif kind == TraceEventKind.TOOL_RESULT.value:
             tool_call_id = event.payload.get("tool_call_id")
             tool_name = event.payload.get("tool_name", "unknown")
             key = tool_call_id or tool_name
 
-            if key not in pending_calls:
+            if key not in pending_calls or not pending_calls[key]:
                 violations.append(
                     Violation(
                         code=ViolationCode.TOOL_RESULT_BEFORE_CALL.value,
@@ -555,19 +557,22 @@ def validate_tool_results(
                     )
                 )
             else:
-                del pending_calls[key]
+                pending_calls[key].pop(0)
+                if not pending_calls[key]:
+                    del pending_calls[key]
 
     # Check for calls without results
-    for key, start_seq in pending_calls.items():
-        violations.append(
-            Violation(
-                code=ViolationCode.TOOL_NO_RESULT.value,
-                event_seq=start_seq,
-                detail=f"tool_call_start for '{key}' without tool_result",
-                event_kind=TraceEventKind.TOOL_CALL_START.value,
-                context={"tool_key": key},
+    for key, starts in pending_calls.items():
+        for start_seq in starts:
+            violations.append(
+                Violation(
+                    code=ViolationCode.TOOL_NO_RESULT.value,
+                    event_seq=start_seq,
+                    detail=f"tool_call_start for '{key}' without tool_result",
+                    event_kind=TraceEventKind.TOOL_CALL_START.value,
+                    context={"tool_key": key},
+                )
             )
-        )
 
     violations.sort(key=lambda v: v.event_seq)
     return violations

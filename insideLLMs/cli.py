@@ -415,16 +415,44 @@ def _output_fingerprint(
 
 
 def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
-    """Extract trace fingerprint from record.custom.trace_fingerprint."""
+    """Extract trace fingerprint from ResultRecord.custom.
+
+    Supports both the legacy flat fields:
+      - record.custom.trace_fingerprint
+    and the structured trace bundle:
+      - record.custom.trace.fingerprint.value
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     fp = custom.get("trace_fingerprint")
-    return fp if isinstance(fp, str) else None
+    if isinstance(fp, str):
+        return fp
+
+    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    fingerprint = trace.get("fingerprint") if isinstance(trace.get("fingerprint"), dict) else {}
+    value = fingerprint.get("value")
+    if not isinstance(value, str) or not value:
+        return None
+    # If the bundle stores raw 64-hex without prefix, normalize to the legacy "sha256:<hex>" form.
+    if ":" not in value and len(value) == 64:
+        return f"sha256:{value}"
+    return value
 
 
 def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract trace violations from record.custom.trace_violations."""
+    """Extract trace violations from ResultRecord.custom.
+
+    Supports both the legacy flat fields:
+      - record.custom.trace_violations
+    and the structured trace bundle:
+      - record.custom.trace.violations
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     violations = custom.get("trace_violations")
+    if isinstance(violations, list):
+        return violations
+
+    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    violations = trace.get("violations")
     return violations if isinstance(violations, list) else []
 
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Mapping, Optional
@@ -123,6 +124,7 @@ class TraceRecorder:
         """
         self._run_id = run_id
         self._example_id = example_id
+        self._lock = threading.Lock()
         self._events: list[TraceEvent] = []
         self._seq_counter = 0
         self._tool_step_counter = 0  # Track tool invocation sequence
@@ -140,7 +142,8 @@ class TraceRecorder:
     @property
     def events(self) -> list[TraceEvent]:
         """Get all recorded events (read-only copy)."""
-        return list(self._events)
+        with self._lock:
+            return list(self._events)
 
     def record(
         self,
@@ -159,16 +162,17 @@ class TraceRecorder:
         if isinstance(kind, TraceEventKind):
             kind = kind.value
 
-        event = TraceEvent(
-            seq=self._seq_counter,
-            kind=kind,
-            payload=payload or {},
-            run_id=self._run_id,
-            example_id=self._example_id,
-        )
-        self._events.append(event)
-        self._seq_counter += 1
-        return event
+        with self._lock:
+            event = TraceEvent(
+                seq=self._seq_counter,
+                kind=kind,
+                payload=payload or {},
+                run_id=self._run_id,
+                example_id=self._example_id,
+            )
+            self._events.append(event)
+            self._seq_counter += 1
+            return event
 
     def record_generate_start(
         self,
@@ -296,8 +300,9 @@ class TraceRecorder:
         """
         # Auto-increment step if not provided
         if step is None:
-            step = self._tool_step_counter
-            self._tool_step_counter += 1
+            with self._lock:
+                step = self._tool_step_counter
+                self._tool_step_counter += 1
 
         payload: dict[str, Any] = {
             "tool_name": tool_name,
@@ -368,13 +373,15 @@ class TraceRecorder:
 
     def clear(self) -> None:
         """Clear all recorded events and reset counters."""
-        self._events.clear()
-        self._seq_counter = 0
-        self._tool_step_counter = 0
+        with self._lock:
+            self._events.clear()
+            self._seq_counter = 0
+            self._tool_step_counter = 0
 
     def to_list(self) -> list[dict[str, Any]]:
         """Convert all events to a list of dictionaries."""
-        return [e.to_dict() for e in self._events]
+        with self._lock:
+            return [e.to_dict() for e in self._events]
 
     def get_tool_sequence(self) -> list[str]:
         """Extract the sequence of tool calls from the trace.
@@ -382,11 +389,12 @@ class TraceRecorder:
         Returns:
             List of tool names in order of invocation.
         """
-        return [
-            e.payload.get("tool_name", "unknown")
-            for e in self._events
-            if e.kind == TraceEventKind.TOOL_CALL_START.value
-        ]
+        with self._lock:
+            return [
+                e.payload.get("tool_name", "unknown")
+                for e in self._events
+                if e.kind == TraceEventKind.TOOL_CALL_START.value
+            ]
 
 
 def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
