@@ -1,0 +1,61 @@
+"""Trace configuration, contracts, and serialization helpers."""
+
+from insideLLMs.trace.trace_config import (  # noqa: F401
+    FingerprintConfig,
+    NormaliserConfig,
+    NormaliserKind,
+    OnViolationMode,
+    StoreMode,
+    TraceConfig,
+    TracePayloadNormaliser,
+    load_trace_config,
+    make_structural_v1_normaliser,
+    validate_with_config,
+)
+from insideLLMs.trace.trace_contracts import (  # noqa: F401
+    ToolOrderRule,
+    ToolSchema,
+    Violation,
+    ViolationCode,
+    validate_all,
+    validate_generate_boundaries,
+    validate_stream_boundaries,
+    validate_tool_order,
+    validate_tool_payloads,
+    validate_tool_results,
+)
+from insideLLMs.trace.tracing import (  # noqa: F401
+    TraceEvent,
+    TraceEventKind,
+    TraceRecorder,
+    trace_fingerprint,
+    trace_to_custom_field,
+)
+
+__all__ = [
+    "FingerprintConfig",
+    "NormaliserConfig",
+    "NormaliserKind",
+    "OnViolationMode",
+    "StoreMode",
+    "TraceConfig",
+    "TracePayloadNormaliser",
+    "load_trace_config",
+    "make_structural_v1_normaliser",
+    "validate_with_config",
+    "ToolOrderRule",
+    "ToolSchema",
+    "Violation",
+    "ViolationCode",
+    "validate_all",
+    "validate_generate_boundaries",
+    "validate_stream_boundaries",
+    "validate_tool_order",
+    "validate_tool_payloads",
+    "validate_tool_results",
+    "TraceEvent",
+    "TraceEventKind",
+    "TraceRecorder",
+    "trace_fingerprint",
+    "trace_to_custom_field",
+]

@@ -10,6 +10,14 @@ from insideLLMs.schemas.registry import (
 )
 
 
+def _has_pydantic_v2() -> bool:
+    if importlib.util.find_spec("pydantic") is None:
+        return False
+    import pydantic
+
+    return hasattr(pydantic.BaseModel, "model_validate")
+
+
 class TestNormalizeSemver:
     """Tests for normalize_semver function."""
 
@@ -42,6 +50,8 @@ class TestSchemaRegistry:
         versions = registry.available_versions(SchemaRegistry.RESULT_RECORD)
         assert "1.0.0" in versions
         assert "1.0.1" in versions
+        trace_versions = registry.available_versions(SchemaRegistry.CUSTOM_TRACE)
+        assert trace_versions == ["insideLLMs.custom.trace@1"]
 
     def test_available_versions_unknown_schema(self, registry):
         """Test available_versions for unknown schema returns empty."""
@@ -65,6 +75,15 @@ class TestSchemaRegistry:
         model1 = registry.get_model(SchemaRegistry.RESULT_RECORD, "1.0")
         model2 = registry.get_model(SchemaRegistry.RESULT_RECORD, "1.0.0")
         assert model1 is model2
+
+    @pytest.mark.skipif(not _has_pydantic_v2(), reason="pydantic v2 not installed")
+    def test_get_model_custom_trace(self, registry):
+        """Test that get_model resolves the custom trace bundle."""
+        model = registry.get_model(
+            SchemaRegistry.CUSTOM_TRACE,
+            "insideLLMs.custom.trace@1",
+        )
+        assert model.__name__ == "TraceBundleV1"
 
     @pytest.mark.skipif(
         importlib.util.find_spec("pydantic") is None, reason="pydantic not installed"
@@ -139,3 +158,4 @@ class TestSchemaRegistryConstants:
         assert SchemaRegistry.COMPARISON_REPORT == "ComparisonReport"
         assert SchemaRegistry.DIFF_REPORT == "DiffReport"
         assert SchemaRegistry.EXPORT_METADATA == "ExportMetadata"
+        assert SchemaRegistry.CUSTOM_TRACE == "CustomTrace"

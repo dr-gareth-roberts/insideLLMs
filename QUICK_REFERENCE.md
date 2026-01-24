@@ -21,6 +21,15 @@ pip install -e ".[all]"
 
 Extras are available for narrower installs: `.[nlp]`, `.[visualization]`, `.[dev]`.
 
+### Offline Golden Path (No API Keys)
+```bash
+insidellms doctor
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite
+insidellms report .tmp/runs/baseline
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite
+insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
+```
+
 ### Basic Usage
 ```python
 from insideLLMs.models import OpenAIModel
@@ -282,6 +291,15 @@ model:
   type: openai
   args:
     model_name: gpt-4o
+  pipeline:
+    async: true
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 500
+      - type: retry
+        args:
+          max_retries: 2
 probe:
   type: logic
   args: {}
@@ -321,6 +339,7 @@ results = run_experiment_from_config("config.yaml")
 ```
 
 ```bash
+insidellms run config.yaml --resume
 insidellms harness harness.yaml
 ```
 
