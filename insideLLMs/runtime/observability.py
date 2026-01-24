@@ -38,6 +38,8 @@ from typing import (
     TypeVar,
 )
 
+from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
+
 if TYPE_CHECKING:
     from insideLLMs.models.base import Model
 
@@ -320,30 +322,13 @@ def estimate_tokens(text: str, model: str = "gpt-4") -> int:
 
     Args:
         text: Text to estimate tokens for.
-        model: Model name (affects estimation).
+        model: Model name (kept for backward compatibility, currently ignored).
 
     Returns:
         Estimated token count.
     """
-    # Rough estimate: ~4 chars per token for English
-    # This is a simplification - real tokenizers vary
-    if not text:
-        return 0
-
-    # Try tiktoken if available (more accurate)
-    try:
-        import tiktoken
-
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except KeyError:
-            encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(text))
-    except ImportError:
-        pass
-
-    # Fallback: rough character-based estimate
-    return max(1, len(text) // 4)
+    _ = model  # kept for backward compatibility
+    return _canonical_estimate_tokens(text)
 
 
 # =============================================================================

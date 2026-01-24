@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
+
 
 class VerificationStatus(Enum):
     """Status of fact verification."""
@@ -114,7 +116,7 @@ class KnowledgeProbe:
 
 
 @dataclass
-class ProbeResult:
+class KnowledgeProbeResult:
     """Result of a knowledge probe."""
 
     probe: KnowledgeProbe
@@ -134,6 +136,10 @@ class ProbeResult:
             "confidence_expressed": self.confidence_expressed,
             "reasoning_provided": self.reasoning_provided,
         }
+
+
+# Backward compatibility alias
+ProbeResult = KnowledgeProbeResult
 
 
 @dataclass
@@ -795,23 +801,10 @@ class ConsistencyTester:
 
         similarities = []
         for response in paraphrased:
-            sim = self._text_similarity(original, response)
+            sim = word_overlap_similarity(original, response)
             similarities.append(sim)
 
         return sum(similarities) / len(similarities)
-
-    def _text_similarity(self, text1: str, text2: str) -> float:
-        """Calculate text similarity."""
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
-
-        if not words1 or not words2:
-            return 1.0 if words1 == words2 else 0.0
-
-        intersection = len(words1 & words2)
-        union = len(words1 | words2)
-
-        return intersection / union if union > 0 else 0.0
 
     def _find_contradictions(
         self,

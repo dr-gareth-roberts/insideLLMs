@@ -34,8 +34,8 @@ class ExperimentStatus(Enum):
 
 
 @dataclass
-class ExperimentConfig:
-    """Configuration for a single experiment."""
+class OrchestrationExperimentConfig:
+    """Configuration for a single experiment in orchestration."""
 
     id: str
     name: str
@@ -47,11 +47,15 @@ class ExperimentConfig:
     priority: int = 0  # Higher = higher priority
 
 
+# Backward compatibility alias
+ExperimentConfig = OrchestrationExperimentConfig
+
+
 @dataclass
 class ExperimentRun:
     """Record of a single experiment execution."""
 
-    config: ExperimentConfig
+    config: OrchestrationExperimentConfig
     status: ExperimentStatus = ExperimentStatus.PENDING
     response: Optional[str] = None
     latency_ms: float = 0.0
@@ -78,7 +82,7 @@ class ExperimentRun:
 
 
 @dataclass
-class BatchResult:
+class ExperimentBatchResult:
     """Results from a batch of experiments."""
 
     batch_id: str
@@ -303,7 +307,7 @@ class BatchRunner:
 
     def run_sequential(
         self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run experiments sequentially.
 
         Args:
@@ -324,13 +328,13 @@ class BatchRunner:
             if self._progress_callback:
                 self._progress_callback(i + 1, total, run)
 
-        result = BatchResult(batch_id=batch_id, runs=runs)
+        result = ExperimentBatchResult(batch_id=batch_id, runs=runs)
         result.completed_at = datetime.now()
         return result
 
     def run_parallel(
         self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run experiments in parallel.
 
         Args:
@@ -356,7 +360,7 @@ class BatchRunner:
                 if self._progress_callback:
                     self._progress_callback(completed, total, run)
 
-        result = BatchResult(batch_id=batch_id, runs=runs)
+        result = ExperimentBatchResult(batch_id=batch_id, runs=runs)
         result.completed_at = datetime.now()
         return result
 
@@ -365,7 +369,7 @@ class BatchRunner:
         configs: list[ExperimentConfig],
         batch_id: Optional[str] = None,
         parallel: bool = False,
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run experiments.
 
         Args:
@@ -438,7 +442,7 @@ class AsyncBatchRunner:
 
     async def run(
         self, configs: list[ExperimentConfig], batch_id: Optional[str] = None
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run experiments asynchronously.
 
         Args:
@@ -454,7 +458,7 @@ class AsyncBatchRunner:
         tasks = [self._execute_single(config) for config in configs]
         runs = await asyncio.gather(*tasks)
 
-        result = BatchResult(batch_id=batch_id, runs=list(runs))
+        result = ExperimentBatchResult(batch_id=batch_id, runs=list(runs))
         result.completed_at = datetime.now()
         return result
 
@@ -561,7 +565,7 @@ class ExperimentOrchestrator:
             executor: Function to execute prompts.
         """
         self.executor = executor
-        self._batches: dict[str, BatchResult] = {}
+        self._batches: dict[str, ExperimentBatchResult] = {}
         self._metrics_calculator: Optional[MetricsCalculator] = None
 
     def set_metrics_calculator(self, calculator: MetricsCalculator) -> "ExperimentOrchestrator":
@@ -581,7 +585,7 @@ class ExperimentOrchestrator:
         grid: ExperimentGrid,
         parallel: bool = False,
         max_workers: int = 1,
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run a grid of experiments.
 
         Args:
@@ -607,7 +611,7 @@ class ExperimentOrchestrator:
         comparison: ComparisonExperiment,
         parallel: bool = False,
         max_workers: int = 1,
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run a comparison experiment.
 
         Args:
@@ -634,7 +638,7 @@ class ExperimentOrchestrator:
         parallel: bool = False,
         max_workers: int = 1,
         batch_id: Optional[str] = None,
-    ) -> BatchResult:
+    ) -> ExperimentBatchResult:
         """Run a list of experiment configs.
 
         Args:
@@ -655,7 +659,7 @@ class ExperimentOrchestrator:
         self._batches[result.batch_id] = result
         return result
 
-    def get_batch(self, batch_id: str) -> Optional[BatchResult]:
+    def get_batch(self, batch_id: str) -> Optional[ExperimentBatchResult]:
         """Get batch results by ID."""
         return self._batches.get(batch_id)
 
@@ -777,7 +781,7 @@ def run_quick_batch(
     prompts: list[str],
     executor: ModelExecutor,
     model_id: str = "default",
-) -> BatchResult:
+) -> ExperimentBatchResult:
     """Quick utility to run a batch of prompts.
 
     Args:

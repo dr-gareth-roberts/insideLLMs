@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
+
 
 class AttackType(Enum):
     """Types of adversarial attacks."""
@@ -63,7 +65,7 @@ class PerturbedText:
 
 
 @dataclass
-class AttackResult:
+class AdversarialAttackResult:
     """Result of an adversarial attack test."""
 
     attack_type: AttackType
@@ -96,7 +98,7 @@ class RobustnessReport:
     """Report on model robustness."""
 
     prompt: str
-    attack_results: list[AttackResult]
+    attack_results: list[AdversarialAttackResult]
     overall_score: float  # 0-1, higher is more robust
     robustness_level: RobustnessLevel
     vulnerabilities: list[AttackType]
@@ -586,38 +588,14 @@ class RobustnessTester:
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate similarity between two texts."""
-        if not text1 and not text2:
-            return 1.0
-        if not text1 or not text2:
-            return 0.0
-
-        # Normalize
-        t1 = text1.lower().strip()
-        t2 = text2.lower().strip()
-
-        if t1 == t2:
-            return 1.0
-
-        # Token-based Jaccard similarity
-        tokens1 = set(t1.split())
-        tokens2 = set(t2.split())
-
-        if not tokens1 and not tokens2:
-            return 1.0
-        if not tokens1 or not tokens2:
-            return 0.0
-
-        intersection = len(tokens1 & tokens2)
-        union = len(tokens1 | tokens2)
-
-        return intersection / union if union > 0 else 0.0
+        return word_overlap_similarity(text1, text2)
 
     def test_attack(
         self,
         text: str,
         attack_type: AttackType,
         model_fn: Callable[[str], str],
-    ) -> AttackResult:
+    ) -> AdversarialAttackResult:
         """Test a specific attack type."""
         # Get original output
         original_output = model_fn(text)
@@ -657,7 +635,7 @@ class RobustnessTester:
         # Attack is successful if it caused meaningful change
         success = output_changed and perturbed.severity > 0
 
-        return AttackResult(
+        return AdversarialAttackResult(
             attack_type=attack_type,
             original_input=text,
             perturbed_input=perturbed.perturbed,
@@ -680,7 +658,7 @@ class RobustnessTester:
         if attack_types is None:
             attack_types = list(AttackType)
 
-        results: list[AttackResult] = []
+        results: list[AdversarialAttackResult] = []
 
         # Run multiple iterations of each attack
         for attack_type in attack_types:
@@ -1035,7 +1013,6 @@ def generate_adversarial_examples(
     Returns:
         List of perturbed text examples
     """
-    TextPerturbator(seed=seed)
     examples = []
 
     attack_types = list(AttackType)

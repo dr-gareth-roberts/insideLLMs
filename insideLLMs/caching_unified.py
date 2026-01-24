@@ -28,11 +28,43 @@ from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
 from pathlib import Path
+
+from insideLLMs.nlp.similarity import word_overlap_similarity
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from insideLLMs.types import ModelResponse
 
 T = TypeVar("T")
+
+
+# =============================================================================
+# Cache Entry Mixin
+# =============================================================================
+
+
+class CacheEntryMixin:
+    """Mixin providing common cache entry methods.
+
+    Requires the class to have:
+    - expires_at: Optional[datetime]
+    - access_count: int
+    - last_accessed: datetime
+    """
+
+    expires_at: Optional[datetime]
+    access_count: int
+    last_accessed: datetime
+
+    def is_expired(self) -> bool:
+        """Check if entry is expired."""
+        if self.expires_at is None:
+            return False
+        return datetime.now() > self.expires_at
+
+    def touch(self):
+        """Update access tracking."""
+        self.access_count += 1
+        self.last_accessed = datetime.now()
 
 
 # =============================================================================
@@ -100,7 +132,7 @@ class CacheConfig:
 
 
 @dataclass
-class CacheEntry:
+class CacheEntry(CacheEntryMixin):
     """A single cache entry with metadata."""
 
     key: str
@@ -123,16 +155,7 @@ class CacheEntry:
         except (TypeError, ValueError):
             return len(str(self.value))
 
-    def is_expired(self) -> bool:
-        """Check if entry is expired."""
-        if self.expires_at is None:
-            return False
-        return datetime.now() > self.expires_at
-
-    def touch(self):
-        """Update access tracking."""
-        self.access_count += 1
-        self.last_accessed = datetime.now()
+    # is_expired() and touch() inherited from CacheEntryMixin
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -943,19 +966,7 @@ class PromptCache(StrategyCache):
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate simple text similarity using Jaccard index."""
-        if text1 == text2:
-            return 1.0
-
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
-
-        if not words1 or not words2:
-            return 0.0
-
-        intersection = len(words1 & words2)
-        union = len(words1 | words2)
-
-        return intersection / union if union > 0 else 0.0
+        return word_overlap_similarity(text1, text2)
 
 
 # =============================================================================

@@ -976,8 +976,8 @@ def interactive_metric_radar(
             for metric in metrics:
                 value = getattr(exp.score, metric, None)
                 if value is not None:
-                    # Convert to percentage for display (except f1_score)
-                    display_value = value * 100 if metric != "f1_score" else value * 100
+                    # Convert to percentage for display
+                    display_value = value * 100
                     model_metrics[name][metric].append(display_value)
 
     for model_name, metric_values in model_metrics.items():
@@ -1656,19 +1656,14 @@ def create_interactive_html_report(
     unique_providers = sorted({exp.model_info.provider for exp in experiments})
 
     # Plotly JS source
-    if embed_plotly_js:
-        plotly_script = "<script>/* Plotly.js would be embedded here */</script>"
-        # Note: Full embedding would make file very large (~3MB)
-        # For now, we use CDN but with integrity check
-        plotly_script = (
-            '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" '
-            'crossorigin="anonymous"></script>'
-        )
-    else:
-        plotly_script = (
-            '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" '
-            'crossorigin="anonymous"></script>'
-        )
+    # Note: embed_plotly_js parameter is reserved for future use
+    # Full embedding would make file very large (~3MB)
+    # For now, we always use CDN
+    _ = embed_plotly_js  # Silence unused parameter warning
+    plotly_script = (
+        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" '
+        'crossorigin="anonymous"></script>'
+    )
 
     # Build the HTML
     html = f"""<!DOCTYPE html>

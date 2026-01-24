@@ -57,15 +57,6 @@ except ImportError:
         pass
 
 
-def _require_pydantic() -> None:
-    """Raise error if pydantic is not available."""
-    if not PYDANTIC_AVAILABLE:
-        raise ImportError(
-            "Pydantic is required for configuration validation. "
-            "Install it with: pip install pydantic"
-        )
-
-
 class ModelProvider(str, Enum):
     """Supported model providers."""
 

@@ -191,7 +191,7 @@ class SearchResult:
         }
 
 
-class SimilarityCalculator:
+class VectorSimilarityCalculator:
     """Calculates similarity between vectors/texts."""
 
     def __init__(self, default_metric: SimilarityMetric = SimilarityMetric.COSINE):
@@ -297,9 +297,9 @@ class SimilarityCalculator:
 class EmbeddingAnalyzer:
     """Analyzes embedding vectors."""
 
-    def __init__(self, similarity_calculator: Optional[SimilarityCalculator] = None):
+    def __init__(self, similarity_calculator: Optional[VectorSimilarityCalculator] = None):
         """Initialize analyzer."""
-        self.calculator = similarity_calculator or SimilarityCalculator()
+        self.calculator = similarity_calculator or VectorSimilarityCalculator()
 
     def compute_stats(self, embedding: list[float]) -> EmbeddingStats:
         """Compute statistics for an embedding."""
@@ -430,7 +430,7 @@ class TextSimilarityAnalyzer:
         """Initialize analyzer."""
         self.embed_fn = embed_fn or self._default_embed
         self.metric = metric
-        self.calculator = SimilarityCalculator(metric)
+        self.calculator = VectorSimilarityCalculator(metric)
         self._cache: dict[str, list[float]] = {}
 
     def _default_embed(self, text: str) -> list[float]:
@@ -567,11 +567,11 @@ class EmbeddingClusterer:
     def __init__(
         self,
         embed_fn: Optional[Callable[[str], list[float]]] = None,
-        similarity_calculator: Optional[SimilarityCalculator] = None,
+        similarity_calculator: Optional[VectorSimilarityCalculator] = None,
     ):
         """Initialize clusterer."""
         self.embed_fn = embed_fn
-        self.calculator = similarity_calculator or SimilarityCalculator()
+        self.calculator = similarity_calculator or VectorSimilarityCalculator()
 
     def _simple_kmeans(
         self,
@@ -834,7 +834,7 @@ class SemanticSearch:
         """Initialize search engine."""
         self.embed_fn = embed_fn
         self.metric = metric
-        self.calculator = SimilarityCalculator(metric)
+        self.calculator = VectorSimilarityCalculator(metric)
         self.index: list[tuple[str, list[float]]] = []
         self.metadata: list[dict[str, Any]] = []
 

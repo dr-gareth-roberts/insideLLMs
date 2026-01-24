@@ -2,22 +2,11 @@ from typing import Optional
 
 from insideLLMs.nlp.dependencies import ensure_gensim, ensure_sklearn, ensure_spacy
 
-# ===== Dependency Management =====
 
-
-def check_spacy(model_name: str = "en_core_web_sm"):
-    """Ensure spaCy and the requested model are available."""
-    return ensure_spacy(model_name)
-
-
-def check_sklearn():
-    """Ensure scikit-learn is available."""
-    ensure_sklearn()
-
-
-def check_gensim():
-    """Ensure gensim is available."""
-    ensure_gensim()
+# Backward compatibility aliases
+check_spacy = ensure_spacy
+check_sklearn = ensure_sklearn
+check_gensim = ensure_gensim
 
 
 # ===== Feature Extraction =====
@@ -27,7 +16,7 @@ def create_bow(
     texts: list[str], max_features: Optional[int] = None
 ) -> tuple[list[list[int]], list[str]]:
     """Create bag-of-words representation of texts."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import CountVectorizer
 
     vectorizer = CountVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
@@ -39,7 +28,7 @@ def create_tfidf(
     texts: list[str], max_features: Optional[int] = None
 ) -> tuple[list[list[float]], list[str]]:
     """Create TF-IDF representation of texts."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
 
     vectorizer = TfidfVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
@@ -54,7 +43,7 @@ def create_word_embeddings(
     min_count: int = 1,
 ) -> dict[str, list[float]]:
     """Create word embeddings using Word2Vec."""
-    check_gensim()
+    ensure_gensim()
     from gensim.models import Word2Vec
 
     model = Word2Vec(sentences, vector_size=vector_size, window=window, min_count=min_count)
@@ -63,7 +52,7 @@ def create_word_embeddings(
 
 def extract_pos_tags(text: str, model_name: str = "en_core_web_sm") -> list[tuple[str, str]]:
     """Extract part-of-speech tags from text using spaCy."""
-    nlp = check_spacy(model_name)
+    nlp = ensure_spacy(model_name)
     doc = nlp(text)
     return [(token.text, token.pos_) for token in doc]
 
@@ -72,6 +61,6 @@ def extract_dependencies(
     text: str, model_name: str = "en_core_web_sm"
 ) -> list[tuple[str, str, str]]:
     """Extract dependency relations from text using spaCy."""
-    nlp = check_spacy(model_name)
+    nlp = ensure_spacy(model_name)
     doc = nlp(text)
     return [(token.text, token.dep_, token.head.text) for token in doc]

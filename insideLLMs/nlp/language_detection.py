@@ -4,14 +4,18 @@ from collections import Counter
 from insideLLMs.nlp.dependencies import ensure_nltk
 
 
-def check_nltk():
+def _ensure_nltk_langdetect():
     """Ensure NLTK and required resources are available."""
     ensure_nltk(("tokenizers/punkt", "corpora/stopwords"))
 
 
+# Backward compatibility alias
+check_nltk = _ensure_nltk_langdetect
+
+
 def detect_language_by_stopwords(text: str) -> str:
     """Detect language based on stopword frequency across a few common languages."""
-    check_nltk()
+    _ensure_nltk_langdetect()
     from nltk.corpus import stopwords
     from nltk.tokenize import word_tokenize
 

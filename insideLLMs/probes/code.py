@@ -147,7 +147,8 @@ class CodeGenerationProbe(ScoredProbe[str]):
         # Check for expected patterns
         if isinstance(reference, dict):
             expected_patterns = reference.get("patterns", [])
-            reference.get("expected_output")
+            # expected_output could be used for exact match checking if needed
+            # expected_output = reference.get("expected_output")
         elif isinstance(reference, str):
             expected_patterns = [reference]
         else:

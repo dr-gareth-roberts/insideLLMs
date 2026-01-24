@@ -256,6 +256,9 @@ def extract_json(text: str) -> str:
 
     Raises:
         ParsingError: If no valid JSON found.
+
+    Note:
+        For ExtractionResult with metadata, use insideLLMs.structured_extraction.extract_json
     """
     # Try to find JSON in code blocks
     code_block_patterns = [

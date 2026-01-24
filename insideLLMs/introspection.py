@@ -9,10 +9,11 @@ Provides tools for:
 - Model behavior introspection
 """
 
-import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+from insideLLMs.nlp.tokenization import word_tokenize_regex
 
 
 class AttentionPattern(Enum):
@@ -342,8 +343,11 @@ class AttentionAnalyzer:
         return analyses
 
     def _tokenize(self, text: str) -> list[str]:
-        """Simple tokenization."""
-        return re.findall(r"\b\w+\b", text.lower())
+        """Simple tokenization.
+
+        Note: Delegates to insideLLMs.nlp.tokenization.word_tokenize_regex
+        """
+        return word_tokenize_regex(text)
 
     def _infer_pattern(
         self,
@@ -424,7 +428,6 @@ class LayerAnalyzer:
         Returns:
             List of layer analyses.
         """
-        re.findall(r"\b\w+\b", text.lower())
         analyses = []
 
         for layer in range(num_layers):
@@ -629,7 +632,6 @@ class ActivationProfiler:
             List of activation profiles.
         """
         profiles = []
-        len(text.split())
 
         for layer in range(num_layers):
             # Simulate activation characteristics

@@ -10,7 +10,6 @@ Provides tools for systematic prompt engineering:
 
 import itertools
 import random
-import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,6 +19,8 @@ from typing import (
     Callable,
     Optional,
 )
+
+from insideLLMs.nlp.tokenization import word_tokenize_regex
 
 
 class PromptStrategy(Enum):
@@ -62,7 +63,7 @@ class PromptTestResult:
 
 
 @dataclass
-class ExperimentResult:
+class PromptExperimentResult:
     """Results from a prompt testing experiment."""
 
     experiment_id: str
@@ -476,8 +477,8 @@ class PromptScorer:
                 return 1.0  # No expected response to compare
 
             # Simple word overlap similarity
-            response_words = set(re.findall(r"\b\w+\b", response.lower()))
-            expected_words = set(re.findall(r"\b\w+\b", expected.lower()))
+            response_words = set(word_tokenize_regex(response))
+            expected_words = set(word_tokenize_regex(expected))
 
             if not expected_words:
                 return 1.0
@@ -577,7 +578,7 @@ class PromptScorer:
         return overall, scores
 
 
-class ABTestRunner:
+class PromptABTestRunner:
     """Run A/B tests on prompt variants."""
 
     def __init__(
@@ -653,7 +654,7 @@ class ABTestRunner:
         expected: str = "",
         runs_per_variant: int = 1,
         experiment_id: Optional[str] = None,
-    ) -> ExperimentResult:
+    ) -> PromptExperimentResult:
         """Run a full experiment with multiple variants.
 
         Args:
@@ -673,7 +674,7 @@ class ABTestRunner:
             results = self.test_variant(variant, model_fn, expected, runs_per_variant)
             all_results.extend(results)
 
-        experiment = ExperimentResult(
+        experiment = PromptExperimentResult(
             experiment_id=experiment_id,
             variants=variants,
             results=all_results,
@@ -694,7 +695,7 @@ class ABTestRunner:
 
 
 @dataclass
-class PromptTemplate:
+class ExpandablePromptTemplate:
     """Template for generating prompts with variables."""
 
     template: str
@@ -734,7 +735,7 @@ class PromptExperiment:
         self.name = name
         self.variants: list[PromptVariant] = []
         self.scorer = PromptScorer()
-        self.results: Optional[ExperimentResult] = None
+        self.results: Optional[PromptExperimentResult] = None
 
     def add_variant(
         self,
@@ -812,7 +813,7 @@ class PromptExperiment:
         model_fn: Callable[[str], str],
         expected: str = "",
         runs_per_variant: int = 1,
-    ) -> ExperimentResult:
+    ) -> PromptExperimentResult:
         """Run the experiment.
 
         Args:
@@ -823,7 +824,7 @@ class PromptExperiment:
         Returns:
             Experiment results.
         """
-        runner = ABTestRunner(scorer=self.scorer)
+        runner = PromptABTestRunner(scorer=self.scorer)
         self.results = runner.run_experiment(
             variants=self.variants,
             model_fn=model_fn,

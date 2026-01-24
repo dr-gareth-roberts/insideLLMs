@@ -28,7 +28,7 @@ class ReasoningType(Enum):
     SPATIAL = "spatial"
 
 
-class StepType(Enum):
+class ReasoningStepType(Enum):
     """Types of reasoning steps."""
 
     PREMISE = "premise"
@@ -57,7 +57,7 @@ class ReasoningStep:
 
     content: str
     step_number: int
-    step_type: StepType = StepType.INFERENCE
+    step_type: ReasoningStepType = ReasoningStepType.INFERENCE
     confidence: float = 0.5
     supports_conclusion: bool = True
     depends_on: list[int] = field(default_factory=list)
@@ -93,11 +93,11 @@ class ReasoningChain:
 
     def get_premises(self) -> list[ReasoningStep]:
         """Get all premise steps."""
-        return [s for s in self.steps if s.step_type == StepType.PREMISE]
+        return [s for s in self.steps if s.step_type == ReasoningStepType.PREMISE]
 
     def get_inferences(self) -> list[ReasoningStep]:
         """Get all inference steps."""
-        return [s for s in self.steps if s.step_type == StepType.INFERENCE]
+        return [s for s in self.steps if s.step_type == ReasoningStepType.INFERENCE]
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -211,7 +211,6 @@ class ReasoningExtractor:
     def extract(self, text: str) -> ReasoningChain:
         """Extract reasoning chain from text."""
         steps = []
-        text.lower()
 
         # Try numbered step patterns
         for pattern in self.STEP_PATTERNS:
@@ -271,27 +270,27 @@ class ReasoningExtractor:
 
         return steps[:10]  # Limit to 10 steps
 
-    def _classify_step(self, content: str) -> StepType:
+    def _classify_step(self, content: str) -> ReasoningStepType:
         """Classify the type of reasoning step."""
         content_lower = content.lower()
 
         for marker in self.PREMISE_MARKERS:
             if marker in content_lower:
-                return StepType.PREMISE
+                return ReasoningStepType.PREMISE
 
         for marker in self.CONCLUSION_MARKERS:
             if marker in content_lower:
-                return StepType.CONCLUSION
+                return ReasoningStepType.CONCLUSION
 
         for marker in self.CALCULATION_MARKERS:
             if marker in content:
-                return StepType.CALCULATION
+                return ReasoningStepType.CALCULATION
 
         for marker in self.INFERENCE_MARKERS:
             if marker in content_lower:
-                return StepType.INFERENCE
+                return ReasoningStepType.INFERENCE
 
-        return StepType.INFERENCE
+        return ReasoningStepType.INFERENCE
 
     def _estimate_confidence(self, content: str) -> float:
         """Estimate confidence of a step."""
@@ -381,15 +380,15 @@ class ReasoningExtractor:
             score += 0.3
 
         # Has premise
-        if any(s.step_type == StepType.PREMISE for s in steps):
+        if any(s.step_type == ReasoningStepType.PREMISE for s in steps):
             score += 0.2
 
         # Has inference
-        if any(s.step_type == StepType.INFERENCE for s in steps):
+        if any(s.step_type == ReasoningStepType.INFERENCE for s in steps):
             score += 0.2
 
         # Has conclusion
-        if conclusion or any(s.step_type == StepType.CONCLUSION for s in steps):
+        if conclusion or any(s.step_type == ReasoningStepType.CONCLUSION for s in steps):
             score += 0.3
 
         return min(1.0, score)
@@ -465,12 +464,12 @@ class ReasoningAnalyzer:
             validity += 0.2
 
         # Steps build on each other
-        inference_count = sum(1 for s in chain.steps if s.step_type == StepType.INFERENCE)
+        inference_count = sum(1 for s in chain.steps if s.step_type == ReasoningStepType.INFERENCE)
         if inference_count > 0:
             validity += 0.15
 
         # Has evidence/premises
-        premise_count = sum(1 for s in chain.steps if s.step_type == StepType.PREMISE)
+        premise_count = sum(1 for s in chain.steps if s.step_type == ReasoningStepType.PREMISE)
         if premise_count > 0:
             validity += 0.15
 
@@ -539,11 +538,11 @@ class ReasoningAnalyzer:
         step_types = [s.step_type for s in chain.steps]
 
         # Missing premise
-        if StepType.PREMISE not in step_types and len(chain.steps) > 1:
+        if ReasoningStepType.PREMISE not in step_types and len(chain.steps) > 1:
             missing.append("No clear premise or starting point")
 
         # Missing conclusion
-        if StepType.CONCLUSION not in step_types and chain.conclusion is None:
+        if ReasoningStepType.CONCLUSION not in step_types and chain.conclusion is None:
             missing.append("No explicit conclusion")
 
         # Jumps in reasoning

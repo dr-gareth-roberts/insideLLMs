@@ -1919,24 +1919,14 @@ def cmd_harness(args: argparse.Namespace) -> int:
             output_dir = config_default_dir
 
         def _semver_tuple(version: str) -> tuple[int, int, int]:
-            v = normalize_semver(version)
-            parts = v.split(".")
-            try:
-                return (int(parts[0]), int(parts[1]), int(parts[2]))
-            except Exception:
-                return (0, 0, 0)
+            from insideLLMs.schemas.registry import semver_tuple
+
+            return semver_tuple(version)
 
         def _atomic_write_text(path: Path, text: str) -> None:
-            tmp = path.with_name(f".{path.name}.tmp")
-            tmp.parent.mkdir(parents=True, exist_ok=True)
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(text)
-                f.flush()
-                try:
-                    os.fsync(f.fileno())
-                except Exception:
-                    pass
-            os.replace(tmp, path)
+            from insideLLMs.resources import atomic_write_text
+
+            atomic_write_text(path, text)
 
         def _atomic_write_yaml(path: Path, data: Any) -> None:
             import yaml

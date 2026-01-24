@@ -614,7 +614,7 @@ class EmbeddingUtils:
 
 
 @dataclass
-class TokenBudget:
+class TokenSpendingBudget:
     """Track token budget for operations."""
 
     total_budget: int
@@ -694,7 +694,7 @@ class ContextWindowManager:
         """
         self.max_tokens = max_tokens
         self.estimator = estimator or TokenEstimator()
-        self.budget = TokenBudget(total_budget=max_tokens)
+        self.budget = TokenSpendingBudget(total_budget=max_tokens)
 
     def add_content(
         self,
@@ -769,7 +769,7 @@ class ContextWindowManager:
 
     def reset(self) -> None:
         """Reset context budget."""
-        self.budget = TokenBudget(total_budget=self.max_tokens)
+        self.budget = TokenSpendingBudget(total_budget=self.max_tokens)
 
 
 # Convenience functions

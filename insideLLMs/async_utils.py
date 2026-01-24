@@ -28,7 +28,7 @@ R = TypeVar("R")
 
 
 @dataclass
-class BatchResult(Generic[T]):
+class AsyncBatchResult(Generic[T]):
     """Result from batch processing.
 
     Attributes:
@@ -74,7 +74,7 @@ async def map_async(
     max_concurrency: int = 10,
     return_exceptions: bool = False,
     on_progress: Optional[Callable[[int, int], None]] = None,
-) -> BatchResult[R]:
+) -> AsyncBatchResult[R]:
     """Apply an async function to items with controlled concurrency.
 
     Args:
@@ -85,7 +85,7 @@ async def map_async(
         on_progress: Optional callback(completed, total) for progress.
 
     Returns:
-        BatchResult with results and errors.
+        AsyncBatchResult with results and errors.
 
     Example:
         async def process(item):
@@ -121,7 +121,7 @@ async def map_async(
     elapsed = time.perf_counter() - start_time
     succeeded = len(items) - len(errors)
 
-    return BatchResult(
+    return AsyncBatchResult(
         results=results,
         errors=errors,
         total=len(items),
@@ -241,7 +241,7 @@ async def for_each_async(
 
 
 @dataclass
-class RateLimiter:
+class AsyncTokenBucketRateLimiter:
     """Token bucket rate limiter for async operations.
 
     Attributes:
@@ -296,7 +296,7 @@ class RateLimiter:
 
 
 @dataclass
-class SlidingWindowRateLimiter:
+class AsyncSlidingWindowRateLimiter:
     """Sliding window rate limiter.
 
     Provides more accurate rate limiting by tracking actual request times.
@@ -348,7 +348,7 @@ def rate_limited(
         async def call_api():
             return await api.generate("Hello")
     """
-    limiter = RateLimiter(rate=rate, burst=burst)
+    limiter = AsyncTokenBucketRateLimiter(rate=rate, burst=burst)
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)

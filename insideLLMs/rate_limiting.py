@@ -42,12 +42,8 @@ class RetryStrategy(Enum):
     FIBONACCI = "fibonacci"
 
 
-class CircuitState(Enum):
-    """Circuit breaker states."""
-
-    CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failing, reject requests
-    HALF_OPEN = "half_open"  # Testing recovery
+# Import CircuitState from retry module to avoid duplication
+from insideLLMs.retry import CircuitState  # noqa: E402
 
 
 class RequestPriority(Enum):
@@ -82,7 +78,7 @@ class RateLimitConfig:
 
 
 @dataclass
-class RetryConfig:
+class RateLimitRetryConfig:
     """Configuration for retry behavior."""
 
     max_retries: int = 3
@@ -131,7 +127,7 @@ class RateLimitState:
 
 
 @dataclass
-class RetryResult:
+class RateLimitRetryResult:
     """Result of a retry operation."""
 
     success: bool
@@ -346,7 +342,7 @@ class TokenBucketRateLimiter:
             self._last_update = time.monotonic()
 
 
-class SlidingWindowRateLimiter:
+class ThreadSafeSlidingWindowRateLimiter:
     """
     Sliding window rate limiter.
 
@@ -485,21 +481,21 @@ class RetryHandler:
     Handles retries with configurable strategies.
     """
 
-    def __init__(self, config: Optional[RetryConfig] = None):
+    def __init__(self, config: Optional[RateLimitRetryConfig] = None):
         """
         Initialize retry handler.
 
         Args:
             config: Retry configuration
         """
-        self.config = config or RetryConfig()
+        self.config = config or RateLimitRetryConfig()
         self._fibonacci_cache = [0, 1]
 
     def execute(
         self,
         func: Callable[[], T],
         on_retry: Optional[Callable[[int, Exception], None]] = None,
-    ) -> RetryResult:
+    ) -> RateLimitRetryResult:
         """
         Execute function with retries.
 
@@ -508,7 +504,7 @@ class RetryHandler:
             on_retry: Optional callback on retry
 
         Returns:
-            RetryResult with outcome
+            RateLimitRetryResult with outcome
         """
         start_time = time.time()
         errors = []
@@ -517,7 +513,7 @@ class RetryHandler:
         for attempt in range(self.config.max_retries + 1):
             try:
                 result = func()
-                return RetryResult(
+                return RateLimitRetryResult(
                     success=True,
                     result=result,
                     attempts=attempt + 1,
@@ -541,7 +537,7 @@ class RetryHandler:
                         on_retry(attempt + 1, e)
                     time.sleep(delay)
 
-        return RetryResult(
+        return RateLimitRetryResult(
             success=False,
             result=None,
             attempts=self.config.max_retries + 1,
@@ -554,7 +550,7 @@ class RetryHandler:
         self,
         func: Callable[[], T],
         on_retry: Optional[Callable[[int, Exception], None]] = None,
-    ) -> RetryResult:
+    ) -> RateLimitRetryResult:
         """Async version of execute."""
         start_time = time.time()
         errors = []
@@ -567,7 +563,7 @@ class RetryHandler:
                 else:
                     result = func()
 
-                return RetryResult(
+                return RateLimitRetryResult(
                     success=True,
                     result=result,
                     attempts=attempt + 1,
@@ -590,7 +586,7 @@ class RetryHandler:
                         on_retry(attempt + 1, e)
                     await asyncio.sleep(delay)
 
-        return RetryResult(
+        return RateLimitRetryResult(
             success=False,
             result=None,
             attempts=self.config.max_retries + 1,
@@ -633,7 +629,7 @@ class RetryHandler:
         return self._fibonacci_cache[n]
 
 
-class CircuitBreaker:
+class RateLimitCircuitBreaker:
     """
     Circuit breaker for fault tolerance.
 
@@ -990,7 +986,7 @@ class RateLimitedExecutor:
         self,
         rate_limiter: Optional[TokenBucketRateLimiter] = None,
         retry_handler: Optional[RetryHandler] = None,
-        circuit_breaker: Optional[CircuitBreaker] = None,
+        circuit_breaker: Optional[RateLimitCircuitBreaker] = None,
         concurrency_limiter: Optional[ConcurrencyLimiter] = None,
     ):
         """
@@ -1149,7 +1145,7 @@ def with_retry(
         base_delay: Base delay seconds
         strategy: Retry strategy
     """
-    config = RetryConfig(
+    config = RateLimitRetryConfig(
         max_retries=max_retries,
         base_delay=base_delay,
         strategy=strategy,
@@ -1189,7 +1185,7 @@ def circuit_protected(
         failure_threshold: Failures before opening
         recovery_timeout: Recovery timeout seconds
     """
-    breaker = CircuitBreaker(
+    breaker = RateLimitCircuitBreaker(
         failure_threshold=failure_threshold,
         recovery_timeout=recovery_timeout,
     )
@@ -1217,7 +1213,7 @@ def create_rate_limiter(
     rate: float = 10.0,
     capacity: int = 20,
     strategy: RateLimitStrategy = RateLimitStrategy.TOKEN_BUCKET,
-) -> TokenBucketRateLimiter | SlidingWindowRateLimiter:
+) -> TokenBucketRateLimiter | ThreadSafeSlidingWindowRateLimiter:
     """
     Create a rate limiter.
 
@@ -1229,7 +1225,7 @@ def create_rate_limiter(
     if strategy == RateLimitStrategy.TOKEN_BUCKET:
         return TokenBucketRateLimiter(rate=rate, capacity=capacity)
     elif strategy == RateLimitStrategy.SLIDING_WINDOW:
-        return SlidingWindowRateLimiter(requests_per_second=rate)
+        return ThreadSafeSlidingWindowRateLimiter(requests_per_second=rate)
     else:
         return TokenBucketRateLimiter(rate=rate, capacity=capacity)
 
@@ -1247,7 +1243,7 @@ def create_retry_handler(
         base_delay: Base delay
         strategy: Retry strategy
     """
-    config = RetryConfig(
+    config = RateLimitRetryConfig(
         max_retries=max_retries,
         base_delay=base_delay,
         strategy=strategy,
@@ -1258,7 +1254,7 @@ def create_retry_handler(
 def create_circuit_breaker(
     failure_threshold: int = 5,
     recovery_timeout: float = 30.0,
-) -> CircuitBreaker:
+) -> RateLimitCircuitBreaker:
     """
     Create a circuit breaker.
 
@@ -1266,7 +1262,7 @@ def create_circuit_breaker(
         failure_threshold: Failures before opening
         recovery_timeout: Recovery timeout
     """
-    return CircuitBreaker(
+    return RateLimitCircuitBreaker(
         failure_threshold=failure_threshold,
         recovery_timeout=recovery_timeout,
     )

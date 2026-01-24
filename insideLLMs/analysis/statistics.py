@@ -109,7 +109,7 @@ class AggregatedResults:
 
 
 @dataclass
-class ComparisonResult:
+class StatisticalComparisonResult:
     """Result of comparing two groups/experiments."""
 
     group_a_name: str
@@ -503,7 +503,7 @@ def welchs_t_test(
     # Welch-Satterthwaite degrees of freedom
     num = (var1 / n1 + var2 / n2) ** 2
     denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
-    num / denom if denom > 0 else 1
+    df = num / denom if denom > 0 else 1  # noqa: F841 - degrees of freedom for reference
 
     # Approximate p-value (two-tailed)
     # Using normal approximation for simplicity
@@ -800,7 +800,7 @@ def compare_experiments(
     alpha: float = 0.05,
     name_a: str = "Group A",
     name_b: str = "Group B",
-) -> ComparisonResult:
+) -> StatisticalComparisonResult:
     """Compare two sets of experiment results.
 
     Args:
@@ -813,7 +813,7 @@ def compare_experiments(
         name_b: Name for second group.
 
     Returns:
-        ComparisonResult object.
+        StatisticalComparisonResult object.
     """
     values_a = extract_metric_from_results(results_a, metric)
     values_b = extract_metric_from_results(results_b, metric)
@@ -846,7 +846,7 @@ def compare_experiments(
     else:
         diff_ci = None
 
-    return ComparisonResult(
+    return StatisticalComparisonResult(
         group_a_name=name_a,
         group_b_name=name_b,
         metric_name=metric,

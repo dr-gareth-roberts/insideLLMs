@@ -137,7 +137,7 @@ class ConfidenceEstimate:
 
 
 @dataclass
-class CalibrationResult:
+class ConfidenceCalibrationResult:
     """Result of calibration analysis."""
 
     predictions: list[float]
@@ -168,7 +168,7 @@ class CalibrationAnalyzer:
         self,
         confidences: list[float],
         correct: list[bool],
-    ) -> CalibrationResult:
+    ) -> ConfidenceCalibrationResult:
         """Analyze calibration from confidence scores and correctness.
 
         Args:
@@ -176,7 +176,7 @@ class CalibrationAnalyzer:
             correct: List of whether predictions were correct
 
         Returns:
-            CalibrationResult with metrics and analysis
+            ConfidenceCalibrationResult with metrics and analysis
         """
         if len(confidences) != len(correct):
             raise ValueError("Confidences and correct must have same length")
@@ -199,7 +199,7 @@ class CalibrationAnalyzer:
         # Generate recommendations
         recommendations = self._generate_recommendations(metrics)
 
-        return CalibrationResult(
+        return ConfidenceCalibrationResult(
             predictions=confidences,
             confidences=confidences,
             labels=labels,
@@ -796,7 +796,7 @@ def analyze_calibration(
     confidences: list[float],
     correct: list[bool],
     n_bins: int = 10,
-) -> CalibrationResult:
+) -> ConfidenceCalibrationResult:
     """Analyze model calibration.
 
     Args:
@@ -805,7 +805,7 @@ def analyze_calibration(
         n_bins: Number of bins for analysis
 
     Returns:
-        CalibrationResult with metrics
+        ConfidenceCalibrationResult with metrics
     """
     analyzer = CalibrationAnalyzer(n_bins=n_bins)
     return analyzer.analyze(confidences, correct)

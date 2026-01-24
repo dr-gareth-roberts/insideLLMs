@@ -704,7 +704,7 @@ class DeterministicExecutor:
         return list(self._execution_log)
 
 
-class CheckpointManager:
+class ExperimentCheckpointManager:
     """Manage experiment checkpoints."""
 
     def __init__(self, checkpoint_dir: str = ".checkpoints"):

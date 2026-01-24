@@ -643,8 +643,12 @@ def normalize_whitespace(text: str) -> str:
 
     Returns:
         Normalized text.
+
+    Note: Delegates to insideLLMs.nlp.text_cleaning.normalize_whitespace
     """
-    return " ".join(text.split())
+    from insideLLMs.nlp.text_cleaning import normalize_whitespace as _normalize_ws
+
+    return _normalize_ws(text)
 
 
 def normalize_unicode(text: str, form: str = "NFKC") -> str:
@@ -656,8 +660,12 @@ def normalize_unicode(text: str, form: str = "NFKC") -> str:
 
     Returns:
         Normalized text.
+
+    Note: Delegates to insideLLMs.nlp.text_cleaning.normalize_unicode
     """
-    return unicodedata.normalize(form, text)
+    from insideLLMs.nlp.text_cleaning import normalize_unicode as _normalize_uc
+
+    return _normalize_uc(text, form)
 
 
 def remove_special_chars(text: str, keep: str = "") -> str:

@@ -17,6 +17,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
+
 
 class TruncationStrategy(Enum):
     """Strategy for truncating content when exceeding limits."""
@@ -63,7 +65,7 @@ class PriorityLevel(Enum):
 
 
 @dataclass
-class TokenBudget:
+class ContentAllocationBudget:
     """Token budget allocation for context."""
 
     total: int
@@ -182,7 +184,7 @@ class TruncationResult:
 
 
 @dataclass
-class CompressionResult:
+class ContextCompressionResult:
     """Result of a compression operation."""
 
     original_tokens: int
@@ -213,7 +215,7 @@ class ContextWindowState:
     available_tokens: int
     block_count: int
     usage_by_type: dict[str, int]
-    budget: TokenBudget
+    budget: ContentAllocationBudget
     overflow: bool
 
     def to_dict(self) -> dict[str, Any]:
@@ -234,13 +236,7 @@ def estimate_tokens(text: str) -> int:
     Estimate token count for text.
     Uses approximation of ~4 characters per token for English.
     """
-    if not text:
-        return 0
-    # Simple heuristic: ~4 chars per token, accounting for whitespace
-    words = len(text.split())
-    chars = len(text)
-    # Blend word-based and char-based estimates
-    return max(1, (words + chars // 4) // 2)
+    return _canonical_estimate_tokens(text)
 
 
 def find_semantic_boundaries(text: str) -> list[int]:
@@ -754,7 +750,7 @@ class ContextCompressor:
         target_ratio: float = 0.5,
         method: CompressionMethod = CompressionMethod.REMOVE_REDUNDANCY,
         min_priority: PriorityLevel = PriorityLevel.LOW,
-    ) -> tuple[list[ContextBlock], CompressionResult]:
+    ) -> tuple[list[ContextBlock], ContextCompressionResult]:
         """
         Compress context blocks.
 
@@ -780,7 +776,7 @@ class ContextCompressor:
 
         compressed_tokens = sum(b.token_count for b in result_blocks)
 
-        result = CompressionResult(
+        result = ContextCompressionResult(
             original_tokens=original_tokens,
             compressed_tokens=compressed_tokens,
             compression_ratio=compressed_tokens / original_tokens if original_tokens > 0 else 1.0,
@@ -928,7 +924,7 @@ class ContextWindow:
     def __init__(
         self,
         max_tokens: int = 128000,
-        budget: Optional[TokenBudget] = None,
+        budget: Optional[ContentAllocationBudget] = None,
         token_counter: Optional[TokenCounter] = None,
         default_strategy: TruncationStrategy = TruncationStrategy.PRIORITY,
     ):
@@ -942,7 +938,7 @@ class ContextWindow:
             default_strategy: Default truncation strategy
         """
         self.max_tokens = max_tokens
-        self.budget = budget or TokenBudget(total=max_tokens)
+        self.budget = budget or ContentAllocationBudget(total=max_tokens)
         self.token_counter = token_counter or TokenCounter()
         self.default_strategy = default_strategy
 
@@ -1079,7 +1075,7 @@ class ContextWindow:
         self,
         target_ratio: float = 0.5,
         method: CompressionMethod = CompressionMethod.REMOVE_REDUNDANCY,
-    ) -> CompressionResult:
+    ) -> ContextCompressionResult:
         """
         Compress context content.
 
@@ -1488,7 +1484,7 @@ def compress_context(
     blocks: list[ContextBlock],
     target_ratio: float = 0.5,
     method: CompressionMethod = CompressionMethod.REMOVE_REDUNDANCY,
-) -> tuple[list[ContextBlock], CompressionResult]:
+) -> tuple[list[ContextBlock], ContextCompressionResult]:
     """Compress context blocks."""
     compressor = ContextCompressor()
     return compressor.compress(blocks, target_ratio, method)
@@ -1500,7 +1496,7 @@ def create_budget(
     context_ratio: float = 0.2,
     tools_ratio: float = 0.1,
     reserved_ratio: float = 0.25,
-) -> TokenBudget:
+) -> ContentAllocationBudget:
     """
     Create a token budget with specified ratios.
 
@@ -1518,7 +1514,7 @@ def create_budget(
     tools = int(available * tools_ratio)
     user = available - system - context - tools
 
-    return TokenBudget(
+    return ContentAllocationBudget(
         total=total,
         system=system,
         user=user,

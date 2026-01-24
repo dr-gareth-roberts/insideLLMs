@@ -171,7 +171,7 @@ class ModelProfile:
 
 
 @dataclass
-class ComparisonResult:
+class ModelComparisonResult:
     """Result of comparing two or more models.
 
     Attributes:
@@ -238,7 +238,7 @@ class ModelComparator:
         self,
         metrics: Optional[list[str]] = None,
         higher_is_better: Optional[dict[str, bool]] = None,
-    ) -> ComparisonResult:
+    ) -> ModelComparisonResult:
         """Compare all models.
 
         Args:
@@ -246,7 +246,7 @@ class ModelComparator:
             higher_is_better: Dict mapping metric to whether higher is better.
 
         Returns:
-            ComparisonResult object.
+            ModelComparisonResult object.
         """
         if len(self._profiles) < 2:
             raise ValueError("Need at least 2 models to compare")
@@ -320,7 +320,7 @@ class ModelComparator:
 
         summary_parts.append(f"\nOverall winner: {winner}")
 
-        return ComparisonResult(
+        return ModelComparisonResult(
             models=model_names,
             winner=winner,
             rankings=rankings,
@@ -481,11 +481,11 @@ class CostEstimate:
         )
 
 
-class CostCalculator:
+class ModelCostComparator:
     """Calculate and compare costs across models.
 
     Example:
-        >>> calc = CostCalculator()
+        >>> calc = ModelCostComparator()
         >>> calc.set_pricing("gpt-4", 0.03, 0.06)
         >>> calc.set_pricing("claude-3", 0.015, 0.075)
         >>> cost = calc.estimate("gpt-4", 1000, 500)
@@ -510,7 +510,7 @@ class CostCalculator:
         model: str,
         input_per_1k: float,
         output_per_1k: float,
-    ) -> "CostCalculator":
+    ) -> "ModelCostComparator":
         """Set pricing for a model.
 
         Args:

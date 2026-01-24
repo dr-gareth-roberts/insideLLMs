@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, TypeVar, Union
 
+from insideLLMs.caching_unified import CacheEntryMixin
+
 # Optional Redis import
 try:
     import redis
@@ -103,7 +105,7 @@ class SemanticCacheConfig:
 
 
 @dataclass
-class SemanticCacheEntry:
+class SemanticCacheEntry(CacheEntryMixin):
     """A cache entry with semantic metadata."""
 
     key: str
@@ -117,16 +119,7 @@ class SemanticCacheEntry:
     similarity_score: float = 1.0  # How similar this entry was to the query
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def is_expired(self) -> bool:
-        """Check if entry is expired."""
-        if self.expires_at is None:
-            return False
-        return datetime.now() > self.expires_at
-
-    def touch(self):
-        """Update access tracking."""
-        self.access_count += 1
-        self.last_accessed = datetime.now()
+    # is_expired() and touch() inherited from CacheEntryMixin
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -281,7 +274,11 @@ class SimpleEmbedder:
 
 
 def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
-    """Calculate cosine similarity between two vectors."""
+    """Calculate cosine similarity between two vectors.
+
+    Note: This is a numpy-optimized version for performance.
+    See also: insideLLMs.tokens.EmbeddingUtils.cosine_similarity for pure Python.
+    """
     if len(vec1) != len(vec2):
         return 0.0
 

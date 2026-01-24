@@ -575,7 +575,7 @@ class TemplateVersionManager:
         return imported
 
 
-class ABTestRunner:
+class TemplateABTestRunner:
     """Runs A/B tests on prompt templates."""
 
     def __init__(
@@ -791,22 +791,6 @@ class ABTest:
         d = 0.3989423 * math.exp(-z * z / 2)
         p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
         return 1 - 2 * p
-
-    def _calculate_t_statistic(
-        self, mean1: float, mean2: float, std1: float, std2: float, n1: int, n2: int
-    ) -> float:
-        """Calculate t-statistic for two means (Welch's t-test)."""
-        if n1 < 2 or n2 < 2:
-            return 0.0
-
-        se1 = std1**2 / n1
-        se2 = std2**2 / n2
-        se = (se1 + se2) ** 0.5
-
-        if se == 0:
-            return 0.0
-
-        return (mean1 - mean2) / se
 
     def get_results(self) -> ABTestResult:
         """Get current test results with statistical analysis."""
@@ -1033,7 +1017,7 @@ def create_ab_test(
     strategy: AllocationStrategy = AllocationStrategy.RANDOM,
 ) -> ABTest:
     """Create an A/B test."""
-    runner = ABTestRunner(strategy=strategy)
+    runner = TemplateABTestRunner(strategy=strategy)
     return runner.create_test(name, variants)
 
 

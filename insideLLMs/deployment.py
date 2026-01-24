@@ -51,7 +51,7 @@ __all__ = [
     "HealthResponse",
     "ErrorResponse",
     # Middleware
-    "RateLimiter",
+    "KeyedTokenBucketRateLimiter",
     "APIKeyAuth",
     "RequestLogger",
     # Monitoring
@@ -303,7 +303,7 @@ class AppConfig:
 # =============================================================================
 
 
-class RateLimiter:
+class KeyedTokenBucketRateLimiter:
     """Simple rate limiter using token bucket algorithm."""
 
     def __init__(
@@ -904,7 +904,7 @@ class DeploymentApp:
         self._probe_endpoint = ProbeEndpoint(model, config=self.config.probe_endpoint)
         self._metrics = MetricsCollector()
         self._health_checker = HealthChecker()
-        self._rate_limiter = RateLimiter()
+        self._rate_limiter = KeyedTokenBucketRateLimiter()
         self._auth = APIKeyAuth(
             [self.config.deployment.api_key] if self.config.deployment.api_key else None
         )

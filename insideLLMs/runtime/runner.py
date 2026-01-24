@@ -771,29 +771,23 @@ def _default_run_root() -> Path:
 
 
 def _semver_tuple(version: str) -> tuple[int, int, int]:
-    """Convert a semver string to a tuple for comparison."""
-    from insideLLMs.schemas.registry import normalize_semver
+    """Convert a semver string to a tuple for comparison.
 
-    v = normalize_semver(version)
-    parts = v.split(".")
-    try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
-    except Exception:
-        return (0, 0, 0)
+    Note: Delegates to insideLLMs.schemas.registry.semver_tuple
+    """
+    from insideLLMs.schemas.registry import semver_tuple
+
+    return semver_tuple(version)
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
-    """Write text to a file atomically using a temp file and rename."""
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.parent.mkdir(parents=True, exist_ok=True)
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text)
-        f.flush()
-        try:
-            os.fsync(f.fileno())
-        except Exception:
-            pass
-    os.replace(tmp, path)
+    """Write text to a file atomically using a temp file and rename.
+
+    Note: Delegates to insideLLMs.resources.atomic_write_text
+    """
+    from insideLLMs.resources import atomic_write_text
+
+    atomic_write_text(path, text)
 
 
 def _atomic_write_yaml(path: Path, data: Any) -> None:

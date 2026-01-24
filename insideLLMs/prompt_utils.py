@@ -27,6 +27,9 @@ from typing import (
 # Type variable for generic prompt content
 T = TypeVar("T")
 
+# Import canonical estimate_tokens
+from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
+
 
 class PromptRole(Enum):
     """Standard roles for chat-style prompts."""
@@ -834,8 +837,13 @@ def estimate_tokens(text: str, chars_per_token: float = 4.0) -> int:
 
     Returns:
         Estimated token count.
+
+    Note:
+        The chars_per_token parameter is kept for backward compatibility
+        but is ignored. Uses the canonical estimate_tokens from tokens.py.
     """
-    return int(len(text) / chars_per_token)
+    _ = chars_per_token  # kept for backward compatibility
+    return _canonical_estimate_tokens(text)
 
 
 def split_prompt_by_tokens(
