@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
+
 
 class HallucinationType(Enum):
     """Types of hallucinations."""
@@ -250,7 +252,7 @@ class PatternBasedDetector:
         return flags
 
 
-class ConsistencyChecker:
+class FactConsistencyChecker:
     """Checks consistency across multiple responses."""
 
     def __init__(
@@ -258,17 +260,7 @@ class ConsistencyChecker:
         similarity_fn: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize checker."""
-        self.similarity_fn = similarity_fn or self._default_similarity
-
-    def _default_similarity(self, a: str, b: str) -> float:
-        """Simple word overlap similarity."""
-        words_a = set(a.lower().split())
-        words_b = set(b.lower().split())
-        if not words_a or not words_b:
-            return 0.0
-        intersection = len(words_a & words_b)
-        union = len(words_a | words_b)
-        return intersection / union if union > 0 else 0.0
+        self.similarity_fn = similarity_fn or word_overlap_similarity
 
     def _extract_claims(self, text: str) -> list[str]:
         """Extract claims from text (simple sentence-based)."""
@@ -439,18 +431,18 @@ class FactualityChecker:
         )
 
 
-class HallucinationDetector:
+class ComprehensiveHallucinationDetector:
     """Comprehensive hallucination detection system."""
 
     def __init__(
         self,
         pattern_detector: Optional[PatternBasedDetector] = None,
-        consistency_checker: Optional[ConsistencyChecker] = None,
+        consistency_checker: Optional[FactConsistencyChecker] = None,
         factuality_checker: Optional[FactualityChecker] = None,
     ):
         """Initialize detector."""
         self.pattern_detector = pattern_detector or PatternBasedDetector()
-        self.consistency_checker = consistency_checker or ConsistencyChecker()
+        self.consistency_checker = consistency_checker or FactConsistencyChecker()
         self.factuality_checker = factuality_checker or FactualityChecker()
 
     def detect(
@@ -595,18 +587,8 @@ class GroundednessChecker:
         threshold: float = 0.5,
     ):
         """Initialize checker."""
-        self.similarity_fn = similarity_fn or self._default_similarity
+        self.similarity_fn = similarity_fn or word_overlap_similarity
         self.threshold = threshold
-
-    def _default_similarity(self, a: str, b: str) -> float:
-        """Simple word overlap similarity."""
-        words_a = set(a.lower().split())
-        words_b = set(b.lower().split())
-        if not words_a or not words_b:
-            return 0.0
-        intersection = len(words_a & words_b)
-        union = len(words_a | words_b)
-        return intersection / union if union > 0 else 0.0
 
     def check(
         self,
@@ -734,13 +716,13 @@ def detect_hallucinations(
     reference_texts: Optional[list[str]] = None,
 ) -> HallucinationReport:
     """Detect potential hallucinations in text."""
-    detector = HallucinationDetector()
+    detector = ComprehensiveHallucinationDetector()
     return detector.detect(text, reference_texts)
 
 
 def check_consistency(responses: list[str]) -> ConsistencyCheck:
     """Check consistency across multiple responses."""
-    checker = ConsistencyChecker()
+    checker = FactConsistencyChecker()
     return checker.check(responses)
 
 

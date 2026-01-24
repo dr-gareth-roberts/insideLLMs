@@ -297,8 +297,6 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         Returns:
             Number of list items detected.
         """
-        output.split("\n")
-
         # Count numbered items
         numbered = len(re.findall(r"^\s*\d+[\.\)]\s+", output, re.MULTILINE))
         if numbered > 0:

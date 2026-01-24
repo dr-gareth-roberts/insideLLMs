@@ -32,7 +32,7 @@ class ChainStatus(Enum):
     CANCELLED = "cancelled"
 
 
-class StepType(Enum):
+class ChainStepType(Enum):
     """Types of chain steps."""
 
     LLM_CALL = "llm_call"
@@ -59,7 +59,7 @@ class StepResult:
     """Result from a single chain step."""
 
     step_name: str
-    step_type: StepType
+    step_type: ChainStepType
     status: ChainStatus
     input_data: Any
     output_data: Any
@@ -167,7 +167,7 @@ class ChainStep(ABC):
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self.step_type = StepType.TRANSFORM
+        self.step_type = ChainStepType.TRANSFORM
 
     @abstractmethod
     def execute(self, input_data: Any, state: ChainState) -> Any:
@@ -191,7 +191,7 @@ class LLMStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.LLM_CALL
+        self.step_type = ChainStepType.LLM_CALL
         self.prompt_template = prompt_template
         self.model_fn = model_fn
         self.output_parser = output_parser
@@ -226,7 +226,7 @@ class TransformStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.TRANSFORM
+        self.step_type = ChainStepType.TRANSFORM
         self.transform_fn = transform_fn
 
     def execute(self, input_data: Any, state: ChainState) -> Any:
@@ -245,7 +245,7 @@ class ValidatorStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.VALIDATOR
+        self.step_type = ChainStepType.VALIDATOR
         self.validator_fn = validator_fn
         self.on_failure = on_failure
 
@@ -280,7 +280,7 @@ class ConditionalStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.CONDITION
+        self.step_type = ChainStepType.CONDITION
         self.condition_fn = condition_fn
         self.if_true = if_true
         self.if_false = if_false
@@ -307,7 +307,7 @@ class RouterStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.ROUTER
+        self.step_type = ChainStepType.ROUTER
         self.routes = routes
         self.strategy = strategy
         self.default_route = default_route
@@ -363,7 +363,7 @@ class LoopStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.LOOP
+        self.step_type = ChainStepType.LOOP
         self.body_step = body_step
         self.exit_condition = exit_condition
         self.max_iterations = max_iterations
@@ -399,7 +399,7 @@ class ParallelStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.PARALLEL
+        self.step_type = ChainStepType.PARALLEL
         self.steps = steps
         self.aggregator = aggregator or (lambda results: results)
 
@@ -423,7 +423,7 @@ class SubchainStep(ChainStep):
         description: str = "",
     ):
         super().__init__(name, description)
-        self.step_type = StepType.SUBCHAIN
+        self.step_type = ChainStepType.SUBCHAIN
         self.chain = chain
 
     def execute(self, input_data: Any, state: ChainState) -> Any:

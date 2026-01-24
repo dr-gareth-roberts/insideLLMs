@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.safety import RiskLevel
+
 
 class InjectionType(Enum):
     """Types of prompt injection attacks."""
@@ -26,16 +28,6 @@ class InjectionType(Enum):
     ROLE_PLAY = "role_play"  # Assume different role
     ENCODED = "encoded"  # Obfuscated instructions
     PAYLOAD = "payload"  # Hidden malicious payload
-
-
-class RiskLevel(Enum):
-    """Risk levels for injection attempts."""
-
-    NONE = "none"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class DefenseStrategy(Enum):

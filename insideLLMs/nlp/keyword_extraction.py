@@ -1,46 +1,24 @@
 from collections import defaultdict
 
 from insideLLMs.nlp.dependencies import ensure_nltk, ensure_sklearn
+from insideLLMs.nlp.tokenization import (
+    nltk_tokenize,
+    remove_stopwords,
+    segment_sentences,
+)
 
-# ===== Dependency Management =====
 
-
-def check_nltk():
+def _ensure_nltk_keyword():
     """Ensure NLTK and required resources are available."""
     ensure_nltk(("tokenizers/punkt", "corpora/stopwords"))
 
 
-def check_sklearn():
-    """Ensure scikit-learn is available."""
-    ensure_sklearn()
-
-
-# ===== Helper functions =====
-
-
-def segment_sentences_for_keyword(text: str) -> list[str]:
-    """Split text into sentences using NLTK."""
-    check_nltk()
-    from nltk.tokenize import sent_tokenize
-
-    return sent_tokenize(text)
-
-
-def nltk_tokenize_for_keyword(text: str) -> list[str]:
-    """Tokenize text using NLTK's word_tokenize."""
-    check_nltk()
-    from nltk.tokenize import word_tokenize
-
-    return word_tokenize(text)
-
-
-def remove_stopwords_for_keyword(tokens: list[str], language: str = "english") -> list[str]:
-    """Remove stopwords from a list of tokens."""
-    check_nltk()
-    from nltk.corpus import stopwords
-
-    stop_words = set(stopwords.words(language))
-    return [token for token in tokens if token.lower() not in stop_words]
+# Backward compatibility aliases
+check_nltk = _ensure_nltk_keyword
+check_sklearn = ensure_sklearn
+segment_sentences_for_keyword = segment_sentences
+nltk_tokenize_for_keyword = nltk_tokenize
+remove_stopwords_for_keyword = remove_stopwords
 
 
 # ===== Keyword Extraction =====
@@ -48,7 +26,7 @@ def remove_stopwords_for_keyword(tokens: list[str], language: str = "english") -
 
 def extract_keywords_tfidf(text: str, num_keywords: int = 5) -> list[str]:
     """Extract keywords from text using TF-IDF."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
 
     sentences = segment_sentences_for_keyword(text)
@@ -76,7 +54,7 @@ def extract_keywords_tfidf(text: str, num_keywords: int = 5) -> list[str]:
 
 def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int = 4) -> list[str]:
     """Extract keywords from text using a simple TextRank implementation."""
-    check_nltk()
+    _ensure_nltk_keyword()
 
     tokens = nltk_tokenize_for_keyword(text.lower())
     tokens = remove_stopwords_for_keyword(tokens)

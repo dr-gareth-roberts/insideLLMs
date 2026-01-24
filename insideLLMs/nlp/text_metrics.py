@@ -3,35 +3,22 @@ from collections import Counter
 from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_nltk
+from insideLLMs.nlp.tokenization import (
+    nltk_tokenize,
+    segment_sentences,
+    simple_tokenize,
+)
 
 
-def check_nltk():
+def _ensure_nltk_metrics():
     """Ensure NLTK and required resources are available."""
     ensure_nltk(("tokenizers/punkt",))
 
 
-def simple_tokenize(text: str) -> list[str]:
-    """Simple word tokenization by splitting on whitespace."""
-    return text.split()
-
-
-def segment_sentences_internal(text: str, use_nltk: bool = True) -> list[str]:
-    """Split text into sentences."""
-    if use_nltk:
-        check_nltk()
-        from nltk.tokenize import sent_tokenize
-
-        return sent_tokenize(text)
-    pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
-    return pattern.split(text)
-
-
-def nltk_tokenize_internal(text: str) -> list[str]:
-    """Tokenize text using NLTK's word_tokenize."""
-    check_nltk()
-    from nltk.tokenize import word_tokenize
-
-    return word_tokenize(text)
+# Backward compatibility alias and imports
+check_nltk = _ensure_nltk_metrics
+segment_sentences_internal = segment_sentences
+nltk_tokenize_internal = nltk_tokenize
 
 
 def count_words(text: str, tokenizer: Callable = simple_tokenize) -> int:
@@ -93,7 +80,7 @@ def count_syllables(word: str) -> int:
 
 def calculate_readability_flesch_kincaid(text: str) -> float:
     """Calculate the Flesch-Kincaid Grade Level readability score."""
-    check_nltk()
+    _ensure_nltk_metrics()
 
     sentences = segment_sentences_internal(text, use_nltk=True)
     if not sentences:

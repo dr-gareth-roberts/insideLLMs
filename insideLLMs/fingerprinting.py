@@ -95,6 +95,36 @@ class SkillType(Enum):
     MULTI_STEP_EXECUTION = "multi_step_execution"
 
 
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def _score_to_level(score: float) -> CapabilityLevel:
+    """Convert a 0-1 score to a capability level.
+
+    Args:
+        score: A score between 0 and 1.
+
+    Returns:
+        The corresponding capability level.
+    """
+    if score >= 0.9:
+        return CapabilityLevel.EXPERT
+    elif score >= 0.75:
+        return CapabilityLevel.ADVANCED
+    elif score >= 0.5:
+        return CapabilityLevel.INTERMEDIATE
+    elif score >= 0.25:
+        return CapabilityLevel.BASIC
+    return CapabilityLevel.NONE
+
+
+# =============================================================================
+# Enums (continued)
+# =============================================================================
+
+
 class LimitationType(Enum):
     """Types of model limitations."""
 
@@ -423,7 +453,7 @@ class SkillAssessor:
                 evidence.append(f"Incorrect response for {skill.value}")
 
         avg_score = sum(scores) / len(scores)
-        level = self._score_to_level(avg_score)
+        level = _score_to_level(avg_score)
         confidence = min(1.0, len(responses) / 5)  # More samples = higher confidence
 
         return CapabilityScore(
@@ -434,19 +464,6 @@ class SkillAssessor:
             confidence=confidence,
             evidence=evidence[:3],  # Keep top 3
         )
-
-    @staticmethod
-    def _score_to_level(score: float) -> CapabilityLevel:
-        """Convert score to capability level."""
-        if score >= 0.9:
-            return CapabilityLevel.EXPERT
-        elif score >= 0.75:
-            return CapabilityLevel.ADVANCED
-        elif score >= 0.5:
-            return CapabilityLevel.INTERMEDIATE
-        elif score >= 0.25:
-            return CapabilityLevel.BASIC
-        return CapabilityLevel.NONE
 
     @staticmethod
     def _get_category(skill: SkillType) -> CapabilityCategory:
@@ -672,7 +689,7 @@ class CapabilityProfiler:
         # Calculate overall score
         scores = [s.score for s in skill_scores.values()]
         overall_score = sum(scores) / len(scores)
-        overall_level = self._score_to_level(overall_score)
+        overall_level = _score_to_level(overall_score)
 
         # Identify strengths and weaknesses
         sorted_skills = sorted(skill_scores.items(), key=lambda x: x[1].score, reverse=True)
@@ -743,19 +760,6 @@ class CapabilityProfiler:
             },
         }
         return skill in category_skills.get(category, set())
-
-    @staticmethod
-    def _score_to_level(score: float) -> CapabilityLevel:
-        """Convert score to capability level."""
-        if score >= 0.9:
-            return CapabilityLevel.EXPERT
-        elif score >= 0.75:
-            return CapabilityLevel.ADVANCED
-        elif score >= 0.5:
-            return CapabilityLevel.INTERMEDIATE
-        elif score >= 0.25:
-            return CapabilityLevel.BASIC
-        return CapabilityLevel.NONE
 
 
 class FingerprintGenerator:

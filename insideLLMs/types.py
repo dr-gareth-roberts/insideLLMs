@@ -126,7 +126,7 @@ class LogicResult:
 
 
 @dataclass
-class AttackResult:
+class ProbeAttackResult:
     """Result from an attack/adversarial probe."""
 
     attack_prompt: str
@@ -135,6 +135,10 @@ class AttackResult:
     attack_succeeded: Optional[bool] = None
     severity: Optional[str] = None
     indicators: list[str] = field(default_factory=list)
+
+
+# Backward compatibility alias
+AttackResult = ProbeAttackResult
 
 
 @dataclass
@@ -152,7 +156,7 @@ class ProbeScore:
 
 
 @dataclass
-class ExperimentResult:
+class ProbeExperimentResult:
     """Complete result from running an experiment."""
 
     experiment_id: str
@@ -196,12 +200,16 @@ class ExperimentResult:
         return None
 
 
+# Backward compatibility alias
+ExperimentResult = ProbeExperimentResult
+
+
 @dataclass
 class BenchmarkComparison:
     """Comparison of multiple models or probes."""
 
     name: str
-    experiments: list[ExperimentResult]
+    experiments: list[ProbeExperimentResult]
     rankings: dict[str, list[str]] = field(default_factory=dict)
     summary: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)

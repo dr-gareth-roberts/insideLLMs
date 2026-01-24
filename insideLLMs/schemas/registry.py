@@ -30,6 +30,23 @@ def normalize_semver(version: str) -> str:
     return version
 
 
+def semver_tuple(version: str) -> tuple[int, int, int]:
+    """Convert a semver string to a tuple for comparison.
+
+    Args:
+        version: Version string like "1.2.3" or "1.2"
+
+    Returns:
+        Tuple of (major, minor, patch) integers.
+    """
+    v = normalize_semver(version)
+    parts = v.split(".")
+    try:
+        return (int(parts[0]), int(parts[1]), int(parts[2]))
+    except Exception:
+        return (0, 0, 0)
+
+
 def _require_pydantic() -> None:
     try:
         import pydantic  # noqa: F401

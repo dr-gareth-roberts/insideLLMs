@@ -1,24 +1,12 @@
 from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_sklearn, ensure_spacy
-
-# ===== Dependency Management =====
-
-
-def check_sklearn():
-    """Ensure scikit-learn is available."""
-    ensure_sklearn()
+from insideLLMs.nlp.tokenization import simple_tokenize
 
 
-def check_spacy(model_name: str = "en_core_web_sm"):
-    """Ensure spaCy and the requested model are available."""
-    return ensure_spacy(model_name)
-
-
-# ===== Helper functions (copied from tokenization.py for now) =====
-def simple_tokenize(text: str) -> list[str]:
-    """Simple word tokenization by splitting on whitespace."""
-    return text.split()
+# Backward compatibility aliases
+check_sklearn = ensure_sklearn
+check_spacy = ensure_spacy
 
 
 # ===== Text Similarity =====
@@ -26,7 +14,7 @@ def simple_tokenize(text: str) -> list[str]:
 
 def cosine_similarity_texts(text1: str, text2: str) -> float:
     """Calculate cosine similarity between two texts using TF-IDF."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
 
@@ -57,6 +45,34 @@ def jaccard_similarity(text1: str, text2: str, tokenizer: Callable = simple_toke
     return len(intersection) / len(union)
 
 
+def word_overlap_similarity(text1: str, text2: str) -> float:
+    """Calculate simple word overlap (Jaccard) similarity between two texts.
+
+    This is a lightweight version of jaccard_similarity that uses lowercase
+    whitespace splitting. Useful for quick similarity checks.
+
+    Args:
+        text1: First text to compare.
+        text2: Second text to compare.
+
+    Returns:
+        Similarity score between 0.0 and 1.0.
+    """
+    if text1 == text2:
+        return 1.0
+
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+
+    if not words1 or not words2:
+        return 0.0
+
+    intersection = len(words1 & words2)
+    union = len(words1 | words2)
+
+    return intersection / union if union > 0 else 0.0
+
+
 def levenshtein_distance(text1: str, text2: str) -> int:
     """Calculate Levenshtein (edit) distance between two texts."""
     if len(text1) < len(text2):
@@ -82,7 +98,7 @@ def semantic_similarity_word_embeddings(
     text1: str, text2: str, model_name: str = "en_core_web_sm"
 ) -> float:
     """Calculate semantic similarity between two texts using word embeddings."""
-    nlp = check_spacy(model_name)
+    nlp = ensure_spacy(model_name)
     doc1 = nlp(text1)
     doc2 = nlp(text2)
 

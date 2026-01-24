@@ -121,7 +121,7 @@ class BehaviorFingerprint:
 
 
 @dataclass
-class SensitivityResult:
+class PromptSensitivityResult:
     """Result of sensitivity analysis on prompt variations."""
 
     original_prompt: str
@@ -505,7 +505,6 @@ class ConsistencyAnalyzer:
             if len(lengths) > 1
             else 0
         )
-        min(1.0, length_variance / (avg_length**2 + 1))
 
         # Determine dominant response type
         dominant_type = self._classify_response_type(responses[0])
@@ -748,7 +747,7 @@ class BehaviorProfiler:
         return common[:top_n]
 
 
-class SensitivityAnalyzer:
+class PromptSensitivityAnalyzer:
     """Analyze model sensitivity to prompt variations."""
 
     def __init__(self):
@@ -761,7 +760,7 @@ class SensitivityAnalyzer:
         original_response: str,
         variations: list[str],
         variation_responses: list[str],
-    ) -> SensitivityResult:
+    ) -> PromptSensitivityResult:
         """Analyze sensitivity to prompt variations.
 
         Args:
@@ -799,7 +798,7 @@ class SensitivityAnalyzer:
             elif ratio <= 0.3:
                 sensitive_elements.append(elem)
 
-        return SensitivityResult(
+        return PromptSensitivityResult(
             original_prompt=original_prompt,
             variations=variations,
             original_response=original_response,
@@ -832,7 +831,7 @@ class SensitivityAnalyzer:
 
 
 @dataclass
-class CalibrationResult:
+class BehaviorCalibrationResult:
     """Result of calibration assessment."""
 
     confidence_levels: list[float]
@@ -866,7 +865,7 @@ class CalibrationAssessor:
         ground_truths: list[str],
         confidences: list[float],
         num_bins: int = 10,
-    ) -> CalibrationResult:
+    ) -> BehaviorCalibrationResult:
         """Assess calibration from predictions and confidences.
 
         Args:
@@ -923,7 +922,7 @@ class CalibrationAssessor:
             else:
                 underconfidence += weight * abs(diff)
 
-        return CalibrationResult(
+        return BehaviorCalibrationResult(
             confidence_levels=confidence_levels,
             accuracy_at_levels=accuracy_at_levels,
             expected_calibration_error=ece,
@@ -993,7 +992,7 @@ def analyze_sensitivity(
     original_response: str,
     variations: list[str],
     variation_responses: list[str],
-) -> SensitivityResult:
+) -> PromptSensitivityResult:
     """Analyze sensitivity to prompt variations.
 
     Args:
@@ -1005,7 +1004,7 @@ def analyze_sensitivity(
     Returns:
         Sensitivity analysis result.
     """
-    analyzer = SensitivityAnalyzer()
+    analyzer = PromptSensitivityAnalyzer()
     return analyzer.analyze_sensitivity(
         original_prompt, original_response, variations, variation_responses
     )
@@ -1015,7 +1014,7 @@ def assess_calibration(
     predictions: list[str],
     ground_truths: list[str],
     confidences: list[float],
-) -> CalibrationResult:
+) -> BehaviorCalibrationResult:
     """Assess model calibration.
 
     Args:

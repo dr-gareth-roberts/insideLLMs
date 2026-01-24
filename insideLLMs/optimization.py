@@ -26,7 +26,7 @@ class OptimizationStrategy(Enum):
 
 
 @dataclass
-class CompressionResult:
+class PromptCompressionResult:
     """Result of prompt compression."""
 
     original: str
@@ -195,7 +195,7 @@ class PromptCompressor:
         prompt: str,
         target_reduction: float = 0.2,
         preserve_keywords: Optional[set[str]] = None,
-    ) -> CompressionResult:
+    ) -> PromptCompressionResult:
         """Compress a prompt.
 
         Args:
@@ -245,7 +245,7 @@ class PromptCompressor:
         compressed_tokens = self._estimate_tokens(compressed)
         ratio = 1 - (compressed_tokens / original_tokens) if original_tokens > 0 else 0
 
-        return CompressionResult(
+        return PromptCompressionResult(
             original=prompt,
             compressed=compressed,
             original_tokens=original_tokens,
@@ -927,7 +927,7 @@ def compress_prompt(
     prompt: str,
     target_reduction: float = 0.2,
     preserve_keywords: Optional[set[str]] = None,
-) -> CompressionResult:
+) -> PromptCompressionResult:
     """Compress a prompt.
 
     Args:

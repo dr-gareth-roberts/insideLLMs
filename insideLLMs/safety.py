@@ -349,7 +349,7 @@ class ToxicityAnalyzer:
         return flags
 
 
-class HallucinationDetector:
+class SafetyHallucinationIndicatorDetector:
     """Detect potential hallucination indicators in LLM outputs."""
 
     # Phrases that may indicate uncertainty or fabrication
@@ -631,7 +631,7 @@ class ContentSafetyAnalyzer:
         """Initialize analyzers."""
         self.pii_detector = PIIDetector()
         self.toxicity_analyzer = ToxicityAnalyzer()
-        self.hallucination_detector = HallucinationDetector()
+        self.hallucination_detector = SafetyHallucinationIndicatorDetector()
         self.bias_detector = BiasDetector()
 
     def analyze(

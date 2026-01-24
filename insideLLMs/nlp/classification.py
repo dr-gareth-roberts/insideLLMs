@@ -1,16 +1,14 @@
 from insideLLMs.nlp.dependencies import ensure_nltk, ensure_sklearn
 
-# ===== Dependency Management =====
 
-
-def check_nltk():
+def _ensure_vader():
     """Ensure NLTK and the VADER lexicon are available."""
     ensure_nltk(("sentiment/vader_lexicon",))
 
 
-def check_sklearn():
-    """Ensure scikit-learn is available."""
-    ensure_sklearn()
+# Backward compatibility aliases
+check_nltk = _ensure_vader
+check_sklearn = ensure_sklearn
 
 
 # ===== Basic Text Classification =====
@@ -20,7 +18,7 @@ def naive_bayes_classify(
     train_texts: list[str], train_labels: list[str], test_texts: list[str]
 ) -> list[str]:
     """Classify texts using Naive Bayes."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import CountVectorizer
     from sklearn.naive_bayes import MultinomialNB
     from sklearn.pipeline import Pipeline
@@ -40,7 +38,7 @@ def svm_classify(
     train_texts: list[str], train_labels: list[str], test_texts: list[str]
 ) -> list[str]:
     """Classify texts using Support Vector Machine."""
-    check_sklearn()
+    ensure_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.pipeline import Pipeline
     from sklearn.svm import LinearSVC
@@ -58,7 +56,7 @@ def svm_classify(
 
 def sentiment_analysis_basic(text: str) -> str:
     """Perform basic sentiment analysis using a lexicon-based approach."""
-    check_nltk()
+    _ensure_vader()
     from nltk.sentiment import SentimentIntensityAnalyzer
 
     sia = SentimentIntensityAnalyzer()

@@ -3,12 +3,9 @@ from collections import defaultdict
 
 from insideLLMs.nlp.dependencies import ensure_spacy
 
-# ===== Dependency Management =====
 
-
-def check_spacy(model_name: str = "en_core_web_sm"):
-    """Ensure spaCy and the requested model are available."""
-    return ensure_spacy(model_name)
+# Backward compatibility alias
+check_spacy = ensure_spacy
 
 
 # ===== Pattern Matching and Extraction =====
@@ -68,7 +65,7 @@ def extract_ip_addresses(text: str) -> list[str]:
 
 def extract_named_entities(text: str, model_name: str = "en_core_web_sm") -> list[tuple[str, str]]:
     """Extract named entities from text using spaCy."""
-    nlp = check_spacy(model_name)
+    nlp = ensure_spacy(model_name)
     doc = nlp(text)
     return [(ent.text, ent.label_) for ent in doc.ents]
 

@@ -733,7 +733,7 @@ class TopicTracker:
         self._topic_history.clear()
 
 
-class ConsistencyChecker:
+class ConversationConsistencyChecker:
     """Check consistency across conversation turns."""
 
     def __init__(
@@ -951,7 +951,7 @@ class ConversationAnalyzer:
         self,
         turn_analyzer: TurnAnalyzer | None = None,
         topic_tracker: TopicTracker | None = None,
-        consistency_checker: ConsistencyChecker | None = None,
+        consistency_checker: ConversationConsistencyChecker | None = None,
         engagement_analyzer: EngagementAnalyzer | None = None,
     ):
         """Initialize analyzer.
@@ -964,7 +964,7 @@ class ConversationAnalyzer:
         """
         self._turn_analyzer = turn_analyzer or TurnAnalyzer()
         self._topic_tracker = topic_tracker or TopicTracker()
-        self._consistency_checker = consistency_checker or ConsistencyChecker()
+        self._consistency_checker = consistency_checker or ConversationConsistencyChecker()
         self._engagement_analyzer = engagement_analyzer or EngagementAnalyzer()
 
     def analyze(

@@ -298,7 +298,7 @@ class PricingRegistry:
             self.models[model_name].effective_date = datetime.now()
 
 
-class CostCalculator:
+class TokenCostCalculator:
     """Calculate costs for API usage."""
 
     def __init__(self, pricing_registry: Optional[PricingRegistry] = None):
@@ -366,8 +366,8 @@ class CostCalculator:
 class UsageTracker:
     """Track API usage over time."""
 
-    def __init__(self, calculator: Optional[CostCalculator] = None):
-        self.calculator = calculator or CostCalculator()
+    def __init__(self, calculator: Optional[TokenCostCalculator] = None):
+        self.calculator = calculator or TokenCostCalculator()
         self.records: list[UsageRecord] = []
 
     def record_usage(
@@ -902,7 +902,7 @@ def calculate_cost(
     output_tokens: int,
 ) -> float:
     """Calculate cost for a single request."""
-    calculator = CostCalculator()
+    calculator = TokenCostCalculator()
     return calculator.calculate_cost(model_name, input_tokens, output_tokens)
 
 
@@ -912,7 +912,7 @@ def estimate_request_cost(
     estimated_output_tokens: int = 500,
 ) -> float:
     """Estimate cost for a request before making it."""
-    calculator = CostCalculator()
+    calculator = TokenCostCalculator()
     return calculator.estimate_cost(model_name, prompt, estimated_output_tokens)
 
 
@@ -922,7 +922,7 @@ def compare_model_costs(
     model_names: Optional[list[str]] = None,
 ) -> dict[str, float]:
     """Compare costs across models."""
-    calculator = CostCalculator()
+    calculator = TokenCostCalculator()
     return calculator.compare_models(input_tokens, output_tokens, model_names)
 
 
@@ -932,7 +932,7 @@ def get_cheapest_model(
     model_names: Optional[list[str]] = None,
 ) -> tuple[str, float]:
     """Find the cheapest model for given usage."""
-    calculator = CostCalculator()
+    calculator = TokenCostCalculator()
     return calculator.get_cheapest_model(input_tokens, output_tokens, model_names)
 
 

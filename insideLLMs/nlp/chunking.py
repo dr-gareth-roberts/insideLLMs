@@ -2,27 +2,18 @@ import re
 from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_nltk
+from insideLLMs.nlp.tokenization import segment_sentences, simple_tokenize
 
 
-def check_nltk():
+def _ensure_nltk_chunking():
     """Ensure NLTK sentence tokenizer is available."""
     ensure_nltk(("tokenizers/punkt",))
 
 
-def simple_tokenize_for_chunking(text: str) -> list[str]:
-    """Simple word tokenization by splitting on whitespace."""
-    return text.split()
-
-
-def segment_sentences_internal_for_chunking(text: str, use_nltk: bool = True) -> list[str]:
-    """Split text into sentences."""
-    if use_nltk:
-        check_nltk()
-        from nltk.tokenize import sent_tokenize
-
-        return sent_tokenize(text)
-    pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
-    return pattern.split(text)
+# Backward compatibility aliases
+check_nltk = _ensure_nltk_chunking
+simple_tokenize_for_chunking = simple_tokenize
+segment_sentences_internal_for_chunking = segment_sentences
 
 
 def split_by_char_count(text: str, chunk_size: int, overlap: int = 0) -> list[str]:

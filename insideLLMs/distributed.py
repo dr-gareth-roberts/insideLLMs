@@ -395,7 +395,7 @@ class LocalDistributedExecutor:
         self.stop()
 
 
-class CheckpointManager:
+class DistributedCheckpointManager:
     """Manage checkpoints for fault tolerance."""
 
     def __init__(self, checkpoint_dir: Optional[str] = None):
@@ -480,7 +480,7 @@ class ProcessPoolDistributedExecutor:
         self,
         func: Callable[[Any], Any],
         num_workers: int = 4,
-        checkpoint_manager: Optional[CheckpointManager] = None,
+        checkpoint_manager: Optional[DistributedCheckpointManager] = None,
     ):
         """Initialize the process pool executor.
 
@@ -687,7 +687,7 @@ class DistributedExperimentRunner:
         self.model_func = model_func
         self.num_workers = num_workers
         self.use_processes = use_processes
-        self.checkpoint_manager = CheckpointManager(checkpoint_dir) if checkpoint_dir else None
+        self.checkpoint_manager = DistributedCheckpointManager(checkpoint_dir) if checkpoint_dir else None
 
     def run_prompts(
         self,

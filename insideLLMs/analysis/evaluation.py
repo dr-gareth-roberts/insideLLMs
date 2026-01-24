@@ -234,24 +234,12 @@ def levenshtein_distance(s1: str, s2: str) -> int:
 
     Returns:
         Edit distance.
+
+    Note: Delegates to insideLLMs.nlp.similarity.levenshtein_distance
     """
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
+    from insideLLMs.nlp.similarity import levenshtein_distance as _levenshtein
 
-    if len(s2) == 0:
-        return len(s1)
-
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
-        current_row = [i + 1]
-        for j, c2 in enumerate(s2):
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (c1 != c2)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-
-    return previous_row[-1]
+    return _levenshtein(s1, s2)
 
 
 def levenshtein_similarity(s1: str, s2: str, normalize: bool = True) -> float:
@@ -289,6 +277,9 @@ def jaccard_similarity(s1: str, s2: str, normalize: bool = True) -> float:
 
     Returns:
         Jaccard similarity between 0 and 1.
+
+    Note:
+        For custom tokenization, see insideLLMs.nlp.similarity.jaccard_similarity
     """
     if normalize:
         s1 = normalize_text(s1)
@@ -384,7 +375,7 @@ def token_f1(prediction: str, reference: str, normalize: bool = True) -> float:
 
 
 def get_ngrams(text: str, n: int) -> list[tuple[str, ...]]:
-    """Extract n-grams from text.
+    """Extract n-grams from text (splits on whitespace).
 
     Args:
         text: Input text.
@@ -392,6 +383,9 @@ def get_ngrams(text: str, n: int) -> list[tuple[str, ...]]:
 
     Returns:
         List of n-gram tuples.
+
+    Note:
+        For pre-tokenized input, use insideLLMs.nlp.tokenization.get_ngrams
     """
     words = text.split()
     if len(words) < n:

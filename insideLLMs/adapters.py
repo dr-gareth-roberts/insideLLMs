@@ -71,7 +71,7 @@ class ModelCapability(Enum):
 
 
 @dataclass
-class ModelInfo:
+class AdapterModelInfo:
     """Information about a model."""
 
     model_id: str
@@ -534,7 +534,7 @@ class ModelRegistry:
 
     def __init__(self):
         """Initialize registry."""
-        self._models: dict[str, ModelInfo] = {}
+        self._models: dict[str, AdapterModelInfo] = {}
         self._aliases: dict[str, str] = {}
         self._setup_default_models()
 
@@ -542,7 +542,7 @@ class ModelRegistry:
         """Setup default model definitions."""
         # OpenAI models
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="gpt-4o",
                 provider=Provider.OPENAI,
                 display_name="GPT-4o",
@@ -561,7 +561,7 @@ class ModelRegistry:
         )
 
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="gpt-4-turbo",
                 provider=Provider.OPENAI,
                 display_name="GPT-4 Turbo",
@@ -580,7 +580,7 @@ class ModelRegistry:
         )
 
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="gpt-3.5-turbo",
                 provider=Provider.OPENAI,
                 display_name="GPT-3.5 Turbo",
@@ -599,7 +599,7 @@ class ModelRegistry:
 
         # Anthropic models
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="claude-3-5-sonnet-20241022",
                 provider=Provider.ANTHROPIC,
                 display_name="Claude 3.5 Sonnet",
@@ -616,7 +616,7 @@ class ModelRegistry:
         )
 
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="claude-3-opus-20240229",
                 provider=Provider.ANTHROPIC,
                 display_name="Claude 3 Opus",
@@ -633,7 +633,7 @@ class ModelRegistry:
         )
 
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="claude-3-haiku-20240307",
                 provider=Provider.ANTHROPIC,
                 display_name="Claude 3 Haiku",
@@ -651,7 +651,7 @@ class ModelRegistry:
 
         # Mistral models
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="mistral-large-latest",
                 provider=Provider.MISTRAL,
                 display_name="Mistral Large",
@@ -669,7 +669,7 @@ class ModelRegistry:
         )
 
         self.register(
-            ModelInfo(
+            AdapterModelInfo(
                 model_id="mistral-small-latest",
                 provider=Provider.MISTRAL,
                 display_name="Mistral Small",
@@ -685,7 +685,7 @@ class ModelRegistry:
             )
         )
 
-    def register(self, model_info: ModelInfo) -> None:
+    def register(self, model_info: AdapterModelInfo) -> None:
         """Register a model."""
         self._models[model_info.model_id] = model_info
 
@@ -693,7 +693,7 @@ class ModelRegistry:
         for alias in model_info.aliases:
             self._aliases[alias] = model_info.model_id
 
-    def get(self, model_id: str) -> Optional[ModelInfo]:
+    def get(self, model_id: str) -> Optional[AdapterModelInfo]:
         """Get model info by ID or alias."""
         # Check direct lookup
         if model_id in self._models:
@@ -710,14 +710,14 @@ class ModelRegistry:
         """Resolve model alias to canonical ID."""
         return self._aliases.get(model_id, model_id)
 
-    def list_models(self, provider: Optional[Provider] = None) -> list[ModelInfo]:
+    def list_models(self, provider: Optional[Provider] = None) -> list[AdapterModelInfo]:
         """List all models, optionally filtered by provider."""
         models = list(self._models.values())
         if provider:
             models = [m for m in models if m.provider == provider]
         return models
 
-    def get_by_capability(self, capability: ModelCapability) -> list[ModelInfo]:
+    def get_by_capability(self, capability: ModelCapability) -> list[AdapterModelInfo]:
         """Get models with a specific capability."""
         return [m for m in self._models.values() if capability in m.capabilities]
 
@@ -846,11 +846,11 @@ class AdapterFactory:
         """List providers with available adapters."""
         return list(self.ADAPTER_CLASSES.keys())
 
-    def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
+    def get_model_info(self, model_id: str) -> Optional[AdapterModelInfo]:
         """Get model information."""
         return self._registry.get(model_id)
 
-    def list_models(self, provider: Optional[Provider] = None) -> list[ModelInfo]:
+    def list_models(self, provider: Optional[Provider] = None) -> list[AdapterModelInfo]:
         """List known models."""
         return self._registry.list_models(provider)
 
@@ -1084,14 +1084,14 @@ def list_providers() -> list[Provider]:
     return list(Provider)
 
 
-def list_models(provider: Optional[str] = None) -> list[ModelInfo]:
+def list_models(provider: Optional[str] = None) -> list[AdapterModelInfo]:
     """List known models."""
     registry = ModelRegistry()
     p = Provider(provider) if provider else None
     return registry.list_models(p)
 
 
-def get_model_info(model_id: str) -> Optional[ModelInfo]:
+def get_model_info(model_id: str) -> Optional[AdapterModelInfo]:
     """Get model information."""
     registry = ModelRegistry()
     return registry.get(model_id)

@@ -867,7 +867,7 @@ class ResponseQualityAnalyzer:
 
 
 @dataclass
-class ComparisonResult:
+class ResponseComparisonResult:
     """Result of comparing two responses."""
 
     prompt: str
@@ -891,7 +891,7 @@ class ResponseComparator:
         """
         self.analyzer = analyzer or ResponseQualityAnalyzer()
 
-    def compare(self, prompt: str, response_a: str, response_b: str) -> ComparisonResult:
+    def compare(self, prompt: str, response_a: str, response_b: str) -> ResponseComparisonResult:
         """Compare two responses.
 
         Args:
@@ -932,7 +932,7 @@ class ResponseComparator:
             b_wins = [d for d, w in dimension_comparison.items() if w == "B"]
             reasoning = f"Response B wins in: {', '.join(b_wins)}"
 
-        return ComparisonResult(
+        return ResponseComparisonResult(
             prompt=prompt,
             response_a=response_a,
             response_b=response_b,
@@ -975,7 +975,7 @@ def quick_quality_check(prompt: str, response: str) -> tuple[float, bool, list[s
     return analyzer.quick_check(prompt, response)
 
 
-def compare_responses(prompt: str, response_a: str, response_b: str) -> ComparisonResult:
+def compare_responses(prompt: str, response_a: str, response_b: str) -> ResponseComparisonResult:
     """Compare two responses.
 
     Args:

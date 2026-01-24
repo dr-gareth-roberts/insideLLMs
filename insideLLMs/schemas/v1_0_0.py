@@ -10,15 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-
-def _require_pydantic() -> None:
-    try:
-        import pydantic  # noqa: F401
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            "Pydantic is required for output schema validation. Install with: pip install pydantic"
-        ) from e
-
+from insideLLMs.schemas.registry import _require_pydantic
 
 _require_pydantic()
 
@@ -47,7 +39,7 @@ class _BaseSchema(BaseModel):
             extra = "forbid"
 
 
-class ProbeResult(_BaseSchema):
+class SchemaProbeResult(_BaseSchema):
     """Per-item output produced by ProbeRunner.run()."""
 
     schema_version: str = Field(default=SCHEMA_VERSION)
@@ -60,6 +52,10 @@ class ProbeResult(_BaseSchema):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+# Backward compatibility alias
+ProbeResult = SchemaProbeResult
+
+
 class RunnerOutput(_BaseSchema):
     """Batch output wrapper for probe execution."""
 
@@ -67,11 +63,15 @@ class RunnerOutput(_BaseSchema):
     results: list[ProbeResult]
 
 
-class ChatMessage(_BaseSchema):
+class SchemaChatMessage(_BaseSchema):
     """A single chat message in a prompt."""
 
     role: str
     content: Any
+
+
+# Backward compatibility alias
+ChatMessage = SchemaChatMessage
 
 
 class ModelSpec(_BaseSchema):
@@ -368,7 +368,7 @@ class DiffReport(_BaseSchema):
     only_candidate: list[DiffRecordIdentity] = Field(default_factory=list)
 
 
-class ExportMetadata(_BaseSchema):
+class SchemaExportMetadata(_BaseSchema):
     """Metadata file included with export bundles."""
 
     export_time: datetime
@@ -379,6 +379,10 @@ class ExportMetadata(_BaseSchema):
     format: str = ""
     compression: str = "none"
     custom: dict[str, Any] = Field(default_factory=dict)
+
+
+# Backward compatibility alias
+ExportMetadata = SchemaExportMetadata
 
 
 _SCHEMA_MAP = {

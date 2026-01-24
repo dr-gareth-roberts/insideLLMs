@@ -995,7 +995,7 @@ def create_search_tool(search_fn: Optional[Callable] = None) -> Tool:
     """
 
     def default_search(query: str) -> str:
-        return f"Search results for: {query} (placeholder - no real search)"
+        return f"No search function configured. Query was: {query}"
 
     return Tool(
         name="search",

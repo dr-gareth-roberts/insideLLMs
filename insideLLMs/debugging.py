@@ -82,7 +82,7 @@ class IssueSeverity(Enum):
 
 
 @dataclass
-class TraceEvent:
+class DebugTraceEvent:
     """A single event in an execution trace."""
 
     event_type: TraceEventType
@@ -115,7 +115,7 @@ class ExecutionTrace:
     trace_id: str
     start_time: float
     end_time: Optional[float] = None
-    events: list[TraceEvent] = field(default_factory=list)
+    events: list[DebugTraceEvent] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     final_result: Optional[Any] = None
     error: Optional[str] = None
@@ -132,11 +132,11 @@ class ExecutionTrace:
         """Number of events in trace."""
         return len(self.events)
 
-    def get_events_by_type(self, event_type: TraceEventType) -> list[TraceEvent]:
+    def get_events_by_type(self, event_type: TraceEventType) -> list[DebugTraceEvent]:
         """Get all events of a specific type."""
         return [e for e in self.events if e.event_type == event_type]
 
-    def get_step_events(self, step_id: str) -> list[TraceEvent]:
+    def get_step_events(self, step_id: str) -> list[DebugTraceEvent]:
         """Get all events for a specific step."""
         return [e for e in self.events if e.step_id == step_id]
 
@@ -297,7 +297,7 @@ class PromptDebugger:
         step_name: Optional[str] = None,
         data: Optional[dict[str, Any]] = None,
         duration_ms: Optional[float] = None,
-    ) -> Optional[TraceEvent]:
+    ) -> Optional[DebugTraceEvent]:
         """Log a trace event."""
         if self._current_trace is None:
             return None
@@ -307,7 +307,7 @@ class PromptDebugger:
 
         parent_id = self._step_stack[-1] if self._step_stack else None
 
-        event = TraceEvent(
+        event = DebugTraceEvent(
             event_type=event_type,
             timestamp=time.time(),
             step_id=step_id,
@@ -324,7 +324,7 @@ class PromptDebugger:
 
         return event
 
-    def step_start(self, step_id: str, step_name: str, **kwargs) -> TraceEvent:
+    def step_start(self, step_id: str, step_name: str, **kwargs) -> DebugTraceEvent:
         """Log step start."""
         event = self.log_event(
             TraceEventType.STEP_START,
@@ -342,7 +342,7 @@ class PromptDebugger:
         duration_ms: float,
         result: Optional[Any] = None,
         success: bool = True,
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log step end."""
         if self._step_stack:
             self._step_stack.pop()
@@ -360,7 +360,7 @@ class PromptDebugger:
         prompt: str,
         step_id: Optional[str] = None,
         model: Optional[str] = None,
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log a prompt being sent."""
         return self.log_event(
             TraceEventType.PROMPT_SENT,
@@ -378,7 +378,7 @@ class PromptDebugger:
         step_id: Optional[str] = None,
         tokens_used: Optional[int] = None,
         latency_ms: Optional[float] = None,
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log a response received."""
         return self.log_event(
             TraceEventType.RESPONSE_RECEIVED,
@@ -397,7 +397,7 @@ class PromptDebugger:
         value: Any,
         step_id: Optional[str] = None,
         operation: str = "set",
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log a variable operation."""
         snapshot = VariableSnapshot(
             name=name,
@@ -423,7 +423,7 @@ class PromptDebugger:
         error: Union[str, Exception],
         step_id: Optional[str] = None,
         step_name: Optional[str] = None,
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log an error."""
         if isinstance(error, Exception):
             error_str = f"{type(error).__name__}: {str(error)}"
@@ -453,7 +453,7 @@ class PromptDebugger:
         self,
         message: str,
         step_id: Optional[str] = None,
-    ) -> TraceEvent:
+    ) -> DebugTraceEvent:
         """Log a warning."""
         return self.log_event(
             TraceEventType.WARNING,
@@ -513,7 +513,7 @@ class PromptDebugger:
             issues = [i for i in issues if i.category == category]
         return issues
 
-    def _check_breakpoints(self, event: TraceEvent) -> None:
+    def _check_breakpoints(self, event: DebugTraceEvent) -> None:
         """Check if any breakpoint should trigger."""
         context = {
             "event": event,
@@ -1044,7 +1044,7 @@ class TraceExporter:
         events = []
         for evt_data in data.get("events", []):
             events.append(
-                TraceEvent(
+                DebugTraceEvent(
                     event_type=TraceEventType(evt_data["event_type"]),
                     timestamp=evt_data["timestamp"],
                     step_id=evt_data.get("step_id"),

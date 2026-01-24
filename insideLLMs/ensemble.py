@@ -200,7 +200,7 @@ class ResponseNormalizer:
         return result
 
 
-class SimilarityCalculator:
+class TextSimilarityCalculator:
     """Calculate similarity between responses."""
 
     def __init__(
@@ -248,7 +248,7 @@ class ResponseAggregator:
 
     def __init__(
         self,
-        similarity_calculator: SimilarityCalculator | None = None,
+        similarity_calculator: TextSimilarityCalculator | None = None,
         similarity_threshold: float = 0.8,
     ):
         """Initialize aggregator.
@@ -257,7 +257,7 @@ class ResponseAggregator:
             similarity_calculator: Calculator for response similarity
             similarity_threshold: Threshold for considering responses similar
         """
-        self._calculator = similarity_calculator or SimilarityCalculator()
+        self._calculator = similarity_calculator or TextSimilarityCalculator()
         self._threshold = similarity_threshold
 
     def aggregate(
@@ -434,7 +434,7 @@ class ResponseAggregator:
         if not outputs:
             return "", ""
 
-        calculator = SimilarityCalculator()
+        calculator = TextSimilarityCalculator()
         best_output = None
         best_avg_sim = -1
 
@@ -511,14 +511,14 @@ class ModelAgreementAnalyzer:
 
     def __init__(
         self,
-        similarity_calculator: SimilarityCalculator | None = None,
+        similarity_calculator: TextSimilarityCalculator | None = None,
     ):
         """Initialize analyzer.
 
         Args:
             similarity_calculator: Calculator for response similarity
         """
-        self._calculator = similarity_calculator or SimilarityCalculator()
+        self._calculator = similarity_calculator or TextSimilarityCalculator()
 
     def analyze(
         self,
@@ -671,7 +671,7 @@ class EnsembleEvaluator:
         prompt_outputs: list[list[ModelOutput]],
     ) -> float:
         """Calculate response diversity across prompts."""
-        calculator = SimilarityCalculator()
+        calculator = TextSimilarityCalculator()
         diversities = []
 
         for outputs in prompt_outputs:

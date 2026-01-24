@@ -28,6 +28,8 @@ Example:
     >>> result = router.route("Write a Python function")
 """
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
+
 import hashlib
 import math
 import random
@@ -328,16 +330,7 @@ class SemanticMatcher:
 
     def _word_similarity(self, text1: str, text2: str) -> float:
         """Simple word-based similarity (Jaccard)."""
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
-
-        if not words1 or not words2:
-            return 0.0
-
-        intersection = len(words1 & words2)
-        union = len(words1 | words2)
-
-        return intersection / union if union > 0 else 0.0
+        return word_overlap_similarity(text1, text2)
 
     def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Compute cosine similarity."""

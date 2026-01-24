@@ -27,7 +27,6 @@ Example:
 
 import hashlib
 import math
-import re
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -38,6 +37,8 @@ from typing import (
     Union,
     runtime_checkable,
 )
+
+from insideLLMs.nlp.tokenization import word_tokenize_regex
 
 if TYPE_CHECKING:
     from insideLLMs.models.base import Model
@@ -140,8 +141,11 @@ class SimpleEmbedding:
         self._doc_count = 0
 
     def _tokenize(self, text: str) -> list[str]:
-        """Simple tokenization."""
-        return re.findall(r"\b\w+\b", text.lower())
+        """Simple tokenization.
+
+        Note: Delegates to insideLLMs.nlp.tokenization.word_tokenize_regex
+        """
+        return word_tokenize_regex(text)
 
     def _update_vocab(self, text: str) -> None:
         """Update vocabulary with new text."""

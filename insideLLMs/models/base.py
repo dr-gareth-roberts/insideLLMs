@@ -323,7 +323,10 @@ class AsyncModel(Model):
             Chunks of the response as they are generated.
         """
         raise NotImplementedError("This model does not support async streaming.")
-        yield  # Make this a generator
+        # The yield below is needed to make this an async generator
+        # It's unreachable but required for Python's generator detection
+        if False:  # pragma: no cover
+            yield  # Make this a generator
 
     async def abatch_generate(self, prompts: list[str], **kwargs: Any) -> list[str]:
         """Asynchronously generate responses for multiple prompts.

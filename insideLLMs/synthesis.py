@@ -230,6 +230,57 @@ class SyntheticDataset:
 
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def _parse_json_array(response: str) -> list[str]:
+    """Parse JSON array from LLM response.
+
+    Attempts multiple strategies to extract a list of strings from the response:
+    1. Direct JSON parsing
+    2. Regex extraction of JSON array
+    3. Line-by-line parsing with cleanup
+
+    Args:
+        response: The raw LLM response text.
+
+    Returns:
+        List of extracted strings.
+    """
+    # Try direct JSON parsing
+    try:
+        data = json.loads(response)
+        if isinstance(data, list):
+            return [str(item) for item in data]
+    except json.JSONDecodeError:
+        pass
+
+    # Try to find JSON array in response
+    match = re.search(r"\[.*?\]", response, re.DOTALL)
+    if match:
+        try:
+            data = json.loads(match.group())
+            if isinstance(data, list):
+                return [str(item) for item in data]
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback: split by newlines
+    lines = [line.strip() for line in response.split("\n") if line.strip()]
+    # Remove numbering
+    cleaned = []
+    for line in lines:
+        # Remove patterns like "1.", "1)", "- "
+        cleaned_line = re.sub(r"^[\d]+[.)]\s*", "", line)
+        cleaned_line = re.sub(r"^[-*]\s*", "", cleaned_line)
+        cleaned_line = cleaned_line.strip("\"'")
+        if cleaned_line:
+            cleaned.append(cleaned_line)
+    return cleaned
+
+
+# =============================================================================
 # Prompt Templates for Generation
 # =============================================================================
 
@@ -452,7 +503,7 @@ class PromptVariator:
         for attempt in range(self.config.max_retries):
             try:
                 response = self.model.generate(prompt)
-                variations = self._parse_json_array(response)
+                variations = _parse_json_array(response)
 
                 if not variations and self.config.retry_on_empty:
                     continue
@@ -471,39 +522,6 @@ class PromptVariator:
                 continue
 
         return []
-
-    def _parse_json_array(self, response: str) -> list[str]:
-        """Parse JSON array from response."""
-        # Try direct JSON parsing
-        try:
-            data = json.loads(response)
-            if isinstance(data, list):
-                return [str(item) for item in data]
-        except json.JSONDecodeError:
-            pass
-
-        # Try to find JSON array in response
-        match = re.search(r"\[.*?\]", response, re.DOTALL)
-        if match:
-            try:
-                data = json.loads(match.group())
-                if isinstance(data, list):
-                    return [str(item) for item in data]
-            except json.JSONDecodeError:
-                pass
-
-        # Fallback: split by newlines
-        lines = [line.strip() for line in response.split("\n") if line.strip()]
-        # Remove numbering
-        cleaned = []
-        for line in lines:
-            # Remove patterns like "1.", "1)", "- "
-            cleaned_line = re.sub(r"^[\d]+[.)]\s*", "", line)
-            cleaned_line = re.sub(r"^[-*]\s*", "", cleaned_line)
-            cleaned_line = cleaned_line.strip("\"'")
-            if cleaned_line:
-                cleaned.append(cleaned_line)
-        return cleaned
 
     def _deduplicate(
         self,
@@ -801,7 +819,7 @@ class DataAugmenter:
 
             try:
                 response = self.model.generate(prompt)
-                new_examples = self._parse_json_array(response)
+                new_examples = _parse_json_array(response)
 
                 for new_example in new_examples:
                     dataset.add(
@@ -847,7 +865,7 @@ class DataAugmenter:
 
             try:
                 response = self.model.generate(prompt)
-                variations = self._parse_json_array(response)
+                variations = _parse_json_array(response)
 
                 for variation in variations:
                     dataset.add(
@@ -911,7 +929,7 @@ class DataAugmenter:
 
                 try:
                     response = self.model.generate(prompt)
-                    new_examples = self._parse_json_array(response)
+                    new_examples = _parse_json_array(response)
 
                     for new_example in new_examples[:needed]:
                         dataset.add(
@@ -926,34 +944,6 @@ class DataAugmenter:
                     logger.debug("Balance augmentation generation failed", exc_info=True)
 
         return dataset
-
-    def _parse_json_array(self, response: str) -> list[str]:
-        """Parse JSON array from response."""
-        try:
-            data = json.loads(response)
-            if isinstance(data, list):
-                return [str(item) for item in data]
-        except json.JSONDecodeError:
-            pass
-
-        match = re.search(r"\[.*?\]", response, re.DOTALL)
-        if match:
-            try:
-                data = json.loads(match.group())
-                if isinstance(data, list):
-                    return [str(item) for item in data]
-            except json.JSONDecodeError:
-                pass
-
-        lines = [line.strip() for line in response.split("\n") if line.strip()]
-        cleaned = []
-        for line in lines:
-            cleaned_line = re.sub(r"^[\d]+[.)]\s*", "", line)
-            cleaned_line = re.sub(r"^[-*]\s*", "", cleaned_line)
-            cleaned_line = cleaned_line.strip("\"'")
-            if cleaned_line:
-                cleaned.append(cleaned_line)
-        return cleaned
 
 
 class TemplateGenerator:
@@ -1065,7 +1055,7 @@ Return as a JSON array of strings."""
 
                 try:
                     response = self.model.generate(prompt)
-                    variations = self._parse_json_array(response)
+                    variations = _parse_json_array(response)
 
                     for var in variations[:num_per_example]:
                         new_example = {**example}
@@ -1076,25 +1066,6 @@ Return as a JSON array of strings."""
                     logger.debug("Template example generation failed", exc_info=True)
 
         return dataset
-
-    def _parse_json_array(self, response: str) -> list[str]:
-        """Parse JSON array from response."""
-        try:
-            data = json.loads(response)
-            if isinstance(data, list):
-                return [str(item) for item in data]
-        except json.JSONDecodeError:
-            pass
-
-        match = re.search(r"\[.*?\]", response, re.DOTALL)
-        if match:
-            try:
-                data = json.loads(match.group())
-                return [str(item) for item in data]
-            except json.JSONDecodeError:
-                pass
-
-        return []
 
 
 # =============================================================================

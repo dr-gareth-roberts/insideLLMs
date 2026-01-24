@@ -11,6 +11,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional
 
+from insideLLMs.nlp.tokenization import word_tokenize_regex
+
 
 @dataclass
 class TextProfile:
@@ -35,7 +37,7 @@ class TextProfile:
             return cls(text=text)
 
         # Basic counts
-        words = re.findall(r"\b\w+\b", text.lower())
+        words = word_tokenize_regex(text)
         sentences = re.split(r"[.!?]+", text)
         sentences = [s.strip() for s in sentences if s.strip()]
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
@@ -407,8 +409,8 @@ class TextAnalyzer:
         if not text:
             return ToneAnalysis()
 
-        words = set(re.findall(r"\b\w+\b", text.lower()))
-        word_list = re.findall(r"\b\w+\b", text.lower())
+        word_list = word_tokenize_regex(text)
+        words = set(word_list)
         word_count = len(word_list)
 
         if word_count == 0:
@@ -508,8 +510,8 @@ class TextAnalyzer:
 
         Returns (jaccard_similarity, common_words, unique_to_text1, unique_to_text2)
         """
-        words1 = set(re.findall(r"\b\w+\b", text1.lower()))
-        words2 = set(re.findall(r"\b\w+\b", text2.lower()))
+        words1 = set(word_tokenize_regex(text1))
+        words2 = set(word_tokenize_regex(text2))
 
         common = words1 & words2
         unique1 = words1 - words2
@@ -629,7 +631,7 @@ class ResponseQualityScore:
 
         # Conciseness: penalize excessive repetition and filler
         analyzer.profile(response)
-        word_list = re.findall(r"\b\w+\b", response.lower())
+        word_list = word_tokenize_regex(response)
 
         # Check for repetition
         word_freq = Counter(word_list)

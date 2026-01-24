@@ -9,11 +9,13 @@ Provides tools for:
 """
 
 import math
-import re
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+
+from insideLLMs.nlp.similarity import word_overlap_similarity
+from insideLLMs.nlp.tokenization import word_tokenize_regex
 
 
 class DiversityMetric(Enum):
@@ -189,8 +191,11 @@ class LexicalDiversityAnalyzer:
         self.tokenize = tokenize_fn or self._default_tokenize
 
     def _default_tokenize(self, text: str) -> list[str]:
-        """Default tokenization: lowercase words."""
-        return re.findall(r"\b\w+\b", text.lower())
+        """Default tokenization: lowercase words.
+
+        Note: Delegates to insideLLMs.nlp.tokenization.word_tokenize_regex
+        """
+        return word_tokenize_regex(text)
 
     def type_token_ratio(self, text: str) -> DiversityScore:
         """Calculate Type-Token Ratio (TTR)."""
@@ -426,7 +431,7 @@ class RepetitionDetector:
 
     def detect(self, text: str) -> RepetitionAnalysis:
         """Detect repetition in text."""
-        words = re.findall(r"\b\w+\b", text.lower())
+        words = word_tokenize_regex(text)
 
         if len(words) < self.min_phrase_length:
             return RepetitionAnalysis(
@@ -598,7 +603,7 @@ class CreativityAnalyzer:
 
     def _novelty_score(self, text: str) -> float:
         """Calculate novelty based on rare word usage."""
-        words = re.findall(r"\b\w+\b", text.lower())
+        words = word_tokenize_regex(text)
         if not words:
             return 0.0
 
@@ -607,7 +612,7 @@ class CreativityAnalyzer:
 
     def _unexpectedness_score(self, text: str) -> float:
         """Calculate unexpectedness based on unusual combinations."""
-        words = re.findall(r"\b\w+\b", text.lower())
+        words = word_tokenize_regex(text)
         if len(words) < 2:
             return 0.0
 
@@ -717,17 +722,7 @@ class OutputVariabilityAnalyzer:
         similarity_fn: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize analyzer."""
-        self.similarity_fn = similarity_fn or self._default_similarity
-
-    def _default_similarity(self, a: str, b: str) -> float:
-        """Default word overlap similarity."""
-        words_a = set(a.lower().split())
-        words_b = set(b.lower().split())
-        if not words_a or not words_b:
-            return 0.0
-        intersection = len(words_a & words_b)
-        union = len(words_a | words_b)
-        return intersection / union if union > 0 else 0.0
+        self.similarity_fn = similarity_fn or word_overlap_similarity
 
     def analyze(self, outputs: list[str]) -> VariabilityAnalysis:
         """Analyze variability across outputs."""

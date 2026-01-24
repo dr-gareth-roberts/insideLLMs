@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
+
 
 class PerturbationType(Enum):
     """Types of prompt perturbations."""
@@ -104,7 +106,7 @@ class OutputComparison:
 
 
 @dataclass
-class SensitivityResult:
+class PerturbationSensitivityResult:
     """Result of sensitivity analysis for one perturbation."""
 
     perturbation: Perturbation
@@ -129,7 +131,7 @@ class SensitivityProfile:
     """Complete sensitivity profile for a prompt."""
 
     prompt: str
-    results: list[SensitivityResult]
+    results: list[PerturbationSensitivityResult]
     overall_sensitivity: SensitivityLevel
     overall_score: float
     by_perturbation_type: dict[PerturbationType, float]
@@ -455,25 +457,7 @@ class OutputComparator:
         Args:
             similarity_fn: Custom similarity function
         """
-        self._similarity_fn = similarity_fn or self._default_similarity
-
-    @staticmethod
-    def _default_similarity(text1: str, text2: str) -> float:
-        """Calculate default text similarity."""
-        if not text1 or not text2:
-            return 0.0 if text1 != text2 else 1.0
-
-        # Word-level Jaccard similarity
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
-
-        if not words1 and not words2:
-            return 1.0
-
-        intersection = len(words1 & words2)
-        union = len(words1 | words2)
-
-        return intersection / union if union > 0 else 0.0
+        self._similarity_fn = similarity_fn or word_overlap_similarity
 
     def compare(
         self,
@@ -588,7 +572,7 @@ class OutputComparator:
         return differences[:5]
 
 
-class SensitivityAnalyzer:
+class InputSensitivityAnalyzer:
     """Analyze prompt sensitivity."""
 
     def __init__(
@@ -644,7 +628,7 @@ class SensitivityAnalyzer:
             sensitivity = 1.0 - comparison.similarity_score
             is_robust = comparison.similarity_score >= self._robustness_threshold
 
-            result = SensitivityResult(
+            result = PerturbationSensitivityResult(
                 perturbation=perturbation,
                 output_comparison=comparison,
                 sensitivity_score=sensitivity,
@@ -749,13 +733,13 @@ class SensitivityAnalyzer:
 class ComparativeSensitivityAnalyzer:
     """Compare sensitivity across prompts or models."""
 
-    def __init__(self, analyzer: SensitivityAnalyzer | None = None):
+    def __init__(self, analyzer: InputSensitivityAnalyzer | None = None):
         """Initialize comparative analyzer.
 
         Args:
             analyzer: Base sensitivity analyzer
         """
-        self._analyzer = analyzer or SensitivityAnalyzer()
+        self._analyzer = analyzer or InputSensitivityAnalyzer()
 
     def compare_prompts(
         self,
@@ -944,7 +928,7 @@ def analyze_prompt_sensitivity(
     Returns:
         SensitivityProfile object
     """
-    analyzer = SensitivityAnalyzer()
+    analyzer = InputSensitivityAnalyzer()
     return analyzer.analyze(prompt, get_response, perturbation_types)
 
 
@@ -1003,7 +987,7 @@ def quick_sensitivity_check(
         PerturbationType.SYNONYM,
     ]
 
-    analyzer = SensitivityAnalyzer()
+    analyzer = InputSensitivityAnalyzer()
     profile = analyzer.analyze(prompt, get_response, basic_types, n_variations=1)
 
     return {

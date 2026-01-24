@@ -336,13 +336,6 @@ class JSONExtractor:
 
         return None
 
-    def _is_valid_json_structure(self, text: str) -> bool:
-        """Check if text looks like valid JSON structure."""
-        text = text.strip()
-        if text.startswith("{") and text.endswith("}"):
-            return True
-        return bool(text.startswith("[") and text.endswith("]"))
-
 
 class KeyValueExtractor:
     """Extracts key-value pairs from text."""

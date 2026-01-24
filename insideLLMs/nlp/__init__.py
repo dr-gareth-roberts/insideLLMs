@@ -48,6 +48,7 @@ from .similarity import (
     levenshtein_distance,
     longest_common_subsequence,
     semantic_similarity_word_embeddings,
+    word_overlap_similarity,
 )
 from .text_analysis import (
     ContentAnalysis,
@@ -92,6 +93,7 @@ from .tokenization import (
     simple_tokenize,
     spacy_tokenize,
     stem_words,
+    word_tokenize_regex,
 )
 
 # Define __all__ for `from insideLLMs.nlp import *`
@@ -109,6 +111,7 @@ __all__ = [
     "clean_text",
     # tokenization
     "simple_tokenize",
+    "word_tokenize_regex",
     "nltk_tokenize",
     "spacy_tokenize",
     "segment_sentences",
