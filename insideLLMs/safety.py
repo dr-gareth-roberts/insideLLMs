@@ -2367,3 +2367,12 @@ def detect_pii(text: str) -> list[dict[str, Any]]:
         }
         for m in report.matches
     ]
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import HallucinationDetector. The canonical name is
+# SafetyHallucinationIndicatorDetector.
+HallucinationDetector = SafetyHallucinationIndicatorDetector

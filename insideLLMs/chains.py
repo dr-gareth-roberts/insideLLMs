@@ -2911,3 +2911,11 @@ def sequential_llm_chain(
     for i, prompt in enumerate(prompts):
         builder.llm(f"llm_{i}", prompt)
     return builder.build()
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests use StepType. The canonical name is ChainStepType.
+StepType = ChainStepType

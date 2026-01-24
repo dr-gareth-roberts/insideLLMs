@@ -2808,3 +2808,12 @@ def run_template_comparison(
     """Run a quick comparison of templates."""
     experiment = TemplateExperiment(scorer)
     return experiment.run_comparison(templates, test_cases, render_fn, model_fn)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import ABTestRunner. The canonical name is
+# TemplateABTestRunner.
+ABTestRunner = TemplateABTestRunner

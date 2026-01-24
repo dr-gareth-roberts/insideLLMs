@@ -1690,3 +1690,12 @@ def create_semantic_index(
     search = SemanticSearch(embed_fn)
     search.add_batch(texts)
     return search
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import SimilarityCalculator. The canonical name is
+# VectorSimilarityCalculator.
+SimilarityCalculator = VectorSimilarityCalculator

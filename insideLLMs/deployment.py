@@ -106,6 +106,7 @@ __all__ = [
     "HealthResponse",
     "ErrorResponse",
     # Middleware
+    "RateLimiter",
     "KeyedTokenBucketRateLimiter",
     "APIKeyAuth",
     "RequestLogger",
@@ -3046,3 +3047,12 @@ def create_probe_endpoint(
     """
     config = EndpointConfig(path=path)
     return ProbeEndpoint(model, probes, config)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import RateLimiter. The canonical name is
+# KeyedTokenBucketRateLimiter.
+RateLimiter = KeyedTokenBucketRateLimiter

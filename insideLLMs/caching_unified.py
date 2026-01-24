@@ -124,10 +124,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-
-from insideLLMs.nlp.similarity import word_overlap_similarity
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
+from insideLLMs.nlp.similarity import word_overlap_similarity
 from insideLLMs.types import ModelResponse
 
 T = TypeVar("T")

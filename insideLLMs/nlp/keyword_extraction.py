@@ -95,6 +95,7 @@ References
 .. [2] Mihalcea, R., & Tarau, P. (2004). TextRank: Bringing Order into
        Texts. Proceedings of EMNLP.
 """
+
 from collections import defaultdict
 
 from insideLLMs.nlp.dependencies import ensure_nltk, ensure_sklearn

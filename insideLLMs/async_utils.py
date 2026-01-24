@@ -2231,3 +2231,16 @@ def run_async(coro: Awaitable[T]) -> T:
     except RuntimeError:
         # No running loop, create a new one
         return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import BatchResult. The canonical name is
+# AsyncBatchResult.
+BatchResult = AsyncBatchResult
+
+# Older code and tests may import these shorter names.
+RateLimiter = AsyncTokenBucketRateLimiter
+SlidingWindowRateLimiter = AsyncSlidingWindowRateLimiter

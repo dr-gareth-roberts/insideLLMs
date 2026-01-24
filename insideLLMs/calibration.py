@@ -2887,3 +2887,12 @@ def calibrate_confidences(
     calibrator = Calibrator(method=method)
     calibrator.fit(confidences, labels)
     return calibrator.calibrate_batch(confidences)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CalibrationResult. The canonical name is
+# ConfidenceCalibrationResult.
+CalibrationResult = ConfidenceCalibrationResult

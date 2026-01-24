@@ -512,6 +512,7 @@ __all__ = [
     # Base classes
     "Model",
     "AsyncModel",
+    "BatchModelProtocol",
     "ModelProtocol",
     "ModelWrapper",
     "ChatMessage",

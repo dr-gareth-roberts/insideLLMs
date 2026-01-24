@@ -713,13 +713,25 @@ class SimpleEmbedding:
         >>> "python" in embedding._vocab or "Python" in embedding._vocab
         True
         """
-        tokens = set(self._tokenize(text))
+        # NOTE: use a stable ordering to keep `_vocab` / `_idf` insertion order deterministic.
+        tokens = sorted(set(self._tokenize(text)))
         self._doc_count += 1
 
         for token in tokens:
             if token not in self._vocab:
                 self._vocab[token] = len(self._vocab)
             self._idf[token] = self._idf.get(token, 0) + 1
+
+    def _token_index(self, token: str) -> int:
+        """Return a stable bucket index for a token.
+
+        Python's built-in `hash()` is intentionally randomized between
+        processes (unless PYTHONHASHSEED is fixed), which breaks determinism
+        for any persisted or cross-run computation. Use a cryptographic hash
+        instead to make results stable across processes and machines.
+        """
+        digest = hashlib.sha256(token.encode("utf-8")).digest()
+        return int.from_bytes(digest[:8], "big", signed=False) % self.dimension
 
     def embed(self, text: str) -> list[float]:
         """Generate an embedding vector for a single text using TF-IDF weighting.
@@ -776,11 +788,12 @@ class SimpleEmbedding:
         for token in tokens:
             tf[token] = tf.get(token, 0) + 1
 
-        # Create sparse vector then project to fixed dimension
+        # Create sparse vector then project to fixed dimension.
+        # Iterate in sorted order to make floating point accumulation stable.
         vector = [0.0] * self.dimension
-        for token, count in tf.items():
-            # Use hash to get consistent index
-            idx = hash(token) % self.dimension
+        for token in sorted(tf):
+            count = tf[token]
+            idx = self._token_index(token)
             # TF-IDF-like weighting
             idf = math.log((self._doc_count + 1) / (self._idf.get(token, 0) + 1)) + 1
             vector[idx] += count * idf

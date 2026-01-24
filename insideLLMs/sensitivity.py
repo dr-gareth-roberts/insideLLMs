@@ -2688,3 +2688,16 @@ def check_format_sensitivity(
     """
     tester = FormatSensitivityTester()
     return tester.test_format_sensitivity(prompt, get_response)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import SensitivityAnalyzer. The canonical name is
+# InputSensitivityAnalyzer.
+SensitivityAnalyzer = InputSensitivityAnalyzer
+
+# Older code and tests may import SensitivityResult. The canonical name is
+# PerturbationSensitivityResult.
+SensitivityResult = PerturbationSensitivityResult

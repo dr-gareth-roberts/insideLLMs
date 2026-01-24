@@ -2110,7 +2110,7 @@ class TestBuildResolvedConfigSnapshot:
     """Tests for _build_resolved_config_snapshot."""
 
     def test_resolve_dataset_path(self, tmp_path):
-        """Test that dataset path is resolved to absolute."""
+        """Test that dataset path is normalized for determinism."""
         from insideLLMs.runner import _build_resolved_config_snapshot
 
         config = {
@@ -2124,9 +2124,8 @@ class TestBuildResolvedConfigSnapshot:
 
         snapshot = _build_resolved_config_snapshot(config, tmp_path)
 
-        # Path should be resolved to absolute
-        expected = str((tmp_path / "relative/data.jsonl").resolve())
-        assert snapshot["dataset"]["path"] == expected
+        # Path should be preserved (and normalized) for portability.
+        assert snapshot["dataset"]["path"] == "relative/data.jsonl"
 
     def test_preserves_non_path_configs(self, tmp_path):
         """Test that non-path configs are preserved."""

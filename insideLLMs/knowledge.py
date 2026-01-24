@@ -2422,6 +2422,10 @@ class ConsistencyTester:
         # Different negation state might indicate contradiction
         return text1_has_neg != text2_has_neg
 
+    def _text_similarity(self, text1: str, text2: str) -> float:
+        """Compute a deterministic similarity score between two responses."""
+        return float(word_overlap_similarity(text1, text2))
+
     def _calculate_drift(
         self,
         original: str,

@@ -3345,3 +3345,16 @@ def create_sliding_window(
         window_size=window_size,
         overlap=overlap,
     )
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CompressionResult. The canonical name is
+# ContextCompressionResult.
+CompressionResult = ContextCompressionResult
+
+# Older code and tests may import TokenBudget. The canonical name is
+# ContentAllocationBudget.
+TokenBudget = ContentAllocationBudget

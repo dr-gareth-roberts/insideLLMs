@@ -2795,3 +2795,11 @@ def quick_debug(
         except Exception as e:
             debugger.log_error(e)
             raise
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import TraceEvent. The canonical name is DebugTraceEvent.
+TraceEvent = DebugTraceEvent

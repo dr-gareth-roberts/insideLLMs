@@ -99,6 +99,7 @@ insideLLMs.models.base.Model : Base class for all model implementations
 insideLLMs.models.openai.OpenAIModel : OpenAI model implementation
 insideLLMs.exceptions : Exception classes for error handling
 """
+
 import os
 from collections.abc import Iterator
 from typing import Optional

@@ -47,7 +47,6 @@ from collections import defaultdict
 
 from insideLLMs.nlp.dependencies import ensure_spacy
 
-
 # Backward compatibility alias
 check_spacy = ensure_spacy
 

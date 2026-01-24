@@ -124,3 +124,12 @@ insideLLMs.analysis.evaluation : Evaluation metrics and evaluators
 """
 
 from insideLLMs.analysis.comparison import *  # noqa: F401,F403
+from insideLLMs.analysis.comparison import ModelComparisonResult, ModelCostComparator
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests use these generic names.
+ComparisonResult = ModelComparisonResult
+CostCalculator = ModelCostComparator

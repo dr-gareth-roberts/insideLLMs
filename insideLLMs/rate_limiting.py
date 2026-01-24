@@ -3385,3 +3385,24 @@ def execute_with_backoff(
     if result.success:
         return result.result
     raise Exception(result.final_error)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CircuitBreaker. The canonical name is
+# RateLimitCircuitBreaker.
+CircuitBreaker = RateLimitCircuitBreaker
+
+# Older code and tests may import RetryConfig. The canonical name is
+# RateLimitRetryConfig.
+RetryConfig = RateLimitRetryConfig
+
+# Older code and tests may import RetryResult. The canonical name is
+# RateLimitRetryResult.
+RetryResult = RateLimitRetryResult
+
+# Older code and tests may import SlidingWindowRateLimiter. The canonical name is
+# ThreadSafeSlidingWindowRateLimiter.
+SlidingWindowRateLimiter = ThreadSafeSlidingWindowRateLimiter

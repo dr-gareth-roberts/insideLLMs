@@ -64,7 +64,6 @@ from typing import Callable
 from insideLLMs.nlp.dependencies import ensure_sklearn, ensure_spacy
 from insideLLMs.nlp.tokenization import simple_tokenize
 
-
 # Backward compatibility aliases
 check_sklearn = ensure_sklearn
 check_spacy = ensure_spacy

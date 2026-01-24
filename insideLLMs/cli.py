@@ -132,6 +132,7 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
+
 def _cli_version_string() -> str:
     """Return the CLI version string.
 
@@ -875,7 +876,15 @@ def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
     """
     with open(output_path, "w", encoding="utf-8") as f:
         for record in records:
-            f.write(json.dumps(record, default=_json_default) + "\n")
+            f.write(
+                json.dumps(
+                    record,
+                    default=_json_default,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
 
 
 def _format_percent(value: Optional[float]) -> str:
@@ -2932,7 +2941,6 @@ def cmd_harness(args: argparse.Namespace) -> int:
             _prepare_run_dir,
             _serialize_value,
         )
-        from insideLLMs.schemas.registry import normalize_semver
 
         config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
 
@@ -2974,7 +2982,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
             content = yaml.safe_dump(
                 _serialize_value(data),
-                sort_keys=False,
+                sort_keys=True,
                 default_flow_style=False,
                 allow_unicode=True,
             )
@@ -3018,12 +3026,21 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         ds_cfg = result.get("config", {}).get("dataset")
         ds_cfg = ds_cfg if isinstance(ds_cfg, dict) else {}
+        resolved_ds_cfg = config_snapshot.get("dataset")
+        resolved_ds_cfg = resolved_ds_cfg if isinstance(resolved_ds_cfg, dict) else ds_cfg
         dataset_spec = {
-            "dataset_id": ds_cfg.get("name") or ds_cfg.get("path") or ds_cfg.get("dataset_id"),
-            "dataset_version": ds_cfg.get("split") or ds_cfg.get("dataset_version"),
-            "dataset_hash": ds_cfg.get("dataset_hash"),
-            "provenance": ds_cfg.get("format") or ds_cfg.get("provenance"),
-            "params": ds_cfg,
+            "dataset_id": resolved_ds_cfg.get("name")
+            or resolved_ds_cfg.get("dataset")
+            or resolved_ds_cfg.get("path")
+            or resolved_ds_cfg.get("dataset_id"),
+            "dataset_version": resolved_ds_cfg.get("version")
+            or resolved_ds_cfg.get("split")
+            or resolved_ds_cfg.get("dataset_version"),
+            "dataset_hash": resolved_ds_cfg.get("hash") or resolved_ds_cfg.get("dataset_hash"),
+            "provenance": resolved_ds_cfg.get("provenance")
+            or resolved_ds_cfg.get("source")
+            or resolved_ds_cfg.get("format"),
+            "params": resolved_ds_cfg,
         }
 
         models_cfg = result.get("config", {}).get("models")
@@ -3049,9 +3066,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
             "started_at": started_at,
             "completed_at": completed_at,
             "library_version": None,
-            "python_version": sys.version,
+            "python_version": sys.version.split()[0],
             "platform": platform.platform(),
-            "command": sys.argv.copy(),
+            "command": None,
             "model": {
                 "model_id": "harness",
                 "provider": "insideLLMs",
@@ -3072,7 +3089,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 "harness": {
                     "models": models_cfg,
                     "probes": probes_cfg,
-                    "dataset": ds_cfg,
+                    "dataset": resolved_ds_cfg,
                     "max_examples": result.get("config", {}).get("max_examples"),
                     "experiment_count": len(result.get("experiments", [])),
                     "legacy_results_file": "results.jsonl",
@@ -3104,7 +3121,12 @@ def cmd_harness(args: argparse.Namespace) -> int:
         manifest_path = output_dir / "manifest.json"
         _atomic_write_text(
             manifest_path,
-            json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+            json.dumps(
+                _serialize_value(manifest),
+                sort_keys=True,
+                indent=2,
+                default=_serialize_value,
+            ),
         )
         print_success(f"Manifest written to: {manifest_path}")
 
@@ -3129,7 +3151,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 mode=args.validation_mode,
             )
         with open(summary_path, "w") as f:
-            json.dump(summary_payload, f, indent=2, default=_json_default)
+            json.dump(summary_payload, f, indent=2, default=_json_default, sort_keys=True)
         print_success(f"Summary written to: {summary_path}")
 
         if not args.skip_report:
@@ -3473,7 +3495,7 @@ def cmd_report(args: argparse.Namespace) -> int:
 
     summary_path = run_dir / "summary.json"
     with open(summary_path, "w") as f:
-        json.dump(summary_payload, f, indent=2, default=_json_default)
+        json.dump(summary_payload, f, indent=2, default=_json_default, sort_keys=True)
     print_success(f"Summary written to: {summary_path}")
 
     report_title = args.report_title or "Behavioural Probe Report"

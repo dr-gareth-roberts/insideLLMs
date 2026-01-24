@@ -598,6 +598,7 @@ __all__ = [
     # similarity
     "cosine_similarity_texts",
     "jaccard_similarity",
+    "word_overlap_similarity",
     "levenshtein_distance",
     "semantic_similarity_word_embeddings",
     "jaro_similarity",

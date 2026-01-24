@@ -1618,6 +1618,9 @@ def load_entrypoint_plugins(
     except Exception:
         return {}
 
+    # Deterministic plugin load order: entry point iteration order is not guaranteed.
+    selected = sorted(selected, key=lambda ep: (getattr(ep, "name", ""), getattr(ep, "value", "")))
+
     for ep in selected:
         try:
             fn = ep.load()

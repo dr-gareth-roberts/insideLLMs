@@ -43,7 +43,6 @@ from typing import Optional
 
 from insideLLMs.nlp.dependencies import ensure_gensim, ensure_sklearn, ensure_spacy
 
-
 # Backward compatibility aliases
 check_spacy = ensure_spacy
 check_sklearn = ensure_sklearn
