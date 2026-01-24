@@ -1,11 +1,120 @@
 """Cost estimation and budget tracking for LLM API usage.
 
-This module provides tools for tracking, estimating, and managing
-costs associated with LLM API calls, including:
-- Token-based cost calculation
-- Budget management and alerts
-- Cost forecasting
-- Usage analytics and reporting
+This module provides a comprehensive suite of tools for tracking, estimating,
+and managing costs associated with Large Language Model (LLM) API calls. It
+supports multiple providers (OpenAI, Anthropic, Google) with extensible pricing
+configurations.
+
+Overview
+--------
+The module is organized around several core components:
+
+1. **Pricing Management** (`PricingRegistry`, `ModelPricing`)
+   - Maintains pricing information for various LLM models
+   - Supports custom pricing configurations and updates
+   - Pre-loaded with common model pricing from major providers
+
+2. **Cost Calculation** (`TokenCostCalculator`)
+   - Calculates actual costs based on token usage
+   - Estimates costs before making API requests
+   - Compares costs across different models
+
+3. **Usage Tracking** (`UsageTracker`, `UsageRecord`)
+   - Records API usage events with timestamps and metadata
+   - Aggregates usage data by time period, model, or category
+   - Generates cost summaries and breakdowns
+
+4. **Budget Management** (`BudgetManager`, `Budget`, `BudgetAlert`)
+   - Creates and manages spending budgets with configurable periods
+   - Triggers alerts at customizable thresholds (warning/critical)
+   - Supports hard limits that block requests when exceeded
+
+5. **Cost Forecasting** (`CostForecaster`, `CostForecast`)
+   - Projects future costs based on historical usage patterns
+   - Detects spending trends (increasing/decreasing/stable)
+   - Provides confidence intervals for projections
+
+6. **Reporting** (`CostReporter`, `CostSummary`)
+   - Generates daily, weekly, and monthly cost reports
+   - Formats reports for display or export
+   - Integrates forecasting into monthly reports
+
+Examples
+--------
+Basic cost calculation for a single request:
+
+>>> from insideLLMs.cost_tracking import calculate_cost
+>>> cost = calculate_cost("gpt-4", input_tokens=1000, output_tokens=500)
+>>> print(f"Request cost: ${cost:.4f}")
+Request cost: $0.0600
+
+Estimate cost before making a request:
+
+>>> from insideLLMs.cost_tracking import estimate_request_cost
+>>> prompt = "Explain quantum computing in simple terms."
+>>> estimated = estimate_request_cost("claude-3-sonnet", prompt, estimated_output_tokens=300)
+>>> print(f"Estimated cost: ${estimated:.4f}")
+Estimated cost: $0.0048
+
+Compare costs across multiple models:
+
+>>> from insideLLMs.cost_tracking import compare_model_costs
+>>> costs = compare_model_costs(
+...     input_tokens=2000,
+...     output_tokens=1000,
+...     model_names=["gpt-4", "gpt-4-turbo", "claude-3-sonnet"]
+... )
+>>> for model, cost in sorted(costs.items(), key=lambda x: x[1]):
+...     print(f"{model}: ${cost:.4f}")
+claude-3-sonnet: $0.0210
+gpt-4-turbo: $0.0500
+gpt-4: $0.1200
+
+Track usage and manage budgets:
+
+>>> from insideLLMs.cost_tracking import create_usage_tracker, create_budget_manager
+>>> from insideLLMs.cost_tracking import TimeGranularity
+>>> tracker = create_usage_tracker()
+>>> manager = create_budget_manager(tracker)
+>>>
+>>> # Create a daily budget of $10
+>>> budget = manager.create_budget(
+...     name="daily-api-budget",
+...     limit=10.0,
+...     period=TimeGranularity.DAY,
+...     alert_threshold=0.8
+... )
+>>>
+>>> # Record some usage
+>>> tracker.record_usage("gpt-4", input_tokens=5000, output_tokens=2000)
+>>>
+>>> # Check budget status
+>>> status = manager.get_budget_status("daily-api-budget")
+>>> print(f"Spent: ${status['current_spend']:.4f} of ${status['limit']:.2f}")
+
+Generate cost reports:
+
+>>> from insideLLMs.cost_tracking import UsageTracker, CostReporter
+>>> tracker = UsageTracker()
+>>> # ... record usage ...
+>>> reporter = CostReporter(tracker)
+>>> report = reporter.generate_daily_report()
+>>> print(reporter.format_report_text(report))
+
+Notes
+-----
+- All costs are in USD by default; currency conversion is not built-in
+- Token counts should be obtained from the LLM provider's response
+- The module uses in-memory storage; for persistence, serialize records externally
+- Pre-loaded pricing may become outdated; use `PricingRegistry.update_pricing()`
+  to maintain current rates
+- Budget periods are aligned to calendar boundaries (start of day/week/month)
+
+See Also
+--------
+- OpenAI Pricing: https://openai.com/pricing
+- Anthropic Pricing: https://anthropic.com/pricing
+- Google AI Pricing: https://ai.google.dev/pricing
 """
 
 import math
@@ -17,7 +126,58 @@ from typing import Any, Callable, Optional
 
 
 class PricingTier(Enum):
-    """Pricing tiers for different API access levels."""
+    """Pricing tiers for different API access levels.
+
+    This enumeration represents the various pricing tiers offered by LLM
+    providers, which may affect the cost per token, rate limits, and
+    available features.
+
+    Attributes
+    ----------
+    FREE : str
+        Free tier with limited usage quotas and rate limits.
+        Typically used for experimentation and development.
+    PAY_AS_YOU_GO : str
+        Standard pay-per-use pricing without committed spend.
+        Most common tier for production applications.
+    STANDARD : str
+        Standard subscription tier with predictable monthly costs.
+        May include volume discounts.
+    ENTERPRISE : str
+        Enterprise tier with custom pricing, SLAs, and support.
+        Typically requires annual contracts.
+    CUSTOM : str
+        Custom negotiated pricing tier.
+        Used for special arrangements with providers.
+
+    Examples
+    --------
+    Create a model pricing with a specific tier:
+
+    >>> pricing = ModelPricing(
+    ...     model_name="custom-model",
+    ...     input_cost_per_1k=0.01,
+    ...     output_cost_per_1k=0.02,
+    ...     tier=PricingTier.ENTERPRISE
+    ... )
+    >>> print(pricing.tier)
+    PricingTier.ENTERPRISE
+
+    Check if a model is on the free tier:
+
+    >>> if pricing.tier == PricingTier.FREE:
+    ...     print("Limited usage available")
+
+    Convert tier to string for serialization:
+
+    >>> tier_value = PricingTier.PAY_AS_YOU_GO.value
+    >>> print(tier_value)
+    'pay_as_you_go'
+
+    See Also
+    --------
+    ModelPricing : Pricing information that uses this tier enumeration.
+    """
 
     FREE = "free"
     PAY_AS_YOU_GO = "pay_as_you_go"
@@ -27,7 +187,65 @@ class PricingTier(Enum):
 
 
 class CostCategory(Enum):
-    """Categories of costs."""
+    """Categories of costs for LLM API usage.
+
+    This enumeration categorizes different types of costs that can be
+    incurred when using LLM APIs. Used for detailed cost breakdowns
+    and reporting.
+
+    Attributes
+    ----------
+    INPUT_TOKENS : str
+        Costs associated with input/prompt tokens sent to the model.
+        Typically the lower-cost component of a request.
+    OUTPUT_TOKENS : str
+        Costs associated with output/completion tokens generated by the model.
+        Usually charged at a higher rate than input tokens.
+    EMBEDDING : str
+        Costs for generating text embeddings.
+        Used for semantic search, similarity, and RAG applications.
+    FINE_TUNING : str
+        Costs associated with fine-tuning or training custom models.
+        Includes both training and inference on fine-tuned models.
+    STORAGE : str
+        Costs for storing fine-tuned models, embeddings, or data.
+        May be charged per GB/month.
+    API_CALLS : str
+        Fixed per-call charges, if applicable.
+        Some providers charge a base fee per API request.
+    OTHER : str
+        Miscellaneous costs not covered by other categories.
+        Used for provider-specific charges.
+
+    Examples
+    --------
+    Categorize costs in a summary:
+
+    >>> costs_by_category = {
+    ...     CostCategory.INPUT_TOKENS.value: 0.50,
+    ...     CostCategory.OUTPUT_TOKENS.value: 1.50,
+    ... }
+    >>> total_token_costs = sum(costs_by_category.values())
+    >>> print(f"Total token costs: ${total_token_costs:.2f}")
+    Total token costs: $2.00
+
+    Filter costs by category:
+
+    >>> if category == CostCategory.EMBEDDING:
+    ...     print("Processing embedding costs")
+
+    Use in cost breakdown reports:
+
+    >>> for category in CostCategory:
+    ...     print(f"{category.value}: applicable to LLM usage")
+    input_tokens: applicable to LLM usage
+    output_tokens: applicable to LLM usage
+    ...
+
+    See Also
+    --------
+    CostSummary : Summary that includes cost breakdowns by category.
+    """
 
     INPUT_TOKENS = "input_tokens"
     OUTPUT_TOKENS = "output_tokens"
@@ -39,7 +257,55 @@ class CostCategory(Enum):
 
 
 class AlertLevel(Enum):
-    """Alert severity levels."""
+    """Alert severity levels for budget notifications.
+
+    This enumeration defines the severity levels for budget alerts,
+    allowing users to configure appropriate responses based on urgency.
+
+    Attributes
+    ----------
+    INFO : str
+        Informational alert for routine notifications.
+        No immediate action required; used for status updates.
+    WARNING : str
+        Warning alert indicating approaching budget thresholds.
+        Typically triggered at 80% of budget limit by default.
+    CRITICAL : str
+        Critical alert indicating imminent or exceeded budget limits.
+        Typically triggered at 95% of budget limit by default.
+        May block further requests if hard limits are enabled.
+
+    Examples
+    --------
+    Check alert severity and take action:
+
+    >>> alert = manager.check_budget("monthly-budget")
+    >>> if alert and alert.level == AlertLevel.CRITICAL:
+    ...     print("URGENT: Budget nearly exhausted!")
+    ...     notify_admin(alert)
+    >>> elif alert and alert.level == AlertLevel.WARNING:
+    ...     print("Warning: Approaching budget limit")
+
+    Filter alerts by severity:
+
+    >>> critical_alerts = [a for a in alerts if a.level == AlertLevel.CRITICAL]
+    >>> print(f"Found {len(critical_alerts)} critical alerts")
+
+    Use in logging or monitoring:
+
+    >>> import logging
+    >>> log_level = {
+    ...     AlertLevel.INFO: logging.INFO,
+    ...     AlertLevel.WARNING: logging.WARNING,
+    ...     AlertLevel.CRITICAL: logging.CRITICAL
+    ... }
+    >>> logger.log(log_level[alert.level], alert.message)
+
+    See Also
+    --------
+    BudgetAlert : Alert object that uses this severity level.
+    Budget : Budget configuration with threshold settings.
+    """
 
     INFO = "info"
     WARNING = "warning"
@@ -47,7 +313,61 @@ class AlertLevel(Enum):
 
 
 class TimeGranularity(Enum):
-    """Time granularity for reporting."""
+    """Time granularity for reporting and budget periods.
+
+    This enumeration defines time periods used for budget cycles,
+    cost aggregation, and reporting intervals.
+
+    Attributes
+    ----------
+    MINUTE : str
+        Minute-level granularity.
+        Useful for real-time monitoring and rate limiting.
+    HOUR : str
+        Hour-level granularity.
+        Suitable for high-frequency usage tracking.
+    DAY : str
+        Day-level granularity.
+        Most common for operational budgets and daily reports.
+    WEEK : str
+        Week-level granularity. Weeks start on Monday.
+        Used for weekly cost reviews and sprint-based budgeting.
+    MONTH : str
+        Month-level granularity. Months start on the 1st.
+        Standard for financial reporting and monthly budgets.
+
+    Examples
+    --------
+    Create a daily budget:
+
+    >>> budget = manager.create_budget(
+    ...     name="daily-limit",
+    ...     limit=50.0,
+    ...     period=TimeGranularity.DAY
+    ... )
+
+    Create a monthly budget for production:
+
+    >>> production_budget = manager.create_budget(
+    ...     name="production-monthly",
+    ...     limit=5000.0,
+    ...     period=TimeGranularity.MONTH,
+    ...     hard_limit=True
+    ... )
+
+    Generate forecasts at different granularities:
+
+    >>> daily_forecast = forecaster.forecast(period=TimeGranularity.DAY)
+    >>> monthly_forecast = forecaster.forecast(period=TimeGranularity.MONTH)
+    >>> print(f"Daily: ${daily_forecast.projected_cost:.2f}")
+    >>> print(f"Monthly: ${monthly_forecast.projected_cost:.2f}")
+
+    See Also
+    --------
+    Budget : Budget configuration that uses time granularity for periods.
+    CostForecast : Forecast that projects costs for a given time period.
+    CostReporter : Reporter with daily, weekly, and monthly report methods.
+    """
 
     MINUTE = "minute"
     HOUR = "hour"
@@ -58,7 +378,103 @@ class TimeGranularity(Enum):
 
 @dataclass
 class ModelPricing:
-    """Pricing information for a model."""
+    """Pricing information for a specific LLM model.
+
+    This dataclass encapsulates all pricing-related information for an LLM
+    model, including token costs, context limits, and metadata. Used by
+    PricingRegistry to maintain a catalog of model pricing.
+
+    Parameters
+    ----------
+    model_name : str
+        The identifier for the model (e.g., "gpt-4", "claude-3-sonnet").
+        Should match the name used in API calls.
+    input_cost_per_1k : float
+        Cost in currency units per 1,000 input tokens.
+        This is the cost for tokens in the prompt/context.
+    output_cost_per_1k : float
+        Cost in currency units per 1,000 output tokens.
+        This is the cost for tokens generated by the model.
+    currency : str, optional
+        Currency code for the costs. Default is "USD".
+    tier : PricingTier, optional
+        The pricing tier for this model. Default is PAY_AS_YOU_GO.
+    embedding_cost_per_1k : float or None, optional
+        Cost per 1,000 tokens for embedding operations, if applicable.
+        None if the model doesn't support embeddings.
+    context_window : int or None, optional
+        Maximum context window size in tokens.
+        None if unknown or variable.
+    effective_date : datetime or None, optional
+        Date when this pricing became effective.
+        Useful for tracking pricing history.
+    notes : str, optional
+        Additional notes about the pricing (e.g., volume discounts).
+
+    Attributes
+    ----------
+    model_name : str
+        The model identifier.
+    input_cost_per_1k : float
+        Input token cost per 1,000 tokens.
+    output_cost_per_1k : float
+        Output token cost per 1,000 tokens.
+    currency : str
+        Currency code (default: "USD").
+    tier : PricingTier
+        Pricing tier enumeration value.
+    embedding_cost_per_1k : float or None
+        Embedding cost per 1,000 tokens.
+    context_window : int or None
+        Maximum context window size.
+    effective_date : datetime or None
+        When pricing became effective.
+    notes : str
+        Additional pricing notes.
+
+    Examples
+    --------
+    Create pricing for a new model:
+
+    >>> pricing = ModelPricing(
+    ...     model_name="gpt-4-turbo",
+    ...     input_cost_per_1k=0.01,
+    ...     output_cost_per_1k=0.03,
+    ...     context_window=128000
+    ... )
+    >>> print(f"{pricing.model_name}: ${pricing.input_cost_per_1k}/1k input")
+    gpt-4-turbo: $0.01/1k input
+
+    Create pricing with full details:
+
+    >>> from datetime import datetime
+    >>> enterprise_pricing = ModelPricing(
+    ...     model_name="gpt-4-enterprise",
+    ...     input_cost_per_1k=0.008,
+    ...     output_cost_per_1k=0.024,
+    ...     currency="USD",
+    ...     tier=PricingTier.ENTERPRISE,
+    ...     context_window=128000,
+    ...     effective_date=datetime(2024, 1, 1),
+    ...     notes="20% enterprise discount applied"
+    ... )
+
+    Serialize pricing for storage:
+
+    >>> data = pricing.to_dict()
+    >>> print(data["model_name"])
+    'gpt-4-turbo'
+
+    Deserialize pricing from storage:
+
+    >>> restored = ModelPricing.from_dict(data)
+    >>> assert restored.model_name == pricing.model_name
+
+    See Also
+    --------
+    PricingRegistry : Registry that manages collections of ModelPricing.
+    PricingTier : Enumeration of pricing tier levels.
+    """
 
     model_name: str
     input_cost_per_1k: float  # Cost per 1000 input tokens
@@ -71,6 +487,45 @@ class ModelPricing:
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the pricing information to a dictionary.
+
+        Serializes all pricing attributes to a dictionary format suitable
+        for JSON serialization, database storage, or API responses.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all pricing attributes with the following keys:
+            - model_name: str
+            - input_cost_per_1k: float
+            - output_cost_per_1k: float
+            - currency: str
+            - tier: str (enum value)
+            - embedding_cost_per_1k: float or None
+            - context_window: int or None
+            - effective_date: str (ISO format) or None
+            - notes: str
+
+        Examples
+        --------
+        Serialize pricing for JSON storage:
+
+        >>> pricing = ModelPricing("gpt-4", 0.03, 0.06)
+        >>> data = pricing.to_dict()
+        >>> import json
+        >>> json_str = json.dumps(data)
+        >>> print(data["model_name"])
+        'gpt-4'
+
+        Use in API responses:
+
+        >>> pricing = ModelPricing("claude-3-sonnet", 0.003, 0.015)
+        >>> response = {"pricing": pricing.to_dict(), "status": "active"}
+
+        See Also
+        --------
+        from_dict : Class method to reconstruct from dictionary.
+        """
         return {
             "model_name": self.model_name,
             "input_cost_per_1k": self.input_cost_per_1k,
@@ -85,6 +540,75 @@ class ModelPricing:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelPricing":
+        """Create a ModelPricing instance from a dictionary.
+
+        Deserializes pricing information from a dictionary, typically
+        loaded from JSON, a database, or an API response.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            Dictionary containing pricing information with required keys:
+            - model_name: str
+            - input_cost_per_1k: float
+            - output_cost_per_1k: float
+
+            And optional keys:
+            - currency: str (default: "USD")
+            - tier: str (default: "pay_as_you_go")
+            - embedding_cost_per_1k: float
+            - context_window: int
+            - effective_date: str (ISO format)
+            - notes: str
+
+        Returns
+        -------
+        ModelPricing
+            A new ModelPricing instance populated with the data.
+
+        Raises
+        ------
+        KeyError
+            If required keys (model_name, input_cost_per_1k, output_cost_per_1k)
+            are missing from the data dictionary.
+        ValueError
+            If tier value is not a valid PricingTier enum value.
+
+        Examples
+        --------
+        Load pricing from JSON:
+
+        >>> import json
+        >>> json_str = '{"model_name": "gpt-4", "input_cost_per_1k": 0.03, "output_cost_per_1k": 0.06}'
+        >>> data = json.loads(json_str)
+        >>> pricing = ModelPricing.from_dict(data)
+        >>> print(pricing.model_name)
+        'gpt-4'
+
+        Load pricing with all fields:
+
+        >>> data = {
+        ...     "model_name": "claude-3-opus",
+        ...     "input_cost_per_1k": 0.015,
+        ...     "output_cost_per_1k": 0.075,
+        ...     "tier": "enterprise",
+        ...     "context_window": 200000,
+        ...     "effective_date": "2024-01-15T00:00:00"
+        ... }
+        >>> pricing = ModelPricing.from_dict(data)
+        >>> print(pricing.tier)
+        PricingTier.ENTERPRISE
+
+        Round-trip serialization:
+
+        >>> original = ModelPricing("gpt-4", 0.03, 0.06)
+        >>> restored = ModelPricing.from_dict(original.to_dict())
+        >>> assert original.model_name == restored.model_name
+
+        See Also
+        --------
+        to_dict : Instance method to serialize to dictionary.
+        """
         return cls(
             model_name=data["model_name"],
             input_cost_per_1k=data["input_cost_per_1k"],
@@ -102,7 +626,95 @@ class ModelPricing:
 
 @dataclass
 class UsageRecord:
-    """Record of a single API usage event."""
+    """Record of a single API usage event.
+
+    This dataclass represents a single LLM API request with its associated
+    token counts, costs, and metadata. Used by UsageTracker to maintain
+    a history of all API calls.
+
+    Parameters
+    ----------
+    timestamp : datetime
+        When the API request was made.
+    model_name : str
+        The model used for the request (e.g., "gpt-4", "claude-3-sonnet").
+    input_tokens : int
+        Number of tokens in the input/prompt.
+    output_tokens : int
+        Number of tokens in the model's response.
+    cost : float
+        Calculated cost for this request in the configured currency.
+    request_id : str or None, optional
+        Unique identifier for the request, if available from the API.
+        Useful for debugging and audit trails.
+    metadata : dict[str, Any], optional
+        Additional metadata about the request (e.g., user ID, session ID,
+        application context, response latency).
+
+    Attributes
+    ----------
+    timestamp : datetime
+        When the request was made.
+    model_name : str
+        The model identifier.
+    input_tokens : int
+        Input token count.
+    output_tokens : int
+        Output token count.
+    cost : float
+        Calculated cost for this request.
+    request_id : str or None
+        Request identifier.
+    metadata : dict[str, Any]
+        Additional request metadata.
+    total_tokens : int
+        Property returning sum of input and output tokens.
+
+    Examples
+    --------
+    Create a basic usage record:
+
+    >>> from datetime import datetime
+    >>> record = UsageRecord(
+    ...     timestamp=datetime.now(),
+    ...     model_name="gpt-4",
+    ...     input_tokens=500,
+    ...     output_tokens=200,
+    ...     cost=0.027
+    ... )
+    >>> print(f"Total tokens: {record.total_tokens}")
+    Total tokens: 700
+
+    Create a record with metadata for tracking:
+
+    >>> record = UsageRecord(
+    ...     timestamp=datetime.now(),
+    ...     model_name="claude-3-sonnet",
+    ...     input_tokens=1000,
+    ...     output_tokens=500,
+    ...     cost=0.0105,
+    ...     request_id="req_abc123",
+    ...     metadata={
+    ...         "user_id": "user_456",
+    ...         "session_id": "sess_789",
+    ...         "feature": "chat_completion",
+    ...         "latency_ms": 1250
+    ...     }
+    ... )
+    >>> print(record.metadata["feature"])
+    'chat_completion'
+
+    Serialize for storage:
+
+    >>> data = record.to_dict()
+    >>> print(data["model_name"])
+    'claude-3-sonnet'
+
+    See Also
+    --------
+    UsageTracker : Manager class that creates and stores UsageRecords.
+    TokenCostCalculator : Calculator used to compute the cost field.
+    """
 
     timestamp: datetime
     model_name: str
@@ -113,6 +725,43 @@ class UsageRecord:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the usage record to a dictionary.
+
+        Serializes all record attributes to a dictionary format suitable
+        for JSON serialization, database storage, or analytics pipelines.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all record attributes:
+            - timestamp: str (ISO format)
+            - model_name: str
+            - input_tokens: int
+            - output_tokens: int
+            - cost: float
+            - request_id: str or None
+            - metadata: dict
+
+        Examples
+        --------
+        Serialize for JSON storage:
+
+        >>> record = UsageRecord(
+        ...     timestamp=datetime.now(),
+        ...     model_name="gpt-4",
+        ...     input_tokens=100,
+        ...     output_tokens=50,
+        ...     cost=0.006
+        ... )
+        >>> data = record.to_dict()
+        >>> import json
+        >>> json_str = json.dumps(data)
+
+        Export to analytics system:
+
+        >>> records = [r.to_dict() for r in tracker.records]
+        >>> send_to_analytics(records)
+        """
         return {
             "timestamp": self.timestamp.isoformat(),
             "model_name": self.model_name,
@@ -125,7 +774,35 @@ class UsageRecord:
 
     @property
     def total_tokens(self) -> int:
-        """Total tokens used."""
+        """Total tokens used in this request.
+
+        Returns the sum of input and output tokens, useful for
+        understanding overall token consumption regardless of direction.
+
+        Returns
+        -------
+        int
+            Sum of input_tokens and output_tokens.
+
+        Examples
+        --------
+        Calculate total token usage:
+
+        >>> record = UsageRecord(
+        ...     timestamp=datetime.now(),
+        ...     model_name="gpt-4",
+        ...     input_tokens=1500,
+        ...     output_tokens=500,
+        ...     cost=0.075
+        ... )
+        >>> print(f"Total: {record.total_tokens} tokens")
+        Total: 2000 tokens
+
+        Use in aggregation:
+
+        >>> total = sum(r.total_tokens for r in tracker.records)
+        >>> print(f"All requests used {total} tokens")
+        """
         return self.input_tokens + self.output_tokens
 
 

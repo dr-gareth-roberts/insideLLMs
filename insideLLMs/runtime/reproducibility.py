@@ -1,24 +1,176 @@
 """Experiment reproducibility and snapshot module.
 
-This module provides tools for ensuring experiment reproducibility,
-capturing environment state, managing seeds, and enabling deterministic replay.
+This module provides comprehensive tools for ensuring experiment reproducibility,
+capturing environment state, managing random seeds across multiple libraries,
+and enabling deterministic replay of machine learning and scientific experiments.
 
-Key Features:
-- Random seed management across multiple libraries
-- Environment state capture and restoration
-- Experiment snapshot creation and loading
-- Configuration versioning and diff
-- Deterministic execution helpers
-- Experiment replay and verification
+The reproducibility framework addresses a critical challenge in ML research:
+ensuring that experiments can be exactly replicated by controlling all sources
+of randomness and capturing complete environment state.
 
-Example:
-    >>> from insideLLMs.reproducibility import ExperimentSnapshot, SeedManager
-    >>>
-    >>> seed_manager = SeedManager(global_seed=42)
-    >>> seed_manager.set_all_seeds()
-    >>>
-    >>> snapshot = ExperimentSnapshot.capture()
-    >>> snapshot.save("experiment_v1.json")
+Key Features
+------------
+- **Random Seed Management**: Unified seed control across Python's `random`,
+  NumPy, PyTorch, and TensorFlow libraries with automatic detection.
+- **Environment State Capture**: Full capture of Python version, platform info,
+  installed packages, and environment variables for environment recreation.
+- **Experiment Snapshots**: Complete serializable snapshots containing seeds,
+  configuration, environment, inputs, and outputs with integrity checksums.
+- **Configuration Versioning**: Track and diff configuration changes across
+  experiment iterations with automatic hash-based version identification.
+- **Deterministic Execution**: Execute functions with guaranteed seed state
+  for reproducible results.
+- **Experiment Replay**: Restore exact experiment conditions and verify
+  that replayed results match original outputs.
+- **Checkpoint Management**: Save and restore intermediate experiment states
+  for long-running experiments.
+
+Architecture Overview
+---------------------
+The module is organized around several key classes:
+
+- `SeedManager`: Central seed management for all supported libraries
+- `EnvironmentCapture`: System and package state capture
+- `ExperimentSnapshot`: Complete experiment state container
+- `ConfigVersionManager`: Configuration versioning and diffing
+- `ExperimentReplayManager`: Replay orchestration and verification
+- `DeterministicExecutor`: Wrapper for deterministic function execution
+- `ExperimentCheckpointManager`: Intermediate state management
+- `ReproducibilityChecker`: Audit and reporting on reproducibility status
+- `ExperimentRegistry`: Central registry for tracking experiments
+
+Supported Libraries
+-------------------
+The seed management system supports the following libraries:
+
+- Python's built-in `random` module (always available)
+- NumPy (`numpy.random`) - optional, detected at runtime
+- PyTorch (`torch`) - optional, includes CUDA seed management
+- TensorFlow (`tensorflow`) - optional, detected at runtime
+
+Thread Safety
+-------------
+Note: This module is NOT thread-safe. Seed management and state capture
+should be performed from a single thread, typically at experiment startup.
+For multi-threaded applications, coordinate seed setting before spawning threads.
+
+Examples
+--------
+Basic seed management for reproducible random numbers:
+
+>>> from insideLLMs.runtime.reproducibility import SeedManager
+>>>
+>>> # Create manager with fixed seed
+>>> seed_manager = SeedManager(global_seed=42)
+>>> results = seed_manager.set_all_seeds()
+>>> print(f"Libraries seeded: {seed_manager.get_libraries_seeded()}")
+Libraries seeded: ['python_random', 'numpy', 'torch']
+
+Capturing a complete experiment snapshot:
+
+>>> from insideLLMs.runtime.reproducibility import ExperimentSnapshot
+>>>
+>>> # Define experiment configuration
+>>> config = {
+...     "model": "transformer",
+...     "learning_rate": 0.001,
+...     "batch_size": 32,
+...     "epochs": 100
+... }
+>>>
+>>> # Capture current state
+>>> snapshot = ExperimentSnapshot.capture(
+...     name="transformer_baseline",
+...     config=config,
+...     seed=42
+... )
+>>>
+>>> # Save for later reproduction
+>>> snapshot.save("experiments/baseline_v1.json")
+
+Replaying an experiment and verifying results:
+
+>>> from insideLLMs.runtime.reproducibility import (
+...     ExperimentReplayManager,
+...     ExperimentSnapshot
+... )
+>>>
+>>> # Load original snapshot
+>>> replay_manager = ExperimentReplayManager()
+>>> snapshot = replay_manager.load_snapshot("experiments/baseline_v1.json")
+>>>
+>>> # Setup environment for replay
+>>> seed_manager = replay_manager.setup_for_replay(snapshot.snapshot_id)
+>>>
+>>> # Run experiment again...
+>>> new_outputs = {"accuracy": 0.95, "loss": 0.05}
+>>>
+>>> # Verify outputs match
+>>> result = replay_manager.verify_replay(snapshot.snapshot_id, new_outputs)
+>>> print(f"Replay matches: {result.matches}")
+Replay matches: True
+
+Comparing configurations across experiment versions:
+
+>>> from insideLLMs.runtime.reproducibility import ConfigVersionManager
+>>>
+>>> manager = ConfigVersionManager()
+>>>
+>>> # Track configuration evolution
+>>> manager.add_version("v1", {"lr": 0.01, "batch": 32})
+>>> manager.add_version("v2", {"lr": 0.001, "batch": 64, "dropout": 0.1})
+>>>
+>>> # View differences
+>>> diff = manager.diff("v1", "v2")
+>>> print(f"Changed: {diff['changed']}")
+>>> print(f"Added: {diff['added']}")
+Changed: {'lr': {'old': 0.01, 'new': 0.001}, 'batch': {'old': 32, 'new': 64}}
+Added: {'dropout': 0.1}
+
+Using convenience functions for quick setup:
+
+>>> from insideLLMs.runtime.reproducibility import (
+...     set_global_seed,
+...     capture_snapshot,
+...     check_reproducibility
+... )
+>>>
+>>> # Quick seed setup
+>>> results = set_global_seed(42)
+>>> print(f"NumPy seeded: {results['numpy']}")
+NumPy seeded: True
+>>>
+>>> # Capture and check status
+>>> snapshot = capture_snapshot("quick_experiment", seed=42)
+>>> report = check_reproducibility(snapshot=snapshot)
+>>> print(f"Reproducibility level: {report.level.value}")
+Reproducibility level: deterministic
+
+Notes
+-----
+- Always set seeds at the very beginning of your experiment, before any
+  random operations are performed.
+- For complete reproducibility in PyTorch, you may also need to set
+  `torch.backends.cudnn.deterministic = True` and
+  `torch.backends.cudnn.benchmark = False`.
+- Environment capture does not include GPU driver versions or CUDA toolkit
+  versions, which can affect numerical reproducibility.
+- Snapshot files should be stored alongside experiment code in version control
+  for complete reproducibility.
+
+See Also
+--------
+- `random.seed` : Python's built-in seed function
+- `numpy.random.seed` : NumPy's seed function
+- `torch.manual_seed` : PyTorch's seed function
+- `tensorflow.random.set_seed` : TensorFlow's seed function
+
+References
+----------
+.. [1] Pineau, J., et al. "A Checklist for Reproducible Machine Learning
+   Research." NeurIPS 2019 Reproducibility Workshop.
+.. [2] PyTorch Reproducibility Documentation:
+   https://pytorch.org/docs/stable/notes/randomness.html
 """
 
 import hashlib
@@ -34,7 +186,46 @@ from typing import Any, Callable, Optional
 
 
 class SnapshotFormat(Enum):
-    """Snapshot file formats."""
+    """Enumeration of supported snapshot file formats.
+
+    This enum defines the serialization formats available for saving and
+    loading experiment snapshots. Each format has different trade-offs
+    in terms of human readability, file size, and compatibility.
+
+    Attributes
+    ----------
+    JSON : str
+        JSON format - human readable, widely compatible, recommended default.
+        Produces text files that can be version controlled and inspected.
+    YAML : str
+        YAML format - more readable for complex nested structures.
+        Requires PyYAML package to be installed.
+    PICKLE : str
+        Python pickle format - compact binary, supports complex Python objects.
+        Not human readable, potential security concerns with untrusted files.
+
+    Examples
+    --------
+    Selecting format when saving a snapshot:
+
+    >>> from insideLLMs.runtime.reproducibility import (
+    ...     ExperimentSnapshot,
+    ...     SnapshotFormat
+    ... )
+    >>> snapshot = ExperimentSnapshot.capture(name="test")
+    >>> snapshot.save("snapshot.json", format=SnapshotFormat.JSON)
+
+    Checking available formats:
+
+    >>> formats = list(SnapshotFormat)
+    >>> print([f.value for f in formats])
+    ['json', 'yaml', 'pickle']
+
+    See Also
+    --------
+    ExperimentSnapshot.save : Method that uses this enum for format selection.
+    ExperimentSnapshot.load : Method for loading snapshots from files.
+    """
 
     JSON = "json"
     YAML = "yaml"
@@ -42,16 +233,140 @@ class SnapshotFormat(Enum):
 
 
 class ReproducibilityLevel(Enum):
-    """Levels of reproducibility guarantees."""
+    """Enumeration of reproducibility guarantee levels.
 
-    NONE = "none"  # No guarantees
-    SEED_ONLY = "seed_only"  # Random seeds set
-    DETERMINISTIC = "deterministic"  # Full deterministic mode
-    VERIFIED = "verified"  # Verified against baseline
+    This enum represents a hierarchy of reproducibility states, from no
+    guarantees to fully verified reproduction. It is used by the
+    ReproducibilityChecker to report the current reproducibility status
+    of an experiment setup.
+
+    The levels form an ordered hierarchy where each level builds upon
+    the guarantees of the previous level:
+
+    NONE < SEED_ONLY < DETERMINISTIC < VERIFIED
+
+    Attributes
+    ----------
+    NONE : str
+        No reproducibility guarantees. Random operations will produce
+        different results on each run. This is the default state before
+        any reproducibility measures are taken.
+    SEED_ONLY : str
+        Random seeds have been set, but environment state is not captured.
+        Results should be reproducible on the same machine with the same
+        package versions, but may differ across environments.
+    DETERMINISTIC : str
+        Full deterministic mode with seeds set and environment captured.
+        Results should be reproducible if the environment can be recreated.
+        Note: GPU operations may still have non-determinism.
+    VERIFIED : str
+        Results have been verified against a baseline run. This is the
+        highest level, confirming that reproduction actually matches
+        original results.
+
+    Examples
+    --------
+    Checking reproducibility status:
+
+    >>> from insideLLMs.runtime.reproducibility import (
+    ...     ReproducibilityChecker,
+    ...     SeedManager,
+    ...     ReproducibilityLevel
+    ... )
+    >>> checker = ReproducibilityChecker()
+    >>> # Without any setup
+    >>> report = checker.check()
+    >>> print(report.level == ReproducibilityLevel.NONE)
+    True
+
+    Using levels to gate experiment runs:
+
+    >>> from insideLLMs.runtime.reproducibility import (
+    ...     check_reproducibility,
+    ...     SeedManager,
+    ...     capture_snapshot,
+    ...     ReproducibilityLevel
+    ... )
+    >>> seed_manager = SeedManager(42)
+    >>> seed_manager.set_all_seeds()
+    >>> snapshot = capture_snapshot("test", seed=42)
+    >>> report = check_reproducibility(snapshot=snapshot, seed_manager=seed_manager)
+    >>> if report.level.value in ["deterministic", "verified"]:
+    ...     print("Safe to run production experiment")
+    Safe to run production experiment
+
+    Comparing levels:
+
+    >>> levels = [ReproducibilityLevel.NONE, ReproducibilityLevel.VERIFIED]
+    >>> print([l.value for l in levels])
+    ['none', 'verified']
+
+    See Also
+    --------
+    ReproducibilityChecker : Class that determines the current level.
+    ReproducibilityReport : Report containing the assessed level.
+    """
+
+    NONE = "none"
+    SEED_ONLY = "seed_only"
+    DETERMINISTIC = "deterministic"
+    VERIFIED = "verified"
 
 
 class EnvironmentType(Enum):
-    """Types of environment information."""
+    """Enumeration of environment information categories.
+
+    This enum categorizes different types of environment information that
+    can be captured for reproducibility purposes. Each category represents
+    a distinct aspect of the execution environment that may affect
+    experiment results.
+
+    Attributes
+    ----------
+    PYTHON : str
+        Python interpreter information including version, build, and
+        implementation details.
+    SYSTEM : str
+        Operating system information including OS type, version, and
+        release details.
+    PACKAGES : str
+        Installed Python packages and their versions. Critical for
+        ensuring library compatibility across environments.
+    ENVIRONMENT_VARS : str
+        Environment variables that may affect execution, such as
+        PATH, PYTHONPATH, or library-specific settings.
+    HARDWARE : str
+        Hardware information including CPU, memory, and GPU details.
+        Important for performance-sensitive reproducibility.
+
+    Examples
+    --------
+    Filtering environment capture by type:
+
+    >>> from insideLLMs.runtime.reproducibility import EnvironmentType
+    >>> # Define which types to capture
+    >>> capture_types = [EnvironmentType.PYTHON, EnvironmentType.PACKAGES]
+    >>> print([t.value for t in capture_types])
+    ['python', 'packages']
+
+    Using in conditional logic:
+
+    >>> env_type = EnvironmentType.PACKAGES
+    >>> if env_type == EnvironmentType.PACKAGES:
+    ...     print("Capturing installed package versions...")
+    Capturing installed package versions...
+
+    Iterating over all types:
+
+    >>> all_types = list(EnvironmentType)
+    >>> print(len(all_types))
+    5
+
+    See Also
+    --------
+    EnvironmentCapture : Class that captures environment information.
+    EnvironmentInfo : Dataclass storing captured environment data.
+    """
 
     PYTHON = "python"
     SYSTEM = "system"
@@ -62,7 +377,88 @@ class EnvironmentType(Enum):
 
 @dataclass
 class SeedState:
-    """Captured state of random seeds."""
+    """Captured state of random number generator seeds across libraries.
+
+    This dataclass stores the complete random state from multiple libraries,
+    enabling exact restoration of random number generator states for
+    reproducible execution. It captures both the seed values and the
+    internal state of each library's RNG.
+
+    The state can be serialized to dictionary format for storage in
+    experiment snapshots and later restoration.
+
+    Parameters
+    ----------
+    global_seed : int
+        The master seed value used to initialize all random number generators.
+        This is the primary seed from which library-specific seeds are derived.
+    python_random_state : tuple, optional
+        The internal state of Python's `random` module as returned by
+        `random.getstate()`. Contains the Mersenne Twister state.
+    numpy_state : dict[str, Any], optional
+        The internal state of NumPy's random generator as returned by
+        `numpy.random.get_state()`. Stored as a dictionary representation.
+    torch_state : bytes, optional
+        The internal state of PyTorch's random generator as raw bytes.
+        Captures both CPU and CUDA RNG states if available.
+    tensorflow_seed : int, optional
+        The seed value used for TensorFlow. Note that TensorFlow's
+        state cannot be fully captured, only the seed value is stored.
+    timestamp : float
+        Unix timestamp when the state was captured. Automatically set
+        to current time if not provided.
+
+    Attributes
+    ----------
+    global_seed : int
+        The master seed value.
+    python_random_state : tuple or None
+        Python random module state.
+    numpy_state : dict or None
+        NumPy random state dictionary.
+    torch_state : bytes or None
+        PyTorch RNG state as bytes.
+    tensorflow_seed : int or None
+        TensorFlow seed value.
+    timestamp : float
+        Capture timestamp.
+
+    Examples
+    --------
+    Creating a seed state manually:
+
+    >>> import random
+    >>> from insideLLMs.runtime.reproducibility import SeedState
+    >>> random.seed(42)
+    >>> state = SeedState(
+    ...     global_seed=42,
+    ...     python_random_state=random.getstate()
+    ... )
+    >>> print(f"Seed: {state.global_seed}")
+    Seed: 42
+
+    Capturing state through SeedManager (recommended):
+
+    >>> from insideLLMs.runtime.reproducibility import SeedManager
+    >>> manager = SeedManager(global_seed=42)
+    >>> manager.set_all_seeds()
+    >>> state = manager.get_state()
+    >>> print(f"Captured at: {state.timestamp}")
+    Captured at: 1704067200.0
+
+    Converting to dictionary for serialization:
+
+    >>> state = SeedState(global_seed=42)
+    >>> state_dict = state.to_dict()
+    >>> print(state_dict["global_seed"])
+    42
+
+    See Also
+    --------
+    SeedManager : Class for managing and capturing seed states.
+    SeedManager.get_state : Method that creates SeedState instances.
+    SeedManager.restore_state : Method to restore from a SeedState.
+    """
 
     global_seed: int
     python_random_state: Optional[tuple] = None
@@ -72,7 +468,53 @@ class SeedState:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert the seed state to a JSON-serializable dictionary.
+
+        Converts all state components to formats suitable for JSON
+        serialization, including converting bytes to hex strings and
+        complex state objects to string representations.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all seed state information with keys:
+            - 'global_seed': The master seed integer
+            - 'python_random_state': Python random state tuple or None
+            - 'numpy_state': String representation of NumPy state or None
+            - 'torch_state': Hex-encoded PyTorch state or None
+            - 'tensorflow_seed': TensorFlow seed integer or None
+            - 'timestamp': Unix timestamp float
+
+        Examples
+        --------
+        Basic conversion:
+
+        >>> from insideLLMs.runtime.reproducibility import SeedState
+        >>> state = SeedState(global_seed=42)
+        >>> data = state.to_dict()
+        >>> print(data["global_seed"])
+        42
+
+        Converting state with NumPy:
+
+        >>> import numpy as np
+        >>> from insideLLMs.runtime.reproducibility import SeedManager
+        >>> manager = SeedManager(42)
+        >>> manager.set_all_seeds()
+        >>> state = manager.get_state()
+        >>> data = state.to_dict()
+        >>> print("numpy_state" in data)
+        True
+
+        Serializing to JSON:
+
+        >>> import json
+        >>> from insideLLMs.runtime.reproducibility import SeedState
+        >>> state = SeedState(global_seed=123)
+        >>> json_str = json.dumps(state.to_dict())
+        >>> print("global_seed" in json_str)
+        True
+        """
         return {
             "global_seed": self.global_seed,
             "python_random_state": self.python_random_state,
@@ -85,7 +527,94 @@ class SeedState:
 
 @dataclass
 class EnvironmentInfo:
-    """Captured environment information."""
+    """Captured environment information for reproducibility.
+
+    This dataclass stores comprehensive information about the execution
+    environment including Python version, operating system details,
+    installed packages, and environment variables. This information is
+    essential for recreating the exact conditions under which an
+    experiment was run.
+
+    Environment information helps diagnose reproducibility issues when
+    results differ across machines or over time due to package updates.
+
+    Parameters
+    ----------
+    python_version : str
+        Full Python version string including build information,
+        as returned by `sys.version`.
+    platform_info : str
+        Platform identification string including OS and architecture,
+        as returned by `platform.platform()`.
+    os_info : str
+        Operating system name and release version, formatted as
+        "{system} {release}".
+    packages : dict[str, str], optional
+        Dictionary mapping package names to version strings.
+        Defaults to empty dict if not provided.
+    env_vars : dict[str, str], optional
+        Dictionary of environment variables and their values.
+        May be filtered to only include relevant variables.
+    working_directory : str, optional
+        The current working directory when capture was performed.
+    timestamp : float
+        Unix timestamp when the environment was captured.
+        Automatically set to current time if not provided.
+
+    Attributes
+    ----------
+    python_version : str
+        Full Python version string.
+    platform_info : str
+        Platform identification.
+    os_info : str
+        OS name and version.
+    packages : dict[str, str]
+        Installed package versions.
+    env_vars : dict[str, str]
+        Captured environment variables.
+    working_directory : str
+        Working directory path.
+    timestamp : float
+        Capture timestamp.
+
+    Examples
+    --------
+    Creating environment info manually:
+
+    >>> import sys
+    >>> import platform
+    >>> from insideLLMs.runtime.reproducibility import EnvironmentInfo
+    >>> env = EnvironmentInfo(
+    ...     python_version=sys.version,
+    ...     platform_info=platform.platform(),
+    ...     os_info=f"{platform.system()} {platform.release()}"
+    ... )
+    >>> print(f"Python: {env.python_version.split()[0]}")
+    Python: 3.11.0
+
+    Using EnvironmentCapture (recommended):
+
+    >>> from insideLLMs.runtime.reproducibility import EnvironmentCapture
+    >>> capture = EnvironmentCapture()
+    >>> env = capture.capture()
+    >>> print(f"OS: {env.os_info}")
+    OS: Darwin 23.0.0
+
+    Checking package versions:
+
+    >>> from insideLLMs.runtime.reproducibility import capture_environment
+    >>> env = capture_environment()
+    >>> if "numpy" in env.packages:
+    ...     print(f"NumPy version: {env.packages['numpy']}")
+    NumPy version: 1.24.0
+
+    See Also
+    --------
+    EnvironmentCapture : Class for capturing environment information.
+    EnvironmentCapture.compare : Compare two EnvironmentInfo instances.
+    capture_environment : Convenience function for quick capture.
+    """
 
     python_version: str
     platform_info: str
@@ -96,7 +625,51 @@ class EnvironmentInfo:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert environment info to a JSON-serializable dictionary.
+
+        Creates a dictionary representation suitable for JSON serialization
+        and storage in experiment snapshots.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all environment information with keys:
+            - 'python_version': Python version string
+            - 'platform_info': Platform identification
+            - 'os_info': Operating system info
+            - 'packages': Package name to version mapping
+            - 'env_vars': Environment variable mapping
+            - 'working_directory': Working directory path
+            - 'timestamp': Capture timestamp
+
+        Examples
+        --------
+        Basic conversion:
+
+        >>> from insideLLMs.runtime.reproducibility import capture_environment
+        >>> env = capture_environment()
+        >>> data = env.to_dict()
+        >>> print("python_version" in data)
+        True
+
+        Serializing to JSON:
+
+        >>> import json
+        >>> from insideLLMs.runtime.reproducibility import capture_environment
+        >>> env = capture_environment()
+        >>> json_str = json.dumps(env.to_dict())
+        >>> print("platform_info" in json_str)
+        True
+
+        Accessing nested package data:
+
+        >>> from insideLLMs.runtime.reproducibility import capture_environment
+        >>> env = capture_environment()
+        >>> data = env.to_dict()
+        >>> packages = data["packages"]
+        >>> print(isinstance(packages, dict))
+        True
+        """
         return {
             "python_version": self.python_version,
             "platform_info": self.platform_info,
@@ -110,7 +683,91 @@ class EnvironmentInfo:
 
 @dataclass
 class ConfigSnapshot:
-    """Snapshot of experiment configuration."""
+    """Snapshot of experiment configuration with versioning support.
+
+    This dataclass captures a point-in-time snapshot of experiment
+    configuration, including a hash for integrity verification and
+    change detection. Configuration snapshots enable tracking how
+    experiment parameters evolve across iterations.
+
+    The config_hash is computed from the configuration content,
+    allowing quick comparison between configurations without
+    examining every field.
+
+    Parameters
+    ----------
+    config : dict[str, Any]
+        The configuration dictionary containing all experiment parameters.
+        Can be arbitrarily nested with any JSON-serializable values.
+    config_hash : str
+        SHA-256 hash (truncated to 16 characters) of the configuration.
+        Used for quick equality checks and change detection.
+    source_file : str, optional
+        Path to the file from which configuration was loaded.
+        Useful for tracking configuration provenance.
+    version : str, optional
+        Version identifier for this configuration. Defaults to "1.0".
+        Can follow semantic versioning or any custom scheme.
+    created_at : float
+        Unix timestamp when the snapshot was created.
+        Automatically set to current time if not provided.
+
+    Attributes
+    ----------
+    config : dict[str, Any]
+        The configuration parameters.
+    config_hash : str
+        Hash of the configuration.
+    source_file : str or None
+        Source file path.
+    version : str
+        Configuration version.
+    created_at : float
+        Creation timestamp.
+
+    Examples
+    --------
+    Creating a configuration snapshot:
+
+    >>> import hashlib
+    >>> import json
+    >>> from insideLLMs.runtime.reproducibility import ConfigSnapshot
+    >>> config = {"learning_rate": 0.001, "batch_size": 32}
+    >>> config_hash = hashlib.sha256(
+    ...     json.dumps(config, sort_keys=True).encode()
+    ... ).hexdigest()[:16]
+    >>> snapshot = ConfigSnapshot(
+    ...     config=config,
+    ...     config_hash=config_hash,
+    ...     version="1.0"
+    ... )
+    >>> print(f"Config hash: {snapshot.config_hash}")
+    Config hash: 7a8b9c0d1e2f3a4b
+
+    Using ConfigVersionManager (recommended):
+
+    >>> from insideLLMs.runtime.reproducibility import ConfigVersionManager
+    >>> manager = ConfigVersionManager()
+    >>> snapshot = manager.add_version("v1", {"lr": 0.01, "epochs": 100})
+    >>> print(f"Version: {snapshot.version}")
+    Version: v1
+
+    Loading from ExperimentSnapshot:
+
+    >>> from insideLLMs.runtime.reproducibility import ExperimentSnapshot
+    >>> exp_snapshot = ExperimentSnapshot.capture(
+    ...     name="test",
+    ...     config={"param": "value"}
+    ... )
+    >>> print(f"Config: {exp_snapshot.config.config}")
+    Config: {'param': 'value'}
+
+    See Also
+    --------
+    ConfigVersionManager : Class for managing configuration versions.
+    ExperimentSnapshot : Contains ConfigSnapshot as a component.
+    diff_configs : Compare two configuration dictionaries.
+    """
 
     config: dict[str, Any]
     config_hash: str
@@ -119,7 +776,48 @@ class ConfigSnapshot:
     created_at: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert configuration snapshot to a JSON-serializable dictionary.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all snapshot information with keys:
+            - 'config': The configuration dictionary
+            - 'config_hash': Hash string for the configuration
+            - 'source_file': Source file path or None
+            - 'version': Version string
+            - 'created_at': Creation timestamp
+
+        Examples
+        --------
+        Basic conversion:
+
+        >>> from insideLLMs.runtime.reproducibility import ConfigVersionManager
+        >>> manager = ConfigVersionManager()
+        >>> snapshot = manager.add_version("v1", {"param": 1})
+        >>> data = snapshot.to_dict()
+        >>> print(data["version"])
+        v1
+
+        Accessing configuration:
+
+        >>> from insideLLMs.runtime.reproducibility import ConfigVersionManager
+        >>> manager = ConfigVersionManager()
+        >>> snapshot = manager.add_version("v1", {"a": 1, "b": 2})
+        >>> data = snapshot.to_dict()
+        >>> print(data["config"]["a"])
+        1
+
+        Serializing to JSON file:
+
+        >>> import json
+        >>> from insideLLMs.runtime.reproducibility import ConfigVersionManager
+        >>> manager = ConfigVersionManager()
+        >>> snapshot = manager.add_version("v1", {"key": "value"})
+        >>> json_data = json.dumps(snapshot.to_dict(), indent=2)
+        >>> print("config_hash" in json_data)
+        True
+        """
         return {
             "config": self.config,
             "config_hash": self.config_hash,

@@ -1,10 +1,153 @@
 """Visualization tools for probe results and experiment analysis.
 
-This module provides tools for visualizing:
-- Experiment results and comparisons
-- Statistical analysis visualizations
-- Text-based charts (no dependencies required)
-- Rich plots with matplotlib (optional)
+This module provides a comprehensive suite of visualization tools for analyzing
+and presenting LLM evaluation results from insideLLMs experiments. It supports
+multiple output formats ranging from simple text-based charts (requiring no
+external dependencies) to rich interactive dashboards using Plotly.
+
+Overview
+--------
+The visualization module is organized into several categories:
+
+**Text-Based Visualizations** (no dependencies):
+    Simple ASCII charts that work in any terminal or console environment.
+    Useful for quick inspection, logging, or environments without graphical
+    capabilities.
+
+**Matplotlib-Based Visualizations** (requires matplotlib, pandas):
+    Static publication-quality plots for accuracy comparisons, latency
+    distributions, metric comparisons, and time series analysis.
+
+**Plotly Interactive Visualizations** (requires plotly, pandas):
+    Rich interactive charts with hover tooltips, zooming, and export
+    capabilities. Ideal for Jupyter notebooks and web-based reports.
+
+**HTML Report Generation**:
+    Self-contained HTML reports with embedded charts, filtering controls,
+    and export functionality for sharing results.
+
+**Jupyter Widgets** (requires ipywidgets):
+    Interactive explorers for real-time filtering and chart type switching
+    directly within Jupyter notebooks.
+
+Dependency Availability
+-----------------------
+The module gracefully handles missing dependencies:
+
+- ``MATPLOTLIB_AVAILABLE``: True if matplotlib and pandas are installed
+- ``SEABORN_AVAILABLE``: True if seaborn is installed
+- ``PLOTLY_AVAILABLE``: True if plotly is installed
+- ``IPYWIDGETS_AVAILABLE``: True if ipywidgets and IPython are installed
+
+Functions that require specific dependencies will raise ImportError with
+helpful installation instructions if the dependencies are not available.
+
+Examples
+--------
+Text-based visualization (no dependencies):
+
+>>> from insideLLMs.analysis.visualization import text_bar_chart
+>>> labels = ["GPT-4", "Claude-3", "Gemini"]
+>>> values = [0.92, 0.89, 0.87]
+>>> print(text_bar_chart(labels, values, title="Model Accuracy"))
+Model Accuracy
+==============
+<BLANKLINE>
+GPT-4    | ████████████████████████████████████████████████ 0.92
+Claude-3 | ████████████████████████████████████████████ 0.89
+Gemini   | ██████████████████████████████████████████ 0.87
+
+Text-based histogram:
+
+>>> from insideLLMs.analysis.visualization import text_histogram
+>>> latencies = [100, 120, 95, 150, 110, 130, 105, 115, 140, 125]
+>>> print(text_histogram(latencies, bins=5, title="Latency Distribution"))
+Latency Distribution
+====================
+<BLANKLINE>
+[ 95.00 - 106.00] | ████████████████████████████████████████ (3)
+[106.00 - 117.00] | █████████████████████████████████████████████████████ (4)
+[117.00 - 128.00] | █████████████████████████ (2)
+[128.00 - 139.00] | █████████████ (1)
+[139.00 - 150.00] | █████████████ (1)
+
+Using matplotlib visualizations:
+
+>>> from insideLLMs.analysis.visualization import plot_accuracy_comparison
+>>> # Assuming 'experiments' is a list of ExperimentResult objects
+>>> plot_accuracy_comparison(
+...     experiments,
+...     title="Q4 2024 Model Comparison",
+...     figsize=(12, 6),
+...     save_path="accuracy_comparison.png"
+... )  # doctest: +SKIP
+
+Creating interactive Plotly charts:
+
+>>> from insideLLMs.analysis.visualization import interactive_accuracy_comparison
+>>> fig = interactive_accuracy_comparison(experiments)  # doctest: +SKIP
+>>> fig.show()  # Opens in browser or displays in Jupyter  # doctest: +SKIP
+>>> fig.write_html("accuracy_chart.html")  # Save as standalone HTML  # doctest: +SKIP
+
+Creating a comprehensive HTML report:
+
+>>> from insideLLMs.analysis.visualization import create_interactive_html_report
+>>> path = create_interactive_html_report(
+...     experiments,
+...     title="LLM Evaluation Report - January 2024",
+...     save_path="evaluation_report.html",
+...     include_individual_results=True
+... )  # doctest: +SKIP
+>>> print(f"Report saved to: {path}")  # doctest: +SKIP
+
+Using the Jupyter widget explorer:
+
+>>> from insideLLMs.analysis.visualization import ExperimentExplorer
+>>> explorer = ExperimentExplorer(experiments)  # doctest: +SKIP
+>>> explorer.show()  # Displays interactive widgets  # doctest: +SKIP
+>>> # Or get a comparison DataFrame
+>>> df = explorer.compare_models(metric="accuracy")  # doctest: +SKIP
+
+Working with experiment summaries:
+
+>>> from insideLLMs.analysis.visualization import experiment_summary_text
+>>> summary = experiment_summary_text(experiments[0])  # doctest: +SKIP
+>>> print(summary)  # doctest: +SKIP
+Experiment: exp-2024-001
+========================
+<BLANKLINE>
+Model:
+  Name: GPT-4
+  Provider: openai
+  ID: gpt-4-turbo
+<BLANKLINE>
+Probe: factuality_basic (factuality)
+<BLANKLINE>
+Results:
+  Total:     100
+  Success:   98
+  Errors:    2
+  Rate:      98.0%
+
+Notes
+-----
+- For production deployments, prefer the text-based or static matplotlib
+  visualizations as they have fewer dependencies and are more portable.
+
+- Interactive HTML reports are self-contained and can be shared via email
+  or uploaded to web servers without requiring a Python environment.
+
+- When using Jupyter notebooks, the interactive Plotly charts and widget
+  explorer provide the best user experience for data exploration.
+
+- All chart functions accept a ``save_path`` parameter for saving output
+  to files instead of displaying directly.
+
+See Also
+--------
+insideLLMs.types.ExperimentResult : Data structure for experiment results
+insideLLMs.analysis.statistics : Statistical analysis functions
+insideLLMs.export : Functions for exporting results to various formats
 """
 
 import hashlib
@@ -49,7 +192,35 @@ except ImportError:
 
 
 def check_visualization_deps() -> None:
-    """Check if visualization dependencies are available."""
+    """Check if matplotlib visualization dependencies are available.
+
+    This function verifies that matplotlib and pandas are installed,
+    which are required for static plot generation functions like
+    ``plot_accuracy_comparison`` and ``plot_latency_distribution``.
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed, with installation
+        instructions in the error message.
+
+    Examples
+    --------
+    Checking dependencies before using matplotlib functions:
+
+    >>> from insideLLMs.analysis.visualization import check_visualization_deps
+    >>> try:
+    ...     check_visualization_deps()
+    ...     print("Dependencies available!")
+    ... except ImportError as e:
+    ...     print(f"Missing dependencies: {e}")  # doctest: +SKIP
+    Dependencies available!
+
+    See Also
+    --------
+    check_plotly_deps : Check for Plotly dependencies
+    check_ipywidgets_deps : Check for Jupyter widget dependencies
+    """
     if not MATPLOTLIB_AVAILABLE:
         raise ImportError(
             "Visualization dependencies not installed. "
@@ -58,7 +229,47 @@ def check_visualization_deps() -> None:
 
 
 def check_plotly_deps() -> None:
-    """Check if Plotly dependencies are available."""
+    """Check if Plotly dependencies are available.
+
+    This function verifies that Plotly is installed for interactive
+    chart generation. It also ensures pandas is available since Plotly
+    Express requires DataFrame operations.
+
+    If matplotlib is not installed (and thus pandas was not imported
+    during module initialization), this function will attempt to import
+    pandas directly.
+
+    Raises
+    ------
+    ImportError
+        If Plotly is not installed, or if pandas is not available
+        for DataFrame operations.
+
+    Examples
+    --------
+    Checking dependencies before creating interactive charts:
+
+    >>> from insideLLMs.analysis.visualization import check_plotly_deps
+    >>> try:
+    ...     check_plotly_deps()
+    ...     print("Plotly ready!")
+    ... except ImportError as e:
+    ...     print(f"Install missing: {e}")  # doctest: +SKIP
+    Plotly ready!
+
+    Typical usage within an interactive visualization function:
+
+    >>> def my_interactive_chart(data):
+    ...     check_plotly_deps()  # Raises if Plotly unavailable
+    ...     # ... create chart with plotly
+    ...     pass
+
+    See Also
+    --------
+    check_visualization_deps : Check for matplotlib dependencies
+    check_ipywidgets_deps : Check for Jupyter widget dependencies
+    interactive_accuracy_comparison : Example function using Plotly
+    """
     if not PLOTLY_AVAILABLE:
         raise ImportError(
             "Plotly dependencies not installed. Please install with: pip install plotly"
@@ -78,7 +289,41 @@ def check_plotly_deps() -> None:
 
 
 def check_ipywidgets_deps() -> None:
-    """Check if ipywidgets dependencies are available."""
+    """Check if Jupyter ipywidgets dependencies are available.
+
+    This function verifies that ipywidgets and IPython are installed,
+    which are required for the interactive ``ExperimentExplorer`` widget
+    class in Jupyter notebooks.
+
+    Raises
+    ------
+    ImportError
+        If ipywidgets or IPython display functions are not available.
+
+    Examples
+    --------
+    Checking before creating Jupyter widgets:
+
+    >>> from insideLLMs.analysis.visualization import check_ipywidgets_deps
+    >>> try:
+    ...     check_ipywidgets_deps()
+    ...     print("Widgets available!")
+    ... except ImportError:
+    ...     print("Not in Jupyter or widgets not installed")  # doctest: +SKIP
+    Widgets available!
+
+    Notes
+    -----
+    This check is automatically performed when instantiating
+    ``ExperimentExplorer``. You typically don't need to call it
+    directly unless building custom widget-based visualizations.
+
+    See Also
+    --------
+    check_visualization_deps : Check for matplotlib dependencies
+    check_plotly_deps : Check for Plotly dependencies
+    ExperimentExplorer : Interactive experiment exploration widget
+    """
     if not IPYWIDGETS_AVAILABLE:
         raise ImportError(
             "ipywidgets dependencies not installed. Please install with: pip install ipywidgets"
@@ -98,16 +343,96 @@ def text_bar_chart(
 ) -> str:
     """Create a text-based horizontal bar chart.
 
-    Args:
-        labels: Labels for each bar.
-        values: Values for each bar.
-        title: Chart title.
-        width: Maximum width of bars in characters.
-        show_values: Whether to show values after bars.
-        char: Character to use for bars.
+    Generates an ASCII bar chart suitable for terminal output, logging,
+    or environments without graphical capabilities. Bars are scaled
+    proportionally to the maximum value.
 
-    Returns:
-        String containing the text chart.
+    Parameters
+    ----------
+    labels : list[str]
+        Labels for each bar. These appear on the left side of the chart.
+        Labels are left-padded to align uniformly.
+    values : list[float]
+        Numeric values for each bar. Must have the same length as labels.
+        Values are used to determine bar lengths proportionally.
+    title : str, optional
+        Chart title displayed at the top. If provided, an underline of
+        equal signs is added below it. Default is empty string (no title).
+    width : int, optional
+        Maximum width of bars in characters. The bar with the largest
+        value will have this width. Default is 50.
+    show_values : bool, optional
+        Whether to display numeric values after each bar. Default is True.
+    char : str, optional
+        Character used to draw the bars. Default is "█" (full block).
+        Other options include "#", "*", "=", or any single character.
+
+    Returns
+    -------
+    str
+        Multi-line string containing the complete text chart, ready
+        for printing or logging.
+
+    Examples
+    --------
+    Basic usage with model accuracy scores:
+
+    >>> labels = ["GPT-4", "Claude-3", "Gemini"]
+    >>> values = [92.5, 89.3, 87.1]
+    >>> chart = text_bar_chart(labels, values, title="Model Accuracy (%)")
+    >>> print(chart)
+    Model Accuracy (%)
+    ==================
+    <BLANKLINE>
+    GPT-4    | ██████████████████████████████████████████████████ 92.50
+    Claude-3 | ████████████████████████████████████████████████ 89.30
+    Gemini   | ███████████████████████████████████████████████ 87.10
+
+    Compact chart without values:
+
+    >>> chart = text_bar_chart(["A", "B", "C"], [10, 8, 6], show_values=False, width=20)
+    >>> print(chart)
+    A | ████████████████████
+    B | ████████████████
+    C | ████████████
+
+    Using a different bar character:
+
+    >>> chart = text_bar_chart(["Test1", "Test2"], [75, 50], char="=", width=30)
+    >>> print(chart)
+    Test1 | ============================== 75.00
+    Test2 | ==================== 50.00
+
+    Handling empty data:
+
+    >>> text_bar_chart([], [])
+    'No data to display'
+
+    Comparing latency across providers:
+
+    >>> providers = ["OpenAI", "Anthropic", "Google", "Meta"]
+    >>> latencies = [150.5, 120.3, 180.2, 95.7]
+    >>> chart = text_bar_chart(providers, latencies, title="API Latency (ms)")
+    >>> print(chart)  # doctest: +NORMALIZE_WHITESPACE
+    API Latency (ms)
+    ================
+    <BLANKLINE>
+    OpenAI    | █████████████████████████████████████████ 150.50
+    Anthropic | █████████████████████████████████ 120.30
+    Google    | ██████████████████████████████████████████████████ 180.20
+    Meta      | ██████████████████████████ 95.70
+
+    Notes
+    -----
+    - Bar lengths are calculated proportionally: ``bar_len = (value / max_value) * width``
+    - If all values are zero or the max value is zero, all bars will be empty
+    - Labels are automatically padded to align the bars vertically
+
+    See Also
+    --------
+    text_histogram : Create a text-based histogram
+    text_comparison_table : Create a text-based comparison table
+    text_summary_stats : Create a text summary of statistics
     """
     if not values:
         return "No data to display"
@@ -143,15 +468,81 @@ def text_histogram(
 ) -> str:
     """Create a text-based histogram.
 
-    Args:
-        values: Data values.
-        bins: Number of bins.
-        title: Chart title.
-        width: Maximum width of bars.
-        char: Character for bars.
+    Generates an ASCII histogram showing the distribution of values
+    across specified number of bins. Useful for visualizing latency
+    distributions, token counts, or any continuous numeric data.
 
-    Returns:
-        String containing the text histogram.
+    Parameters
+    ----------
+    values : list[float]
+        Numeric data values to bin and display. The function calculates
+        bin edges automatically based on the min and max values.
+    bins : int, optional
+        Number of bins (bars) in the histogram. Default is 10.
+        More bins provide finer granularity but may be harder to read.
+    title : str, optional
+        Chart title displayed at the top. Default is empty string.
+    width : int, optional
+        Maximum width of histogram bars in characters. Default is 40.
+    char : str, optional
+        Character used to draw the bars. Default is "█".
+
+    Returns
+    -------
+    str
+        Multi-line string containing the histogram with bin ranges,
+        bars, and counts.
+
+    Examples
+    --------
+    Basic latency distribution:
+
+    >>> latencies = [100, 120, 95, 150, 110, 130, 105, 115, 140, 125]
+    >>> hist = text_histogram(latencies, bins=5, title="Response Latency")
+    >>> print(hist)  # doctest: +NORMALIZE_WHITESPACE
+    Response Latency
+    ================
+    <BLANKLINE>
+    [ 95.00 - 106.00] | ████████████████████████████████████████ (3)
+    [106.00 - 117.00] | ████████████████████████████████████████████████████ (4)
+    [117.00 - 128.00] | ██████████████████████████ (2)
+    [128.00 - 139.00] | █████████████ (1)
+    [139.00 - 150.00] | █████████████ (1)
+
+    Token usage distribution with more bins:
+
+    >>> tokens = [150, 200, 175, 225, 180, 195, 210, 165, 190, 185,
+    ...           170, 205, 188, 192, 178]
+    >>> hist = text_histogram(tokens, bins=8, title="Token Count Distribution")
+    >>> len(hist.split("\\n")) > 5  # Multiple lines generated
+    True
+
+    Handling edge cases:
+
+    >>> text_histogram([])
+    'No data to display'
+
+    >>> text_histogram([5, 5, 5, 5])  # All equal values
+    'All values equal: 5'
+
+    Narrow distribution:
+
+    >>> hist = text_histogram([1.0, 1.1, 1.2, 1.0, 1.1], bins=3, width=20)
+    >>> "[" in hist  # Contains bin ranges
+    True
+
+    Notes
+    -----
+    - Bin edges are calculated as: ``bin_width = (max - min) / bins``
+    - Values equal to the maximum are placed in the last bin
+    - Counts are shown in parentheses after each bar
+    - If all values are identical, returns a special message
+
+    See Also
+    --------
+    text_bar_chart : Create a text-based bar chart with labels
+    plot_latency_distribution : Create matplotlib latency distribution plot
+    interactive_latency_distribution : Create interactive Plotly distribution
     """
     if not values:
         return "No data to display"
@@ -193,14 +584,93 @@ def text_comparison_table(
 ) -> str:
     """Create a text-based comparison table.
 
-    Args:
-        rows: Row labels.
-        cols: Column labels.
-        values: 2D list of values (rows x cols).
-        title: Table title.
+    Generates a formatted ASCII table for comparing multiple items
+    across multiple dimensions. Ideal for model-vs-probe comparisons
+    or multi-metric summaries.
 
-    Returns:
-        String containing the text table.
+    Parameters
+    ----------
+    rows : list[str]
+        Row labels (e.g., model names). Displayed on the left side.
+    cols : list[str]
+        Column labels (e.g., metric names or probe names).
+        Displayed in the header row.
+    values : list[list[Any]]
+        2D list of values where ``values[i][j]`` is the value for
+        row i and column j. Must have dimensions len(rows) x len(cols).
+        Floats are formatted to 4 decimal places automatically.
+    title : str, optional
+        Table title displayed above the header. Default is empty.
+
+    Returns
+    -------
+    str
+        Multi-line string containing the formatted table with
+        aligned columns and separator lines.
+
+    Examples
+    --------
+    Comparing model performance across probes:
+
+    >>> models = ["GPT-4", "Claude-3", "Gemini"]
+    >>> probes = ["Factuality", "Logic", "Bias"]
+    >>> scores = [
+    ...     [0.92, 0.88, 0.85],  # GPT-4 scores
+    ...     [0.89, 0.91, 0.87],  # Claude-3 scores
+    ...     [0.85, 0.83, 0.82],  # Gemini scores
+    ... ]
+    >>> table = text_comparison_table(models, probes, scores, "Model Comparison")
+    >>> print(table)  # doctest: +NORMALIZE_WHITESPACE
+    Model Comparison
+    ================
+    <BLANKLINE>
+              Factuality  |   Logic    |    Bias
+    --------------------------------------------------
+    GPT-4    |   0.9200   |   0.8800   |   0.8500
+    Claude-3 |   0.8900   |   0.9100   |   0.8700
+    Gemini   |   0.8500   |   0.8300   |   0.8200
+
+    Mixed data types (strings and numbers):
+
+    >>> rows = ["Test A", "Test B"]
+    >>> cols = ["Status", "Score", "Notes"]
+    >>> values = [
+    ...     ["PASS", 95.5, "Good"],
+    ...     ["FAIL", 45.2, "Needs work"],
+    ... ]
+    >>> table = text_comparison_table(rows, cols, values)
+    >>> "PASS" in table
+    True
+
+    Handling empty data:
+
+    >>> text_comparison_table([], [], [])
+    'No data to display'
+
+    Latency comparison across providers:
+
+    >>> providers = ["OpenAI", "Anthropic"]
+    >>> metrics = ["P50 (ms)", "P95 (ms)", "P99 (ms)"]
+    >>> latencies = [
+    ...     [120.5, 250.3, 480.1],
+    ...     [95.2, 180.7, 320.5],
+    ... ]
+    >>> table = text_comparison_table(providers, metrics, latencies, "API Latency")
+    >>> "OpenAI" in table and "P50" in table
+    True
+
+    Notes
+    -----
+    - Column widths are automatically calculated based on header and data
+    - Float values are formatted with 4 decimal places
+    - Columns are center-aligned for readability
+    - Row labels are left-aligned
+
+    See Also
+    --------
+    text_bar_chart : Create a text-based bar chart
+    text_summary_stats : Create a text summary of statistics
+    interactive_heatmap : Create an interactive heatmap comparison
     """
     if not rows or not cols or not values:
         return "No data to display"
@@ -254,18 +724,106 @@ def text_summary_stats(
 ) -> str:
     """Create a text summary of statistics.
 
-    Args:
-        name: Name of the metric.
-        mean: Mean value.
-        std: Standard deviation.
-        min_val: Minimum value.
-        max_val: Maximum value.
-        n: Sample size.
-        ci_lower: Lower bound of confidence interval.
-        ci_upper: Upper bound of confidence interval.
+    Generates a formatted text block showing key statistical measures
+    for a metric. Useful for quick inspection of experiment results
+    or for inclusion in logs and reports.
 
-    Returns:
-        Formatted statistics string.
+    Parameters
+    ----------
+    name : str
+        Name or description of the metric being summarized.
+        Appears in the header line.
+    mean : float
+        Arithmetic mean of the data.
+    std : float
+        Standard deviation of the data.
+    min_val : float
+        Minimum value in the data.
+    max_val : float
+        Maximum value in the data.
+    n : int
+        Sample size (number of data points).
+    ci_lower : float, optional
+        Lower bound of 95% confidence interval for the mean.
+        If provided along with ci_upper, the CI is displayed.
+    ci_upper : float, optional
+        Upper bound of 95% confidence interval for the mean.
+        Both ci_lower and ci_upper must be provided to display CI.
+
+    Returns
+    -------
+    str
+        Multi-line string with formatted statistics.
+
+    Examples
+    --------
+    Basic statistics summary:
+
+    >>> stats = text_summary_stats(
+    ...     name="Response Latency (ms)",
+    ...     mean=125.5,
+    ...     std=30.2,
+    ...     min_val=85.0,
+    ...     max_val=220.0,
+    ...     n=100
+    ... )
+    >>> print(stats)
+    Statistics for: Response Latency (ms)
+    --------------------------------------
+      N:     100
+      Mean:  125.5000
+      Std:   30.2000
+      Min:   85.0000
+      Max:   220.0000
+
+    With confidence interval:
+
+    >>> stats = text_summary_stats(
+    ...     name="Accuracy",
+    ...     mean=0.892,
+    ...     std=0.045,
+    ...     min_val=0.78,
+    ...     max_val=0.96,
+    ...     n=50,
+    ...     ci_lower=0.879,
+    ...     ci_upper=0.905
+    ... )
+    >>> "95% CI:" in stats
+    True
+    >>> print(stats)
+    Statistics for: Accuracy
+    ------------------------
+      N:     50
+      Mean:  0.8920
+      Std:   0.0450
+      Min:   0.7800
+      Max:   0.9600
+      95% CI: [0.8790, 0.9050]
+
+    Summarizing token usage:
+
+    >>> stats = text_summary_stats(
+    ...     name="Token Count",
+    ...     mean=450.0,
+    ...     std=120.0,
+    ...     min_val=150.0,
+    ...     max_val=800.0,
+    ...     n=200
+    ... )
+    >>> "450.0000" in stats
+    True
+
+    Notes
+    -----
+    - All numeric values are formatted to 4 decimal places
+    - The header underline length adjusts to the metric name
+    - Confidence interval is only shown if both bounds are provided
+
+    See Also
+    --------
+    text_bar_chart : Create a text-based bar chart
+    text_histogram : Create a text-based histogram
+    experiment_summary_text : Create a full experiment summary
     """
     lines = [
         f"Statistics for: {name}",
@@ -286,11 +844,95 @@ def text_summary_stats(
 def experiment_summary_text(experiment: ExperimentResult) -> str:
     """Create a text summary of an experiment result.
 
-    Args:
-        experiment: The experiment result.
+    Generates a comprehensive human-readable summary of an experiment
+    including model information, probe details, result counts, and
+    scoring metrics. Ideal for logging, console output, or quick review.
 
-    Returns:
-        Formatted text summary.
+    Parameters
+    ----------
+    experiment : ExperimentResult
+        The experiment result object (ProbeExperimentResult) containing
+        model info, probe details, individual results, and aggregate scores.
+
+    Returns
+    -------
+    str
+        Multi-line formatted text summary of the experiment.
+
+    Examples
+    --------
+    Summarizing a completed experiment:
+
+    >>> from insideLLMs.types import (
+    ...     ProbeExperimentResult, ProbeResult, ProbeScore,
+    ...     ModelInfo, ProbeCategory, ResultStatus
+    ... )
+    >>> model = ModelInfo(name="GPT-4", provider="openai", model_id="gpt-4-turbo")
+    >>> results = [
+    ...     ProbeResult("q1", "a1", ResultStatus.SUCCESS, latency_ms=100),
+    ...     ProbeResult("q2", "a2", ResultStatus.SUCCESS, latency_ms=120),
+    ...     ProbeResult("q3", error="timeout", status=ResultStatus.ERROR),
+    ... ]
+    >>> experiment = ProbeExperimentResult(
+    ...     experiment_id="exp-2024-001",
+    ...     model_info=model,
+    ...     probe_name="factuality_basic",
+    ...     probe_category=ProbeCategory.FACTUALITY,
+    ...     results=results,
+    ...     score=ProbeScore(accuracy=0.67, precision=0.65, recall=0.70, mean_latency_ms=110.0)
+    ... )
+    >>> summary = experiment_summary_text(experiment)
+    >>> print(summary)  # doctest: +NORMALIZE_WHITESPACE
+    Experiment: exp-2024-001
+    ========================
+    <BLANKLINE>
+    Model:
+      Name: GPT-4
+      Provider: openai
+      ID: gpt-4-turbo
+    <BLANKLINE>
+    Probe: factuality_basic (factuality)
+    <BLANKLINE>
+    Results:
+      Total:     3
+      Success:   2
+      Errors:    1
+      Rate:      66.7%
+    <BLANKLINE>
+    Scores:
+      Accuracy:  67.0%
+      Precision: 65.0%
+      Recall:    70.0%
+      Latency:   110.0 ms
+
+    Experiment with F1 score:
+
+    >>> experiment.score.f1_score = 0.673
+    >>> summary = experiment_summary_text(experiment)
+    >>> "F1 Score:" in summary
+    True
+
+    Experiment with duration:
+
+    >>> from datetime import datetime, timedelta
+    >>> experiment.started_at = datetime(2024, 1, 15, 10, 0, 0)
+    >>> experiment.completed_at = datetime(2024, 1, 15, 10, 0, 45)
+    >>> summary = experiment_summary_text(experiment)
+    >>> "Duration:" in summary
+    True
+
+    Notes
+    -----
+    - Success rate is calculated as success_count / total_count
+    - Only non-None score fields are displayed
+    - Duration is only shown if both started_at and completed_at are set
+    - Percentages are displayed with one decimal place
+
+    See Also
+    --------
+    text_summary_stats : Create statistical summaries
+    create_html_report : Generate an HTML report
+    create_interactive_html_report : Generate an interactive HTML report
     """
     lines = [
         f"Experiment: {experiment.experiment_id}",
@@ -340,13 +982,73 @@ def plot_accuracy_comparison(
     figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot accuracy comparison across experiments.
+    """Plot accuracy comparison across experiments using matplotlib.
 
-    Args:
-        experiments: List of experiment results.
-        title: Plot title.
-        figsize: Figure size.
-        save_path: Path to save the plot.
+    Creates a bar chart comparing accuracy scores across different
+    models and probes. Each bar represents one experiment with the
+    model name and probe name as the label.
+
+    Parameters
+    ----------
+    experiments : list[ExperimentResult]
+        List of experiment results to compare. Each experiment should
+        have a score with an accuracy value. Experiments without
+        accuracy scores are silently skipped.
+    title : str, optional
+        Plot title displayed at the top. Default is "Model Accuracy Comparison".
+    figsize : tuple[int, int], optional
+        Figure size as (width, height) in inches. Default is (10, 6).
+    save_path : str, optional
+        If provided, saves the plot to this file path instead of
+        displaying it. Supports PNG, PDF, SVG based on extension.
+        Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Basic accuracy comparison:
+
+    >>> from insideLLMs.analysis.visualization import plot_accuracy_comparison
+    >>> # Assuming experiments is a list of ExperimentResult objects
+    >>> plot_accuracy_comparison(experiments, title="Q4 2024 Results")  # doctest: +SKIP
+
+    Save to file instead of displaying:
+
+    >>> plot_accuracy_comparison(
+    ...     experiments,
+    ...     title="Model Comparison",
+    ...     figsize=(12, 8),
+    ...     save_path="accuracy_comparison.png"
+    ... )  # doctest: +SKIP
+
+    Creating a comparison report:
+
+    >>> # Run multiple experiments
+    >>> gpt4_results = run_probe(gpt4_client, factuality_probe)  # doctest: +SKIP
+    >>> claude_results = run_probe(claude_client, factuality_probe)  # doctest: +SKIP
+    >>> plot_accuracy_comparison(
+    ...     [gpt4_results, claude_results],
+    ...     title="GPT-4 vs Claude-3 Factuality",
+    ...     save_path="reports/factuality.pdf"
+    ... )  # doctest: +SKIP
+
+    Notes
+    -----
+    - Bars are colored in steel blue with navy edges
+    - Value labels are displayed above each bar
+    - Y-axis is fixed to 0-105% range for consistent comparison
+    - X-axis labels are rotated 45 degrees for readability
+    - If no experiments have accuracy data, prints a message and returns
+
+    See Also
+    --------
+    interactive_accuracy_comparison : Interactive Plotly version
+    plot_metric_comparison : Compare multiple metrics
+    plot_latency_distribution : Plot latency distributions
     """
     check_visualization_deps()
 
@@ -396,13 +1098,72 @@ def plot_latency_distribution(
     figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot latency distribution across experiments.
+    """Plot latency distribution across experiments using matplotlib.
 
-    Args:
-        experiments: List of experiment results.
-        title: Plot title.
-        figsize: Figure size.
-        save_path: Path to save the plot.
+    Creates box plots showing the distribution of response latencies
+    for each model. Useful for comparing response time variability
+    and identifying outliers across different LLM providers.
+
+    Parameters
+    ----------
+    experiments : list[ExperimentResult]
+        List of experiment results containing individual result latencies.
+        Latencies are extracted from each result's ``latency_ms`` field.
+        Results without latency data are skipped.
+    title : str, optional
+        Plot title. Default is "Response Latency Distribution".
+    figsize : tuple[int, int], optional
+        Figure size as (width, height) in inches. Default is (10, 6).
+    save_path : str, optional
+        If provided, saves the plot to this file path instead of
+        displaying it. Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Basic latency distribution:
+
+    >>> from insideLLMs.analysis.visualization import plot_latency_distribution
+    >>> plot_latency_distribution(experiments, title="API Response Times")  # doctest: +SKIP
+
+    Comparing multiple providers:
+
+    >>> openai_results = run_probe(openai_client, test_probe)  # doctest: +SKIP
+    >>> anthropic_results = run_probe(anthropic_client, test_probe)  # doctest: +SKIP
+    >>> google_results = run_probe(google_client, test_probe)  # doctest: +SKIP
+    >>> plot_latency_distribution(
+    ...     [openai_results, anthropic_results, google_results],
+    ...     title="Provider Latency Comparison",
+    ...     figsize=(12, 6),
+    ...     save_path="latency_comparison.png"
+    ... )  # doctest: +SKIP
+
+    High-resolution export for publication:
+
+    >>> plot_latency_distribution(
+    ...     experiments,
+    ...     title="Response Time Analysis",
+    ...     figsize=(8, 5),
+    ...     save_path="figures/latency.pdf"
+    ... )  # doctest: +SKIP
+
+    Notes
+    -----
+    - Uses seaborn for enhanced box plots if available, falls back to matplotlib
+    - Latencies are grouped by model name
+    - X-axis labels are rotated 45 degrees for readability
+    - If no latency data is available, prints a message and returns
+    - Box plots show median, quartiles, and outliers
+
+    See Also
+    --------
+    interactive_latency_distribution : Interactive Plotly version
+    text_histogram : Text-based latency histogram
+    plot_accuracy_comparison : Compare accuracy scores
     """
     check_visualization_deps()
 
@@ -457,14 +1218,71 @@ def plot_metric_comparison(
     figsize: tuple[int, int] = (12, 6),
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot multiple metrics for comparison.
+    """Plot multiple metrics for comparison using grouped bar charts.
 
-    Args:
-        experiments: List of experiment results.
-        metrics: List of metric names to plot.
-        title: Plot title.
-        figsize: Figure size.
-        save_path: Path to save the plot.
+    Creates a grouped bar chart comparing multiple metrics (accuracy,
+    precision, recall, F1 score) across different models. Useful for
+    comprehensive performance analysis.
+
+    Parameters
+    ----------
+    experiments : list[ExperimentResult]
+        List of experiment results to compare.
+    metrics : list[str], optional
+        List of metric names to include in the comparison.
+        Valid options: "accuracy", "precision", "recall", "f1_score".
+        Default is ["accuracy", "precision", "recall", "f1_score"].
+    title : str, optional
+        Plot title. Default is "Metric Comparison".
+    figsize : tuple[int, int], optional
+        Figure size as (width, height) in inches. Default is (12, 6).
+    save_path : str, optional
+        If provided, saves the plot to this file path.
+        Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Compare all default metrics:
+
+    >>> from insideLLMs.analysis.visualization import plot_metric_comparison
+    >>> plot_metric_comparison(experiments, title="Full Metric Analysis")  # doctest: +SKIP
+
+    Compare specific metrics only:
+
+    >>> plot_metric_comparison(
+    ...     experiments,
+    ...     metrics=["accuracy", "f1_score"],
+    ...     title="Accuracy vs F1 Comparison"
+    ... )  # doctest: +SKIP
+
+    Publication-ready comparison:
+
+    >>> plot_metric_comparison(
+    ...     experiments,
+    ...     metrics=["precision", "recall"],
+    ...     title="Precision-Recall Analysis",
+    ...     figsize=(10, 5),
+    ...     save_path="pr_analysis.pdf"
+    ... )  # doctest: +SKIP
+
+    Notes
+    -----
+    - Metrics are shown as grouped bars for each model
+    - Percentages (accuracy, precision, recall) are displayed as 0-100
+    - F1 score is displayed as-is (0.0-1.0 scale)
+    - Multiple experiments for the same model are averaged
+    - Legend shows metric names with underscores replaced by spaces
+
+    See Also
+    --------
+    interactive_metric_radar : Interactive radar chart for metrics
+    plot_accuracy_comparison : Simple accuracy comparison
+    interactive_heatmap : Heatmap visualization of metrics
     """
     if metrics is None:
         metrics = ["accuracy", "precision", "recall", "f1_score"]
@@ -531,13 +1349,83 @@ def plot_success_rate_over_time(
     figsize: tuple[int, int] = (10, 6),
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot success rate over time/runs.
+    """Plot success rate over time or across experiment runs.
 
-    Args:
-        results: List of (timestamp/label, success_rate) tuples.
-        title: Plot title.
-        figsize: Figure size.
-        save_path: Path to save the plot.
+    Creates a line chart showing how success rate varies over time
+    or across sequential experiment runs. Useful for tracking
+    performance trends and identifying regressions.
+
+    Parameters
+    ----------
+    results : list[tuple[str, float]]
+        List of (label, success_rate) tuples where label is a timestamp
+        or run identifier string, and success_rate is a float between
+        0.0 and 1.0 (will be converted to percentage).
+    title : str, optional
+        Plot title. Default is "Success Rate Over Time".
+    figsize : tuple[int, int], optional
+        Figure size as (width, height) in inches. Default is (10, 6).
+    save_path : str, optional
+        If provided, saves the plot to this file path.
+        Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Tracking success rate over experiment runs:
+
+    >>> from insideLLMs.analysis.visualization import plot_success_rate_over_time
+    >>> results = [
+    ...     ("Run 1", 0.85),
+    ...     ("Run 2", 0.87),
+    ...     ("Run 3", 0.92),
+    ...     ("Run 4", 0.89),
+    ...     ("Run 5", 0.94),
+    ... ]
+    >>> plot_success_rate_over_time(results, title="Weekly Success Rate")  # doctest: +SKIP
+
+    Tracking by date:
+
+    >>> results = [
+    ...     ("2024-01-01", 0.82),
+    ...     ("2024-01-08", 0.85),
+    ...     ("2024-01-15", 0.88),
+    ...     ("2024-01-22", 0.91),
+    ... ]
+    >>> plot_success_rate_over_time(
+    ...     results,
+    ...     title="January 2024 Performance",
+    ...     save_path="january_trend.png"
+    ... )  # doctest: +SKIP
+
+    Monitoring API reliability:
+
+    >>> results = [
+    ...     ("Hour 1", 0.98),
+    ...     ("Hour 2", 0.95),
+    ...     ("Hour 3", 0.72),  # Incident
+    ...     ("Hour 4", 0.99),
+    ... ]
+    >>> plot_success_rate_over_time(results, title="API Reliability")  # doctest: +SKIP
+
+    Notes
+    -----
+    - Success rates are converted to percentages (0-100%)
+    - Y-axis is fixed to 0-105% range for consistent scaling
+    - Area under the line is shaded for visual clarity
+    - Grid lines are displayed for easier reading
+    - X-axis labels are rotated 45 degrees
+    - If results list is empty, prints a message and returns
+
+    See Also
+    --------
+    interactive_timeline : Interactive Plotly timeline
+    plot_accuracy_comparison : Compare accuracy across models
+    create_interactive_dashboard : Dashboard with success rate trends
     """
     check_visualization_deps()
 
@@ -574,12 +1462,60 @@ def plot_bias_results(
     title: str = "Bias Probe Results",
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot results from BiasProbe.
+    """Plot results from BiasProbe showing response length differences.
 
-    Args:
-        results: List of results from BiasProbe.
-        title: Plot title.
-        save_path: Path to save the plot.
+    This is a legacy function for visualizing bias probe results that
+    compare responses to paired prompts (e.g., with different demographic
+    attributes). It shows the difference in response lengths as an
+    indicator of potential bias.
+
+    Parameters
+    ----------
+    results : list[dict[str, Any]]
+        List of result dictionaries from BiasProbe. Each dictionary should
+        have an "output" key containing a list of (response1, response2)
+        tuples from paired prompts.
+    title : str, optional
+        Plot title. Default is "Bias Probe Results".
+    save_path : str, optional
+        If provided, saves the plot to this file path.
+        Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Visualizing bias probe results:
+
+    >>> from insideLLMs.analysis.visualization import plot_bias_results
+    >>> results = [
+    ...     {"output": [("Response A", "Response B"), ("Response C", "Response D")]},
+    ...     {"output": [("Short", "This is a much longer response")]},
+    ... ]
+    >>> plot_bias_results(results, title="Gender Bias Analysis")  # doctest: +SKIP
+
+    Save to file:
+
+    >>> plot_bias_results(
+    ...     results,
+    ...     title="Demographic Bias Test",
+    ...     save_path="bias_analysis.png"
+    ... )  # doctest: +SKIP
+
+    Notes
+    -----
+    - Response length difference = len(response1) - len(response2)
+    - Positive values indicate longer first responses
+    - Uses seaborn for enhanced bar plots if available
+    - This is a legacy function; consider using newer visualization methods
+
+    See Also
+    --------
+    plot_factuality_results : Visualize factuality probe results
+    create_html_report : Generate HTML reports from results
     """
     check_visualization_deps()
 
@@ -625,12 +1561,63 @@ def plot_factuality_results(
     title: str = "Factuality Probe Results",
     save_path: Optional[str] = None,
 ) -> None:
-    """Plot results from FactualityProbe.
+    """Plot results from FactualityProbe with category breakdown.
 
-    Args:
-        results: List of results from FactualityProbe.
-        title: Plot title.
-        save_path: Path to save the plot.
+    This is a legacy function for visualizing factuality probe results.
+    Creates a two-panel plot showing category distribution and response
+    length statistics by category.
+
+    Parameters
+    ----------
+    results : list[dict[str, Any]]
+        List of result dictionaries from FactualityProbe. Each dictionary
+        should have an "output" key containing a list of question/answer
+        items with "category" and "model_answer" fields.
+    title : str, optional
+        Plot title prefix. Default is "Factuality Probe Results".
+    save_path : str, optional
+        If provided, saves the plot to this file path.
+        Default is None (display plot).
+
+    Raises
+    ------
+    ImportError
+        If matplotlib or pandas is not installed.
+
+    Examples
+    --------
+    Visualizing factuality results:
+
+    >>> from insideLLMs.analysis.visualization import plot_factuality_results
+    >>> results = [
+    ...     {"output": [
+    ...         {"category": "science", "model_answer": "The Earth orbits the Sun."},
+    ...         {"category": "history", "model_answer": "World War II ended in 1945."},
+    ...         {"category": "science", "model_answer": "Water is H2O."},
+    ...     ]},
+    ... ]
+    >>> plot_factuality_results(results, title="Knowledge Test")  # doctest: +SKIP
+
+    Save to file:
+
+    >>> plot_factuality_results(
+    ...     results,
+    ...     title="Factuality Analysis",
+    ...     save_path="factuality.png"
+    ... )  # doctest: +SKIP
+
+    Notes
+    -----
+    - Left panel shows bar chart of question counts by category
+    - Right panel shows box plot of response lengths by category
+    - Uses seaborn for enhanced plots if available
+    - This is a legacy function; consider using newer visualization methods
+
+    See Also
+    --------
+    plot_bias_results : Visualize bias probe results
+    create_html_report : Generate HTML reports from results
+    plot_accuracy_comparison : Modern accuracy visualization
     """
     check_visualization_deps()
 
@@ -701,15 +1688,75 @@ def create_html_report(
     title: str = "Probe Results Report",
     save_path: str = "report.html",
 ) -> str:
-    """Create an HTML report from probe results.
+    """Create a static HTML report from probe results.
 
-    Args:
-        results: List of results from any probe.
-        title: Report title.
-        save_path: Path to save the HTML report.
+    Generates a self-contained HTML file with styled presentation of
+    probe results. This is a legacy function that creates simple static
+    reports without interactive features.
 
-    Returns:
-        Path to the saved report.
+    Parameters
+    ----------
+    results : list[dict[str, Any]]
+        List of result dictionaries from any probe type. Each dictionary
+        may contain:
+        - "input": The input prompt or question
+        - "output": The model's response (str, list, or dict)
+        - "error": Any error message (optional)
+    title : str, optional
+        Report title displayed in the header. Default is "Probe Results Report".
+    save_path : str, optional
+        File path to save the HTML report. Default is "report.html".
+
+    Returns
+    -------
+    str
+        The path to the saved HTML report file.
+
+    Examples
+    --------
+    Creating a basic report:
+
+    >>> from insideLLMs.analysis.visualization import create_html_report
+    >>> results = [
+    ...     {"input": "What is 2+2?", "output": "4"},
+    ...     {"input": "Capital of France?", "output": "Paris"},
+    ... ]
+    >>> path = create_html_report(results, title="Math & Geography Test")  # doctest: +SKIP
+    >>> print(f"Report saved to: {path}")  # doctest: +SKIP
+
+    Report with errors:
+
+    >>> results = [
+    ...     {"input": "Query 1", "output": "Success response"},
+    ...     {"input": "Query 2", "error": "Timeout error"},
+    ... ]
+    >>> path = create_html_report(
+    ...     results,
+    ...     title="Error Analysis",
+    ...     save_path="error_report.html"
+    ... )  # doctest: +SKIP
+
+    Report with structured output:
+
+    >>> results = [
+    ...     {"input": "Test prompt", "output": {"score": 0.95, "label": "positive"}},
+    ...     {"input": "Another prompt", "output": [("A", "B"), ("C", "D")]},
+    ... ]
+    >>> path = create_html_report(results, title="Structured Results")  # doctest: +SKIP
+
+    Notes
+    -----
+    - Report includes a summary section with success/error counts
+    - Styling uses modern CSS with gradient headers
+    - Structured outputs (dict/list) are rendered as tables
+    - Errors are highlighted in red
+    - For interactive reports, use ``create_interactive_html_report`` instead
+
+    See Also
+    --------
+    create_interactive_html_report : Interactive HTML report with charts
+    experiment_summary_text : Text-based experiment summary
+    plot_accuracy_comparison : Visual accuracy comparison
     """
     html = f"""
     <!DOCTYPE html>
@@ -804,19 +1851,82 @@ def interactive_accuracy_comparison(
 ) -> Any:
     """Create an interactive bar chart comparing model accuracies.
 
-    Args:
-        experiments: List of experiment results.
-        title: Chart title.
-        show_error_bars: Whether to show error bars (if std available).
-        color_by: Color bars by 'model' or 'probe'.
+    Generates a Plotly bar chart with hover tooltips, zooming, and
+    export capabilities. Ideal for Jupyter notebooks and web-based
+    exploration of experiment results.
 
-    Returns:
-        Plotly figure object.
+    Parameters
+    ----------
+    experiments : list[ExperimentResult]
+        List of experiment results to compare. Each experiment should
+        have a score with an accuracy value.
+    title : str, optional
+        Chart title. Default is "Model Accuracy Comparison".
+    show_error_bars : bool, optional
+        Whether to show error bars if standard deviation is available.
+        Default is True. (Note: Currently not implemented, reserved
+        for future enhancement.)
+    color_by : str, optional
+        How to color the bars. Options:
+        - "model": Color by model name (default)
+        - "probe": Color by probe name
 
-    Example:
-        >>> fig = interactive_accuracy_comparison(experiments)
-        >>> fig.show()  # In Jupyter
-        >>> fig.write_html("accuracy.html")  # Save to file
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Plotly figure object that can be displayed with ``.show()``
+        or saved with ``.write_html()``.
+
+    Raises
+    ------
+    ImportError
+        If Plotly or pandas is not installed.
+    ValueError
+        If no experiments have accuracy data.
+
+    Examples
+    --------
+    Display in Jupyter notebook:
+
+    >>> from insideLLMs.analysis.visualization import interactive_accuracy_comparison
+    >>> fig = interactive_accuracy_comparison(experiments)  # doctest: +SKIP
+    >>> fig.show()  # doctest: +SKIP
+
+    Save as standalone HTML:
+
+    >>> fig = interactive_accuracy_comparison(
+    ...     experiments,
+    ...     title="Q4 2024 Accuracy Results"
+    ... )  # doctest: +SKIP
+    >>> fig.write_html("accuracy_comparison.html")  # doctest: +SKIP
+
+    Color by probe instead of model:
+
+    >>> fig = interactive_accuracy_comparison(
+    ...     experiments,
+    ...     title="Accuracy by Probe Type",
+    ...     color_by="probe"
+    ... )  # doctest: +SKIP
+    >>> fig.show()  # doctest: +SKIP
+
+    Embed in a web page:
+
+    >>> fig = interactive_accuracy_comparison(experiments)  # doctest: +SKIP
+    >>> html_div = fig.to_html(full_html=False, include_plotlyjs='cdn')  # doctest: +SKIP
+
+    Notes
+    -----
+    - Hover tooltips show provider and success rate
+    - Percentage labels are displayed above each bar
+    - Y-axis is fixed to 0-105% for consistent comparison
+    - Legend shows model or probe names based on color_by setting
+
+    See Also
+    --------
+    plot_accuracy_comparison : Static matplotlib version
+    interactive_metric_radar : Radar chart for multiple metrics
+    interactive_heatmap : Heatmap of accuracy by model and probe
+    create_interactive_dashboard : Full dashboard with multiple charts
     """
     check_plotly_deps()
 

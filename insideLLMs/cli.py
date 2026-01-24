@@ -1,7 +1,95 @@
 """Command-line interface for insideLLMs.
 
-Provides commands for running experiments, listing available models and probes,
-benchmarking, interactive exploration, and managing configurations.
+This module provides a comprehensive command-line interface for interacting with
+the insideLLMs framework. It supports running experiments, benchmarking models,
+comparing responses, interactive exploration, and managing configurations.
+
+Overview
+--------
+The CLI is organized into subcommands, each handling a specific workflow:
+
+- ``run``: Execute experiments from YAML/JSON configuration files
+- ``harness``: Run cross-model behavioral probe harnesses
+- ``benchmark``: Run comprehensive benchmark suites across models and probes
+- ``compare``: Compare multiple models on identical inputs
+- ``diff``: Compare two run directories for behavioral regressions
+- ``list``: Display available models, probes, datasets, and trackers
+- ``init``: Generate sample configuration files
+- ``info``: Show detailed information about a specific resource
+- ``quicktest``: Quickly test a single prompt against a model
+- ``interactive``: Start an interactive exploration session
+- ``validate``: Validate configuration files or run directories
+- ``export``: Export results to CSV, Markdown, or LaTeX formats
+- ``schema``: Inspect and validate versioned output schemas
+- ``doctor``: Diagnose environment and optional dependencies
+- ``report``: Rebuild summary and HTML reports from records
+
+Examples
+--------
+Running a quick test with a model:
+
+    $ insidellms quicktest "What is 2+2?" --model openai
+
+Running an experiment from a configuration file:
+
+    $ insidellms run experiment.yaml --verbose --format table
+
+Running a behavioral harness across multiple models:
+
+    $ insidellms harness harness_config.yaml --output-dir ./results
+
+Comparing models on the same input:
+
+    $ insidellms compare --models gpt-4,claude-3 --input "Explain gravity"
+
+Listing available resources:
+
+    $ insidellms list all --detailed
+
+Starting interactive mode:
+
+    $ insidellms interactive --model openai
+
+Validating a run directory:
+
+    $ insidellms validate ./results/my-run
+
+Comparing two runs for regressions:
+
+    $ insidellms diff ./baseline ./candidate --fail-on-regressions
+
+Environment Variables
+---------------------
+INSIDELLMS_RUN_ROOT : str, optional
+    Override the default run artifacts root directory (~/.insidellms/runs).
+NO_COLOR : str, optional
+    Disable colored terminal output when set to any value.
+FORCE_COLOR : str, optional
+    Force colored output even when stdout is not a TTY.
+OPENAI_API_KEY : str, optional
+    API key for OpenAI model providers.
+ANTHROPIC_API_KEY : str, optional
+    API key for Anthropic model providers.
+
+Notes
+-----
+The CLI supports both synchronous and asynchronous execution modes. For large
+experiments, using ``--async`` with ``--concurrency`` can significantly improve
+throughput by running multiple model queries in parallel.
+
+All run artifacts are written to a structured directory containing:
+- ``manifest.json``: Run metadata and configuration
+- ``records.jsonl``: Individual result records in JSON Lines format
+- ``config.resolved.yaml``: Resolved configuration snapshot
+- ``summary.json``: Aggregated statistics
+- ``report.html``: Visual HTML report (if visualization extras installed)
+
+See Also
+--------
+insideLLMs.runner : Core experiment execution logic
+insideLLMs.registry : Model and probe registration
+insideLLMs.schemas : Output schema validation
+insideLLMs.visualization : Report generation utilities
 """
 
 import argparse
@@ -46,8 +134,48 @@ from insideLLMs.types import (
 
 
 def _add_output_schema_args(parser: argparse.ArgumentParser) -> None:
-    """Add common output schema validation arguments to a subcommand parser."""
+    """Add common output schema validation arguments to a subcommand parser.
 
+    This helper function adds three standard arguments related to output schema
+    validation to any subcommand parser. These arguments control whether outputs
+    are validated, which schema version to use, and how to handle validation failures.
+
+    Args:
+        parser: The argparse ArgumentParser instance to add arguments to.
+            This is typically a subparser for a specific CLI command.
+
+    Returns:
+        None. The parser is modified in-place.
+
+    Examples:
+        Adding schema arguments to a custom subcommand:
+
+            >>> subparser = subparsers.add_parser("mycommand", help="My command")
+            >>> _add_output_schema_args(subparser)
+            >>> args = parser.parse_args(["mycommand", "--validate-output"])
+            >>> args.validate_output
+            True
+
+        Using the added arguments in a command handler:
+
+            >>> if args.validate_output:
+            ...     validator.validate(
+            ...         schema_name,
+            ...         data,
+            ...         schema_version=args.schema_version,
+            ...         mode=args.validation_mode
+            ...     )
+
+    Notes:
+        The three arguments added are:
+        - ``--validate-output``: Boolean flag to enable schema validation
+        - ``--schema-version``: String specifying the schema version (default from DEFAULT_SCHEMA_VERSION)
+        - ``--validation-mode``: Choice of "strict" or "warn" for error handling
+
+    See Also:
+        insideLLMs.schemas.OutputValidator : The validator that uses these arguments
+        insideLLMs.schemas.SchemaRegistry : Registry of available schema versions
+    """
     parser.add_argument(
         "--validate-output",
         action="store_true",
@@ -68,8 +196,62 @@ def _add_output_schema_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _json_default(obj: Any) -> Any:
-    """JSON default handler for CLI writes."""
+    """JSON default handler for CLI writes.
 
+    Custom JSON serialization handler that converts Python objects to
+    JSON-serializable representations. Used as the ``default`` parameter
+    for ``json.dumps()`` and ``json.dump()`` calls throughout the CLI.
+
+    Args:
+        obj: Any Python object that the standard JSON encoder cannot handle.
+            Supported types include datetime, Enum, Path, set, frozenset,
+            and dataclass instances.
+
+    Returns:
+        A JSON-serializable representation of the object:
+        - datetime objects return ISO 8601 formatted strings
+        - Enum members return their value
+        - Path objects return string representations
+        - Sets and frozensets return sorted lists
+        - Dataclass instances return their __dict__
+        - All other types return str(obj)
+
+    Raises:
+        No exceptions are raised; all objects are converted to strings as a fallback.
+
+    Examples:
+        Serializing a datetime:
+
+            >>> import json
+            >>> from datetime import datetime
+            >>> dt = datetime(2024, 1, 15, 12, 30, 0)
+            >>> json.dumps({"timestamp": dt}, default=_json_default)
+            '{"timestamp": "2024-01-15T12:30:00"}'
+
+        Serializing an Enum:
+
+            >>> from enum import Enum
+            >>> class Status(Enum):
+            ...     SUCCESS = "success"
+            ...     ERROR = "error"
+            >>> json.dumps({"status": Status.SUCCESS}, default=_json_default)
+            '{"status": "success"}'
+
+        Serializing a set:
+
+            >>> json.dumps({"tags": {"b", "a", "c"}}, default=_json_default)
+            '{"tags": ["a", "b", "c"]}'
+
+        Serializing a Path:
+
+            >>> from pathlib import Path
+            >>> json.dumps({"path": Path("/tmp/results")}, default=_json_default)
+            '{"path": "/tmp/results"}'
+
+    Notes:
+        Sets are sorted for deterministic output. If set elements cannot be
+        sorted directly (mixed types), they are sorted by their JSON representation.
+    """
     if isinstance(obj, datetime):
         return obj.isoformat()
     if isinstance(obj, Enum):
@@ -98,7 +280,64 @@ def _json_default(obj: Any) -> Any:
 
 # ANSI color codes for terminal output
 class Colors:
-    """ANSI color codes for terminal output."""
+    """ANSI color codes for terminal output.
+
+    A collection of ANSI escape sequences for styling terminal output with
+    colors, bold text, and other formatting. These codes work on most Unix
+    terminals and Windows terminals with ANSI support enabled.
+
+    Attributes:
+        RESET: Reset all formatting to terminal default.
+        BOLD: Make text bold/bright.
+        DIM: Make text dimmer (reduced intensity).
+        UNDERLINE: Underline text.
+
+        BLACK: Black foreground color.
+        RED: Red foreground color.
+        GREEN: Green foreground color.
+        YELLOW: Yellow foreground color.
+        BLUE: Blue foreground color.
+        MAGENTA: Magenta foreground color.
+        CYAN: Cyan foreground color.
+        WHITE: White foreground color.
+
+        BRIGHT_RED: Bright/light red foreground.
+        BRIGHT_GREEN: Bright/light green foreground.
+        BRIGHT_YELLOW: Bright/light yellow foreground.
+        BRIGHT_BLUE: Bright/light blue foreground.
+        BRIGHT_MAGENTA: Bright/light magenta foreground.
+        BRIGHT_CYAN: Bright/light cyan foreground.
+
+        BG_RED: Red background color.
+        BG_GREEN: Green background color.
+        BG_YELLOW: Yellow background color.
+        BG_BLUE: Blue background color.
+
+    Examples:
+        Basic colored output:
+
+            >>> print(Colors.RED + "Error message" + Colors.RESET)
+            Error message  # Displayed in red
+
+        Combining multiple styles:
+
+            >>> print(Colors.BOLD + Colors.CYAN + "Header" + Colors.RESET)
+            Header  # Displayed bold and cyan
+
+        Using with the colorize function:
+
+            >>> colorize("Success!", Colors.BRIGHT_GREEN, Colors.BOLD)
+            '\x1b[92m\x1b[1mSuccess!\x1b[0m'
+
+    Notes:
+        These codes are only applied when the terminal supports ANSI colors.
+        Use the ``_supports_color()`` function or the global ``USE_COLOR``
+        flag to check support before applying colors.
+
+    See Also:
+        _supports_color : Function to detect terminal color support
+        colorize : Helper function to apply colors conditionally
+    """
 
     RESET = "\033[0m"
     BOLD = "\033[1m"
@@ -131,7 +370,50 @@ class Colors:
 
 
 def _supports_color() -> bool:
-    """Check if the terminal supports color output."""
+    """Check if the terminal supports color output.
+
+    Determines whether the current terminal environment supports ANSI color
+    escape sequences. This function checks multiple environment variables
+    and terminal capabilities to make an informed decision.
+
+    Returns:
+        True if the terminal supports color output, False otherwise.
+
+    Examples:
+        Basic usage:
+
+            >>> if _supports_color():
+            ...     print("\\033[32mGreen text\\033[0m")
+            ... else:
+            ...     print("Green text")
+
+        With the global USE_COLOR flag:
+
+            >>> USE_COLOR = _supports_color()
+            >>> def print_status(msg):
+            ...     if USE_COLOR:
+            ...         print(f"\\033[32mOK\\033[0m {msg}")
+            ...     else:
+            ...         print(f"OK {msg}")
+
+    Notes:
+        The detection logic follows this priority:
+
+        1. If NO_COLOR environment variable is set (any value), returns False
+           (follows the no-color.org standard)
+        2. If FORCE_COLOR environment variable is set, returns True
+        3. If stdout is not a TTY (e.g., piped to a file), returns False
+        4. On Windows, attempts to enable ANSI support via SetConsoleMode
+        5. On Unix-like systems, assumes color support if stdout is a TTY
+
+        On Windows, the function attempts to enable virtual terminal processing
+        mode. If this fails, it checks for the ANSICON environment variable
+        which indicates a third-party ANSI emulator is installed.
+
+    See Also:
+        Colors : Class containing ANSI color codes
+        colorize : Function that uses this detection
+    """
     # Check for NO_COLOR environment variable (standard)
     if os.environ.get("NO_COLOR"):
         return False
@@ -166,14 +448,96 @@ USE_COLOR = _supports_color()
 
 
 def colorize(text: str, *codes: str) -> str:
-    """Apply color codes to text if terminal supports colors."""
+    """Apply color codes to text if terminal supports colors.
+
+    Wraps text with ANSI escape sequences for terminal styling. If color
+    support is disabled (via NO_COLOR env var, non-TTY stdout, etc.),
+    returns the text unchanged.
+
+    Args:
+        text: The text string to colorize.
+        *codes: Variable number of ANSI color codes from the Colors class.
+            Multiple codes can be combined (e.g., Colors.BOLD, Colors.RED).
+
+    Returns:
+        The text wrapped with ANSI escape sequences if color is supported,
+        otherwise returns the original text unchanged.
+
+    Examples:
+        Single color:
+
+            >>> colorize("Error occurred", Colors.RED)
+            '\x1b[31mError occurred\x1b[0m'  # When color supported
+            'Error occurred'  # When color not supported
+
+        Multiple styles combined:
+
+            >>> colorize("Important!", Colors.BOLD, Colors.BRIGHT_YELLOW)
+            '\x1b[1m\x1b[93mImportant!\x1b[0m'
+
+        Using in print statements:
+
+            >>> print(colorize("Success", Colors.GREEN) + ": Operation completed")
+            Success: Operation completed  # "Success" in green
+
+        Conditional styling:
+
+            >>> status = "PASS" if success else "FAIL"
+            >>> color = Colors.GREEN if success else Colors.RED
+            >>> print(colorize(status, color))
+
+    Notes:
+        The function checks the global USE_COLOR flag which is set at module
+        load time based on terminal capabilities. This ensures consistent
+        behavior throughout the application.
+
+        The reset code (Colors.RESET) is automatically appended to prevent
+        color bleeding into subsequent text.
+
+    See Also:
+        Colors : Class containing available ANSI codes
+        _supports_color : Function that determines USE_COLOR value
+    """
     if not USE_COLOR:
         return text
     return "".join(codes) + text + Colors.RESET
 
 
 def print_header(title: str) -> None:
-    """Print a styled header."""
+    """Print a styled header with decorative borders.
+
+    Prints a prominent header suitable for section titles and command
+    introductions. The header is enclosed in double-line box characters
+    with the title centered.
+
+    Args:
+        title: The text to display in the header. Will be centered
+            within a 70-character wide box.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Basic header:
+
+            >>> print_header("Running Experiment")
+            # Output (with colors):
+            # ══════════════════════════════════════════════════════════════════════
+            #                           Running Experiment
+            # ══════════════════════════════════════════════════════════════════════
+
+        In a command function:
+
+            >>> def cmd_run(args):
+            ...     print_header("Running Experiment")
+            ...     print_key_value("Config", args.config)
+            ...     # ... rest of command
+
+    Notes:
+        - A blank line is printed before the header for visual separation
+        - The header uses BRIGHT_CYAN color with BOLD title text
+        - Fixed width of 70 characters for consistent appearance
+    """
     width = 70
     line = "═" * width
     print()
@@ -183,56 +547,393 @@ def print_header(title: str) -> None:
 
 
 def print_subheader(title: str) -> None:
-    """Print a styled subheader."""
+    """Print a styled subheader with a horizontal rule.
+
+    Prints a secondary heading suitable for subsections within a command's
+    output. Uses a lighter style than print_header() to indicate hierarchy.
+
+    Args:
+        title: The text to display in the subheader. The horizontal line
+            extends to fill remaining space up to 50 characters.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Basic subheader:
+
+            >>> print_subheader("Results Summary")
+            # Output (with colors):
+            # ── Results Summary ─────────────────────────────
+
+        Multiple sections:
+
+            >>> print_header("Benchmark Report")
+            >>> print_subheader("Model Performance")
+            >>> print_key_value("Accuracy", "95.2%")
+            >>> print_subheader("Latency Metrics")
+            >>> print_key_value("Average", "123ms")
+
+    Notes:
+        - A blank line is printed before the subheader for visual separation
+        - Uses CYAN for the title and DIM for the trailing rule
+        - The horizontal rule extends based on title length
+    """
     print()
     print(colorize(f"── {title} ", Colors.CYAN) + colorize("─" * (50 - len(title)), Colors.DIM))
 
 
 def print_success(message: str) -> None:
-    """Print a success message."""
+    """Print a success message with green OK prefix.
+
+    Displays a positive status message prefixed with a green "OK" indicator.
+    Use for confirming successful operations, file writes, or completions.
+
+    Args:
+        message: The success message to display after the OK prefix.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Basic success message:
+
+            >>> print_success("Configuration is valid!")
+            OK Configuration is valid!  # "OK" in bright green
+
+        After file operations:
+
+            >>> save_results(data, "output.json")
+            >>> print_success(f"Results saved to: output.json")
+            OK Results saved to: output.json
+
+        In command handlers:
+
+            >>> def cmd_validate(args):
+            ...     if validate_config(args.config):
+            ...         print_success("Validation passed!")
+            ...         return 0
+            ...     return 1
+
+    See Also:
+        print_error : For error messages with red prefix
+        print_warning : For warning messages with yellow prefix
+        print_info : For informational messages with blue prefix
+    """
     print(colorize("OK ", Colors.BRIGHT_GREEN) + message)
 
 
 def print_error(message: str) -> None:
-    """Print an error message."""
+    """Print an error message with red ERROR prefix.
+
+    Displays a negative status message prefixed with a red "ERROR" indicator.
+    Output is written to stderr rather than stdout for proper stream handling.
+
+    Args:
+        message: The error message to display after the ERROR prefix.
+
+    Returns:
+        None. Output is printed directly to stderr.
+
+    Examples:
+        Basic error message:
+
+            >>> print_error("Config file not found")
+            ERROR Config file not found  # Both prefix and message in red
+
+        With file paths:
+
+            >>> if not config_path.exists():
+            ...     print_error(f"Config file not found: {config_path}")
+            ...     return 1
+
+        Exception handling:
+
+            >>> try:
+            ...     run_experiment(config)
+            ... except Exception as e:
+            ...     print_error(f"Experiment failed: {e}")
+            ...     if verbose:
+            ...         traceback.print_exc()
+            ...     return 1
+
+    Notes:
+        - Output goes to stderr, not stdout, to separate errors from normal output
+        - Both the "ERROR" prefix and the message text are colored red
+        - Use this for fatal errors that prevent operation completion
+
+    See Also:
+        print_success : For success messages with green prefix
+        print_warning : For warning messages with yellow prefix
+        print_info : For informational messages with blue prefix
+    """
     print(colorize("ERROR ", Colors.BRIGHT_RED) + colorize(message, Colors.RED), file=sys.stderr)
 
 
 def print_warning(message: str) -> None:
-    """Print a warning message."""
+    """Print a warning message with yellow WARN prefix.
+
+    Displays a cautionary message prefixed with a yellow "WARN" indicator.
+    Use for non-fatal issues that may affect results or require attention.
+
+    Args:
+        message: The warning message to display after the WARN prefix.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Basic warning:
+
+            >>> print_warning("Dataset file not found, using defaults")
+            WARN Dataset file not found, using defaults  # In yellow
+
+        Optional dependency missing:
+
+            >>> if not has_plotly:
+            ...     print_warning("plotly not installed, skipping visualization")
+
+        Data quality issues:
+
+            >>> if duplicate_count > 0:
+            ...     print_warning(f"Found {duplicate_count} duplicate records")
+
+        Deprecation notices:
+
+            >>> print_warning("--output-dir is deprecated, use --run-dir instead")
+
+    Notes:
+        - Unlike print_error(), output goes to stdout
+        - Both the "WARN" prefix and the message text are colored yellow
+        - Use for issues that don't prevent execution but may affect results
+
+    See Also:
+        print_error : For fatal error messages
+        print_success : For success messages
+        print_info : For informational messages
+    """
     print(colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW))
 
 
 def print_info(message: str) -> None:
-    """Print an info message."""
+    """Print an informational message with blue INFO prefix.
+
+    Displays a neutral status message prefixed with a blue "INFO" indicator.
+    Use for progress updates, configuration details, or helpful tips.
+
+    Args:
+        message: The informational message to display after the INFO prefix.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Progress updates:
+
+            >>> print_info("Using async execution with concurrency=5")
+            INFO Using async execution with concurrency=5  # "INFO" in blue
+
+        Configuration details:
+
+            >>> print_info(f"Model: {args.model}")
+            >>> print_info(f"Probe: {args.probe}")
+
+        Helpful tips:
+
+            >>> print_info("Tip: Use --verbose for detailed progress")
+
+        Mode indicators:
+
+            >>> if args.dry_run:
+            ...     print_info("Dry run mode - no changes will be made")
+
+    Notes:
+        - Output goes to stdout
+        - Only the "INFO" prefix is colored blue; message text is default
+        - Use for neutral information that isn't success, warning, or error
+
+    See Also:
+        print_success : For success messages
+        print_warning : For warning messages
+        print_error : For error messages
+    """
     print(colorize("INFO ", Colors.BRIGHT_BLUE) + message)
 
 
 def print_key_value(key: str, value: Any, indent: int = 2) -> None:
-    """Print a key-value pair."""
+    """Print a formatted key-value pair.
+
+    Displays a label and its value in a consistent format, with the key
+    dimmed and followed by a colon. Useful for displaying configuration
+    settings, statistics, and metadata.
+
+    Args:
+        key: The label or property name to display.
+        value: The value to display. Will be converted to string via str().
+        indent: Number of spaces to indent from the left margin.
+            Defaults to 2 for visual hierarchy under headers.
+
+    Returns:
+        None. Output is printed directly to stdout.
+
+    Examples:
+        Basic key-value:
+
+            >>> print_key_value("Config", "/path/to/config.yaml")
+              Config: /path/to/config.yaml  # "Config:" in dim
+
+        Multiple settings:
+
+            >>> print_key_value("Model", "gpt-4")
+            >>> print_key_value("Temperature", 0.7)
+            >>> print_key_value("Max tokens", 1000)
+              Model: gpt-4
+              Temperature: 0.7
+              Max tokens: 1000
+
+        With custom indentation:
+
+            >>> print_key_value("Nested value", "data", indent=4)
+                Nested value: data
+
+        Under a subheader:
+
+            >>> print_subheader("Configuration")
+            >>> print_key_value("Input", args.input)
+            >>> print_key_value("Output", args.output)
+
+    Notes:
+        - The key is displayed in DIM color to visually separate it from the value
+        - A colon is automatically appended to the key
+        - Values are converted to strings, so any type is accepted
+    """
     spaces = " " * indent
     print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}")
 
 
 def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
+    """Write a list of dictionaries to a JSON Lines file.
+
+    Serializes each dictionary as a single JSON line and writes to the
+    specified file. Uses the custom _json_default handler for non-standard
+    types like datetime, Enum, Path, etc.
+
+    Args:
+        records: List of dictionaries to write. Each dictionary becomes
+            one line in the output file.
+        output_path: Path object specifying where to write the file.
+            Parent directories must already exist.
+
+    Returns:
+        None. File is written to disk.
+
+    Raises:
+        OSError: If the file cannot be opened for writing.
+        TypeError: If a record contains a non-serializable type that
+            _json_default cannot handle.
+
+    Examples:
+        Writing experiment records:
+
+            >>> records = [
+            ...     {"input": "What is 2+2?", "output": "4", "status": "success"},
+            ...     {"input": "What is 3+3?", "output": "6", "status": "success"},
+            ... ]
+            >>> _write_jsonl(records, Path("results.jsonl"))
+
+        With complex types:
+
+            >>> from datetime import datetime
+            >>> records = [{"timestamp": datetime.now(), "data": {"key": "value"}}]
+            >>> _write_jsonl(records, Path("log.jsonl"))
+
+    Notes:
+        - Uses UTF-8 encoding for Unicode support
+        - Each record is written on its own line with a trailing newline
+        - The _json_default function handles datetime, Enum, Path, set, and dataclass types
+
+    See Also:
+        _read_jsonl_records : The inverse operation for reading JSONL files
+        _json_default : Custom JSON serialization handler
+    """
     with open(output_path, "w", encoding="utf-8") as f:
         for record in records:
             f.write(json.dumps(record, default=_json_default) + "\n")
 
 
 def _format_percent(value: Optional[float]) -> str:
+    """Format a decimal value as a percentage string.
+
+    Converts a decimal fraction (0.0 to 1.0) to a human-readable percentage
+    string with one decimal place.
+
+    Args:
+        value: A decimal value between 0 and 1, or None.
+
+    Returns:
+        A percentage string like "95.5%", or "-" if value is None.
+
+    Examples:
+        >>> _format_percent(0.955)
+        '95.5%'
+        >>> _format_percent(1.0)
+        '100.0%'
+        >>> _format_percent(None)
+        '-'
+    """
     if value is None:
         return "-"
     return f"{value * 100:.1f}%"
 
 
 def _format_float(value: Optional[float]) -> str:
+    """Format a float value with three decimal places.
+
+    Formats a numeric value to three decimal places for consistent
+    display of metrics and scores.
+
+    Args:
+        value: A numeric value, or None.
+
+    Returns:
+        A string with three decimal places like "0.952", or "-" if value is None.
+
+    Examples:
+        >>> _format_float(0.9523)
+        '0.952'
+        >>> _format_float(123.45678)
+        '123.457'
+        >>> _format_float(None)
+        '-'
+    """
     if value is None:
         return "-"
     return f"{value:.3f}"
 
 
 def _parse_datetime(value: Any) -> Optional[datetime]:
+    """Parse a value into a datetime object.
+
+    Attempts to convert various input types into a datetime object.
+    Handles datetime instances directly, and parses ISO 8601 format strings.
+
+    Args:
+        value: A datetime object, an ISO 8601 format string, or any other value.
+
+    Returns:
+        A datetime object if parsing succeeds, None otherwise.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> _parse_datetime(datetime(2024, 1, 15))
+        datetime.datetime(2024, 1, 15, 0, 0)
+        >>> _parse_datetime("2024-01-15T12:30:00")
+        datetime.datetime(2024, 1, 15, 12, 30)
+        >>> _parse_datetime("invalid")
+        None
+        >>> _parse_datetime(12345)
+        None
+    """
     if isinstance(value, datetime):
         return value
     if isinstance(value, str):
@@ -244,6 +945,29 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
 
 
 def _stable_json_dumps(value: Any) -> str:
+    """Serialize a value to a deterministic JSON string.
+
+    Creates a JSON string with sorted keys and minimal whitespace,
+    ensuring identical values produce identical strings regardless
+    of dictionary insertion order.
+
+    Args:
+        value: Any JSON-serializable value (dict, list, str, int, etc.).
+
+    Returns:
+        A compact JSON string with sorted keys and no extra whitespace.
+
+    Examples:
+        >>> _stable_json_dumps({"b": 2, "a": 1})
+        '{"a":1,"b":2}'
+        >>> _stable_json_dumps([3, 1, 2])
+        '[3,1,2]'
+        >>> _stable_json_dumps("hello")
+        '"hello"'
+
+    Notes:
+        Used for generating consistent fingerprints and cache keys.
+    """
     return json.dumps(
         value,
         sort_keys=True,
@@ -253,12 +977,57 @@ def _stable_json_dumps(value: Any) -> str:
 
 
 def _fingerprint_value(value: Any) -> Optional[str]:
+    """Generate a short hash fingerprint for a value.
+
+    Creates a 12-character hexadecimal fingerprint using SHA-256 on the
+    stable JSON representation of the value. Useful for detecting changes
+    in structured data.
+
+    Args:
+        value: Any JSON-serializable value to fingerprint.
+
+    Returns:
+        A 12-character hex string, or None if value is None.
+
+    Examples:
+        >>> _fingerprint_value({"key": "value"})
+        'a43c1b587e6a'  # Example output, actual hash varies
+        >>> _fingerprint_value([1, 2, 3])
+        '2f5c7a8e3d1b'  # Example output
+        >>> _fingerprint_value(None)
+        None
+
+    Notes:
+        The fingerprint is deterministic - identical values always produce
+        identical fingerprints due to the use of _stable_json_dumps().
+    """
     if value is None:
         return None
     return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
 
 
 def _status_from_record(value: Any) -> ResultStatus:
+    """Convert a value to a ResultStatus enum.
+
+    Safely converts various input types to a ResultStatus enum member.
+    Returns ERROR as the default if conversion fails.
+
+    Args:
+        value: A ResultStatus instance, a string like "success" or "error",
+            or any other value.
+
+    Returns:
+        The corresponding ResultStatus enum member, or ResultStatus.ERROR
+        if the value cannot be converted.
+
+    Examples:
+        >>> _status_from_record(ResultStatus.SUCCESS)
+        <ResultStatus.SUCCESS: 'success'>
+        >>> _status_from_record("success")
+        <ResultStatus.SUCCESS: 'success'>
+        >>> _status_from_record("unknown_status")
+        <ResultStatus.ERROR: 'error'>
+    """
     if isinstance(value, ResultStatus):
         return value
     try:
@@ -268,6 +1037,27 @@ def _status_from_record(value: Any) -> ResultStatus:
 
 
 def _probe_category_from_value(value: Any) -> ProbeCategory:
+    """Convert a value to a ProbeCategory enum.
+
+    Safely converts various input types to a ProbeCategory enum member.
+    Returns CUSTOM as the default if conversion fails.
+
+    Args:
+        value: A ProbeCategory instance, a string like "logic" or "bias",
+            or any other value.
+
+    Returns:
+        The corresponding ProbeCategory enum member, or ProbeCategory.CUSTOM
+        if the value cannot be converted.
+
+    Examples:
+        >>> _probe_category_from_value(ProbeCategory.LOGIC)
+        <ProbeCategory.LOGIC: 'logic'>
+        >>> _probe_category_from_value("bias")
+        <ProbeCategory.BIAS: 'bias'>
+        >>> _probe_category_from_value("unknown_category")
+        <ProbeCategory.CUSTOM: 'custom'>
+    """
     if isinstance(value, ProbeCategory):
         return value
     try:
@@ -277,6 +1067,45 @@ def _probe_category_from_value(value: Any) -> ProbeCategory:
 
 
 def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
+    """Read records from a JSON Lines file.
+
+    Parses a JSONL file where each line is a JSON object. Empty lines
+    are skipped and only dictionary objects are included in the result.
+
+    Args:
+        path: Path to the JSONL file to read.
+
+    Returns:
+        List of dictionaries, one for each valid JSON object line.
+
+    Raises:
+        ValueError: If a non-empty line contains invalid JSON.
+        OSError: If the file cannot be opened.
+
+    Examples:
+        Reading experiment records:
+
+            >>> records = _read_jsonl_records(Path("results.jsonl"))
+            >>> len(records)
+            100
+            >>> records[0]["status"]
+            'success'
+
+        Handling errors:
+
+            >>> try:
+            ...     records = _read_jsonl_records(Path("bad.jsonl"))
+            ... except ValueError as e:
+            ...     print(f"Parse error: {e}")
+
+    Notes:
+        - Uses UTF-8 encoding
+        - Non-dict JSON values (arrays, strings, etc.) are silently skipped
+        - Line numbers in error messages are 1-indexed
+
+    See Also:
+        _write_jsonl : The inverse operation for writing JSONL files
+    """
     records: list[dict[str, Any]] = []
     with open(path, encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
@@ -293,6 +1122,42 @@ def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
 
 
 def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
+    """Extract a unique key tuple from a result record.
+
+    Generates a composite key (model_id, probe_id, item_id) that uniquely
+    identifies a record for comparison operations like diff. The key is
+    extracted from various possible locations in the record structure.
+
+    Args:
+        record: A result record dictionary from records.jsonl.
+
+    Returns:
+        A tuple of (model_id, probe_id, item_id) strings. Falls back to
+        default values like "model" or "0" if fields are missing.
+
+    Examples:
+        >>> record = {
+        ...     "custom": {"harness": {"model_id": "gpt-4", "probe_type": "logic"}},
+        ...     "example_id": "ex_001"
+        ... }
+        >>> _record_key(record)
+        ('gpt-4', 'logic', 'ex_001')
+
+        >>> record = {"model": {"model_id": "claude"}, "input": "test"}
+        >>> key = _record_key(record)
+        >>> key[0]
+        'claude'
+
+    Notes:
+        The item_id is resolved in priority order:
+        1. custom.replicate_key
+        2. messages_hash or input fingerprint
+        3. example_id or harness.example_index
+        4. "0" as fallback
+
+    See Also:
+        _record_label : Similar but returns human-readable labels
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
     model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
@@ -318,6 +1183,39 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
 
 
 def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
+    """Extract human-readable labels from a result record.
+
+    Generates display-friendly labels (model_label, probe_name, example_id)
+    for presenting records in CLI output. Unlike _record_key, this may include
+    additional context like "(model_id)" suffixes for clarity.
+
+    Args:
+        record: A result record dictionary from records.jsonl.
+
+    Returns:
+        A tuple of (model_label, probe_name, example_id) strings suitable
+        for display. Model label may include ID in parentheses if different
+        from the name.
+
+    Examples:
+        >>> record = {
+        ...     "custom": {"harness": {"model_name": "GPT-4", "model_id": "gpt-4-0125"}}
+        ... }
+        >>> _record_label(record)
+        ('GPT-4 (gpt-4-0125)', 'probe', '0')
+
+        >>> record = {"custom": {"harness": {"model_name": "claude"}}}
+        >>> _record_label(record)
+        ('claude', 'probe', '0')
+
+    Notes:
+        The model label format is:
+        - "ModelName (model_id)" if name and id differ
+        - "ModelName" if name and id are the same or id is missing
+
+    See Also:
+        _record_key : Similar but returns unique keys for comparison
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
     model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
@@ -883,7 +1781,81 @@ def _build_basic_harness_report(
 
 
 class ProgressBar:
-    """Simple progress bar for CLI output."""
+    """Simple progress bar for CLI output with ETA estimation.
+
+    A terminal-based progress indicator that displays completion percentage,
+    a visual bar, item counts, and estimated time remaining. The bar updates
+    in place using carriage returns.
+
+    Parameters
+    ----------
+    total : int
+        The total number of items to process. Used to calculate percentage
+        and estimate remaining time.
+    width : int, optional
+        The width of the progress bar in characters. Default is 40.
+    prefix : str, optional
+        Text label displayed before the progress bar. Default is "Progress".
+    show_eta : bool, optional
+        Whether to display estimated time remaining. Default is True.
+
+    Attributes
+    ----------
+    total : int
+        Total number of items to process.
+    width : int
+        Width of the progress bar in characters.
+    prefix : str
+        Label displayed before the bar.
+    show_eta : bool
+        Whether ETA is displayed.
+    current : int
+        Current progress count (0 to total).
+    start_time : float
+        Unix timestamp when the progress bar was created.
+
+    Examples
+    --------
+    Basic usage with explicit updates:
+
+        >>> progress = ProgressBar(100, prefix="Processing")
+        >>> for i in range(100):
+        ...     do_work(i)
+        ...     progress.update(i + 1)
+        >>> progress.finish()
+        Processing: ████████████████████████████████████████ 100.0% (100/100) Done in 5.23s
+
+    Using increment for simpler iteration:
+
+        >>> progress = ProgressBar(len(items), prefix="Downloading")
+        >>> for item in items:
+        ...     download(item)
+        ...     progress.increment()
+        >>> progress.finish()
+
+    Without ETA display:
+
+        >>> progress = ProgressBar(50, show_eta=False, width=20)
+        >>> # ... process items ...
+
+    As a progress callback:
+
+        >>> def callback(current, total):
+        ...     if progress_bar is None:
+        ...         progress_bar = ProgressBar(total)
+        ...     progress_bar.update(current)
+
+    Notes
+    -----
+    - Uses filled blocks (filled) and empty blocks (empty) for the visual bar
+    - ETA is calculated using elapsed time and items processed
+    - The bar renders on a single line using carriage return
+    - Call finish() when complete to print final time and newline
+
+    See Also
+    --------
+    Spinner : For indeterminate progress (unknown duration)
+    """
 
     def __init__(
         self,
@@ -892,6 +1864,14 @@ class ProgressBar:
         prefix: str = "Progress",
         show_eta: bool = True,
     ):
+        """Initialize a new progress bar.
+
+        Args:
+            total: Total number of items to process.
+            width: Width of the bar in characters. Default is 40.
+            prefix: Label text before the bar. Default is "Progress".
+            show_eta: Whether to show time estimate. Default is True.
+        """
         self.total = total
         self.width = width
         self.prefix = prefix
@@ -900,17 +1880,50 @@ class ProgressBar:
         self.start_time = time.time()
 
     def update(self, current: int) -> None:
-        """Update the progress bar."""
+        """Update the progress bar to a specific position.
+
+        Sets the current progress to the given value and re-renders the bar.
+        Use this when you know the absolute position rather than incrementing.
+
+        Args:
+            current: The new progress value (0 to total).
+
+        Examples:
+            >>> progress = ProgressBar(100)
+            >>> progress.update(25)   # Jump to 25%
+            >>> progress.update(50)   # Jump to 50%
+            >>> progress.update(100)  # Complete
+        """
         self.current = current
         self._render()
 
     def increment(self, amount: int = 1) -> None:
-        """Increment the progress."""
+        """Increment the progress by a given amount.
+
+        Adds to the current progress and re-renders. Useful in simple loops
+        where each iteration represents one unit of progress.
+
+        Args:
+            amount: How much to add to current progress. Default is 1.
+
+        Examples:
+            >>> progress = ProgressBar(10)
+            >>> for item in items:
+            ...     process(item)
+            ...     progress.increment()  # Adds 1 each time
+
+            >>> # Skip by larger amounts
+            >>> progress.increment(5)  # Add 5 at once
+        """
         self.current += amount
         self._render()
 
     def _render(self) -> None:
-        """Render the progress bar to the terminal."""
+        """Render the progress bar to the terminal.
+
+        Internal method that draws the current state of the progress bar.
+        Uses carriage return to update in place without scrolling.
+        """
         pct = 100 if self.total == 0 else min(100, self.current / self.total * 100)
 
         filled = int(self.width * self.current / max(1, self.total))
@@ -928,7 +1941,18 @@ class ProgressBar:
         print(line, end="", flush=True)
 
     def finish(self) -> None:
-        """Complete the progress bar."""
+        """Complete the progress bar and print final status.
+
+        Sets progress to 100%, renders the final state, and prints the
+        total elapsed time with a newline. Call this when processing is done.
+
+        Examples:
+            >>> progress = ProgressBar(100, prefix="Processing")
+            >>> for i in range(100):
+            ...     process(i)
+            ...     progress.update(i + 1)
+            >>> progress.finish()  # Prints "Done in X.XXs" and newline
+        """
         self.current = self.total
         self._render()
         elapsed = time.time() - self.start_time
