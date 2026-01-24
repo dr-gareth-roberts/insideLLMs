@@ -40,7 +40,7 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
    insidellms doctor
    ```
 
-4. Install pre-commit hooks:
+5. Install pre-commit hooks:
    ```bash
    pre-commit install
    ```
@@ -59,6 +59,14 @@ Run all checks locally:
 ruff check .
 ruff format --check .
 mypy insideLLMs
+```
+
+Or use the provided helpers:
+
+```bash
+make check
+# or
+bash scripts/checks.sh
 ```
 
 ### Testing

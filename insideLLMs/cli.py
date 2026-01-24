@@ -132,6 +132,23 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
+def _cli_version_string() -> str:
+    """Return the CLI version string.
+
+    Prefer the installed package metadata when available (editable installs, wheels),
+    but fall back to the source-tree `insideLLMs.__version__` for local runs.
+    """
+
+    try:
+        return importlib.metadata.version("insideLLMs")
+    except Exception:
+        try:
+            import insideLLMs
+
+            return str(getattr(insideLLMs, "__version__", "unknown"))
+        except Exception:
+            return "unknown"
+
 
 def _add_output_schema_args(parser: argparse.ArgumentParser) -> None:
     """Add common output schema validation arguments to a subcommand parser.
@@ -2024,7 +2041,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version="%(prog)s 0.2.0",
+        version=f"%(prog)s {_cli_version_string()}",
     )
 
     parser.add_argument(
@@ -2094,7 +2111,7 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Set the run_id recorded in the manifest. Also used as the directory name when using --run-root. "
-            "If omitted, a random UUID is generated."
+            "If omitted, a deterministic run_id is derived from the resolved config."
         ),
     )
     run_parser.add_argument(
@@ -2185,7 +2202,7 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Set the run_id recorded in the manifest. Also used as the directory name when using --run-root. "
-            "If omitted, a random UUID is generated."
+            "If omitted, a deterministic run_id is derived from the resolved config."
         ),
     )
     harness_parser.add_argument(
