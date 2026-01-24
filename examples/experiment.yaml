@@ -1,0 +1,15 @@
+# Minimal `insidellms run` config (offline).
+#
+# This uses DummyModel (no API keys) + LogicProbe on the CI dataset.
+# For a multi-model/multi-probe sweep, see `ci/harness.yaml` and `examples/harness.yaml`.
+model:
+  type: dummy
+  args: {}
+probe:
+  type: logic
+  args: {}
+dataset:
+  format: jsonl
+  path: ../ci/harness_dataset.jsonl
+  input_field: question
+max_examples: 3

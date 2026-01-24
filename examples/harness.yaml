@@ -1,4 +1,9 @@
 # Example harness configuration for cross-model behavioural evaluation.
+#
+# Note: this example uses hosted providers, so it requires API keys
+# (e.g. OPENAI_API_KEY / ANTHROPIC_API_KEY).
+#
+# For an offline, deterministic harness (DummyModel only), see: ci/harness.yaml
 models:
   - type: openai
     args:
@@ -13,6 +18,6 @@ probes:
     args: {}
 dataset:
   format: jsonl
-  path: data/questions.jsonl
+  path: ../data/questions.jsonl
 max_examples: 50
 output_dir: results
