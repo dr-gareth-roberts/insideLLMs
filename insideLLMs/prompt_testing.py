@@ -100,6 +100,7 @@ See Also
 insideLLMs.nlp.tokenization : Tokenization utilities used for similarity scoring.
 """
 
+import hashlib
 import itertools
 import random
 import re
@@ -287,7 +288,7 @@ class PromptVariant:
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """
         Return hash based on variant ID for use in sets and dicts.
 
@@ -301,7 +302,10 @@ class PromptVariant:
         Only the `id` field is used for hashing. Two variants with the
         same id but different content will have the same hash.
         """
-        return hash(self.id)
+        digest = hashlib.sha256(self.id.encode("utf-8")).digest()
+        value = int.from_bytes(digest[:8], "big", signed=True)
+        # Avoid returning -1, which CPython reserves as an internal error sentinel.
+        return -2 if value == -1 else value
 
 
 @dataclass
@@ -3249,3 +3253,15 @@ def create_cot_variants(
 
 # Backwards-compatible alias (deprecated)
 TestResult = PromptTestResult
+
+# Older code and tests may import ExperimentResult. The canonical name is
+# PromptExperimentResult.
+ExperimentResult = PromptExperimentResult
+
+# Older code and tests may import PromptTemplate. The canonical name is
+# ExpandablePromptTemplate.
+PromptTemplate = ExpandablePromptTemplate
+
+# Older code and tests may import ABTestRunner. The canonical name is
+# PromptABTestRunner.
+ABTestRunner = PromptABTestRunner

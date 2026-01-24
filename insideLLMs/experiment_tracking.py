@@ -2370,7 +2370,8 @@ class LocalFileTracker(ExperimentTracker):
         if not project_dir.exists():
             return []
 
-        return [d.name for d in project_dir.iterdir() if d.is_dir()]
+        # Ensure deterministic output order (filesystem iteration order is not guaranteed).
+        return sorted(d.name for d in project_dir.iterdir() if d.is_dir())
 
 
 class MultiTracker(ExperimentTracker):

@@ -2767,3 +2767,12 @@ def quick_ensemble_check(
         "selection_distribution": dict(selections),
         "most_selected": selections.most_common(1)[0][0] if selections else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import SimilarityCalculator. The canonical name is
+# TextSimilarityCalculator.
+SimilarityCalculator = TextSimilarityCalculator

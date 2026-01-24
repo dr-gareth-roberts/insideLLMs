@@ -2569,7 +2569,7 @@ def _serialize_experiments_to_json(experiments: list[ExperimentResult]) -> str:
         return obj
 
     data = [serialize_value(exp) for exp in experiments]
-    return json.dumps(data, indent=2)
+    return json.dumps(data, indent=2, sort_keys=True)
 
 
 def create_interactive_html_report(
@@ -2771,8 +2771,7 @@ def create_interactive_html_report(
     # For now, we always use CDN
     _ = embed_plotly_js  # Silence unused parameter warning
     plotly_script = (
-        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" '
-        'crossorigin="anonymous"></script>'
+        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" crossorigin="anonymous"></script>'
     )
 
     # Build the HTML

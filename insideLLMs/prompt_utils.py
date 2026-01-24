@@ -152,11 +152,10 @@ from typing import (
     Union,
 )
 
+from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
+
 # Type variable for generic prompt content
 T = TypeVar("T")
-
-# Import canonical estimate_tokens
-from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 
 class PromptRole(Enum):

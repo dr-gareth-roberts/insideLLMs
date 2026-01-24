@@ -26,3 +26,8 @@ The run → records → report → diff pipeline is deterministic for the same i
 Provider APIs, external services, and model stochasticity are outside this guarantee unless explicitly
 controlled in configuration.
 
+In canonical run artifacts, determinism is enforced by:
+
+- Canonical JSON emission (stable key order and separators) for `records.jsonl`, `manifest.json`, `summary.json`, and `diff.json`.
+- Omitting volatile runtime fields from the diff surface (e.g., `latency_ms` is persisted as `null`, and `manifest.json:command` is `null`).
+- Content-addressing local file datasets via `dataset_hash=sha256:<...>` (when applicable) so dataset changes affect `run_id`.

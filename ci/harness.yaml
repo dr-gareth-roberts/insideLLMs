@@ -17,8 +17,7 @@ probes:
       language: python
 dataset:
   format: jsonl
-  path: ci/harness_dataset.jsonl
+  path: harness_dataset.jsonl
 max_examples: 3
 confidence_level: 0.95
 report_title: CI Diff Gate Harness
-

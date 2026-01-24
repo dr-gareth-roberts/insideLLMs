@@ -2561,3 +2561,12 @@ def optimize_for_budget(
     """
     optimizer = TokenBudgetOptimizer(max_tokens)
     return optimizer.optimize(prompt, examples, system_prompt, reserve_for_response)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CompressionResult. The canonical name is
+# PromptCompressionResult.
+CompressionResult = PromptCompressionResult

@@ -3188,3 +3188,12 @@ def get_model_info(model_id: str) -> Optional[AdapterModelInfo]:
     """Get model information."""
     registry = ModelRegistry()
     return registry.get(model_id)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import ModelInfo from this module. The canonical name
+# is AdapterModelInfo.
+ModelInfo = AdapterModelInfo

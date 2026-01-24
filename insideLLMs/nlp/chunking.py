@@ -58,7 +58,7 @@ Notes
 - Overlap parameters allow creating chunks that share content at boundaries
 - NLTK's punkt tokenizer is used by default for sentence segmentation (with fallback)
 """
-import re
+
 from typing import Callable
 
 from insideLLMs.nlp.dependencies import ensure_nltk

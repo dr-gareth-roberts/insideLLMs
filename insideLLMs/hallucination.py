@@ -2792,3 +2792,16 @@ def quick_hallucination_check(text: str) -> dict[str, Any]:
         "critical_issues": len(report.critical_flags),
         "recommendations": report.recommendations[:3],
     }
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import ConsistencyChecker. The canonical name is
+# FactConsistencyChecker.
+ConsistencyChecker = FactConsistencyChecker
+
+# Older code and tests may import HallucinationDetector. The canonical name is
+# ComprehensiveHallucinationDetector.
+HallucinationDetector = ComprehensiveHallucinationDetector

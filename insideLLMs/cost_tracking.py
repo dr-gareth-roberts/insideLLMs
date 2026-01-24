@@ -1641,3 +1641,12 @@ def quick_cost_estimate(
         "daily_estimate": total_cost,
         "monthly_estimate": total_cost * 30,
     }
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CostCalculator. The canonical name is
+# TokenCostCalculator.
+CostCalculator = TokenCostCalculator

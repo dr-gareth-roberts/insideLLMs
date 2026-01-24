@@ -101,6 +101,7 @@ References
 .. [1] Pydantic V2 Documentation: https://docs.pydantic.dev/latest/
 .. [2] JSON Schema Specification: https://json-schema.org/
 """
+
 from __future__ import annotations
 
 import json

@@ -83,6 +83,8 @@ insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 ## Determinism Scope
 
 - The harness spine (run -> records -> report -> diff) is deterministic, including run IDs and timestamps.
+- Canonical artifacts intentionally omit volatile runtime fields (e.g., `latency_ms`, `manifest.json:command`) to keep diffs stable.
+- Local file datasets are content-addressed (`dataset_hash=sha256:<...>`) and included in the deterministic run ID.
 - Other modules remain pragmatic unless they become part of the CI gating surface.
 
 ## Docs
@@ -94,6 +96,7 @@ insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 - [Architecture](ARCHITECTURE.md)
 - [Examples](examples/)
 - [Plugins](docs/PLUGINS.md)
+- [Determinism](docs/DETERMINISM.md)
 - [Stability & Versioning](docs/STABILITY.md)
 
 ## Licence

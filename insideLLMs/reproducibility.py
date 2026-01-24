@@ -410,3 +410,12 @@ References
 """
 
 from insideLLMs.runtime.reproducibility import *  # noqa: F401,F403
+from insideLLMs.runtime.reproducibility import ExperimentCheckpointManager
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CheckpointManager. The canonical name is
+# ExperimentCheckpointManager.
+CheckpointManager = ExperimentCheckpointManager

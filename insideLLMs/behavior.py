@@ -1689,15 +1689,6 @@ class ConsistencyAnalyzer:
 
         avg_similarity = sum(similarities) / len(similarities) if similarities else 0
 
-        # Calculate length variance
-        lengths = [len(r.split()) for r in responses]
-        avg_length = sum(lengths) / len(lengths)
-        length_variance = (
-            sum((length - avg_length) ** 2 for length in lengths) / len(lengths)
-            if len(lengths) > 1
-            else 0
-        )
-
         # Determine dominant response type
         dominant_type = self._classify_response_type(responses[0])
 
@@ -2581,3 +2572,13 @@ def assess_calibration(
     """
     assessor = CalibrationAssessor()
     return assessor.assess(predictions, ground_truths, confidences)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests use these shorter names.
+CalibrationResult = BehaviorCalibrationResult
+SensitivityResult = PromptSensitivityResult
+SensitivityAnalyzer = PromptSensitivityAnalyzer

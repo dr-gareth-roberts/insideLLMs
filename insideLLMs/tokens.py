@@ -1090,6 +1090,8 @@ class TokenEstimator:
         Returns:
             Estimated token count.
         """
+        if not text:
+            return 0
         char_count = len(text)
         adjustment = self.CONTENT_ADJUSTMENTS.get(content_type, 1.0)
         estimated = char_count / (self.chars_per_token * adjustment)
@@ -1676,3 +1678,11 @@ def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
         Cosine similarity.
     """
     return EmbeddingUtils.cosine_similarity(vec1, vec2)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import TokenBudget. The canonical name is TokenSpendingBudget.
+TokenBudget = TokenSpendingBudget

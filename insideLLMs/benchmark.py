@@ -591,7 +591,12 @@ class ModelBenchmark:
             error_count = len(results) - success_count
             success_rate = success_count / len(results) if results else 0.0
             error_rate = error_count / len(results) if results else 0.0
-            latencies = [r.get("latency_ms", 0) for r in results]
+            latencies: list[float] = []
+            for result in results:
+                latency = result.get("latency_ms")
+                if isinstance(latency, (int, float)):
+                    latencies.append(float(latency))
+
             mean_latency = sum(latencies) / len(latencies) if latencies else 0.0
 
             model_result = {

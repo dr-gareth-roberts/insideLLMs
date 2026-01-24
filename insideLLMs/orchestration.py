@@ -3050,3 +3050,12 @@ def run_quick_batch(
     configs = create_experiment_configs(prompts, model_id)
     runner = BatchRunner(executor=executor)
     return runner.run(configs)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import BatchResult. The canonical name is
+# ExperimentBatchResult.
+BatchResult = ExperimentBatchResult

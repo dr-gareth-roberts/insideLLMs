@@ -2520,7 +2520,8 @@ class DistributedCheckpointManager:
         >>> manager.delete("cp_a")
         >>> manager.delete("cp_b")
         """
-        return [p.stem for p in self.checkpoint_dir.glob("*.checkpoint")]
+        # Ensure deterministic output order (glob order is not guaranteed across filesystems).
+        return sorted(p.stem for p in self.checkpoint_dir.glob("*.checkpoint"))
 
     def delete(self, checkpoint_id: str) -> None:
         """
@@ -2985,7 +2986,9 @@ class DistributedExperimentRunner:
         self.model_func = model_func
         self.num_workers = num_workers
         self.use_processes = use_processes
-        self.checkpoint_manager = DistributedCheckpointManager(checkpoint_dir) if checkpoint_dir else None
+        self.checkpoint_manager = (
+            DistributedCheckpointManager(checkpoint_dir) if checkpoint_dir else None
+        )
 
     def run_prompts(
         self,
@@ -3141,3 +3144,12 @@ def batch_process(
 
     # Flatten results
     return [item for batch in batch_results for item in batch]
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import CheckpointManager. The canonical name is
+# DistributedCheckpointManager.
+CheckpointManager = DistributedCheckpointManager

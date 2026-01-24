@@ -96,8 +96,6 @@ Example - Intent-Based Routing:
     >>> print(intent)  # "code_help"
 """
 
-from insideLLMs.nlp.similarity import word_overlap_similarity
-
 import hashlib
 import math
 import random
@@ -112,6 +110,8 @@ from typing import (
     Callable,
     Optional,
 )
+
+from insideLLMs.nlp.similarity import word_overlap_similarity
 
 # =============================================================================
 # Configuration and Types

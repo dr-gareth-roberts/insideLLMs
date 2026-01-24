@@ -153,6 +153,19 @@ except ImportError:
         pass
 
 
+def _require_pydantic() -> None:
+    """Raise if Pydantic is not available.
+
+    This is an internal helper used by tests and by optional features that
+    depend on Pydantic. The main configuration surface provides fallbacks when
+    Pydantic is not installed, but some integrations may require it.
+    """
+    if not PYDANTIC_AVAILABLE:  # pragma: no cover
+        raise ImportError(
+            "Pydantic is required for configuration validation. Install with: pip install pydantic"
+        )
+
+
 class ModelProvider(str, Enum):
     """Enumeration of supported model providers for API access.
 

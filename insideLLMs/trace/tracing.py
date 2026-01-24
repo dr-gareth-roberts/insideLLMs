@@ -1901,7 +1901,13 @@ TRACE_FP_ORDER: list[str] = ["enabled", "alg", "value", "basis"]
 TRACE_NORM_ORDER: list[str] = ["kind", "name", "import", "config_hash"]
 """Key ordering for the normaliser section of trace bundles."""
 
-TRACE_CONTRACTS_ORDER: list[str] = ["enabled", "fail_fast", "violations_total", "violations_stored", "by_code"]
+TRACE_CONTRACTS_ORDER: list[str] = [
+    "enabled",
+    "fail_fast",
+    "violations_total",
+    "violations_stored",
+    "by_code",
+]
 """Key ordering for the contracts section of trace bundles."""
 
 TRACE_EVENT_ORDER: list[str] = ["seq", "kind", "payload"]

@@ -2808,3 +2808,12 @@ def generate_adversarial_examples(
         examples.append(example)
 
     return examples
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import AttackResult from this module. The canonical
+# name is AdversarialAttackResult.
+AttackResult = AdversarialAttackResult

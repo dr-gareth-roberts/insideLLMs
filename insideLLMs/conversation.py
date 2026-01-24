@@ -3197,3 +3197,12 @@ def get_conversation_summary(
         summary_parts.append(f"... and {len(turns) - max_turns} more turns")
 
     return "\n".join(summary_parts)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import ConsistencyChecker. The canonical name is
+# ConversationConsistencyChecker.
+ConsistencyChecker = ConversationConsistencyChecker

@@ -1794,3 +1794,12 @@ def compare_responses(prompt: str, response_a: str, response_b: str) -> Response
     """
     comparator = ResponseComparator()
     return comparator.compare(prompt, response_a, response_b)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import ComparisonResult. The canonical name is
+# ResponseComparisonResult.
+ComparisonResult = ResponseComparisonResult

@@ -692,6 +692,7 @@ class ProbeRunner(_RunnerBase):
                             schema_version=schema_version,
                             error_type=error_type,
                         )
+                        result_obj["latency_ms"] = None
                         results[i] = result_obj
 
                         if emit_run_artifacts and records_fp is not None:
@@ -709,7 +710,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=prompt_set[i],
                                 output=probe_result.output,
-                                latency_ms=probe_result.latency_ms,
+                                latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
                                 status=_normalize_status(probe_result.status),
@@ -723,7 +724,7 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validation_mode,
                                 )
-                            records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                            records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
 
                         if stop_on_error and stop_error is None:
@@ -737,11 +738,7 @@ class ProbeRunner(_RunnerBase):
                                     prompt=prompt_str,
                                     prompt_index=i,
                                     run_id=resolved_run_id,
-                                    elapsed_seconds=(
-                                        (probe_result.latency_ms or 0) / 1000
-                                        if probe_result.latency_ms is not None
-                                        else None
-                                    ),
+                                    elapsed_seconds=None,
                                     suggestions=[
                                         "Check the model API credentials and connectivity",
                                         "Verify the prompt format is valid for this model",
@@ -765,15 +762,13 @@ class ProbeRunner(_RunnerBase):
                     )
 
                     item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
-                    start_time = time.perf_counter()
                     try:
                         output = self.probe.run(self.model, item, **probe_kwargs)
-                        latency_ms = (time.perf_counter() - start_time) * 1000
                         probe_result = ProbeResult(
                             input=item,
                             output=output,
                             status=ResultStatus.SUCCESS,
-                            latency_ms=latency_ms,
+                            latency_ms=None,
                             metadata={},
                         )
                         result_obj = _result_dict_from_probe_result(
@@ -793,7 +788,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=item,
                                 output=output,
-                                latency_ms=latency_ms,
+                                latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
                                 status="success",
@@ -806,16 +801,15 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validation_mode,
                                 )
-                            records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                            records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
 
                     except Exception as e:
-                        latency_ms = (time.perf_counter() - start_time) * 1000
                         probe_result = ProbeResult(
                             input=item,
                             status=ResultStatus.ERROR,
                             error=str(e),
-                            latency_ms=latency_ms,
+                            latency_ms=None,
                             metadata={"error_type": type(e).__name__},
                         )
                         result_obj = _result_dict_from_probe_result(
@@ -836,7 +830,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=item,
                                 output=None,
-                                latency_ms=latency_ms,
+                                latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
                                 status="error",
@@ -849,7 +843,7 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validation_mode,
                                 )
-                            records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                            records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
 
                         if stop_on_error:
@@ -862,7 +856,7 @@ class ProbeRunner(_RunnerBase):
                                 prompt=prompt_str,
                                 prompt_index=i,
                                 run_id=resolved_run_id,
-                                elapsed_seconds=latency_ms / 1000,
+                                elapsed_seconds=None,
                                 original_error=e,
                                 suggestions=[
                                     "Check the model API credentials and connectivity",
@@ -936,7 +930,12 @@ class ProbeRunner(_RunnerBase):
 
             _atomic_write_text(
                 manifest_path,
-                json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+                json.dumps(
+                    _serialize_value(manifest),
+                    sort_keys=True,
+                    indent=2,
+                    default=_serialize_value,
+                ),
             )
 
         if validate_output:
@@ -1765,7 +1764,7 @@ def _atomic_write_yaml(path: Path, data: Any) -> None:
     """
     content = yaml.safe_dump(
         _serialize_value(data),
-        sort_keys=False,
+        sort_keys=True,
         default_flow_style=False,
         allow_unicode=True,
     )
@@ -3100,14 +3099,13 @@ class AsyncProbeRunner(_RunnerBase):
                             schema_version=schema_version,
                             mode=validation_mode,
                         )
-                    records_fp.write(json.dumps(record, default=_serialize_value) + "\n")
+                    records_fp.write(_stable_json_dumps(record) + "\n")
                     records_fp.flush()
                     next_write_index += 1
 
         async def run_single(index: int, item: Any) -> None:
             nonlocal completed
             async with semaphore:
-                start_time = time.perf_counter()
                 try:
                     # Run in thread pool for sync models
                     loop = asyncio.get_running_loop()
@@ -3115,12 +3113,11 @@ class AsyncProbeRunner(_RunnerBase):
                         None,
                         lambda: self.probe.run(self.model, item, **probe_kwargs),
                     )
-                    latency_ms = (time.perf_counter() - start_time) * 1000
                     probe_result = ProbeResult(
                         input=item,
                         output=output,
                         status=ResultStatus.SUCCESS,
-                        latency_ms=latency_ms,
+                        latency_ms=None,
                         metadata={},
                     )
                     results[index] = _result_dict_from_probe_result(
@@ -3128,13 +3125,12 @@ class AsyncProbeRunner(_RunnerBase):
                         schema_version=schema_version,
                     )
                 except Exception as e:
-                    latency_ms = (time.perf_counter() - start_time) * 1000
                     errors[index] = e
                     probe_result = ProbeResult(
                         input=item,
                         status=ResultStatus.ERROR,
                         error=str(e),
-                        latency_ms=latency_ms,
+                        latency_ms=None,
                         metadata={"error_type": type(e).__name__},
                     )
                     results[index] = _result_dict_from_probe_result(
@@ -3193,11 +3189,13 @@ class AsyncProbeRunner(_RunnerBase):
                         error_type = None
                         if isinstance(probe_result.metadata, dict):
                             error_type = probe_result.metadata.get("error_type")
-                        results[index] = _result_dict_from_probe_result(
+                        result_obj = _result_dict_from_probe_result(
                             probe_result,
                             schema_version=schema_version,
                             error_type=error_type,
                         )
+                        result_obj["latency_ms"] = None
+                        results[index] = result_obj
                     await write_ready_records()
             else:
                 tasks = [run_single(i, item) for i, item in enumerate(prompt_set) if i >= completed]
@@ -3259,7 +3257,12 @@ class AsyncProbeRunner(_RunnerBase):
 
             _atomic_write_text(
                 manifest_path,
-                json.dumps(_serialize_value(manifest), indent=2, default=_serialize_value),
+                json.dumps(
+                    _serialize_value(manifest),
+                    sort_keys=True,
+                    indent=2,
+                    default=_serialize_value,
+                ),
             )
 
         if validate_output:
@@ -3627,6 +3630,7 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
     paths).
     """
     import copy
+    import posixpath
 
     snapshot: dict[str, Any] = copy.deepcopy(config)  # type: ignore[arg-type]
 
@@ -3634,11 +3638,26 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
     if isinstance(dataset, dict):
         fmt = dataset.get("format")
         if fmt in ("csv", "jsonl") and isinstance(dataset.get("path"), str):
-            try:
-                dataset["path"] = str(_resolve_path(dataset["path"], base_dir).resolve())
-            except Exception:
-                # Best-effort only; do not fail the run for a snapshot.
-                pass
+            # Keep paths deterministic and portable: avoid baking absolute checkout paths
+            # into the snapshot (and therefore the run_id). Only normalize relative paths
+            # to a canonical posix form.
+            raw_path = dataset["path"]
+            normalized = str(raw_path).replace("\\", "/")
+            dataset["path"] = posixpath.normpath(normalized)
+
+            # Prefer content-addressing over path-addressing for run_id stability.
+            # If the user didn't provide an explicit hash, compute a deterministic
+            # SHA-256 over the dataset file bytes.
+            if dataset.get("hash") is None and dataset.get("dataset_hash") is None:
+                try:
+                    resolved_path = _resolve_path(dataset["path"], base_dir)
+                    hasher = hashlib.sha256()
+                    with open(resolved_path, "rb") as fp:
+                        for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+                            hasher.update(chunk)
+                    dataset["dataset_hash"] = f"sha256:{hasher.hexdigest()}"
+                except Exception:
+                    pass
 
     return snapshot
 
@@ -4020,7 +4039,7 @@ def run_experiment_from_config(
         run_root=run_root,
         run_id=resolved_run_id,
         overwrite=overwrite,
-        dataset_info=config.get("dataset"),
+        dataset_info=config_snapshot.get("dataset"),
         config_snapshot=config_snapshot,
         resume=resume,
         use_probe_batch=use_probe_batch,
@@ -4155,9 +4174,9 @@ def run_harness_from_config(
     harness_base_time = _deterministic_base_time(harness_run_id)
     harness_generated_at, _ = _deterministic_run_times(harness_base_time, 0)
 
-    models_config = config.get("models", [])
-    probes_config = config.get("probes", [])
-    dataset_config = config.get("dataset")
+    models_config = config_snapshot.get("models", [])
+    probes_config = config_snapshot.get("probes", [])
+    dataset_config = config_snapshot.get("dataset")
 
     if not models_config:
         raise ValueError("Harness config requires at least one model in 'models'.")
@@ -4530,7 +4549,7 @@ async def run_experiment_from_config_async(
         run_root=run_root,
         run_id=resolved_run_id,
         overwrite=overwrite,
-        dataset_info=config.get("dataset"),
+        dataset_info=config_snapshot.get("dataset"),
         config_snapshot=config_snapshot,
         resume=resume,
         use_probe_batch=use_probe_batch,

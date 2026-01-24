@@ -3538,3 +3538,11 @@ def assess_reasoning_quality(text: str) -> ReasoningQuality:
     analysis = analyzer.analyze(chain)
 
     return analysis.overall_quality
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible aliases
+# ---------------------------------------------------------------------------
+
+# Older code and tests may import StepType. The canonical name is ReasoningStepType.
+StepType = ReasoningStepType
