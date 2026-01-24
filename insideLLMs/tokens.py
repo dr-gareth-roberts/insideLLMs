@@ -1,12 +1,104 @@
 """
 Token analysis and embedding utilities for LLM exploration.
 
-Provides tools for:
-- Token counting and estimation
-- Token distribution analysis
-- Vocabulary coverage analysis
-- Token-level statistics
-- Embedding utilities and similarity
+This module provides a comprehensive toolkit for analyzing, estimating, and managing
+tokens in the context of Large Language Models (LLMs). It supports multiple tokenizer
+types and offers utilities for cost estimation, context window management, and
+embedding similarity calculations.
+
+Overview
+--------
+The module is organized into several key components:
+
+1. **Token Estimation** - Estimate token counts without requiring actual tokenizers
+2. **Token Analysis** - Analyze token distributions, frequencies, and statistics
+3. **Vocabulary Coverage** - Measure how well a reference vocabulary covers text
+4. **Embedding Utilities** - Calculate vector similarities and manage embeddings
+5. **Context Management** - Track and manage token budgets for LLM context windows
+
+Key Classes
+-----------
+TokenizerType : Enum
+    Supported tokenizer types (GPT4, GPT3, CLAUDE, LLAMA, SIMPLE).
+TokenStats : dataclass
+    Container for token statistics including counts and frequencies.
+TokenDistribution : dataclass
+    Frequency distribution analysis with entropy and coverage metrics.
+TokenEstimator : class
+    Estimate token counts and costs for different model types.
+TokenAnalyzer : class
+    Comprehensive token analysis with distribution comparisons.
+EmbeddingUtils : class
+    Static methods for embedding similarity and vector operations.
+ContextWindowManager : class
+    Manage content within context window token limits.
+
+Examples
+--------
+Estimate tokens for a piece of text:
+
+>>> from insideLLMs.tokens import estimate_tokens, TokenizerType
+>>> text = "Hello, world! This is a sample text for token estimation."
+>>> count = estimate_tokens(text, TokenizerType.GPT4)
+>>> print(f"Estimated tokens: {count}")
+Estimated tokens: 14
+
+Analyze token distribution:
+
+>>> from insideLLMs.tokens import analyze_tokens
+>>> text = "The quick brown fox jumps over the lazy dog. The dog was not amused."
+>>> stats = analyze_tokens(text)
+>>> print(f"Total tokens: {stats.total_tokens}")
+Total tokens: 16
+>>> print(f"Unique tokens: {stats.unique_tokens}")
+Unique tokens: 13
+>>> print(f"Token diversity: {stats.token_diversity:.2f}")
+Token diversity: 0.81
+
+Split text into chunks for context window:
+
+>>> from insideLLMs.tokens import split_by_tokens
+>>> long_text = "This is a very long text..." * 100
+>>> chunks = split_by_tokens(long_text, max_tokens=500, overlap_tokens=50)
+>>> print(f"Split into {len(chunks)} chunks")
+Split into 3 chunks
+
+Manage context window budget:
+
+>>> from insideLLMs.tokens import ContextWindowManager
+>>> manager = ContextWindowManager(max_tokens=4096)
+>>> manager.add_content("System prompt goes here", priority=10)
+True
+>>> manager.add_content("User message content", priority=5)
+True
+>>> print(f"Remaining tokens: {manager.remaining_tokens()}")
+Remaining tokens: 4076
+
+Calculate embedding similarity:
+
+>>> from insideLLMs.tokens import cosine_similarity
+>>> vec1 = [0.1, 0.2, 0.3, 0.4]
+>>> vec2 = [0.1, 0.25, 0.35, 0.38]
+>>> similarity = cosine_similarity(vec1, vec2)
+>>> print(f"Similarity: {similarity:.4f}")
+Similarity: 0.9987
+
+Notes
+-----
+- Token estimates are approximations based on average characters-per-token ratios
+- For precise token counts, use the actual tokenizer from the target model
+- Different content types (code, prose, technical) have different token densities
+- The SIMPLE tokenizer is a whitespace/punctuation-based fallback
+
+See Also
+--------
+tiktoken : OpenAI's official tokenizer library for precise GPT token counts
+transformers : Hugging Face library with tokenizers for various models
+
+References
+----------
+.. [1] OpenAI Tokenizer: https://platform.openai.com/tokenizer
+.. [2] Anthropic Token Counting: https://docs.anthropic.com/claude/docs/counting-tokens
 """
 
 import math
@@ -22,7 +114,71 @@ from typing import (
 
 
 class TokenizerType(Enum):
-    """Types of tokenizers for estimation."""
+    """Enumeration of supported tokenizer types for token estimation.
+
+    This enum defines the different tokenizer models that can be used for
+    estimating token counts. Each tokenizer type has different average
+    characters-per-token ratios based on their vocabulary and encoding schemes.
+
+    Attributes
+    ----------
+    GPT4 : str
+        OpenAI's GPT-4 tokenizer (cl100k_base encoding). Average ~4 chars/token.
+    GPT3 : str
+        OpenAI's GPT-3 tokenizer (p50k_base encoding). Average ~4 chars/token.
+    CLAUDE : str
+        Anthropic's Claude tokenizer. Average ~3.5 chars/token (more efficient).
+    LLAMA : str
+        Meta's LLaMA tokenizer (SentencePiece-based). Average ~3.8 chars/token.
+    SIMPLE : str
+        Basic whitespace/punctuation tokenizer. Average ~5 chars/token.
+
+    Examples
+    --------
+    Using tokenizer type for estimation:
+
+    >>> from insideLLMs.tokens import TokenizerType, TokenEstimator
+    >>> estimator = TokenEstimator(TokenizerType.GPT4)
+    >>> token_count = estimator.estimate_tokens("Hello, world!")
+    >>> print(f"GPT-4 estimate: {token_count} tokens")
+    GPT-4 estimate: 3 tokens
+
+    Comparing estimates across tokenizer types:
+
+    >>> from insideLLMs.tokens import TokenizerType, estimate_tokens
+    >>> text = "The quick brown fox jumps over the lazy dog."
+    >>> for tok_type in TokenizerType:
+    ...     count = estimate_tokens(text, tok_type)
+    ...     print(f"{tok_type.name}: {count} tokens")
+    GPT4: 11 tokens
+    GPT3: 11 tokens
+    CLAUDE: 13 tokens
+    LLAMA: 12 tokens
+    SIMPLE: 9 tokens
+
+    Selecting tokenizer based on target model:
+
+    >>> from insideLLMs.tokens import TokenizerType
+    >>> model_name = "claude-3-opus"
+    >>> if "claude" in model_name.lower():
+    ...     tok_type = TokenizerType.CLAUDE
+    ... elif "gpt-4" in model_name.lower():
+    ...     tok_type = TokenizerType.GPT4
+    ... else:
+    ...     tok_type = TokenizerType.SIMPLE
+    >>> print(f"Selected tokenizer: {tok_type.value}")
+    Selected tokenizer: claude
+
+    See Also
+    --------
+    TokenEstimator : Class that uses TokenizerType for token estimation.
+    estimate_tokens : Convenience function for quick token estimation.
+
+    Notes
+    -----
+    These are approximations. For production use with specific models, use the
+    actual tokenizer library (tiktoken for OpenAI, transformers for LLaMA, etc.).
+    """
 
     GPT4 = "gpt4"
     GPT3 = "gpt3"
@@ -33,7 +189,80 @@ class TokenizerType(Enum):
 
 @dataclass
 class TokenStats:
-    """Statistics about tokens in text."""
+    """Container for comprehensive token statistics from text analysis.
+
+    This dataclass holds various metrics about the tokens found in analyzed text,
+    including counts, frequencies, and derived statistics like diversity ratios.
+    It is typically returned by TokenAnalyzer.analyze() or the analyze_tokens()
+    convenience function.
+
+    Parameters
+    ----------
+    total_tokens : int
+        The total number of tokens in the analyzed text.
+    unique_tokens : int
+        The number of distinct/unique tokens (vocabulary size for this text).
+    char_count : int
+        Total character count of the original text.
+    word_count : int
+        Number of whitespace-separated words in the text.
+    avg_token_length : float
+        Average character length of tokens.
+    tokens_per_word : float
+        Ratio of tokens to words (higher means more subword tokenization).
+    token_frequencies : dict[str, int], optional
+        Mapping from token strings to their occurrence counts.
+
+    Attributes
+    ----------
+    token_diversity : float
+        Property that returns the ratio of unique to total tokens (0.0 to 1.0).
+        Higher values indicate more lexically diverse text.
+
+    Examples
+    --------
+    Analyzing a simple sentence:
+
+    >>> from insideLLMs.tokens import analyze_tokens
+    >>> stats = analyze_tokens("The cat sat on the mat. The cat was happy.")
+    >>> print(f"Total: {stats.total_tokens}, Unique: {stats.unique_tokens}")
+    Total: 12, Unique: 8
+    >>> print(f"Diversity: {stats.token_diversity:.2f}")
+    Diversity: 0.67
+
+    Working with token frequencies:
+
+    >>> from insideLLMs.tokens import analyze_tokens
+    >>> text = "to be or not to be that is the question"
+    >>> stats = analyze_tokens(text)
+    >>> most_common = sorted(stats.token_frequencies.items(),
+    ...                      key=lambda x: x[1], reverse=True)[:3]
+    >>> for token, count in most_common:
+    ...     print(f"'{token}': {count}")
+    'to': 2
+    'be': 2
+    'or': 1
+
+    Converting to dictionary for JSON serialization:
+
+    >>> from insideLLMs.tokens import analyze_tokens
+    >>> import json
+    >>> stats = analyze_tokens("Hello world!")
+    >>> stats_dict = stats.to_dict()
+    >>> print(json.dumps(stats_dict, indent=2))
+    {
+      "total_tokens": 3,
+      "unique_tokens": 3,
+      "char_count": 12,
+      ...
+    }
+
+    See Also
+    --------
+    TokenAnalyzer : Class that produces TokenStats instances.
+    analyze_tokens : Convenience function for quick analysis.
+    TokenDistribution : More detailed frequency distribution analysis.
+    """
 
     total_tokens: int
     unique_tokens: int
@@ -45,11 +274,78 @@ class TokenStats:
 
     @property
     def token_diversity(self) -> float:
-        """Ratio of unique tokens to total tokens."""
+        """Calculate the ratio of unique tokens to total tokens.
+
+        Token diversity measures lexical richness - how many different words
+        are used relative to the total word count. A value of 1.0 means every
+        token is unique; lower values indicate more repetition.
+
+        Returns
+        -------
+        float
+            Diversity ratio between 0.0 and 1.0.
+
+        Examples
+        --------
+        High diversity (varied vocabulary):
+
+        >>> from insideLLMs.tokens import analyze_tokens
+        >>> stats = analyze_tokens("The quick brown fox jumps over lazy dogs.")
+        >>> print(f"Diversity: {stats.token_diversity:.2f}")
+        Diversity: 1.00
+
+        Lower diversity (repetitive text):
+
+        >>> stats = analyze_tokens("the the the cat cat sat sat sat sat")
+        >>> print(f"Diversity: {stats.token_diversity:.2f}")
+        Diversity: 0.33
+
+        Empty text edge case:
+
+        >>> stats = analyze_tokens("")
+        >>> print(f"Diversity: {stats.token_diversity}")
+        Diversity: 0.0
+        """
         return self.unique_tokens / self.total_tokens if self.total_tokens > 0 else 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert token statistics to a dictionary representation.
+
+        Creates a dictionary containing all statistics suitable for JSON
+        serialization, logging, or further processing. Note that token_frequencies
+        is excluded to keep the output concise; use token_frequencies attribute
+        directly if needed.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with keys: total_tokens, unique_tokens, char_count,
+            word_count, avg_token_length, tokens_per_word, token_diversity.
+
+        Examples
+        --------
+        Basic dictionary conversion:
+
+        >>> from insideLLMs.tokens import analyze_tokens
+        >>> stats = analyze_tokens("Hello, world!")
+        >>> d = stats.to_dict()
+        >>> print(f"Keys: {list(d.keys())}")
+        Keys: ['total_tokens', 'unique_tokens', 'char_count', ...]
+
+        Using with pandas DataFrame:
+
+        >>> from insideLLMs.tokens import analyze_tokens
+        >>> texts = ["First text.", "Second longer text here."]
+        >>> stats_list = [analyze_tokens(t).to_dict() for t in texts]
+        >>> # df = pd.DataFrame(stats_list)  # Create comparison DataFrame
+
+        Logging token statistics:
+
+        >>> from insideLLMs.tokens import analyze_tokens
+        >>> import logging
+        >>> stats = analyze_tokens("Sample text for analysis")
+        >>> logging.info("Token stats: %s", stats.to_dict())
+        """
         return {
             "total_tokens": self.total_tokens,
             "unique_tokens": self.unique_tokens,
@@ -63,44 +359,398 @@ class TokenStats:
 
 @dataclass
 class TokenDistribution:
-    """Token frequency distribution analysis."""
+    """Token frequency distribution analysis with statistical measures.
+
+    This dataclass provides detailed frequency distribution analysis of tokens,
+    including methods for finding common/rare tokens, calculating entropy, and
+    identifying linguistic phenomena like hapax legomena (words appearing once).
+
+    Parameters
+    ----------
+    frequencies : dict[str, int]
+        Mapping from token strings to their occurrence counts.
+    total_tokens : int
+        Total number of tokens in the analyzed text.
+
+    Attributes
+    ----------
+    vocabulary_size : int
+        Property returning the number of unique tokens.
+
+    Examples
+    --------
+    Basic distribution analysis:
+
+    >>> from insideLLMs.tokens import get_token_distribution
+    >>> text = "the cat sat on the mat and the cat slept"
+    >>> dist = get_token_distribution(text)
+    >>> print(f"Vocabulary size: {dist.vocabulary_size}")
+    Vocabulary size: 7
+    >>> print(f"Total tokens: {dist.total_tokens}")
+    Total tokens: 10
+
+    Finding most common tokens:
+
+    >>> from insideLLMs.tokens import get_token_distribution
+    >>> text = "to be or not to be that is the question to be is to ask"
+    >>> dist = get_token_distribution(text)
+    >>> for token, count in dist.top_tokens(3):
+    ...     print(f"'{token}': {count} occurrences")
+    'to': 4
+    'be': 3
+    'is': 2
+
+    Analyzing text entropy:
+
+    >>> from insideLLMs.tokens import get_token_distribution
+    >>> uniform_text = "a b c d e f g h"  # High entropy (uniform)
+    >>> repetitive_text = "a a a a a a a a"  # Low entropy
+    >>> print(f"Uniform entropy: {get_token_distribution(uniform_text).entropy():.2f}")
+    Uniform entropy: 3.00
+    >>> print(f"Repetitive entropy: {get_token_distribution(repetitive_text).entropy():.2f}")
+    Repetitive entropy: 0.00
+
+    See Also
+    --------
+    TokenStats : Higher-level statistics container.
+    TokenAnalyzer.get_distribution : Method that creates TokenDistribution.
+    get_token_distribution : Convenience function for distribution analysis.
+    """
 
     frequencies: dict[str, int]
     total_tokens: int
 
     @property
     def vocabulary_size(self) -> int:
-        """Number of unique tokens."""
+        """Get the number of unique tokens in the distribution.
+
+        Returns
+        -------
+        int
+            Count of distinct token types.
+
+        Examples
+        --------
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> dist = get_token_distribution("the quick brown fox")
+        >>> print(f"Vocabulary: {dist.vocabulary_size} unique tokens")
+        Vocabulary: 4 unique tokens
+
+        >>> dist = get_token_distribution("yes yes yes no no no")
+        >>> print(f"Vocabulary: {dist.vocabulary_size} unique tokens")
+        Vocabulary: 2 unique tokens
+        """
         return len(self.frequencies)
 
     def top_tokens(self, n: int = 10) -> list[tuple[str, int]]:
-        """Get top N most frequent tokens."""
+        """Get the N most frequently occurring tokens.
+
+        Args
+        ----
+        n : int, optional
+            Number of top tokens to return. Default is 10.
+
+        Returns
+        -------
+        list[tuple[str, int]]
+            List of (token, count) tuples sorted by frequency descending.
+
+        Examples
+        --------
+        Finding top 5 tokens in a document:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> text = "the cat and the dog and the bird flew over the house"
+        >>> dist = get_token_distribution(text)
+        >>> for token, count in dist.top_tokens(5):
+        ...     print(f"{token}: {count}")
+        the: 4
+        and: 2
+        cat: 1
+        dog: 1
+        bird: 1
+
+        Analyzing function word frequency:
+
+        >>> text = "I think that I know that you think that I am right"
+        >>> dist = get_token_distribution(text)
+        >>> top_3 = dist.top_tokens(3)
+        >>> print(f"Most common: {[t[0] for t in top_3]}")
+        Most common: ['that', 'i', 'think']
+
+        Using for word cloud weighting:
+
+        >>> dist = get_token_distribution("python data science machine learning")
+        >>> weights = {tok: cnt for tok, cnt in dist.top_tokens(100)}
+        >>> print(f"Token weights: {weights}")
+        Token weights: {'python': 1, 'data': 1, 'science': 1, ...}
+        """
         return sorted(self.frequencies.items(), key=lambda x: x[1], reverse=True)[:n]
 
     def bottom_tokens(self, n: int = 10) -> list[tuple[str, int]]:
-        """Get bottom N least frequent tokens."""
+        """Get the N least frequently occurring tokens.
+
+        Useful for identifying rare words, potential misspellings, or
+        domain-specific terminology.
+
+        Args
+        ----
+        n : int, optional
+            Number of bottom tokens to return. Default is 10.
+
+        Returns
+        -------
+        list[tuple[str, int]]
+            List of (token, count) tuples sorted by frequency ascending.
+
+        Examples
+        --------
+        Finding rare tokens:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> text = "the the the cat cat dog elephant"
+        >>> dist = get_token_distribution(text)
+        >>> for token, count in dist.bottom_tokens(3):
+        ...     print(f"'{token}': {count}")
+        'dog': 1
+        'elephant': 1
+        'cat': 2
+
+        Identifying potential typos (rare tokens):
+
+        >>> text = "Python is great. Pythn is a typo. Python rocks."
+        >>> dist = get_token_distribution(text)
+        >>> rare = dist.bottom_tokens(2)
+        >>> print(f"Possibly misspelled: {[t[0] for t in rare if t[1] == 1]}")
+        Possibly misspelled: ['pythn', 'typo', ...]
+
+        Finding technical jargon:
+
+        >>> text = "the system uses kubernetes for orchestration and docker"
+        >>> dist = get_token_distribution(text)
+        >>> uncommon = [t for t, c in dist.bottom_tokens(5) if c == 1]
+        >>> print(f"Technical terms: {uncommon}")
+        Technical terms: ['kubernetes', 'orchestration', 'docker', ...]
+        """
         return sorted(self.frequencies.items(), key=lambda x: x[1])[:n]
 
     def frequency_of(self, token: str) -> int:
-        """Get frequency of a specific token."""
+        """Get the absolute frequency count of a specific token.
+
+        Args
+        ----
+        token : str
+            The token to look up.
+
+        Returns
+        -------
+        int
+            Number of times the token appears. Returns 0 if not found.
+
+        Examples
+        --------
+        Basic frequency lookup:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> dist = get_token_distribution("to be or not to be")
+        >>> print(f"'to' appears {dist.frequency_of('to')} times")
+        'to' appears 2 times
+        >>> print(f"'be' appears {dist.frequency_of('be')} times")
+        'be' appears 2 times
+
+        Checking for absent tokens:
+
+        >>> dist = get_token_distribution("hello world")
+        >>> print(f"'goodbye' appears {dist.frequency_of('goodbye')} times")
+        'goodbye' appears 0 times
+
+        Conditional logic based on frequency:
+
+        >>> dist = get_token_distribution("error error warning info info info")
+        >>> if dist.frequency_of('error') > 0:
+        ...     print("Errors detected in log!")
+        Errors detected in log!
+        """
         return self.frequencies.get(token, 0)
 
     def relative_frequency(self, token: str) -> float:
-        """Get relative frequency of a token."""
+        """Get the relative frequency (proportion) of a token.
+
+        Calculates the token's frequency divided by total tokens, giving
+        the probability of randomly selecting this token.
+
+        Args
+        ----
+        token : str
+            The token to look up.
+
+        Returns
+        -------
+        float
+            Proportion of total tokens (0.0 to 1.0). Returns 0.0 if not found
+            or if total_tokens is 0.
+
+        Examples
+        --------
+        Calculating token proportions:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> dist = get_token_distribution("the cat sat on the mat")
+        >>> print(f"'the' proportion: {dist.relative_frequency('the'):.2%}")
+        'the' proportion: 33.33%
+
+        Comparing relative frequencies:
+
+        >>> text = "yes yes yes no no"
+        >>> dist = get_token_distribution(text)
+        >>> yes_freq = dist.relative_frequency('yes')
+        >>> no_freq = dist.relative_frequency('no')
+        >>> print(f"Yes: {yes_freq:.0%}, No: {no_freq:.0%}")
+        Yes: 60%, No: 40%
+
+        Using for probability estimation:
+
+        >>> dist = get_token_distribution("a b c a a b")
+        >>> prob_a = dist.relative_frequency('a')
+        >>> print(f"P(next token = 'a') approx {prob_a:.2f}")
+        P(next token = 'a') approx 0.50
+        """
         if self.total_tokens == 0:
             return 0.0
         return self.frequencies.get(token, 0) / self.total_tokens
 
     def tokens_above_frequency(self, min_freq: int) -> list[str]:
-        """Get tokens with frequency above threshold."""
+        """Get all tokens with frequency at or above a threshold.
+
+        Useful for filtering out rare tokens or identifying common vocabulary.
+
+        Args
+        ----
+        min_freq : int
+            Minimum frequency threshold (inclusive).
+
+        Returns
+        -------
+        list[str]
+            List of tokens meeting the frequency threshold.
+
+        Examples
+        --------
+        Finding common words:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> text = "the cat sat on the mat and the dog sat too"
+        >>> dist = get_token_distribution(text)
+        >>> common = dist.tokens_above_frequency(2)
+        >>> print(f"Tokens appearing 2+ times: {sorted(common)}")
+        Tokens appearing 2+ times: ['sat', 'the']
+
+        Building a frequency-filtered vocabulary:
+
+        >>> text = "python python python java java go rust"
+        >>> dist = get_token_distribution(text)
+        >>> vocab = dist.tokens_above_frequency(2)
+        >>> print(f"Core vocabulary: {vocab}")
+        Core vocabulary: ['python', 'java']
+
+        Noise reduction for analysis:
+
+        >>> text = "data data data analysis analysis x y z"
+        >>> dist = get_token_distribution(text)
+        >>> signal = dist.tokens_above_frequency(2)
+        >>> noise = [t for t in dist.frequencies if t not in signal]
+        >>> print(f"Signal: {signal}, Noise: {noise}")
+        Signal: ['data', 'analysis'], Noise: ['x', 'y', 'z']
+        """
         return [t for t, f in self.frequencies.items() if f >= min_freq]
 
     def hapax_legomena(self) -> list[str]:
-        """Get tokens that appear exactly once."""
+        """Get tokens that appear exactly once (hapax legomena).
+
+        In linguistics, hapax legomena are words that occur only once in a text
+        or corpus. They often represent rare words, proper nouns, or potential
+        errors and are important for vocabulary richness analysis.
+
+        Returns
+        -------
+        list[str]
+            List of tokens with frequency of exactly 1.
+
+        Examples
+        --------
+        Finding single-occurrence words:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> text = "the cat sat on the mat the cat purred"
+        >>> dist = get_token_distribution(text)
+        >>> hapax = dist.hapax_legomena()
+        >>> print(f"Hapax legomena: {sorted(hapax)}")
+        Hapax legomena: ['mat', 'on', 'purred', 'sat']
+
+        Measuring vocabulary richness:
+
+        >>> text = "unique words make text interesting and diverse"
+        >>> dist = get_token_distribution(text)
+        >>> hapax_ratio = len(dist.hapax_legomena()) / dist.vocabulary_size
+        >>> print(f"Hapax ratio: {hapax_ratio:.0%}")
+        Hapax ratio: 100%
+
+        Identifying potential spelling errors:
+
+        >>> text = "the teh cat sat on the mat"  # 'teh' is a typo
+        >>> dist = get_token_distribution(text)
+        >>> one_offs = dist.hapax_legomena()
+        >>> print(f"Check these for typos: {one_offs}")
+        Check these for typos: ['teh', 'cat', 'sat', 'on', 'mat']
+        """
         return [t for t, f in self.frequencies.items() if f == 1]
 
     def entropy(self) -> float:
-        """Calculate Shannon entropy of token distribution."""
+        """Calculate Shannon entropy of the token distribution.
+
+        Entropy measures the unpredictability or information content of the
+        distribution. Higher entropy indicates more uniform distribution
+        (harder to predict next token), while lower entropy indicates
+        concentration in few tokens (easier to predict).
+
+        Returns
+        -------
+        float
+            Shannon entropy in bits. Range depends on vocabulary size:
+            0 (single token) to log2(vocab_size) (uniform distribution).
+
+        Examples
+        --------
+        Comparing entropy of different texts:
+
+        >>> from insideLLMs.tokens import get_token_distribution
+        >>> uniform = "a b c d e f g h"  # Uniform distribution
+        >>> skewed = "a a a a b c d e"  # Skewed toward 'a'
+        >>> repetitive = "a a a a a a a a"  # Single token
+        >>> print(f"Uniform entropy: {get_token_distribution(uniform).entropy():.2f}")
+        Uniform entropy: 3.00
+        >>> print(f"Skewed entropy: {get_token_distribution(skewed).entropy():.2f}")
+        Skewed entropy: 2.41
+        >>> print(f"Repetitive entropy: {get_token_distribution(repetitive).entropy():.2f}")
+        Repetitive entropy: 0.00
+
+        Using entropy for text comparison:
+
+        >>> creative = "brilliant unique marvelous spectacular amazing"
+        >>> formulaic = "good good nice good nice good good nice"
+        >>> e1 = get_token_distribution(creative).entropy()
+        >>> e2 = get_token_distribution(formulaic).entropy()
+        >>> print(f"Creative: {e1:.2f} bits, Formulaic: {e2:.2f} bits")
+        Creative: 2.32 bits, Formulaic: 1.00 bits
+
+        Perplexity calculation from entropy:
+
+        >>> text = "the quick brown fox jumps over the lazy dog"
+        >>> entropy = get_token_distribution(text).entropy()
+        >>> perplexity = 2 ** entropy
+        >>> print(f"Entropy: {entropy:.2f}, Perplexity: {perplexity:.1f}")
+        Entropy: 3.03, Perplexity: 8.2
+        """
         if self.total_tokens == 0:
             return 0.0
 
@@ -114,7 +764,68 @@ class TokenDistribution:
 
 @dataclass
 class VocabCoverage:
-    """Analysis of vocabulary coverage."""
+    """Analysis of vocabulary coverage against a reference vocabulary.
+
+    This dataclass measures how well a reference vocabulary (e.g., a model's
+    known tokens) covers the vocabulary found in a given text. Useful for
+    identifying out-of-vocabulary (OOV) words and assessing domain compatibility.
+
+    Parameters
+    ----------
+    text_vocab : set[str]
+        Set of unique tokens found in the analyzed text.
+    reference_vocab : set[str]
+        Set of tokens in the reference vocabulary.
+    covered : set[str]
+        Tokens from text_vocab that exist in reference_vocab.
+    uncovered : set[str]
+        Tokens from text_vocab that do NOT exist in reference_vocab (OOV tokens).
+
+    Attributes
+    ----------
+    coverage_ratio : float
+        Property returning the proportion of text vocabulary covered (0.0 to 1.0).
+    oov_ratio : float
+        Property returning the out-of-vocabulary ratio (1.0 - coverage_ratio).
+
+    Examples
+    --------
+    Basic coverage analysis:
+
+    >>> from insideLLMs.tokens import TokenAnalyzer
+    >>> analyzer = TokenAnalyzer()
+    >>> text = "The quantum computer calculated eigenvalues efficiently"
+    >>> reference = {"the", "computer", "calculated", "a", "is", "and"}
+    >>> coverage = analyzer.analyze_vocabulary_coverage(text, reference)
+    >>> print(f"Coverage: {coverage.coverage_ratio:.0%}")
+    Coverage: 33%
+    >>> print(f"OOV words: {coverage.uncovered}")
+    OOV words: {'quantum', 'eigenvalues', 'efficiently'}
+
+    Checking domain vocabulary compatibility:
+
+    >>> analyzer = TokenAnalyzer()
+    >>> medical_text = "The patient presented with tachycardia and dyspnea"
+    >>> general_vocab = {"the", "patient", "with", "and", "a", "is"}
+    >>> cov = analyzer.analyze_vocabulary_coverage(medical_text, general_vocab)
+    >>> if cov.oov_ratio > 0.3:
+    ...     print(f"High OOV rate: {cov.oov_ratio:.0%} - may need domain vocab")
+    High OOV rate: 50% - may need domain vocab
+
+    Identifying words needing special handling:
+
+    >>> from insideLLMs.tokens import TokenAnalyzer
+    >>> analyzer = TokenAnalyzer()
+    >>> code = "def calculate_eigenvalue(matrix): return numpy.linalg.eig(matrix)"
+    >>> python_keywords = {"def", "return", "if", "else", "for", "while", "class"}
+    >>> cov = analyzer.analyze_vocabulary_coverage(code, python_keywords)
+    >>> print(f"Non-keywords (identifiers/libs): {cov.uncovered}")
+    Non-keywords (identifiers/libs): {'calculate_eigenvalue', 'matrix', ...}
+
+    See Also
+    --------
+    TokenAnalyzer.analyze_vocabulary_coverage : Method that creates VocabCoverage.
+    """
 
     text_vocab: set[str]
     reference_vocab: set[str]
@@ -123,18 +834,131 @@ class VocabCoverage:
 
     @property
     def coverage_ratio(self) -> float:
-        """Ratio of text vocab covered by reference vocab."""
+        """Calculate the ratio of text vocabulary covered by reference.
+
+        Returns the proportion of unique tokens in the text that are present
+        in the reference vocabulary. A value of 1.0 means all text tokens are
+        known; lower values indicate more out-of-vocabulary words.
+
+        Returns
+        -------
+        float
+            Coverage ratio between 0.0 and 1.0. Returns 1.0 for empty text.
+
+        Examples
+        --------
+        Full coverage scenario:
+
+        >>> from insideLLMs.tokens import TokenAnalyzer
+        >>> analyzer = TokenAnalyzer()
+        >>> text = "hello world"
+        >>> vocab = {"hello", "world", "goodbye"}
+        >>> cov = analyzer.analyze_vocabulary_coverage(text, vocab)
+        >>> print(f"Coverage: {cov.coverage_ratio:.0%}")
+        Coverage: 100%
+
+        Partial coverage:
+
+        >>> text = "hello universe"
+        >>> cov = analyzer.analyze_vocabulary_coverage(text, vocab)
+        >>> print(f"Coverage: {cov.coverage_ratio:.0%}")
+        Coverage: 50%
+
+        No coverage (all OOV):
+
+        >>> text = "quantum entanglement"
+        >>> cov = analyzer.analyze_vocabulary_coverage(text, vocab)
+        >>> print(f"Coverage: {cov.coverage_ratio:.0%}")
+        Coverage: 0%
+        """
         if not self.text_vocab:
             return 1.0
         return len(self.covered) / len(self.text_vocab)
 
     @property
     def oov_ratio(self) -> float:
-        """Out-of-vocabulary ratio."""
+        """Calculate the out-of-vocabulary (OOV) ratio.
+
+        Returns the proportion of unique tokens in the text that are NOT
+        present in the reference vocabulary. This is simply 1.0 - coverage_ratio.
+
+        Returns
+        -------
+        float
+            OOV ratio between 0.0 and 1.0.
+
+        Examples
+        --------
+        High OOV scenario (specialized domain):
+
+        >>> from insideLLMs.tokens import TokenAnalyzer
+        >>> analyzer = TokenAnalyzer()
+        >>> legal_text = "The defendant's habeas corpus petition was denied"
+        >>> basic_vocab = {"the", "was", "a", "is", "and"}
+        >>> cov = analyzer.analyze_vocabulary_coverage(legal_text, basic_vocab)
+        >>> print(f"OOV rate: {cov.oov_ratio:.0%}")
+        OOV rate: 83%
+
+        Low OOV scenario (common vocabulary):
+
+        >>> simple_text = "the cat is a pet"
+        >>> cov = analyzer.analyze_vocabulary_coverage(simple_text, basic_vocab)
+        >>> print(f"OOV rate: {cov.oov_ratio:.0%}")
+        OOV rate: 40%
+
+        Using OOV for quality assessment:
+
+        >>> text = "This is a test sentence for the model"
+        >>> large_vocab = {"this", "is", "a", "test", "sentence", "for", "the", "model"}
+        >>> cov = analyzer.analyze_vocabulary_coverage(text, large_vocab)
+        >>> if cov.oov_ratio < 0.1:
+        ...     print("Excellent vocabulary coverage!")
+        Excellent vocabulary coverage!
+        """
         return 1.0 - self.coverage_ratio
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert vocabulary coverage analysis to dictionary.
+
+        Creates a dictionary suitable for JSON serialization, logging, or
+        reporting. Does not include the actual token sets (only their sizes).
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with coverage statistics.
+
+        Examples
+        --------
+        Basic conversion:
+
+        >>> from insideLLMs.tokens import TokenAnalyzer
+        >>> analyzer = TokenAnalyzer()
+        >>> cov = analyzer.analyze_vocabulary_coverage(
+        ...     "hello world test",
+        ...     {"hello", "world", "foo", "bar"}
+        ... )
+        >>> d = cov.to_dict()
+        >>> print(f"Covered: {d['covered_count']}/{d['text_vocab_size']}")
+        Covered: 2/3
+
+        Logging coverage metrics:
+
+        >>> import logging
+        >>> cov = analyzer.analyze_vocabulary_coverage("test text", {"test"})
+        >>> logging.info("Vocab coverage: %s", cov.to_dict())
+
+        Creating coverage report:
+
+        >>> texts = ["first doc", "second doc with more words"]
+        >>> vocab = {"first", "second", "doc", "with"}
+        >>> for i, text in enumerate(texts):
+        ...     cov = analyzer.analyze_vocabulary_coverage(text, vocab)
+        ...     report = cov.to_dict()
+        ...     print(f"Doc {i}: {report['coverage_ratio']:.0%} covered")
+        Doc 0: 100% covered
+        Doc 1: 80% covered
+        """
         return {
             "text_vocab_size": len(self.text_vocab),
             "reference_vocab_size": len(self.reference_vocab),

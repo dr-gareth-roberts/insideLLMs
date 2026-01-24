@@ -1,3 +1,106 @@
+"""
+Custom Trace Schema V1 - Pydantic models for LLM execution trace bundles.
+
+This module defines the data structures and validation logic for the
+``insideLLMs.custom.trace@1`` schema format, which captures detailed
+execution traces from Large Language Model (LLM) interactions including
+tool calls, contract violations, and derived analytics.
+
+Overview
+--------
+The schema is designed around a hierarchical structure:
+
+- **TraceBundleV1**: The root container holding the entire trace
+- **TraceCounts**: Statistics about events in the trace
+- **TraceFingerprint**: Cryptographic hash for trace deduplication
+- **TraceNormaliser**: Information about how the trace was normalised
+- **TraceContractsSummary**: Summary of contract checking results
+- **TraceViolation**: Individual contract violations
+- **TraceEventStored**: Individual events captured during execution
+- **TraceTruncation**: Information about data truncation policies
+- **TraceDerived**: Computed analytics derived from the trace
+
+Modes
+-----
+The schema supports two primary modes:
+
+- ``compact``: Metadata-only mode without raw events (for storage efficiency)
+- ``full``: Complete trace with all events stored
+
+Examples
+--------
+Creating a minimal compact trace bundle:
+
+>>> from insideLLMs.schemas.custom_trace_v1 import (
+...     TraceBundleV1, TraceCounts, TraceFingerprint,
+...     TraceNormaliser, TraceContractsSummary
+... )
+>>> bundle = TraceBundleV1(
+...     schema_version="insideLLMs.custom.trace@1",
+...     mode="compact",
+...     counts=TraceCounts(events_total=10, events_stored=0),
+...     fingerprint=TraceFingerprint(enabled=False),
+...     normaliser=TraceNormaliser(
+...         kind="builtin",
+...         name="default",
+...         config_hash="a" * 64
+...     ),
+...     contracts=TraceContractsSummary(
+...         enabled=False,
+...         violations_total=0,
+...         violations_stored=0
+...     ),
+... )
+
+Creating a full trace with events:
+
+>>> from insideLLMs.schemas.custom_trace_v1 import TraceEventStored
+>>> full_bundle = TraceBundleV1(
+...     schema_version="insideLLMs.custom.trace@1",
+...     mode="full",
+...     counts=TraceCounts(events_total=2, events_stored=2),
+...     fingerprint=TraceFingerprint(
+...         enabled=True,
+...         value="abc123" + "0" * 58,
+...         basis="normalised_full_trace"
+...     ),
+...     normaliser=TraceNormaliser(
+...         kind="builtin",
+...         name="default",
+...         config_hash="b" * 64
+...     ),
+...     contracts=TraceContractsSummary(
+...         enabled=True,
+...         violations_total=0,
+...         violations_stored=0
+...     ),
+...     events_view="normalised",
+...     events=[
+...         TraceEventStored(seq=0, kind="user_message", payload={"text": "Hello"}),
+...         TraceEventStored(seq=1, kind="assistant_message", payload={"text": "Hi!"})
+...     ]
+... )
+
+Notes
+-----
+- All hash values (fingerprint, config_hash) must be 64-character hex strings
+  representing SHA-256 digests. The optional ``sha256:`` prefix is automatically
+  stripped during normalisation.
+- Event sequences must be non-decreasing (events are ordered chronologically)
+- The schema enforces strict consistency between counts and actual stored items
+- All payload and metadata fields must be JSON-serialisable
+
+See Also
+--------
+insideLLMs.tracing : High-level tracing API
+insideLLMs.contracts : Contract definition and checking
+pydantic.BaseModel : Base class for all schema models
+
+References
+----------
+.. [1] Pydantic V2 Documentation: https://docs.pydantic.dev/latest/
+.. [2] JSON Schema Specification: https://json-schema.org/
+"""
 from __future__ import annotations
 
 import json
@@ -6,10 +109,60 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+#: Regular expression pattern for validating 64-character hexadecimal SHA-256 hashes.
+#: Matches exactly 64 hex digits (0-9, a-f, A-F).
 HEX64_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
 
 def _canonical_json_bytes(value: Any) -> bytes:
+    """
+    Convert a value to canonical JSON bytes for consistent hashing.
+
+    This function serialises a Python value to JSON using a deterministic
+    format suitable for cryptographic hashing. The output is guaranteed to
+    be identical for semantically equivalent inputs.
+
+    Parameters
+    ----------
+    value : Any
+        Any JSON-serialisable Python value (dict, list, str, int, float,
+        bool, None, or nested combinations thereof).
+
+    Returns
+    -------
+    bytes
+        UTF-8 encoded JSON bytes with:
+        - Keys sorted alphabetically
+        - No whitespace (compact separators)
+        - Non-ASCII characters preserved (not escaped)
+
+    Raises
+    ------
+    TypeError
+        If the value contains non-JSON-serialisable types (e.g., datetime,
+        custom objects, bytes, sets).
+
+    Examples
+    --------
+    Serialising a simple dictionary:
+
+    >>> _canonical_json_bytes({"b": 2, "a": 1})
+    b'{"a":1,"b":2}'
+
+    Nested structures are handled recursively:
+
+    >>> _canonical_json_bytes({"users": [{"name": "Alice"}, {"name": "Bob"}]})
+    b'{"users":[{"name":"Alice"},{"name":"Bob"}]}'
+
+    Unicode is preserved:
+
+    >>> _canonical_json_bytes({"greeting": "Hello"})
+    b'{"greeting":"Hello"}'
+
+    See Also
+    --------
+    _assert_jsonable : Validates JSON serialisability with error context
+    """
     return json.dumps(
         value,
         sort_keys=True,
@@ -19,6 +172,63 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 
 def _assert_jsonable(value: Any, *, where: str) -> Any:
+    """
+    Validate that a value is JSON-serialisable, with contextual error messages.
+
+    This function attempts to serialise the value to canonical JSON and raises
+    a descriptive ValueError if serialisation fails. It is primarily used in
+    Pydantic field validators to ensure payload and metadata fields contain
+    only JSON-compatible data.
+
+    Parameters
+    ----------
+    value : Any
+        The value to validate for JSON serialisability.
+    where : str
+        A human-readable description of where this value appears in the schema,
+        used in error messages (e.g., "events[].payload", "violations[].meta").
+
+    Returns
+    -------
+    Any
+        The original value, unchanged, if it is JSON-serialisable.
+
+    Raises
+    ------
+    ValueError
+        If the value cannot be serialised to JSON. The error message includes
+        the ``where`` context and the underlying serialisation error.
+
+    Examples
+    --------
+    Validating a simple JSON-compatible dictionary:
+
+    >>> result = _assert_jsonable({"key": "value"}, where="test.field")
+    >>> result
+    {"key": "value"}
+
+    Validating nested structures:
+
+    >>> _assert_jsonable(
+    ...     {"tools": [{"name": "search", "args": {"query": "test"}}]},
+    ...     where="events[].payload"
+    ... )
+    {"tools": [{"name": "search", "args": {"query": "test"}}]}
+
+    Non-serialisable values raise ValueError:
+
+    >>> from datetime import datetime
+    >>> _assert_jsonable({"timestamp": datetime.now()}, where="events[].payload")
+    Traceback (most recent call last):
+        ...
+    ValueError: events[].payload must be JSON-serialisable: ...
+
+    See Also
+    --------
+    _canonical_json_bytes : The underlying serialisation function
+    TraceEventStored : Uses this for payload validation
+    TraceViolation : Uses this for meta validation
+    """
     try:
         _canonical_json_bytes(value)
     except TypeError as e:
@@ -27,6 +237,55 @@ def _assert_jsonable(value: Any, *, where: str) -> Any:
 
 
 def _normalise_sha256_value(value: Optional[str]) -> Optional[str]:
+    """
+    Normalise a SHA-256 hash value by stripping whitespace and optional prefix.
+
+    This function prepares SHA-256 hash strings for validation and storage by:
+    1. Stripping leading/trailing whitespace
+    2. Removing the optional ``sha256:`` prefix (commonly used in content-addressable
+       storage systems)
+
+    Parameters
+    ----------
+    value : str or None
+        A SHA-256 hash string, optionally prefixed with "sha256:".
+        If None, returns None unchanged.
+
+    Returns
+    -------
+    str or None
+        The normalised hash string (without prefix), or None if input was None.
+        Note: This function does NOT validate the hash format; use ``HEX64_RE``
+        for validation after normalisation.
+
+    Examples
+    --------
+    Basic hash normalisation:
+
+    >>> _normalise_sha256_value("abc123def456" + "0" * 52)
+    'abc123def4560000000000000000000000000000000000000000000000000000'
+
+    Stripping the sha256: prefix:
+
+    >>> _normalise_sha256_value("sha256:abc123def456" + "0" * 52)
+    'abc123def4560000000000000000000000000000000000000000000000000000'
+
+    Handling whitespace:
+
+    >>> _normalise_sha256_value("  sha256:abc123  ")
+    'abc123'
+
+    None passthrough:
+
+    >>> _normalise_sha256_value(None) is None
+    True
+
+    See Also
+    --------
+    HEX64_RE : Regex pattern for validating normalised hashes
+    TraceFingerprint : Uses this for fingerprint value normalisation
+    TraceNormaliser : Uses this for config_hash normalisation
+    """
     if value is None:
         return None
     v = value.strip()
@@ -36,6 +295,71 @@ def _normalise_sha256_value(value: Optional[str]) -> Optional[str]:
 
 
 class TraceCounts(BaseModel):
+    """
+    Statistics about events captured during trace collection.
+
+    This model tracks the total number of events observed during an LLM
+    interaction, how many were stored (which may be fewer due to truncation
+    or filtering), and a breakdown by event kind.
+
+    Parameters
+    ----------
+    events_total : int
+        Total number of events observed during the trace, regardless of
+        whether they were stored. Must be >= 0.
+    events_stored : int
+        Number of events actually stored in the trace bundle. Must be >= 0
+        and <= events_total. In "compact" mode, this is always 0.
+    by_kind : dict[str, int], optional
+        Breakdown of event counts by kind (e.g., "tool_call", "user_message").
+        Keys must be non-empty strings, values must be >= 0. Defaults to {}.
+
+    Attributes
+    ----------
+    events_total : int
+        Total events observed.
+    events_stored : int
+        Events actually stored.
+    by_kind : dict[str, int]
+        Event counts by kind.
+
+    Examples
+    --------
+    Creating counts for a trace with 100 events, 50 stored:
+
+    >>> counts = TraceCounts(
+    ...     events_total=100,
+    ...     events_stored=50,
+    ...     by_kind={"tool_call": 30, "user_message": 20}
+    ... )
+    >>> counts.events_total
+    100
+
+    Minimal counts for a compact trace:
+
+    >>> compact_counts = TraceCounts(events_total=500, events_stored=0)
+    >>> compact_counts.by_kind
+    {}
+
+    Validation ensures stored <= total:
+
+    >>> TraceCounts(events_total=10, events_stored=20)
+    Traceback (most recent call last):
+        ...
+    pydantic_core._pydantic_core.ValidationError: ...
+
+    See Also
+    --------
+    TraceBundleV1 : The parent model containing counts
+    TruncationEvents : Explains why events_stored may be less than events_total
+
+    Notes
+    -----
+    The sum of ``by_kind`` values does not need to equal ``events_total``.
+    The ``by_kind`` dict may contain a subset of event kinds, or may be
+    empty even when events_total > 0.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     events_total: int = Field(ge=0)
@@ -45,6 +369,39 @@ class TraceCounts(BaseModel):
     @field_validator("by_kind")
     @classmethod
     def _validate_by_kind(cls, v: Dict[str, int]) -> Dict[str, int]:
+        """
+        Validate the by_kind dictionary structure.
+
+        Parameters
+        ----------
+        v : dict[str, int]
+            The by_kind dictionary to validate.
+
+        Returns
+        -------
+        dict[str, int]
+            The validated dictionary, unchanged.
+
+        Raises
+        ------
+        ValueError
+            If any key is empty or not a string, or if any value is
+            negative or not an integer.
+
+        Examples
+        --------
+        Valid by_kind dictionary:
+
+        >>> TraceCounts._validate_by_kind({"tool_call": 5, "message": 10})
+        {"tool_call": 5, "message": 10}
+
+        Empty keys are rejected:
+
+        >>> TraceCounts._validate_by_kind({"": 5})
+        Traceback (most recent call last):
+            ...
+        ValueError: counts.by_kind keys must be non-empty strings
+        """
         for k, n in v.items():
             if not isinstance(k, str) or not k:
                 raise ValueError("counts.by_kind keys must be non-empty strings")
@@ -54,12 +411,128 @@ class TraceCounts(BaseModel):
 
     @model_validator(mode="after")
     def _validate_totals(self) -> "TraceCounts":
+        """
+        Validate that events_stored does not exceed events_total.
+
+        Returns
+        -------
+        TraceCounts
+            Self, if validation passes.
+
+        Raises
+        ------
+        ValueError
+            If events_stored > events_total.
+
+        Examples
+        --------
+        Valid relationship:
+
+        >>> counts = TraceCounts(events_total=100, events_stored=50)
+        >>> counts._validate_totals()
+        TraceCounts(events_total=100, events_stored=50, by_kind={})
+
+        Invalid relationship raises error:
+
+        >>> counts = TraceCounts.__new__(TraceCounts)
+        >>> counts.events_total = 10
+        >>> counts.events_stored = 20
+        >>> counts._validate_totals()
+        Traceback (most recent call last):
+            ...
+        ValueError: counts.events_total must be >= counts.events_stored
+        """
         if self.events_total < self.events_stored:
             raise ValueError("counts.events_total must be >= counts.events_stored")
         return self
 
 
 class TraceFingerprint(BaseModel):
+    """
+    Cryptographic fingerprint for trace deduplication and integrity verification.
+
+    The fingerprint provides a unique identifier for a trace based on its
+    normalised content. This allows detection of duplicate traces even when
+    metadata differs, and can verify trace integrity during storage/retrieval.
+
+    Parameters
+    ----------
+    enabled : bool
+        Whether fingerprinting is enabled for this trace. When True, ``value``
+        and ``basis`` must be provided. When False, both must be None.
+    alg : {"sha256"}, optional
+        The hashing algorithm used. Currently only "sha256" is supported.
+        Defaults to "sha256".
+    value : str or None, optional
+        The 64-character hexadecimal hash value (without prefix). Required
+        when enabled=True. Can include optional "sha256:" prefix which is
+        stripped during normalisation.
+    basis : {"normalised_full_trace"} or None, optional
+        What data the fingerprint is computed from. Currently only
+        "normalised_full_trace" is supported. Required when enabled=True.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether fingerprinting is active.
+    alg : str
+        The algorithm used (always "sha256").
+    value : str or None
+        The normalised hash value in lowercase.
+    basis : str or None
+        The fingerprint computation basis.
+
+    Examples
+    --------
+    Creating an enabled fingerprint:
+
+    >>> fp = TraceFingerprint(
+    ...     enabled=True,
+    ...     value="abc123" + "0" * 58,
+    ...     basis="normalised_full_trace"
+    ... )
+    >>> fp.value
+    'abc1230000000000000000000000000000000000000000000000000000000000'
+    >>> fp.alg
+    'sha256'
+
+    Creating a disabled fingerprint:
+
+    >>> fp_disabled = TraceFingerprint(enabled=False)
+    >>> fp_disabled.value is None
+    True
+    >>> fp_disabled.basis is None
+    True
+
+    Hash values are normalised to lowercase:
+
+    >>> fp = TraceFingerprint(
+    ...     enabled=True,
+    ...     value="sha256:ABCDEF" + "0" * 58,
+    ...     basis="normalised_full_trace"
+    ... )
+    >>> fp.value
+    'abcdef0000000000000000000000000000000000000000000000000000000000'
+
+    Validation enforces consistency:
+
+    >>> TraceFingerprint(enabled=True, value=None)
+    Traceback (most recent call last):
+        ...
+    pydantic_core._pydantic_core.ValidationError: ...
+
+    See Also
+    --------
+    TraceNormaliser : Defines how traces are normalised before fingerprinting
+    _normalise_sha256_value : Hash value normalisation function
+
+    Notes
+    -----
+    Fingerprints computed from the same normalised trace content will always
+    be identical, regardless of when or where the trace was captured. This
+    enables efficient deduplication in storage systems.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool
@@ -70,6 +543,43 @@ class TraceFingerprint(BaseModel):
     @field_validator("value")
     @classmethod
     def _validate_value(cls, v: Optional[str]) -> Optional[str]:
+        """
+        Validate and normalise the fingerprint hash value.
+
+        Parameters
+        ----------
+        v : str or None
+            The hash value to validate, optionally prefixed with "sha256:".
+
+        Returns
+        -------
+        str or None
+            The normalised (lowercase, no prefix) hash, or None.
+
+        Raises
+        ------
+        ValueError
+            If the value is not a valid 64-character hex string.
+
+        Examples
+        --------
+        Valid hash value:
+
+        >>> TraceFingerprint._validate_value("abc" + "0" * 61)
+        'abc0000000000000000000000000000000000000000000000000000000000000'
+
+        Prefix is stripped:
+
+        >>> TraceFingerprint._validate_value("sha256:def" + "0" * 61)
+        'def0000000000000000000000000000000000000000000000000000000000000'
+
+        Invalid hash raises error:
+
+        >>> TraceFingerprint._validate_value("invalid")
+        Traceback (most recent call last):
+            ...
+        ValueError: fingerprint.value must be a 64-hex sha256 ...
+        """
         v = _normalise_sha256_value(v)
         if v is None:
             return None
@@ -81,6 +591,36 @@ class TraceFingerprint(BaseModel):
 
     @model_validator(mode="after")
     def _validate_enabled_semantics(self) -> "TraceFingerprint":
+        """
+        Validate semantic consistency between enabled flag and other fields.
+
+        When enabled=True, both value and basis must be present.
+        When enabled=False, both must be None.
+
+        Returns
+        -------
+        TraceFingerprint
+            Self, if validation passes.
+
+        Raises
+        ------
+        ValueError
+            If the enabled flag is inconsistent with value/basis presence.
+
+        Examples
+        --------
+        Enabled requires value and basis:
+
+        >>> fp = TraceFingerprint(enabled=True, value="a"*64, basis="normalised_full_trace")
+        >>> fp._validate_enabled_semantics()
+        TraceFingerprint(enabled=True, ...)
+
+        Disabled must not have value or basis:
+
+        >>> fp = TraceFingerprint(enabled=False)
+        >>> fp._validate_enabled_semantics()
+        TraceFingerprint(enabled=False, ...)
+        """
         if self.enabled:
             if self.value is None:
                 raise ValueError("fingerprint.enabled=true requires fingerprint.value")
@@ -95,6 +635,100 @@ class TraceFingerprint(BaseModel):
 
 
 class TraceNormaliser(BaseModel):
+    """
+    Metadata about the normalisation process applied to trace events.
+
+    Normalisation transforms raw trace events into a canonical form before
+    fingerprinting. This model records which normaliser was used and its
+    configuration, enabling reproducible fingerprint computation.
+
+    Parameters
+    ----------
+    kind : {"builtin", "import"}
+        The type of normaliser used:
+        - "builtin": A normaliser included with the insideLLMs package
+        - "import": A custom normaliser loaded from an external module
+    name : str or None, optional
+        The name of the builtin normaliser (e.g., "default", "strict").
+        Required when kind="builtin", forbidden when kind="import".
+    import_path : str or None, optional
+        The Python import path for custom normalisers (e.g.,
+        "myproject.normalisers.custom_normaliser"). Required when
+        kind="import", forbidden when kind="builtin". Aliased as "import"
+        in JSON serialisation.
+    config_hash : str
+        SHA-256 hash of the normaliser's configuration. This ensures
+        fingerprints are reproducible even if normaliser behaviour changes
+        between versions. Must be a 64-character hex string.
+
+    Attributes
+    ----------
+    kind : str
+        The normaliser type.
+    name : str or None
+        Builtin normaliser name.
+    import_path : str or None
+        Custom normaliser import path.
+    config_hash : str
+        Configuration hash in lowercase.
+
+    Examples
+    --------
+    Using a builtin normaliser:
+
+    >>> normaliser = TraceNormaliser(
+    ...     kind="builtin",
+    ...     name="default",
+    ...     config_hash="abc123" + "0" * 58
+    ... )
+    >>> normaliser.kind
+    'builtin'
+    >>> normaliser.name
+    'default'
+    >>> normaliser.import_path is None
+    True
+
+    Using a custom imported normaliser:
+
+    >>> custom_normaliser = TraceNormaliser(
+    ...     kind="import",
+    ...     import_path="myproject.normalisers.sensitive_data_filter",
+    ...     config_hash="def456" + "0" * 58
+    ... )
+    >>> custom_normaliser.name is None
+    True
+    >>> custom_normaliser.import_path
+    'myproject.normalisers.sensitive_data_filter'
+
+    JSON serialisation uses "import" alias:
+
+    >>> normaliser = TraceNormaliser(
+    ...     kind="import",
+    ...     import_path="custom.norm",
+    ...     config_hash="0" * 64
+    ... )
+    >>> normaliser.model_dump(by_alias=True)
+    {'kind': 'import', 'name': None, 'import': 'custom.norm', 'config_hash': '0'*64}
+
+    Validation enforces kind-specific requirements:
+
+    >>> TraceNormaliser(kind="builtin", import_path="invalid")
+    Traceback (most recent call last):
+        ...
+    pydantic_core._pydantic_core.ValidationError: ...
+
+    See Also
+    --------
+    TraceFingerprint : Uses the normalised trace for hash computation
+    insideLLMs.normalisation : Normalisation implementation module
+
+    Notes
+    -----
+    The config_hash captures all normaliser settings, including version,
+    enabled transformations, and any parameters. Two normalisers with the
+    same config_hash will produce identical output for the same input.
+    """
+
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     kind: Literal["builtin", "import"]
@@ -105,6 +739,43 @@ class TraceNormaliser(BaseModel):
     @field_validator("config_hash")
     @classmethod
     def _validate_config_hash(cls, v: str) -> str:
+        """
+        Validate and normalise the configuration hash.
+
+        Parameters
+        ----------
+        v : str
+            The hash value to validate, optionally prefixed with "sha256:".
+
+        Returns
+        -------
+        str
+            The normalised (lowercase, no prefix) hash.
+
+        Raises
+        ------
+        ValueError
+            If the value is not a valid 64-character hex string.
+
+        Examples
+        --------
+        Valid hash:
+
+        >>> TraceNormaliser._validate_config_hash("ABC" + "0" * 61)
+        'abc0000000000000000000000000000000000000000000000000000000000000'
+
+        With prefix:
+
+        >>> TraceNormaliser._validate_config_hash("sha256:" + "f" * 64)
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+
+        Invalid hash:
+
+        >>> TraceNormaliser._validate_config_hash("not-a-hash")
+        Traceback (most recent call last):
+            ...
+        ValueError: normaliser.config_hash must be a 64-hex sha256 ...
+        """
         v2 = _normalise_sha256_value(v) or ""
         if not HEX64_RE.match(v2):
             raise ValueError(
@@ -115,6 +786,35 @@ class TraceNormaliser(BaseModel):
 
     @model_validator(mode="after")
     def _validate_kind_semantics(self) -> "TraceNormaliser":
+        """
+        Validate that kind-specific fields are correctly set.
+
+        Returns
+        -------
+        TraceNormaliser
+            Self, if validation passes.
+
+        Raises
+        ------
+        ValueError
+            If:
+            - kind="builtin" but name is missing or import_path is set
+            - kind="import" but import_path is missing or name is set
+
+        Examples
+        --------
+        Builtin normaliser with name:
+
+        >>> n = TraceNormaliser(kind="builtin", name="default", config_hash="0"*64)
+        >>> n._validate_kind_semantics()
+        TraceNormaliser(kind='builtin', name='default', ...)
+
+        Import normaliser with path:
+
+        >>> n = TraceNormaliser(kind="import", import_path="mod.norm", config_hash="0"*64)
+        >>> n._validate_kind_semantics()
+        TraceNormaliser(kind='import', import_path='mod.norm', ...)
+        """
         if self.kind == "builtin":
             if not self.name:
                 raise ValueError("normaliser.kind='builtin' requires normaliser.name")

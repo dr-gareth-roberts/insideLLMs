@@ -1,12 +1,129 @@
 """
 Benchmark dataset utilities for LLM evaluation.
 
-Provides tools for:
-- Loading standard benchmark datasets
-- Creating custom evaluation datasets
-- Dataset splitting and sampling
-- Dataset statistics and analysis
-- Cross-validation utilities
+This module provides a comprehensive framework for creating, managing, and
+evaluating LLM benchmark datasets. It supports standard dataset operations
+including loading, saving, splitting, sampling, filtering, and statistical
+analysis. The module includes built-in benchmark datasets covering various
+evaluation categories such as reasoning, factual knowledge, math, coding,
+safety, bias, and language understanding.
+
+Key Features
+------------
+- **Dataset Management**: Create, load, save, merge, and filter datasets
+- **Splitting & Sampling**: Train/validation/test splits with stratification
+- **Cross-Validation**: K-fold cross-validation support
+- **Built-in Benchmarks**: 13 pre-built evaluation datasets
+- **Registry System**: Global dataset registry for easy access
+- **Builder Pattern**: Fluent API for constructing custom datasets
+
+Main Classes
+------------
+BenchmarkDataset
+    Core dataset class with full CRUD operations and analysis methods.
+DatasetBuilder
+    Fluent builder for constructing datasets programmatically.
+CrossValidator
+    K-fold cross-validation generator.
+DatasetRegistry
+    Registry for managing multiple named datasets.
+
+Data Classes
+------------
+DatasetExample
+    Single evaluation example with input, expected output, and metadata.
+DatasetStats
+    Statistical summary of a dataset.
+SplitInfo
+    Information about train/validation/test splits.
+
+Enumerations
+------------
+DatasetCategory
+    Categories of benchmark datasets (REASONING, FACTUAL, MATH, etc.).
+SplitType
+    Dataset split types (TRAIN, VALIDATION, TEST, ALL).
+SamplingStrategy
+    Sampling strategies (RANDOM, STRATIFIED, SEQUENTIAL, BALANCED).
+
+Examples
+--------
+Creating a custom dataset using the builder pattern:
+
+>>> from insideLLMs.benchmark_datasets import DatasetBuilder, DatasetCategory
+>>> builder = DatasetBuilder("my_benchmark")
+>>> builder.with_category(DatasetCategory.REASONING)
+>>> builder.with_description("Custom reasoning problems")
+>>> builder.add_example(
+...     input_text="If A implies B, and A is true, what is B?",
+...     expected_output="B is true (modus ponens)",
+...     category="logic",
+...     difficulty="easy"
+... )
+>>> dataset = builder.build()
+>>> print(len(dataset))
+1
+
+Loading and using a built-in dataset:
+
+>>> from insideLLMs.benchmark_datasets import load_builtin_dataset
+>>> reasoning = load_builtin_dataset("reasoning")
+>>> print(reasoning.name)
+'reasoning_benchmark'
+>>> for example in reasoning:
+...     print(example.input_text[:50])
+...     break
+'If all cats are animals and all animals need food'
+
+Splitting a dataset for training and evaluation:
+
+>>> from insideLLMs.benchmark_datasets import create_math_dataset
+>>> dataset = create_math_dataset()
+>>> split_info = dataset.split(train_ratio=0.7, validation_ratio=0.15, test_ratio=0.15, seed=42)
+>>> print(f"Train: {split_info.train_size}, Val: {split_info.validation_size}, Test: {split_info.test_size}")
+Train: 3, Val: 1, Test: 1
+
+Performing cross-validation:
+
+>>> from insideLLMs.benchmark_datasets import cross_validate, create_factual_dataset
+>>> dataset = create_factual_dataset()
+>>> for fold, (train, test) in enumerate(cross_validate(dataset, n_folds=3, seed=42)):
+...     print(f"Fold {fold}: train={len(train)}, test={len(test)}")
+Fold 0: train=4, test=1
+Fold 1: train=4, test=1
+Fold 2: train=4, test=1
+
+Sampling with different strategies:
+
+>>> from insideLLMs.benchmark_datasets import sample_dataset, SamplingStrategy
+>>> dataset = create_reasoning_dataset()
+>>> samples = sample_dataset(dataset, n=2, strategy=SamplingStrategy.STRATIFIED, seed=42)
+>>> print(len(samples))
+2
+
+Creating a comprehensive benchmark suite:
+
+>>> from insideLLMs.benchmark_datasets import create_comprehensive_benchmark_suite, DatasetCategory
+>>> suite = create_comprehensive_benchmark_suite(
+...     categories=[DatasetCategory.REASONING, DatasetCategory.MATH],
+...     max_examples_per_dataset=5,
+...     seed=42
+... )
+>>> stats = suite.get_stats()
+>>> print(f"Total examples: {stats.total_examples}")
+Total examples: 10
+
+Notes
+-----
+- All datasets can be serialized to JSON for persistence
+- The module uses MD5 hashing for automatic ID generation
+- Stratified sampling requires examples to have category labels
+- Cross-validation shuffles data; use a seed for reproducibility
+
+See Also
+--------
+insideLLMs.evaluation : Evaluation metrics and scoring utilities
+insideLLMs.probe : Model probing and analysis tools
 """
 
 import hashlib
@@ -20,7 +137,54 @@ from typing import Any, Callable, Optional, Union
 
 
 class DatasetCategory(Enum):
-    """Categories of benchmark datasets."""
+    """
+    Categories of benchmark datasets for LLM evaluation.
+
+    This enumeration defines the primary categories used to classify
+    benchmark datasets. Each category represents a distinct evaluation
+    domain that tests different LLM capabilities.
+
+    Attributes
+    ----------
+    REASONING : str
+        Logical reasoning and deduction problems.
+    FACTUAL : str
+        Factual knowledge and world knowledge questions.
+    COMMONSENSE : str
+        Commonsense reasoning and everyday knowledge.
+    MATH : str
+        Mathematical and arithmetic problems.
+    CODING : str
+        Programming and code-related tasks.
+    SAFETY : str
+        Safety and harmlessness evaluation.
+    BIAS : str
+        Bias detection and fairness testing.
+    LANGUAGE : str
+        Natural language understanding tasks.
+    INSTRUCTION : str
+        Instruction following evaluation.
+    CUSTOM : str
+        User-defined custom category.
+
+    Examples
+    --------
+    >>> from insideLLMs.benchmark_datasets import DatasetCategory
+    >>> category = DatasetCategory.REASONING
+    >>> print(category.value)
+    'reasoning'
+
+    >>> # Use in dataset creation
+    >>> from insideLLMs.benchmark_datasets import BenchmarkDataset
+    >>> dataset = BenchmarkDataset("my_test", category=DatasetCategory.MATH)
+    >>> print(dataset.category)
+    <DatasetCategory.MATH: 'math'>
+
+    See Also
+    --------
+    BenchmarkDataset : Uses this enum to categorize datasets.
+    DatasetRegistry.list_by_category : Filter datasets by category.
+    """
 
     REASONING = "reasoning"
     FACTUAL = "factual"
@@ -35,7 +199,41 @@ class DatasetCategory(Enum):
 
 
 class SplitType(Enum):
-    """Types of dataset splits."""
+    """
+    Types of dataset splits for training and evaluation.
+
+    This enumeration defines the standard split types used in machine
+    learning workflows. Datasets can be divided into these splits for
+    training, validation, and testing purposes.
+
+    Attributes
+    ----------
+    TRAIN : str
+        Training split for model learning.
+    VALIDATION : str
+        Validation split for hyperparameter tuning and early stopping.
+    TEST : str
+        Test split for final evaluation (held-out data).
+    ALL : str
+        All examples regardless of split assignment.
+
+    Examples
+    --------
+    >>> from insideLLMs.benchmark_datasets import SplitType, create_math_dataset
+    >>> dataset = create_math_dataset()
+    >>> dataset.split(train_ratio=0.6, validation_ratio=0.2, test_ratio=0.2, seed=42)
+    SplitInfo(train_size=3, validation_size=1, test_size=1, ...)
+
+    >>> # Get examples from a specific split
+    >>> train_examples = dataset.get_examples(split=SplitType.TRAIN)
+    >>> test_examples = dataset.get_examples(split=SplitType.TEST)
+    >>> all_examples = dataset.get_examples(split=SplitType.ALL)
+
+    See Also
+    --------
+    BenchmarkDataset.split : Create train/validation/test splits.
+    BenchmarkDataset.get_examples : Retrieve examples by split.
+    """
 
     TRAIN = "train"
     VALIDATION = "validation"
@@ -44,7 +242,57 @@ class SplitType(Enum):
 
 
 class SamplingStrategy(Enum):
-    """Strategies for sampling from datasets."""
+    """
+    Strategies for sampling examples from datasets.
+
+    This enumeration defines different sampling strategies that can be
+    used when selecting a subset of examples from a dataset. Each strategy
+    has different properties regarding representativeness and randomness.
+
+    Attributes
+    ----------
+    RANDOM : str
+        Uniform random sampling without replacement.
+    STRATIFIED : str
+        Sampling that maintains category proportions from the original dataset.
+    SEQUENTIAL : str
+        Takes the first N examples in order (deterministic).
+    BALANCED : str
+        Attempts to sample equal numbers from each category.
+
+    Examples
+    --------
+    >>> from insideLLMs.benchmark_datasets import SamplingStrategy, sample_dataset
+    >>> from insideLLMs.benchmark_datasets import create_reasoning_dataset
+    >>> dataset = create_reasoning_dataset()
+
+    >>> # Random sampling
+    >>> samples = sample_dataset(dataset, n=3, strategy=SamplingStrategy.RANDOM, seed=42)
+    >>> len(samples)
+    3
+
+    >>> # Sequential sampling (first N examples)
+    >>> samples = sample_dataset(dataset, n=2, strategy=SamplingStrategy.SEQUENTIAL)
+    >>> samples[0].input_text[:20]
+    'If all cats are anim'
+
+    >>> # Stratified sampling (preserves category ratios)
+    >>> samples = sample_dataset(dataset, n=3, strategy=SamplingStrategy.STRATIFIED, seed=42)
+
+    >>> # Balanced sampling (equal from each category)
+    >>> samples = sample_dataset(dataset, n=4, strategy=SamplingStrategy.BALANCED, seed=42)
+
+    Notes
+    -----
+    - STRATIFIED requires examples to have category labels
+    - BALANCED may return fewer examples if categories are imbalanced
+    - Use a seed for reproducible sampling with RANDOM, STRATIFIED, or BALANCED
+
+    See Also
+    --------
+    BenchmarkDataset.sample : Sample examples from a dataset.
+    sample_dataset : Convenience function for sampling.
+    """
 
     RANDOM = "random"
     STRATIFIED = "stratified"
@@ -54,7 +302,88 @@ class SamplingStrategy(Enum):
 
 @dataclass
 class DatasetExample:
-    """A single example from a dataset."""
+    """
+    A single example from a benchmark dataset.
+
+    This dataclass represents an individual evaluation example containing
+    an input prompt, expected output, and associated metadata. Examples
+    can be categorized by type, difficulty level, and source dataset.
+
+    Parameters
+    ----------
+    id : str
+        Unique identifier for the example. If empty, one will be
+        auto-generated from the input text using MD5 hashing.
+    input_text : str
+        The input prompt or question to present to the LLM.
+    expected_output : str, optional
+        The expected or reference output for evaluation.
+    metadata : dict[str, Any], optional
+        Additional metadata associated with the example.
+    category : str, optional
+        Sub-category within the dataset (e.g., "syllogism", "arithmetic").
+    difficulty : str, optional
+        Difficulty level (e.g., "easy", "medium", "hard").
+    source : str, optional
+        Source dataset or origin of the example.
+
+    Attributes
+    ----------
+    id : str
+        Unique identifier for the example.
+    input_text : str
+        The input prompt or question.
+    expected_output : str or None
+        The expected output for evaluation.
+    metadata : dict[str, Any]
+        Additional metadata dictionary.
+    category : str or None
+        Sub-category label.
+    difficulty : str or None
+        Difficulty level.
+    source : str or None
+        Source dataset name.
+
+    Examples
+    --------
+    Creating a simple example:
+
+    >>> example = DatasetExample(
+    ...     id="ex001",
+    ...     input_text="What is 2 + 2?",
+    ...     expected_output="4",
+    ...     category="arithmetic",
+    ...     difficulty="easy"
+    ... )
+    >>> print(example.input_text)
+    What is 2 + 2?
+
+    Creating an example with metadata:
+
+    >>> example = DatasetExample(
+    ...     id="ex002",
+    ...     input_text="Explain photosynthesis",
+    ...     expected_output="Process by which plants convert sunlight to energy",
+    ...     metadata={"topic": "biology", "grade_level": 5},
+    ...     category="science",
+    ...     difficulty="medium"
+    ... )
+    >>> example.metadata["topic"]
+    'biology'
+
+    Converting to and from dictionary:
+
+    >>> example = DatasetExample(id="ex003", input_text="Hello", expected_output="Hi")
+    >>> data = example.to_dict()
+    >>> restored = DatasetExample.from_dict(data)
+    >>> restored.input_text == example.input_text
+    True
+
+    See Also
+    --------
+    BenchmarkDataset : Container for multiple DatasetExample instances.
+    DatasetBuilder.add_example : Add examples using the builder pattern.
+    """
 
     id: str
     input_text: str
@@ -65,7 +394,38 @@ class DatasetExample:
     source: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the example to a dictionary representation.
+
+        Creates a dictionary containing all fields of the example,
+        suitable for JSON serialization or other dictionary-based
+        operations.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with keys: 'id', 'input_text', 'expected_output',
+            'metadata', 'category', 'difficulty', 'source'.
+
+        Examples
+        --------
+        >>> example = DatasetExample(
+        ...     id="test1",
+        ...     input_text="What is Python?",
+        ...     expected_output="A programming language",
+        ...     category="factual",
+        ...     difficulty="easy"
+        ... )
+        >>> data = example.to_dict()
+        >>> data['id']
+        'test1'
+        >>> data['category']
+        'factual'
+
+        >>> # Useful for JSON serialization
+        >>> import json
+        >>> json_str = json.dumps(example.to_dict())
+        """
         return {
             "id": self.id,
             "input_text": self.input_text,
@@ -78,7 +438,64 @@ class DatasetExample:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DatasetExample":
-        """Create from dictionary."""
+        """
+        Create a DatasetExample from a dictionary.
+
+        Factory method that constructs a DatasetExample from a dictionary.
+        Supports multiple key naming conventions for input/output fields
+        to accommodate different data formats.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            Dictionary containing example data. Supported keys:
+            - 'id': Example identifier
+            - 'input_text', 'input', or 'question': Input prompt
+            - 'expected_output', 'output', or 'answer': Expected output
+            - 'metadata': Additional metadata dict
+            - 'category': Category label
+            - 'difficulty': Difficulty level
+            - 'source': Source dataset name
+
+        Returns
+        -------
+        DatasetExample
+            A new DatasetExample instance populated from the dictionary.
+
+        Examples
+        --------
+        Standard format:
+
+        >>> data = {
+        ...     "id": "q001",
+        ...     "input_text": "What is the capital of France?",
+        ...     "expected_output": "Paris",
+        ...     "category": "geography"
+        ... }
+        >>> example = DatasetExample.from_dict(data)
+        >>> example.expected_output
+        'Paris'
+
+        Alternative key names (common in QA datasets):
+
+        >>> data = {"question": "Who wrote Hamlet?", "answer": "Shakespeare"}
+        >>> example = DatasetExample.from_dict(data)
+        >>> example.input_text
+        'Who wrote Hamlet?'
+        >>> example.expected_output
+        'Shakespeare'
+
+        With metadata:
+
+        >>> data = {
+        ...     "input": "Solve: 5 * 6",
+        ...     "output": "30",
+        ...     "metadata": {"operation": "multiplication"}
+        ... }
+        >>> example = DatasetExample.from_dict(data)
+        >>> example.metadata["operation"]
+        'multiplication'
+        """
         return cls(
             id=data.get("id", ""),
             input_text=data.get("input_text", data.get("input", data.get("question", ""))),

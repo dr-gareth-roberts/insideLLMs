@@ -2,6 +2,76 @@
 
 This module provides tools for running LLM experiments, either programmatically
 or from configuration files. Supports async execution for parallel processing.
+
+The module contains two main runner classes:
+
+- :class:`ProbeRunner`: Synchronous runner for sequential probe execution
+- :class:`AsyncProbeRunner`: Asynchronous runner for concurrent probe execution
+
+It also provides convenience functions for running experiments directly from
+configuration files:
+
+- :func:`run_probe`: Simple function to run a probe on a model
+- :func:`run_probe_async`: Async version of run_probe
+- :func:`run_experiment_from_config`: Run an experiment defined in YAML/JSON
+- :func:`run_experiment_from_config_async`: Async version
+- :func:`run_harness_from_config`: Run multi-model/multi-probe harness
+
+Examples
+--------
+Basic probe execution with ProbeRunner:
+
+    >>> from insideLLMs.models import OpenAIModel
+    >>> from insideLLMs.probes import FactualityProbe
+    >>> from insideLLMs.runtime.runner import ProbeRunner
+    >>>
+    >>> model = OpenAIModel(model_name="gpt-4")
+    >>> probe = FactualityProbe()
+    >>> runner = ProbeRunner(model, probe)
+    >>>
+    >>> prompts = [
+    ...     {"messages": [{"role": "user", "content": "What is 2+2?"}]},
+    ...     {"messages": [{"role": "user", "content": "Who wrote Hamlet?"}]},
+    ... ]
+    >>> results = runner.run(prompts)
+    >>> print(f"Success rate: {runner.success_rate:.1%}")
+    Success rate: 100.0%
+
+Using AsyncProbeRunner for concurrent execution:
+
+    >>> import asyncio
+    >>> from insideLLMs.runtime.runner import AsyncProbeRunner
+    >>>
+    >>> async def run_concurrent():
+    ...     model = OpenAIModel(model_name="gpt-4")
+    ...     probe = FactualityProbe()
+    ...     runner = AsyncProbeRunner(model, probe)
+    ...     results = await runner.run(prompts, concurrency=10)
+    ...     return results
+    >>>
+    >>> results = asyncio.run(run_concurrent())
+
+Running from a configuration file:
+
+    >>> from insideLLMs.runtime.runner import run_experiment_from_config
+    >>>
+    >>> # config.yaml contains model, probe, and dataset definitions
+    >>> results = run_experiment_from_config("config.yaml")
+
+Getting ExperimentResult with full metadata:
+
+    >>> from insideLLMs.config_types import RunConfig
+    >>>
+    >>> config = RunConfig(return_experiment=True)
+    >>> experiment = runner.run(prompts, config=config)
+    >>> print(f"Experiment ID: {experiment.experiment_id}")
+    >>> print(f"Score: {experiment.score}")
+
+See Also
+--------
+insideLLMs.config_types.RunConfig : Configuration options for runners
+insideLLMs.types.ExperimentResult : Structured experiment results
+insideLLMs.types.ProbeResult : Individual probe execution results
 """
 
 import asyncio
@@ -98,15 +168,76 @@ class _RunnerBase:
     """Base class for ProbeRunner and AsyncProbeRunner with shared functionality.
 
     This class provides common initialization, properties, and helper methods
-    used by both synchronous and asynchronous runners.
+    used by both synchronous and asynchronous runners. It should not be
+    instantiated directly; use :class:`ProbeRunner` or :class:`AsyncProbeRunner`
+    instead.
+
+    Attributes
+    ----------
+    model : Model
+        The model instance to test.
+    probe : Probe
+        The probe instance to run.
+    last_run_id : Optional[str]
+        The unique identifier of the last completed run.
+    last_run_dir : Optional[Path]
+        The directory where the last run's artifacts were stored.
+    last_experiment : Optional[ExperimentResult]
+        The ExperimentResult from the last completed run.
+
+    Examples
+    --------
+    Accessing run statistics after execution:
+
+        >>> runner = ProbeRunner(model, probe)
+        >>> results = runner.run(prompts)
+        >>> print(f"Success rate: {runner.success_rate:.1%}")
+        >>> print(f"Error count: {runner.error_count}")
+        >>> print(f"Run ID: {runner.last_run_id}")
+
+    Accessing the last experiment result:
+
+        >>> if runner.last_experiment:
+        ...     print(f"Score: {runner.last_experiment.score}")
+        ...     print(f"Started: {runner.last_experiment.started_at}")
     """
 
     def __init__(self, model: Model, probe: Probe):
-        """Initialize the runner.
+        """Initialize the runner with a model and probe.
 
-        Args:
-            model: The model to test.
-            probe: The probe to run.
+        Parameters
+        ----------
+        model : Model
+            The model to test. Must implement the Model interface.
+        probe : Probe
+            The probe to run. Must implement the Probe interface.
+
+        Examples
+        --------
+        Creating a runner for testing:
+
+            >>> from insideLLMs.models import OpenAIModel
+            >>> from insideLLMs.probes import FactualityProbe
+            >>>
+            >>> model = OpenAIModel(model_name="gpt-4")
+            >>> probe = FactualityProbe()
+            >>> runner = ProbeRunner(model, probe)
+
+        Using a custom model and probe:
+
+            >>> from insideLLMs.models.base import Model
+            >>> from insideLLMs.probes.base import Probe
+            >>>
+            >>> class MyModel(Model):
+            ...     def generate(self, messages):
+            ...         return "response"
+            >>>
+            >>> class MyProbe(Probe):
+            ...     name = "my_probe"
+            ...     def run(self, model, input_data):
+            ...         return model.generate(input_data)
+            >>>
+            >>> runner = ProbeRunner(MyModel(), MyProbe())
         """
         self.model = model
         self.probe = probe
@@ -117,7 +248,32 @@ class _RunnerBase:
 
     @property
     def success_rate(self) -> float:
-        """Calculate the success rate of the last run."""
+        """Calculate the success rate of the last run.
+
+        Returns the proportion of successful results from the most recent
+        execution. Returns 0.0 if no results are available.
+
+        Returns
+        -------
+        float
+            Success rate as a decimal between 0.0 and 1.0.
+
+        Examples
+        --------
+        Checking success rate after a run:
+
+            >>> runner = ProbeRunner(model, probe)
+            >>> results = runner.run(prompts)
+            >>> print(f"Success rate: {runner.success_rate:.1%}")
+            Success rate: 95.0%
+
+        Handling empty results:
+
+            >>> runner = ProbeRunner(model, probe)
+            >>> # Before running any prompts
+            >>> print(runner.success_rate)
+            0.0
+        """
         if not self._results:
             return 0.0
         successes = sum(1 for r in self._results if r.get("status") == "success")
@@ -125,24 +281,114 @@ class _RunnerBase:
 
     @property
     def error_count(self) -> int:
-        """Count errors from the last run."""
+        """Count errors from the last run.
+
+        Returns the total number of results with "error" status from the
+        most recent execution.
+
+        Returns
+        -------
+        int
+            Number of errors encountered during the last run.
+
+        Examples
+        --------
+        Checking error count:
+
+            >>> runner = ProbeRunner(model, probe)
+            >>> results = runner.run(prompts)
+            >>> if runner.error_count > 0:
+            ...     print(f"Encountered {runner.error_count} errors")
+        """
         return sum(1 for r in self._results if r.get("status") == "error")
 
 
 class ProbeRunner(_RunnerBase):
-    """Runs a probe against a model on a dataset.
+    """Synchronous runner for executing probes against a model.
 
     The ProbeRunner orchestrates the execution of probes, handling error
-    recovery, progress tracking, and result aggregation.
+    recovery, progress tracking, result aggregation, and artifact emission.
+    It processes prompts sequentially, making it suitable for scenarios where
+    order matters or when API rate limits are a concern.
 
-    Attributes:
-        model: The model to test.
-        probe: The probe to run.
+    For concurrent execution, use :class:`AsyncProbeRunner` instead.
 
-    Example:
+    Attributes
+    ----------
+    model : Model
+        The model instance being tested.
+    probe : Probe
+        The probe instance being run.
+    last_run_id : Optional[str]
+        Unique identifier of the last completed run, generated deterministically
+        from the input configuration.
+    last_run_dir : Optional[Path]
+        Directory where the last run's artifacts were stored (records.jsonl,
+        manifest.json, etc.).
+    last_experiment : Optional[ExperimentResult]
+        The ExperimentResult from the last completed run.
+    success_rate : float
+        Proportion of successful results from the last run (0.0 to 1.0).
+    error_count : int
+        Number of errors encountered in the last run.
+
+    Examples
+    --------
+    Basic usage with a list of prompts:
+
+        >>> from insideLLMs.models import OpenAIModel
+        >>> from insideLLMs.probes import FactualityProbe
+        >>> from insideLLMs.runtime.runner import ProbeRunner
+        >>>
+        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> probe = FactualityProbe()
         >>> runner = ProbeRunner(model, probe)
-        >>> results = runner.run(dataset)
+        >>>
+        >>> prompts = [
+        ...     {"messages": [{"role": "user", "content": "What is 2+2?"}]},
+        ...     {"messages": [{"role": "user", "content": "What is the capital of France?"}]},
+        ... ]
+        >>> results = runner.run(prompts)
+        >>> print(f"Processed {len(results)} prompts")
         >>> print(f"Success rate: {runner.success_rate:.1%}")
+
+    Using RunConfig for advanced options:
+
+        >>> from insideLLMs.config_types import RunConfig
+        >>>
+        >>> config = RunConfig(
+        ...     emit_run_artifacts=True,
+        ...     run_root="./experiments",
+        ...     stop_on_error=False,
+        ...     return_experiment=True,
+        ... )
+        >>> experiment = runner.run(prompts, config=config)
+        >>> print(f"Experiment ID: {experiment.experiment_id}")
+        >>> print(f"Score: {experiment.score}")
+
+    With progress tracking:
+
+        >>> def on_progress(current, total):
+        ...     print(f"Progress: {current}/{total}")
+        >>>
+        >>> results = runner.run(prompts, progress_callback=on_progress)
+
+    Resuming an interrupted run:
+
+        >>> # First run gets interrupted
+        >>> try:
+        ...     results = runner.run(prompts, emit_run_artifacts=True)
+        ... except KeyboardInterrupt:
+        ...     pass
+        >>>
+        >>> # Resume from where we left off
+        >>> results = runner.run(prompts, resume=True, run_dir=runner.last_run_dir)
+
+    See Also
+    --------
+    AsyncProbeRunner : Asynchronous runner for concurrent execution.
+    run_probe : Convenience function for simple probe execution.
+    run_experiment_from_config : Run experiments from YAML/JSON config files.
     """
 
     def run(
@@ -171,21 +417,127 @@ class ProbeRunner(_RunnerBase):
     ) -> Union[list[dict[str, Any]], ExperimentResult]:
         """Run the probe on the model for each item in the prompt set.
 
-        Args:
-            prompt_set: List of inputs to test.
-            config: Optional RunConfig with all run settings. Individual kwargs
-                override config values if both are provided.
-            progress_callback: Optional callback for progress updates. Supports both
-                legacy (current, total) signature and new ProgressInfo signature.
-            stop_on_error: If True, stop execution on first error.
-            resume: If True, resume from existing records.jsonl.
-            use_probe_batch: If True, execute using Probe.run_batch.
-            batch_workers: Worker count for Probe.run_batch.
-            return_experiment: If True, return ExperimentResult.
-            **probe_kwargs: Additional arguments passed to the probe.
+        Executes the probe sequentially on each input, collecting results and
+        optionally emitting run artifacts (records.jsonl, manifest.json) to disk.
+        Supports progress tracking, error handling, and resumable runs.
 
-        Returns:
-            A list of result dictionaries or an ExperimentResult.
+        Parameters
+        ----------
+        prompt_set : list[Any]
+            List of inputs to test. Each item is passed to the probe's run method.
+            Typically a list of dictionaries with "messages" keys.
+        config : Optional[RunConfig], default None
+            RunConfig with all run settings. Individual kwargs override config
+            values if both are provided.
+        progress_callback : Optional[ProgressCallback], default None
+            Callback for progress updates. Supports two signatures:
+            - Legacy: ``callback(current: int, total: int)``
+            - Rich: ``callback(info: ProgressInfo)``
+        stop_on_error : Optional[bool], default None
+            If True, stop execution on first error. If None, uses config value.
+        validate_output : Optional[bool], default None
+            If True, validate outputs against the schema.
+        schema_version : Optional[str], default None
+            Schema version for validation (e.g., "1.0.0").
+        validation_mode : Optional[str], default None
+            Validation mode: "strict" or "lenient".
+        emit_run_artifacts : Optional[bool], default None
+            If True, write records.jsonl and manifest.json to run_dir.
+        run_dir : Optional[Union[str, Path]], default None
+            Explicit directory for run artifacts.
+        run_root : Optional[Union[str, Path]], default None
+            Root directory under which run directories are created.
+        run_id : Optional[str], default None
+            Explicit run ID. If None, generated deterministically from inputs.
+        overwrite : Optional[bool], default None
+            If True, overwrite existing run directory.
+        dataset_info : Optional[dict[str, Any]], default None
+            Metadata about the dataset for the manifest.
+        config_snapshot : Optional[dict[str, Any]], default None
+            Configuration snapshot for reproducibility.
+        store_messages : Optional[bool], default None
+            If True, store full message content in records.
+        resume : Optional[bool], default None
+            If True, resume from existing records.jsonl, skipping completed items.
+        use_probe_batch : Optional[bool], default None
+            If True, use Probe.run_batch for potentially faster execution.
+        batch_workers : Optional[int], default None
+            Number of workers for Probe.run_batch.
+        return_experiment : Optional[bool], default None
+            If True, return ExperimentResult instead of list of dicts.
+        **probe_kwargs : Any
+            Additional keyword arguments passed to the probe's run method.
+
+        Returns
+        -------
+        Union[list[dict[str, Any]], ExperimentResult]
+            If return_experiment is False (default): list of result dictionaries,
+            each containing "input", "output", "status", "latency_ms", etc.
+            If return_experiment is True: ExperimentResult with aggregated metrics.
+
+        Raises
+        ------
+        RunnerExecutionError
+            If stop_on_error is True and a probe execution fails.
+        ValueError
+            If prompt_set is empty or invalid.
+        FileExistsError
+            If run_dir exists and is not empty, unless overwrite=True.
+
+        Examples
+        --------
+        Basic execution returning result dictionaries:
+
+            >>> runner = ProbeRunner(model, probe)
+            >>> results = runner.run([
+            ...     {"messages": [{"role": "user", "content": "Hello"}]},
+            ...     {"messages": [{"role": "user", "content": "World"}]},
+            ... ])
+            >>> for r in results:
+            ...     print(f"Status: {r['status']}, Output: {r['output'][:50]}")
+
+        Using RunConfig for all options:
+
+            >>> from insideLLMs.config_types import RunConfig
+            >>> config = RunConfig(
+            ...     emit_run_artifacts=True,
+            ...     run_root="./experiments",
+            ...     stop_on_error=False,
+            ...     validate_output=True,
+            ...     return_experiment=True,
+            ... )
+            >>> experiment = runner.run(prompts, config=config)
+
+        With progress callback and error handling:
+
+            >>> def progress(current, total):
+            ...     pct = current / total * 100
+            ...     print(f"\\rProgress: {pct:.1f}%", end="")
+            >>>
+            >>> try:
+            ...     results = runner.run(
+            ...         prompts,
+            ...         progress_callback=progress,
+            ...         stop_on_error=True
+            ...     )
+            ... except RunnerExecutionError as e:
+            ...     print(f"Failed at prompt {e.prompt_index}: {e.reason}")
+
+        Resuming an interrupted run:
+
+            >>> # The run directory will be reused
+            >>> results = runner.run(
+            ...     prompts,
+            ...     resume=True,
+            ...     run_dir="./experiments/abc123",
+            ...     emit_run_artifacts=True,
+            ... )
+            >>> # Only unprocessed items will be executed
+
+        See Also
+        --------
+        AsyncProbeRunner.run : Async version with concurrency support.
+        run_probe : Convenience function wrapping ProbeRunner.
         """
         import time
 
@@ -609,6 +961,66 @@ class ProbeRunner(_RunnerBase):
 
 
 def _serialize_value(value: Any) -> Any:
+    """Recursively serialize a value to JSON-compatible types.
+
+    Handles conversion of complex Python types (datetime, Path, Enum, dataclass,
+    sets, etc.) into JSON-serializable primitives. Used throughout the runner
+    for JSONL emission and manifest generation.
+
+    Parameters
+    ----------
+    value : Any
+        The value to serialize. Can be any Python type including nested
+        structures like dicts, lists, dataclasses, etc.
+
+    Returns
+    -------
+    Any
+        A JSON-serializable representation of the input value:
+
+        - datetime -> ISO format string
+        - Path -> string path
+        - Enum -> enum value
+        - dataclass -> dict
+        - dict/list/tuple -> recursively serialized
+        - set/frozenset -> sorted list
+        - None/str/int/float/bool -> unchanged
+        - Other types -> str(value)
+
+    Examples
+    --------
+    Serializing datetime and Path objects:
+
+        >>> from datetime import datetime, timezone
+        >>> from pathlib import Path
+        >>> _serialize_value(datetime(2024, 1, 15, tzinfo=timezone.utc))
+        '2024-01-15T00:00:00+00:00'
+        >>> _serialize_value(Path("/home/user/data"))
+        '/home/user/data'
+
+    Serializing nested structures:
+
+        >>> data = {"key": [1, 2, {3, 4}], "path": Path("/tmp")}
+        >>> _serialize_value(data)
+        {'key': [1, 2, [3, 4]], 'path': '/tmp'}
+
+    Handling sets (returns sorted list for determinism):
+
+        >>> _serialize_value({3, 1, 2})
+        [1, 2, 3]
+
+    Unknown types become strings:
+
+        >>> class CustomObj:
+        ...     def __str__(self): return "custom"
+        >>> _serialize_value(CustomObj())
+        'custom'
+
+    Notes
+    -----
+    This function is resilient and never raises exceptions. For unrecognized
+    types, it falls back to str() conversion to ensure JSONL emission succeeds.
+    """
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, Path):
@@ -637,6 +1049,45 @@ def _serialize_value(value: Any) -> Any:
 
 
 def _normalize_status(status: Any) -> str:
+    """Normalize a status value to a string representation.
+
+    Converts various status representations (ResultStatus enum, other Enums,
+    None, or raw strings) into a consistent string format for storage.
+
+    Parameters
+    ----------
+    status : Any
+        The status value to normalize. Can be ResultStatus, other Enum,
+        None, or string.
+
+    Returns
+    -------
+    str
+        Normalized status string. Returns "error" for None values,
+        the enum value for Enum types, or str(status) otherwise.
+
+    Examples
+    --------
+    Normalizing ResultStatus enum:
+
+        >>> from insideLLMs.types import ResultStatus
+        >>> _normalize_status(ResultStatus.SUCCESS)
+        'success'
+        >>> _normalize_status(ResultStatus.ERROR)
+        'error'
+
+    Handling None (treated as error):
+
+        >>> _normalize_status(None)
+        'error'
+
+    String passthrough:
+
+        >>> _normalize_status("success")
+        'success'
+        >>> _normalize_status("custom_status")
+        'custom_status'
+    """
     if isinstance(status, ResultStatus):
         return status.value
     if isinstance(status, Enum):
@@ -652,6 +1103,74 @@ def _result_dict_from_probe_result(
     schema_version: str,
     error_type: Optional[str] = None,
 ) -> dict[str, Any]:
+    """Convert a ProbeResult into a dictionary for storage and serialization.
+
+    Transforms a ProbeResult dataclass into a flat dictionary suitable for
+    JSONL emission and result aggregation. Handles status normalization
+    and optional error type extraction from metadata.
+
+    Parameters
+    ----------
+    result : ProbeResult
+        The probe result to convert. Contains input, output, status,
+        latency_ms, error, and metadata fields.
+    schema_version : str
+        Schema version string to include in the output dictionary.
+    error_type : Optional[str], default None
+        Explicit error type to include. If None and result has an error,
+        attempts to extract error_type from metadata.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+
+        - schema_version: The provided schema version
+        - input: The original input from the result
+        - output: The probe output
+        - latency_ms: Execution time in milliseconds
+        - status: Normalized status string
+        - metadata: Additional metadata dict
+        - error: Error message (if present)
+        - error_type: Error type string (if present)
+
+    Examples
+    --------
+    Converting a successful result:
+
+        >>> from insideLLMs.types import ProbeResult, ResultStatus
+        >>> result = ProbeResult(
+        ...     input={"messages": [{"role": "user", "content": "Hi"}]},
+        ...     output="Hello!",
+        ...     status=ResultStatus.SUCCESS,
+        ...     latency_ms=150.5,
+        ...     metadata={"model": "gpt-4"},
+        ... )
+        >>> d = _result_dict_from_probe_result(result, schema_version="1.0.0")
+        >>> d["status"]
+        'success'
+        >>> d["latency_ms"]
+        150.5
+
+    Converting an error result:
+
+        >>> result = ProbeResult(
+        ...     input="test",
+        ...     status=ResultStatus.ERROR,
+        ...     error="API timeout",
+        ...     metadata={"error_type": "TimeoutError"},
+        ... )
+        >>> d = _result_dict_from_probe_result(result, schema_version="1.0.0")
+        >>> d["error"]
+        'API timeout'
+        >>> d["error_type"]
+        'TimeoutError'
+
+    See Also
+    --------
+    _result_dict_from_record : Convert a stored record back to result dict.
+    _build_result_record : Build a full JSONL record with additional context.
+    """
     status = _normalize_status(result.status)
     metadata = result.metadata if isinstance(result.metadata, dict) else {}
     if error_type is None:
@@ -675,6 +1194,50 @@ def _result_dict_from_probe_result(
 def _record_index_from_record(
     record: dict[str, Any], default: Optional[int] = None
 ) -> Optional[int]:
+    """Extract the record index from a stored JSONL record.
+
+    Retrieves the record_index from a record's custom metadata. This is used
+    during resume operations to verify that existing records form a contiguous
+    prefix of the original prompt set.
+
+    Parameters
+    ----------
+    record : dict[str, Any]
+        A JSONL record dictionary, typically read from records.jsonl.
+        Expected to have a "custom" key containing a dict with "record_index".
+    default : Optional[int], default None
+        Value to return if record_index cannot be extracted or parsed.
+
+    Returns
+    -------
+    Optional[int]
+        The record index as an integer, or the default value if not found
+        or not parseable.
+
+    Examples
+    --------
+    Extracting index from a valid record:
+
+        >>> record = {"custom": {"record_index": 5, "replicate_key": "abc"}}
+        >>> _record_index_from_record(record)
+        5
+
+    Handling missing custom field:
+
+        >>> record = {"input": "test", "output": "result"}
+        >>> _record_index_from_record(record, default=0)
+        0
+
+    Handling invalid index value:
+
+        >>> record = {"custom": {"record_index": "not_a_number"}}
+        >>> _record_index_from_record(record, default=-1)
+        -1
+
+    See Also
+    --------
+    _result_dict_from_record : Extract result data from a stored record.
+    """
     custom = record.get("custom")
     if isinstance(custom, dict):
         index = custom.get("record_index")
@@ -691,6 +1254,66 @@ def _result_dict_from_record(
     *,
     schema_version: str,
 ) -> dict[str, Any]:
+    """Convert a stored JSONL record back into a result dictionary.
+
+    Extracts the core result fields from a full JSONL record, producing a
+    result dictionary compatible with the runner's internal result format.
+    Used during resume operations to reconstruct results from existing records.
+
+    Parameters
+    ----------
+    record : dict[str, Any]
+        A JSONL record dictionary read from records.jsonl. Expected to
+        contain input, output, latency_ms, status, and optionally error fields.
+    schema_version : str
+        Fallback schema version if not present in the record.
+
+    Returns
+    -------
+    dict[str, Any]
+        A result dictionary containing:
+
+        - schema_version: From record or fallback
+        - input: Original input data
+        - output: Probe output
+        - latency_ms: Execution time
+        - status: Status string
+        - metadata: Empty dict (not preserved in records)
+        - error: Error message (if present)
+        - error_type: Error type (if present)
+
+    Examples
+    --------
+    Converting a success record:
+
+        >>> record = {
+        ...     "schema_version": "1.0.0",
+        ...     "input": {"messages": [{"role": "user", "content": "Hi"}]},
+        ...     "output": "Hello!",
+        ...     "latency_ms": 150.0,
+        ...     "status": "success",
+        ... }
+        >>> result = _result_dict_from_record(record, schema_version="1.0.0")
+        >>> result["status"]
+        'success'
+
+    Converting an error record:
+
+        >>> record = {
+        ...     "input": "test",
+        ...     "status": "error",
+        ...     "error": "Connection failed",
+        ...     "error_type": "ConnectionError",
+        ... }
+        >>> result = _result_dict_from_record(record, schema_version="1.0.0")
+        >>> result["error"]
+        'Connection failed'
+
+    See Also
+    --------
+    _result_dict_from_probe_result : Convert ProbeResult to result dict.
+    _record_index_from_record : Extract index from a record.
+    """
     payload: dict[str, Any] = {
         "schema_version": record.get("schema_version", schema_version),
         "input": record.get("input"),
@@ -707,6 +1330,54 @@ def _result_dict_from_record(
 
 
 def _truncate_incomplete_jsonl(path: Path) -> None:
+    """Truncate a JSONL file to remove any incomplete final line.
+
+    When a run is interrupted, the final line of records.jsonl may be
+    incomplete (not terminated with a newline). This function removes
+    any such incomplete line to ensure the file contains only valid
+    JSON records for safe resume.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the JSONL file to truncate. File must exist.
+
+    Returns
+    -------
+    None
+        The file is modified in place.
+
+    Examples
+    --------
+    Truncating a file with incomplete final line:
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.NamedTemporaryFile(delete=False, suffix='.jsonl') as f:
+        ...     f.write(b'{"line": 1}\\n{"line": 2}\\n{"incomplete":')
+        ...     path = Path(f.name)
+        >>> _truncate_incomplete_jsonl(path)
+        >>> path.read_text()
+        '{"line": 1}\\n{"line": 2}\\n'
+
+    File already complete (no change):
+
+        >>> with tempfile.NamedTemporaryFile(delete=False, suffix='.jsonl') as f:
+        ...     f.write(b'{"line": 1}\\n{"line": 2}\\n')
+        ...     path = Path(f.name)
+        >>> _truncate_incomplete_jsonl(path)
+        >>> path.read_text()
+        '{"line": 1}\\n{"line": 2}\\n'
+
+    Notes
+    -----
+    This function operates at the byte level for efficiency and handles
+    files without any newlines by truncating to empty.
+
+    See Also
+    --------
+    _read_jsonl_records : Read records with optional truncation.
+    """
     data = path.read_bytes()
     if not data:
         return
@@ -720,6 +1391,66 @@ def _truncate_incomplete_jsonl(path: Path) -> None:
 
 
 def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> list[dict[str, Any]]:
+    """Read all records from a JSONL file.
+
+    Parses a JSONL (JSON Lines) file and returns a list of record dictionaries.
+    Optionally truncates incomplete final lines before reading, which is useful
+    for resuming interrupted runs.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the JSONL file. If the file doesn't exist, returns empty list.
+    truncate_incomplete : bool, default False
+        If True, truncate any incomplete final line before reading. This
+        ensures safe parsing after an interrupted write operation.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of parsed record dictionaries. Empty lines are skipped.
+        Non-dict JSON values are skipped.
+
+    Raises
+    ------
+    ValueError
+        If any non-empty line contains invalid JSON.
+
+    Examples
+    --------
+    Reading a valid JSONL file:
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
+        ...     f.write('{"id": 1, "status": "success"}\\n')
+        ...     f.write('{"id": 2, "status": "error"}\\n')
+        ...     path = Path(f.name)
+        >>> records = _read_jsonl_records(path)
+        >>> len(records)
+        2
+        >>> records[0]["id"]
+        1
+
+    Reading non-existent file:
+
+        >>> _read_jsonl_records(Path("/nonexistent/file.jsonl"))
+        []
+
+    Reading with truncation (safe resume):
+
+        >>> records = _read_jsonl_records(path, truncate_incomplete=True)
+
+    Notes
+    -----
+    Empty lines are silently skipped. This allows JSONL files with trailing
+    newlines or accidental blank lines to be parsed without error.
+
+    See Also
+    --------
+    _truncate_incomplete_jsonl : Truncate incomplete final line.
+    _build_result_record : Build records for writing to JSONL.
+    """
     if not path.exists():
         return []
     if truncate_incomplete:
@@ -739,11 +1470,50 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     return records
 
 
+# Module-level constants for deterministic timestamp generation.
+# These are used to produce reproducible timestamps from run IDs,
+# ensuring that the same configuration always produces the same
+# artifact timestamps for testing and caching purposes.
 _DETERMINISTIC_TIME_BASE = datetime(2000, 1, 1, tzinfo=timezone.utc)
-_DETERMINISTIC_TIME_RANGE_SECONDS = 10 * 365 * 24 * 60 * 60
+_DETERMINISTIC_TIME_RANGE_SECONDS = 10 * 365 * 24 * 60 * 60  # 10 years in seconds
 
 
 def _stable_json_dumps(data: Any) -> str:
+    """Serialize data to a stable, deterministic JSON string.
+
+    Produces identical JSON output for equivalent data structures regardless
+    of dict ordering or internal Python representation. Used for hashing
+    and fingerprinting where consistency is required.
+
+    Parameters
+    ----------
+    data : Any
+        Data to serialize. Passed through _serialize_value for type conversion.
+
+    Returns
+    -------
+    str
+        Compact JSON string with sorted keys and minimal separators.
+
+    Examples
+    --------
+    Consistent output regardless of dict order:
+
+        >>> _stable_json_dumps({"b": 2, "a": 1})
+        '{"a":1,"b":2}'
+        >>> _stable_json_dumps({"a": 1, "b": 2})
+        '{"a":1,"b":2}'
+
+    Nested structures:
+
+        >>> _stable_json_dumps({"outer": {"z": 3, "y": 2}})
+        '{"outer":{"y":2,"z":3}}'
+
+    See Also
+    --------
+    _serialize_value : Type conversion for JSON serialization.
+    _deterministic_hash : Hash generation using stable JSON.
+    """
     return json.dumps(
         _serialize_value(data),
         sort_keys=True,
@@ -753,17 +1523,126 @@ def _stable_json_dumps(data: Any) -> str:
 
 
 def _deterministic_hash(payload: Any) -> str:
+    """Generate a deterministic SHA-256 hash of any payload.
+
+    Produces a consistent hash for equivalent data structures by using
+    stable JSON serialization. Used for generating run IDs, experiment IDs,
+    and replicate keys.
+
+    Parameters
+    ----------
+    payload : Any
+        Data to hash. Can be any JSON-serializable structure.
+
+    Returns
+    -------
+    str
+        64-character lowercase hexadecimal SHA-256 hash.
+
+    Examples
+    --------
+    Hashing a configuration dict:
+
+        >>> config = {"model": "gpt-4", "probe": "factuality"}
+        >>> hash1 = _deterministic_hash(config)
+        >>> hash2 = _deterministic_hash(config)
+        >>> hash1 == hash2
+        True
+        >>> len(hash1)
+        64
+
+    Same data, different order, same hash:
+
+        >>> _deterministic_hash({"a": 1, "b": 2}) == _deterministic_hash({"b": 2, "a": 1})
+        True
+
+    See Also
+    --------
+    _stable_json_dumps : Stable JSON serialization.
+    _deterministic_run_id_from_inputs : Generate run IDs using this hash.
+    """
     return hashlib.sha256(_stable_json_dumps(payload).encode("utf-8")).hexdigest()
 
 
 def _fingerprint_value(value: Any) -> Optional[str]:
+    """Generate a short fingerprint hash of a value.
+
+    Produces a 12-character hash suitable for use as a compact identifier
+    or deduplication key. Returns None for None input.
+
+    Parameters
+    ----------
+    value : Any
+        Value to fingerprint. Can be any JSON-serializable type.
+
+    Returns
+    -------
+    Optional[str]
+        12-character hexadecimal fingerprint, or None if value is None.
+
+    Examples
+    --------
+    Fingerprinting a value:
+
+        >>> fp = _fingerprint_value({"key": "value"})
+        >>> len(fp)
+        12
+        >>> fp.isalnum()
+        True
+
+    None returns None:
+
+        >>> _fingerprint_value(None) is None
+        True
+
+    Consistent fingerprints:
+
+        >>> _fingerprint_value([1, 2, 3]) == _fingerprint_value([1, 2, 3])
+        True
+
+    See Also
+    --------
+    _deterministic_hash : Full 64-character hash.
+    """
     if value is None:
         return None
     return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
 
 
 def _default_run_root() -> Path:
-    """Get the default root directory for run artifacts."""
+    """Get the default root directory for run artifacts.
+
+    Returns the directory where run artifacts (records.jsonl, manifest.json)
+    are stored by default. Can be overridden via the INSIDELLMS_RUN_ROOT
+    environment variable.
+
+    Returns
+    -------
+    Path
+        Default run root directory. Falls back to ~/.insidellms/runs.
+
+    Examples
+    --------
+    Default location:
+
+        >>> import os
+        >>> if "INSIDELLMS_RUN_ROOT" not in os.environ:
+        ...     root = _default_run_root()
+        ...     str(root).endswith(".insidellms/runs")
+        True
+
+    With environment variable:
+
+        >>> import os
+        >>> os.environ["INSIDELLMS_RUN_ROOT"] = "/custom/runs"
+        >>> _default_run_root()
+        PosixPath('/custom/runs')
+        >>> del os.environ["INSIDELLMS_RUN_ROOT"]
+
+    See Also
+    --------
+    _prepare_run_dir : Create and validate a run directory.
+    """
     env_root = os.environ.get("INSIDELLMS_RUN_ROOT")
     if env_root:
         return Path(env_root).expanduser()
@@ -773,7 +1652,38 @@ def _default_run_root() -> Path:
 def _semver_tuple(version: str) -> tuple[int, int, int]:
     """Convert a semver string to a tuple for comparison.
 
-    Note: Delegates to insideLLMs.schemas.registry.semver_tuple
+    Parses a semantic version string (e.g., "1.2.3") into a tuple of integers
+    for numeric comparison. Delegates to insideLLMs.schemas.registry.semver_tuple.
+
+    Parameters
+    ----------
+    version : str
+        Semantic version string in "major.minor.patch" format.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        Tuple of (major, minor, patch) version numbers.
+
+    Examples
+    --------
+    Parsing version strings:
+
+        >>> _semver_tuple("1.0.0")
+        (1, 0, 0)
+        >>> _semver_tuple("2.3.4")
+        (2, 3, 4)
+
+    Version comparison:
+
+        >>> _semver_tuple("1.0.1") >= (1, 0, 1)
+        True
+        >>> _semver_tuple("1.0.0") < (1, 0, 1)
+        True
+
+    See Also
+    --------
+    insideLLMs.schemas.registry.semver_tuple : The underlying implementation.
     """
     from insideLLMs.schemas.registry import semver_tuple
 
@@ -783,7 +1693,38 @@ def _semver_tuple(version: str) -> tuple[int, int, int]:
 def _atomic_write_text(path: Path, text: str) -> None:
     """Write text to a file atomically using a temp file and rename.
 
-    Note: Delegates to insideLLMs.resources.atomic_write_text
+    Ensures that the file is either fully written or not modified at all,
+    preventing partial writes from interruptions. Delegates to
+    insideLLMs.resources.atomic_write_text.
+
+    Parameters
+    ----------
+    path : Path
+        Destination file path.
+    text : str
+        Text content to write.
+
+    Examples
+    --------
+    Writing a manifest atomically:
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as d:
+        ...     path = Path(d) / "manifest.json"
+        ...     _atomic_write_text(path, '{"key": "value"}')
+        ...     path.read_text()
+        '{"key": "value"}'
+
+    Notes
+    -----
+    Uses a temporary file with rename to achieve atomicity. On POSIX systems,
+    rename is atomic when source and destination are on the same filesystem.
+
+    See Also
+    --------
+    _atomic_write_yaml : Atomic YAML file writing.
+    insideLLMs.resources.atomic_write_text : The underlying implementation.
     """
     from insideLLMs.resources import atomic_write_text
 
@@ -791,7 +1732,37 @@ def _atomic_write_text(path: Path, text: str) -> None:
 
 
 def _atomic_write_yaml(path: Path, data: Any) -> None:
-    """Write data to a YAML file atomically."""
+    """Write data to a YAML file atomically.
+
+    Serializes data to YAML format and writes it atomically to ensure
+    the file is either fully written or not modified. Used for writing
+    config.resolved.yaml files for reproducibility.
+
+    Parameters
+    ----------
+    path : Path
+        Destination file path.
+    data : Any
+        Data to serialize as YAML. Passed through _serialize_value first.
+
+    Examples
+    --------
+    Writing configuration atomically:
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> config = {"model": {"type": "openai", "args": {"model_name": "gpt-4"}}}
+        >>> with tempfile.TemporaryDirectory() as d:
+        ...     path = Path(d) / "config.yaml"
+        ...     _atomic_write_yaml(path, config)
+        ...     "model:" in path.read_text()
+        True
+
+    See Also
+    --------
+    _atomic_write_text : Atomic text file writing.
+    _serialize_value : Value serialization for YAML compatibility.
+    """
     content = yaml.safe_dump(
         _serialize_value(data),
         sort_keys=False,
@@ -802,7 +1773,39 @@ def _atomic_write_yaml(path: Path, data: Any) -> None:
 
 
 def _ensure_run_sentinel(run_dir_path: Path) -> None:
-    """Create a marker file to identify run directories."""
+    """Create a marker file to identify run directories.
+
+    Creates a .insidellms_run sentinel file in the run directory. This marker
+    is used to verify that a directory is a legitimate insideLLMs run directory
+    before allowing destructive operations like overwrite.
+
+    Parameters
+    ----------
+    run_dir_path : Path
+        Path to the run directory.
+
+    Examples
+    --------
+    Creating a sentinel:
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as d:
+        ...     run_dir = Path(d) / "test_run"
+        ...     run_dir.mkdir()
+        ...     _ensure_run_sentinel(run_dir)
+        ...     (run_dir / ".insidellms_run").exists()
+        True
+
+    Notes
+    -----
+    This function never raises exceptions. If the sentinel cannot be created
+    (e.g., due to permissions), the run continues without the marker.
+
+    See Also
+    --------
+    _prepare_run_dir : Uses sentinel for overwrite safety.
+    """
     marker = run_dir_path / ".insidellms_run"
     if not marker.exists():
         try:
@@ -813,7 +1816,57 @@ def _ensure_run_sentinel(run_dir_path: Path) -> None:
 
 
 def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
-    """Normalize model/probe info object to a dict."""
+    """Normalize model/probe info object to a dictionary.
+
+    Converts various info object formats (dict, dataclass, pydantic model)
+    to a standard dictionary representation. Used for extracting model and
+    probe metadata in a format-agnostic way.
+
+    Parameters
+    ----------
+    info_obj : Any
+        Info object to normalize. Can be dict, dataclass, pydantic v1/v2
+        model, or any other type.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary representation of the info object. Returns empty dict
+        for None or unrecognized types.
+
+    Examples
+    --------
+    Normalizing a dataclass:
+
+        >>> from dataclasses import dataclass
+        >>> @dataclass
+        ... class ModelInfo:
+        ...     name: str
+        ...     version: str
+        >>> info = ModelInfo(name="gpt-4", version="1.0")
+        >>> _normalize_info_obj_to_dict(info)
+        {'name': 'gpt-4', 'version': '1.0'}
+
+    Passthrough for dict:
+
+        >>> _normalize_info_obj_to_dict({"key": "value"})
+        {'key': 'value'}
+
+    Handling None:
+
+        >>> _normalize_info_obj_to_dict(None)
+        {}
+
+    Notes
+    -----
+    Supports both pydantic v1 (.dict()) and pydantic v2 (.model_dump())
+    for backward compatibility across different pydantic versions.
+
+    See Also
+    --------
+    _build_model_spec : Uses this to extract model info.
+    _build_probe_spec : Uses this to extract probe info.
+    """
     if info_obj is None:
         return {}
     if isinstance(info_obj, dict):
@@ -836,7 +1889,51 @@ def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
 
 
 def _build_model_spec(model: Any) -> dict[str, Any]:
-    """Build model specification dict from a model object."""
+    """Build a model specification dictionary from a model object.
+
+    Extracts key identifying information from a model to create a standardized
+    specification dictionary for manifest generation and result records.
+
+    Parameters
+    ----------
+    model : Any
+        Model object with optional info() method or attributes.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+
+        - model_id: Identifier for the model
+        - provider: Model provider/type (e.g., "openai", "anthropic")
+        - params: Full info dictionary as parameters
+
+    Examples
+    --------
+    Building spec from a model:
+
+        >>> class MockModel:
+        ...     def info(self):
+        ...         return {"model_id": "gpt-4", "provider": "openai"}
+        >>> spec = _build_model_spec(MockModel())
+        >>> spec["model_id"]
+        'gpt-4'
+        >>> spec["provider"]
+        'openai'
+
+    Fallback to class name:
+
+        >>> class CustomModel:
+        ...     pass
+        >>> spec = _build_model_spec(CustomModel())
+        >>> spec["model_id"]
+        'CustomModel'
+
+    See Also
+    --------
+    _build_probe_spec : Build probe specification.
+    _normalize_info_obj_to_dict : Normalize info objects.
+    """
     info_obj: Any = {}
     try:
         info_obj = model.info() if hasattr(model, "info") else {}
@@ -861,7 +1958,51 @@ def _build_model_spec(model: Any) -> dict[str, Any]:
 
 
 def _build_probe_spec(probe: Any) -> dict[str, Any]:
-    """Build probe specification dict from a probe object."""
+    """Build a probe specification dictionary from a probe object.
+
+    Extracts key identifying information from a probe to create a standardized
+    specification dictionary for manifest generation and result records.
+
+    Parameters
+    ----------
+    probe : Any
+        Probe object with optional name, probe_id, version attributes.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+
+        - probe_id: Identifier for the probe
+        - probe_version: Version string if available
+        - params: Empty dict (reserved for future use)
+
+    Examples
+    --------
+    Building spec from a probe:
+
+        >>> class MockProbe:
+        ...     name = "factuality"
+        ...     version = "1.0.0"
+        >>> spec = _build_probe_spec(MockProbe())
+        >>> spec["probe_id"]
+        'factuality'
+        >>> spec["probe_version"]
+        '1.0.0'
+
+    Fallback to class name:
+
+        >>> class CustomProbe:
+        ...     pass
+        >>> spec = _build_probe_spec(CustomProbe())
+        >>> spec["probe_id"]
+        'CustomProbe'
+
+    See Also
+    --------
+    _build_model_spec : Build model specification.
+    _build_dataset_spec : Build dataset specification.
+    """
     probe_id = (
         getattr(probe, "name", None) or getattr(probe, "probe_id", None) or probe.__class__.__name__
     )
@@ -870,7 +2011,57 @@ def _build_probe_spec(probe: Any) -> dict[str, Any]:
 
 
 def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any]:
-    """Build dataset specification dict from dataset info."""
+    """Build a dataset specification dictionary from dataset info.
+
+    Extracts key identifying information from dataset configuration to create
+    a standardized specification dictionary for manifest generation and
+    result records.
+
+    Parameters
+    ----------
+    dataset_info : Optional[dict[str, Any]]
+        Dataset configuration dictionary. Can contain name, path, version,
+        hash, provenance, format, etc.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+
+        - dataset_id: Identifier for the dataset (from name, dataset, or path)
+        - dataset_version: Version string if available
+        - dataset_hash: Content hash if available
+        - provenance: Source information (from provenance, source, or format)
+
+    Examples
+    --------
+    Building spec from HuggingFace dataset config:
+
+        >>> config = {"name": "cais/mmlu", "version": "1.0", "format": "hf"}
+        >>> spec = _build_dataset_spec(config)
+        >>> spec["dataset_id"]
+        'cais/mmlu'
+        >>> spec["provenance"]
+        'hf'
+
+    Building spec from local file config:
+
+        >>> config = {"path": "/data/test.jsonl", "format": "jsonl"}
+        >>> spec = _build_dataset_spec(config)
+        >>> spec["dataset_id"]
+        '/data/test.jsonl'
+
+    Handling None:
+
+        >>> spec = _build_dataset_spec(None)
+        >>> spec["dataset_id"] is None
+        True
+
+    See Also
+    --------
+    _build_model_spec : Build model specification.
+    _build_probe_spec : Build probe specification.
+    """
     di = dataset_info or {}
     dataset_id = di.get("name") or di.get("dataset") or di.get("path")
     dataset_version = di.get("version") or di.get("dataset_version")
@@ -885,6 +2076,47 @@ def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any
 
 
 def _hash_prompt_set(prompt_set: list[Any]) -> str:
+    """Generate a deterministic hash of a prompt set.
+
+    Creates a content-based hash of all prompts in a set, used for
+    generating run IDs and detecting duplicate datasets.
+
+    Parameters
+    ----------
+    prompt_set : list[Any]
+        List of prompts to hash. Each prompt is serialized to stable JSON.
+
+    Returns
+    -------
+    str
+        64-character hexadecimal SHA-256 hash of the concatenated prompts.
+
+    Examples
+    --------
+    Hashing a prompt set:
+
+        >>> prompts = [
+        ...     {"messages": [{"role": "user", "content": "Hello"}]},
+        ...     {"messages": [{"role": "user", "content": "World"}]},
+        ... ]
+        >>> hash1 = _hash_prompt_set(prompts)
+        >>> hash2 = _hash_prompt_set(prompts)
+        >>> hash1 == hash2
+        True
+        >>> len(hash1)
+        64
+
+    Order matters:
+
+        >>> prompts_reversed = list(reversed(prompts))
+        >>> _hash_prompt_set(prompts) != _hash_prompt_set(prompts_reversed)
+        True
+
+    See Also
+    --------
+    _deterministic_hash : General-purpose hashing.
+    _deterministic_run_id_from_inputs : Uses this for run ID generation.
+    """
     hasher = hashlib.sha256()
     for item in prompt_set:
         hasher.update(_stable_json_dumps(item).encode("utf-8"))
@@ -901,6 +2133,55 @@ def _replicate_key(
     record_index: int,
     input_hash: Optional[str],
 ) -> str:
+    """Generate a unique replicate key for a result record.
+
+    Creates a deterministic key that uniquely identifies a specific example
+    within a specific run configuration. Used for deduplication and result
+    tracking across multiple runs.
+
+    Parameters
+    ----------
+    model_spec : dict[str, Any]
+        Model specification dictionary.
+    probe_spec : dict[str, Any]
+        Probe specification dictionary.
+    dataset_spec : dict[str, Any]
+        Dataset specification dictionary.
+    example_id : str
+        Unique identifier for the example within the dataset.
+    record_index : int
+        Index position of this record in the result set.
+    input_hash : Optional[str]
+        Hash of the input data (messages hash or input fingerprint).
+
+    Returns
+    -------
+    str
+        16-character hexadecimal replicate key.
+
+    Examples
+    --------
+    Generating a replicate key:
+
+        >>> model_spec = {"model_id": "gpt-4", "provider": "openai"}
+        >>> probe_spec = {"probe_id": "factuality"}
+        >>> dataset_spec = {"dataset_id": "test_data"}
+        >>> key = _replicate_key(
+        ...     model_spec=model_spec,
+        ...     probe_spec=probe_spec,
+        ...     dataset_spec=dataset_spec,
+        ...     example_id="ex_001",
+        ...     record_index=0,
+        ...     input_hash="abc123def456",
+        ... )
+        >>> len(key)
+        16
+
+    See Also
+    --------
+    _deterministic_hash : Hash generation.
+    _build_result_record : Uses replicate keys in records.
+    """
     payload = {
         "model_id": model_spec.get("model_id"),
         "probe_id": probe_spec.get("probe_id"),
@@ -919,6 +2200,52 @@ def _deterministic_run_id_from_config_snapshot(
     *,
     schema_version: str,
 ) -> str:
+    """Generate a deterministic run ID from a configuration snapshot.
+
+    Creates a unique run ID based on the full configuration, ensuring that
+    identical configurations produce identical run IDs. This enables
+    reproducibility and caching of results.
+
+    Parameters
+    ----------
+    config_snapshot : dict[str, Any]
+        Full configuration dictionary including model, probe, and dataset.
+    schema_version : str
+        Schema version to include in the hash.
+
+    Returns
+    -------
+    str
+        32-character hexadecimal run ID.
+
+    Examples
+    --------
+    Generating a run ID:
+
+        >>> config = {
+        ...     "model": {"type": "openai", "args": {"model_name": "gpt-4"}},
+        ...     "probe": {"type": "factuality"},
+        ...     "dataset": {"format": "jsonl", "path": "test.jsonl"},
+        ... }
+        >>> run_id = _deterministic_run_id_from_config_snapshot(
+        ...     config, schema_version="1.0.0"
+        ... )
+        >>> len(run_id)
+        32
+
+    Same config produces same ID:
+
+        >>> run_id2 = _deterministic_run_id_from_config_snapshot(
+        ...     config, schema_version="1.0.0"
+        ... )
+        >>> run_id == run_id2
+        True
+
+    See Also
+    --------
+    _deterministic_run_id_from_inputs : Generate from individual components.
+    _deterministic_hash : Hash generation.
+    """
     payload = {"schema_version": schema_version, "config": config_snapshot}
     return _deterministic_hash(payload)[:32]
 
@@ -932,6 +2259,51 @@ def _deterministic_run_id_from_inputs(
     prompt_set: list[Any],
     probe_kwargs: dict[str, Any],
 ) -> str:
+    """Generate a deterministic run ID from individual input components.
+
+    Creates a unique run ID based on model, probe, dataset, prompts, and
+    additional arguments. Used when running without a config file.
+
+    Parameters
+    ----------
+    schema_version : str
+        Schema version to include in the hash.
+    model_spec : dict[str, Any]
+        Model specification dictionary.
+    probe_spec : dict[str, Any]
+        Probe specification dictionary.
+    dataset_spec : dict[str, Any]
+        Dataset specification dictionary.
+    prompt_set : list[Any]
+        List of prompts to be processed.
+    probe_kwargs : dict[str, Any]
+        Additional keyword arguments passed to the probe.
+
+    Returns
+    -------
+    str
+        32-character hexadecimal run ID.
+
+    Examples
+    --------
+    Generating a run ID from components:
+
+        >>> run_id = _deterministic_run_id_from_inputs(
+        ...     schema_version="1.0.0",
+        ...     model_spec={"model_id": "gpt-4"},
+        ...     probe_spec={"probe_id": "factuality"},
+        ...     dataset_spec={"dataset_id": "test"},
+        ...     prompt_set=[{"messages": [{"role": "user", "content": "Hi"}]}],
+        ...     probe_kwargs={},
+        ... )
+        >>> len(run_id)
+        32
+
+    See Also
+    --------
+    _deterministic_run_id_from_config_snapshot : Generate from config dict.
+    _hash_prompt_set : Hash prompt set for inclusion.
+    """
     payload = {
         "schema_version": schema_version,
         "model": model_spec,
@@ -944,12 +2316,91 @@ def _deterministic_run_id_from_inputs(
 
 
 def _deterministic_base_time(run_id: str) -> datetime:
+    """Generate a deterministic base timestamp from a run ID.
+
+    Creates a reproducible timestamp derived from the run ID hash. This ensures
+    that result records have consistent timestamps across repeated runs with
+    the same configuration, enabling deterministic testing.
+
+    Parameters
+    ----------
+    run_id : str
+        The run identifier to derive the timestamp from.
+
+    Returns
+    -------
+    datetime
+        A UTC datetime within a 10-year range starting from 2000-01-01.
+
+    Examples
+    --------
+    Generating deterministic timestamps:
+
+        >>> from datetime import timezone
+        >>> base = _deterministic_base_time("abc123")
+        >>> base.tzinfo == timezone.utc
+        True
+        >>> base.year >= 2000 and base.year <= 2010
+        True
+
+    Same run ID produces same timestamp:
+
+        >>> _deterministic_base_time("abc123") == _deterministic_base_time("abc123")
+        True
+
+    See Also
+    --------
+    _deterministic_item_times : Generate timestamps for individual items.
+    _deterministic_run_times : Generate start/end timestamps for runs.
+    """
     digest = hashlib.sha256(run_id.encode("utf-8")).digest()
     seconds = int.from_bytes(digest[:8], "big") % _DETERMINISTIC_TIME_RANGE_SECONDS
     return _DETERMINISTIC_TIME_BASE + timedelta(seconds=seconds)
 
 
 def _deterministic_item_times(base_time: datetime, index: int) -> tuple[datetime, datetime]:
+    """Generate deterministic timestamps for an individual result item.
+
+    Creates reproducible start and completion timestamps for a single item
+    based on its index. Each item gets a unique timestamp pair offset by
+    microseconds from the base time.
+
+    Parameters
+    ----------
+    base_time : datetime
+        The base timestamp for the run (from _deterministic_base_time).
+    index : int
+        Zero-based index of the item in the result set.
+
+    Returns
+    -------
+    tuple[datetime, datetime]
+        Tuple of (started_at, completed_at) timestamps.
+
+    Examples
+    --------
+    Generating item timestamps:
+
+        >>> from datetime import datetime, timezone
+        >>> base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        >>> started, completed = _deterministic_item_times(base, 0)
+        >>> started == base
+        True
+        >>> (completed - started).microseconds
+        1
+
+    Sequential items have sequential timestamps:
+
+        >>> t0_start, t0_end = _deterministic_item_times(base, 0)
+        >>> t1_start, t1_end = _deterministic_item_times(base, 1)
+        >>> t1_start > t0_end
+        True
+
+    See Also
+    --------
+    _deterministic_base_time : Generate the base timestamp.
+    _deterministic_run_times : Generate run-level timestamps.
+    """
     offset = index * 2
     started_at = base_time + timedelta(microseconds=offset)
     completed_at = base_time + timedelta(microseconds=offset + 1)
@@ -957,6 +2408,47 @@ def _deterministic_item_times(base_time: datetime, index: int) -> tuple[datetime
 
 
 def _deterministic_run_times(base_time: datetime, total: int) -> tuple[datetime, datetime]:
+    """Generate deterministic start and end timestamps for a run.
+
+    Creates reproducible run-level timestamps based on the base time and
+    total number of items. The run end time is set to encompass all item
+    timestamps.
+
+    Parameters
+    ----------
+    base_time : datetime
+        The base timestamp for the run (from _deterministic_base_time).
+    total : int
+        Total number of items in the run.
+
+    Returns
+    -------
+    tuple[datetime, datetime]
+        Tuple of (started_at, completed_at) timestamps for the run.
+
+    Examples
+    --------
+    Generating run timestamps:
+
+        >>> from datetime import datetime, timezone
+        >>> base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        >>> started, completed = _deterministic_run_times(base, 100)
+        >>> started == base
+        True
+        >>> completed > started
+        True
+
+    Empty run:
+
+        >>> started, completed = _deterministic_run_times(base, 0)
+        >>> (completed - started).microseconds
+        1
+
+    See Also
+    --------
+    _deterministic_base_time : Generate the base timestamp.
+    _deterministic_item_times : Generate item-level timestamps.
+    """
     if total < 0:
         total = 0
     completed_offset = total * 2 + 1
@@ -966,7 +2458,48 @@ def _deterministic_run_times(base_time: datetime, total: int) -> tuple[datetime,
 
 
 def _coerce_model_info(model: Model) -> ModelInfo:
-    """Return a ModelInfo instance even if model.info() returns dict-like data."""
+    """Coerce model info to a standardized ModelInfo dataclass.
+
+    Converts various model info formats into the canonical ModelInfo type.
+    Handles models that return dicts, dataclasses, pydantic models, or
+    already-canonical ModelInfo instances.
+
+    Parameters
+    ----------
+    model : Model
+        Model object with optional info() method.
+
+    Returns
+    -------
+    ModelInfo
+        Standardized ModelInfo instance with all fields populated.
+
+    Examples
+    --------
+    Coercing from a model with info():
+
+        >>> class MockModel:
+        ...     def info(self):
+        ...         return {"name": "gpt-4", "provider": "openai"}
+        >>> info = _coerce_model_info(MockModel())
+        >>> info.name
+        'gpt-4'
+        >>> info.provider
+        'openai'
+
+    Fallback for models without info():
+
+        >>> class SimpleModel:
+        ...     pass
+        >>> info = _coerce_model_info(SimpleModel())
+        >>> info.name
+        'SimpleModel'
+
+    See Also
+    --------
+    ModelInfo : The target dataclass type.
+    _normalize_info_obj_to_dict : Convert info objects to dicts.
+    """
 
     info_obj: Any = {}
     try:
@@ -1159,14 +2692,94 @@ def _build_result_record(
 
 
 class AsyncProbeRunner(_RunnerBase):
-    """Async version of ProbeRunner for parallel execution.
+    """Asynchronous runner for concurrent probe execution.
 
     Use this when you need to run probes concurrently, which is especially
     useful for API-based models that can handle multiple requests in parallel.
+    The runner uses asyncio to manage concurrent execution with a configurable
+    concurrency limit.
 
-    Example:
-        >>> runner = AsyncProbeRunner(model, probe)
-        >>> results = await runner.run(dataset, concurrency=10)
+    This class inherits from :class:`_RunnerBase` and provides the same
+    properties for accessing run statistics and results.
+
+    Attributes
+    ----------
+    model : Model
+        The model instance being tested.
+    probe : Probe
+        The probe instance being run.
+    last_run_id : Optional[str]
+        Unique identifier of the last completed run.
+    last_run_dir : Optional[Path]
+        Directory where the last run's artifacts were stored.
+    last_experiment : Optional[ExperimentResult]
+        The ExperimentResult from the last completed run.
+    success_rate : float
+        Proportion of successful results from the last run.
+    error_count : int
+        Number of errors encountered in the last run.
+
+    Examples
+    --------
+    Basic async execution:
+
+        >>> import asyncio
+        >>> from insideLLMs.models import OpenAIModel
+        >>> from insideLLMs.probes import FactualityProbe
+        >>> from insideLLMs.runtime.runner import AsyncProbeRunner
+        >>>
+        >>> async def main():
+        ...     model = OpenAIModel(model_name="gpt-4")
+        ...     probe = FactualityProbe()
+        ...     runner = AsyncProbeRunner(model, probe)
+        ...
+        ...     prompts = [{"messages": [{"role": "user", "content": f"Q{i}"}]}
+        ...                for i in range(100)]
+        ...     results = await runner.run(prompts, concurrency=10)
+        ...     print(f"Success rate: {runner.success_rate:.1%}")
+        ...     return results
+        >>>
+        >>> results = asyncio.run(main())
+
+    With progress tracking:
+
+        >>> async def main_with_progress():
+        ...     runner = AsyncProbeRunner(model, probe)
+        ...
+        ...     def on_progress(current, total):
+        ...         print(f"\\rProgress: {current}/{total}", end="")
+        ...
+        ...     results = await runner.run(
+        ...         prompts,
+        ...         concurrency=5,
+        ...         progress_callback=on_progress
+        ...     )
+        ...     return results
+
+    Using RunConfig:
+
+        >>> from insideLLMs.config_types import RunConfig
+        >>>
+        >>> async def main_with_config():
+        ...     config = RunConfig(
+        ...         concurrency=10,
+        ...         emit_run_artifacts=True,
+        ...         return_experiment=True,
+        ...     )
+        ...     runner = AsyncProbeRunner(model, probe)
+        ...     experiment = await runner.run(prompts, config=config)
+        ...     return experiment
+
+    Comparing sync vs async performance:
+
+        >>> # For 100 API calls with ~1s latency each:
+        >>> # Sync ProbeRunner: ~100 seconds
+        >>> # AsyncProbeRunner (concurrency=10): ~10 seconds
+
+    See Also
+    --------
+    ProbeRunner : Synchronous runner for sequential execution.
+    run_probe_async : Convenience function wrapping AsyncProbeRunner.
     """
 
     async def run(
@@ -1195,17 +2808,141 @@ class AsyncProbeRunner(_RunnerBase):
     ) -> Union[list[dict[str, Any]], ExperimentResult]:
         """Run the probe on all items with controlled concurrency.
 
-        Args:
-            prompt_set: List of inputs to test.
-            config: Optional RunConfig with all run settings. Individual kwargs
-                override config values if both are provided.
-            concurrency: Maximum number of concurrent executions.
-            progress_callback: Optional callback for progress updates. Supports both
-                legacy (current, total) signature and new ProgressInfo signature.
-            **probe_kwargs: Additional arguments passed to the probe.
+        Executes the probe concurrently on all inputs using asyncio, with a
+        semaphore to limit the maximum number of simultaneous executions.
+        Results are written to disk in order as they complete.
 
-        Returns:
-            A list of result dictionaries or an ExperimentResult.
+        Parameters
+        ----------
+        prompt_set : list[Any]
+            List of inputs to test. Each item is passed to the probe's run method.
+        config : Optional[RunConfig], default None
+            RunConfig with all run settings. Individual kwargs override config
+            values if both are provided.
+        concurrency : Optional[int], default None
+            Maximum number of concurrent executions. Higher values speed up
+            execution but may hit API rate limits.
+        progress_callback : Optional[ProgressCallback], default None
+            Callback for progress updates. Called after each item completes.
+            Supports both legacy and rich ProgressInfo signatures.
+        validate_output : Optional[bool], default None
+            If True, validate outputs against the schema.
+        schema_version : Optional[str], default None
+            Schema version for validation.
+        validation_mode : Optional[str], default None
+            Validation mode: "strict" or "lenient".
+        emit_run_artifacts : Optional[bool], default None
+            If True, write records.jsonl and manifest.json to run_dir.
+        run_dir : Optional[Union[str, Path]], default None
+            Explicit directory for run artifacts.
+        run_root : Optional[Union[str, Path]], default None
+            Root directory under which run directories are created.
+        run_id : Optional[str], default None
+            Explicit run ID. If None, generated deterministically from inputs.
+        overwrite : Optional[bool], default None
+            If True, overwrite existing run directory.
+        dataset_info : Optional[dict[str, Any]], default None
+            Metadata about the dataset for the manifest.
+        config_snapshot : Optional[dict[str, Any]], default None
+            Configuration snapshot for reproducibility.
+        store_messages : Optional[bool], default None
+            If True, store full message content in records.
+        resume : Optional[bool], default None
+            If True, resume from existing records.jsonl.
+        use_probe_batch : Optional[bool], default None
+            If True, use Probe.run_batch (runs in thread pool).
+        batch_workers : Optional[int], default None
+            Number of workers for Probe.run_batch.
+        return_experiment : Optional[bool], default None
+            If True, return ExperimentResult instead of list of dicts.
+        **probe_kwargs : Any
+            Additional keyword arguments passed to the probe's run method.
+
+        Returns
+        -------
+        Union[list[dict[str, Any]], ExperimentResult]
+            If return_experiment is False: list of result dictionaries.
+            If return_experiment is True: ExperimentResult with aggregated metrics.
+
+        Raises
+        ------
+        ValueError
+            If prompt_set is empty or invalid.
+        FileExistsError
+            If run_dir exists and is not empty, unless overwrite=True.
+        RuntimeError
+            If not all items produced results (internal error).
+
+        Examples
+        --------
+        Basic concurrent execution:
+
+            >>> import asyncio
+            >>>
+            >>> async def run_experiment():
+            ...     runner = AsyncProbeRunner(model, probe)
+            ...     results = await runner.run(
+            ...         prompts,
+            ...         concurrency=10  # 10 concurrent requests
+            ...     )
+            ...     return results
+            >>>
+            >>> results = asyncio.run(run_experiment())
+
+        With all options via RunConfig:
+
+            >>> from insideLLMs.config_types import RunConfig
+            >>>
+            >>> async def run_full_experiment():
+            ...     config = RunConfig(
+            ...         concurrency=20,
+            ...         emit_run_artifacts=True,
+            ...         run_root="./experiments",
+            ...         validate_output=True,
+            ...         return_experiment=True,
+            ...     )
+            ...     runner = AsyncProbeRunner(model, probe)
+            ...     experiment = await runner.run(prompts, config=config)
+            ...     print(f"Score: {experiment.score}")
+            ...     print(f"Results saved to: {runner.last_run_dir}")
+            ...     return experiment
+
+        Progress tracking with estimated time:
+
+            >>> from insideLLMs.config_types import ProgressInfo
+            >>>
+            >>> async def run_with_eta():
+            ...     def on_progress(info: ProgressInfo):
+            ...         eta = info.eta_seconds or 0
+            ...         print(f"\\r{info.current}/{info.total} - ETA: {eta:.0f}s", end="")
+            ...
+            ...     runner = AsyncProbeRunner(model, probe)
+            ...     results = await runner.run(
+            ...         prompts,
+            ...         concurrency=5,
+            ...         progress_callback=on_progress
+            ...     )
+            ...     return results
+
+        Resumable async execution:
+
+            >>> async def resumable_run():
+            ...     runner = AsyncProbeRunner(model, probe)
+            ...     try:
+            ...         results = await runner.run(
+            ...             prompts,
+            ...             concurrency=10,
+            ...             emit_run_artifacts=True,
+            ...         )
+            ...     except Exception:
+            ...         print(f"Failed, can resume from: {runner.last_run_dir}")
+            ...         raise
+            ...     return results
+
+        See Also
+        --------
+        ProbeRunner.run : Synchronous version for sequential execution.
+        run_probe_async : Convenience function wrapping this method.
         """
         import time
 
@@ -1652,17 +3389,68 @@ def run_probe(
     config: Optional[RunConfig] = None,
     **probe_kwargs: Any,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
-    """Convenience function to run a probe on a model.
+    """Run a probe on a model with a single function call.
 
-    Args:
-        model: The model to test.
-        probe: The probe to run.
-        prompt_set: List of inputs to test.
-        config: Optional RunConfig with run settings.
-        **probe_kwargs: Additional arguments for the probe.
+    This is a convenience function that creates a :class:`ProbeRunner` and
+    executes the probe in one step. For more control over execution or to
+    access run statistics, use ProbeRunner directly.
 
-    Returns:
-        A list of result dictionaries or an ExperimentResult.
+    Parameters
+    ----------
+    model : Model
+        The model to test. Must implement the Model interface.
+    probe : Probe
+        The probe to run. Must implement the Probe interface.
+    prompt_set : list[Any]
+        List of inputs to test. Each item is passed to the probe's run method.
+    config : Optional[RunConfig], default None
+        RunConfig with all run settings including emit_run_artifacts,
+        stop_on_error, return_experiment, etc.
+    **probe_kwargs : Any
+        Additional keyword arguments passed to the probe's run method.
+
+    Returns
+    -------
+    Union[list[dict[str, Any]], ExperimentResult]
+        If config.return_experiment is False (default): list of result dicts.
+        If config.return_experiment is True: ExperimentResult.
+
+    Examples
+    --------
+    Simple probe execution:
+
+        >>> from insideLLMs.models import OpenAIModel
+        >>> from insideLLMs.probes import FactualityProbe
+        >>> from insideLLMs.runtime.runner import run_probe
+        >>>
+        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> probe = FactualityProbe()
+        >>> prompts = [{"messages": [{"role": "user", "content": "Hello"}]}]
+        >>> results = run_probe(model, probe, prompts)
+
+    With RunConfig options:
+
+        >>> from insideLLMs.config_types import RunConfig
+        >>>
+        >>> config = RunConfig(
+        ...     emit_run_artifacts=True,
+        ...     return_experiment=True,
+        ... )
+        >>> experiment = run_probe(model, probe, prompts, config=config)
+        >>> print(f"Score: {experiment.score}")
+
+    Passing probe-specific arguments:
+
+        >>> results = run_probe(
+        ...     model, probe, prompts,
+        ...     temperature=0.7,  # Passed to probe
+        ...     max_tokens=100,   # Passed to probe
+        ... )
+
+    See Also
+    --------
+    ProbeRunner : Class for more control over execution.
+    run_probe_async : Async version with concurrency support.
     """
     runner = ProbeRunner(model, probe)
     return runner.run(prompt_set, config=config, **probe_kwargs)
@@ -1677,37 +3465,135 @@ async def run_probe_async(
     concurrency: Optional[int] = None,
     **probe_kwargs: Any,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
-    """Convenience function to run a probe asynchronously.
+    """Run a probe asynchronously with concurrent execution.
 
-    Args:
-        model: The model to test.
-        probe: The probe to run.
-        prompt_set: List of inputs to test.
-        config: Optional RunConfig with run settings.
-        concurrency: Maximum concurrent executions (overrides config).
-        **probe_kwargs: Additional arguments for the probe.
+    This is a convenience function that creates an :class:`AsyncProbeRunner`
+    and executes the probe in one step. For more control over execution or
+    to access run statistics, use AsyncProbeRunner directly.
 
-    Returns:
-        A list of result dictionaries or an ExperimentResult.
+    Parameters
+    ----------
+    model : Model
+        The model to test. Must implement the Model interface.
+    probe : Probe
+        The probe to run. Must implement the Probe interface.
+    prompt_set : list[Any]
+        List of inputs to test. Each item is passed to the probe's run method.
+    config : Optional[RunConfig], default None
+        RunConfig with all run settings.
+    concurrency : Optional[int], default None
+        Maximum number of concurrent executions. Overrides config.concurrency.
+    **probe_kwargs : Any
+        Additional keyword arguments passed to the probe's run method.
+
+    Returns
+    -------
+    Union[list[dict[str, Any]], ExperimentResult]
+        If config.return_experiment is False (default): list of result dicts.
+        If config.return_experiment is True: ExperimentResult.
+
+    Examples
+    --------
+    Basic async execution:
+
+        >>> import asyncio
+        >>> from insideLLMs.runtime.runner import run_probe_async
+        >>>
+        >>> async def main():
+        ...     results = await run_probe_async(
+        ...         model, probe, prompts,
+        ...         concurrency=10
+        ...     )
+        ...     return results
+        >>>
+        >>> results = asyncio.run(main())
+
+    With RunConfig:
+
+        >>> from insideLLMs.config_types import RunConfig
+        >>>
+        >>> async def main_with_config():
+        ...     config = RunConfig(
+        ...         concurrency=20,
+        ...         emit_run_artifacts=True,
+        ...         return_experiment=True,
+        ...     )
+        ...     experiment = await run_probe_async(model, probe, prompts, config=config)
+        ...     print(f"Score: {experiment.score}")
+        ...     return experiment
+
+    Inline in an existing async context:
+
+        >>> async def process_batch():
+        ...     # Run multiple probes concurrently
+        ...     factuality_task = run_probe_async(model, factuality_probe, prompts)
+        ...     bias_task = run_probe_async(model, bias_probe, prompts)
+        ...     factuality_results, bias_results = await asyncio.gather(
+        ...         factuality_task, bias_task
+        ...     )
+        ...     return factuality_results, bias_results
+
+    See Also
+    --------
+    AsyncProbeRunner : Class for more control over async execution.
+    run_probe : Synchronous version for sequential execution.
     """
     runner = AsyncProbeRunner(model, probe)
     return await runner.run(prompt_set, config=config, concurrency=concurrency, **probe_kwargs)
 
 
 def load_config(path: Union[str, Path]) -> ConfigDict:
-    """Load a configuration file.
+    """Load an experiment configuration file.
 
-    Supports YAML (.yaml, .yml) and JSON (.json) formats.
+    Reads and parses a YAML or JSON configuration file that defines model,
+    probe, and dataset settings for an experiment.
 
-    Args:
-        path: Path to the configuration file.
+    Parameters
+    ----------
+    path : Union[str, Path]
+        Path to the configuration file. Must have .yaml, .yml, or .json extension.
 
-    Returns:
-        The parsed configuration dictionary.
+    Returns
+    -------
+    ConfigDict
+        The parsed configuration dictionary containing model, probe, and
+        dataset definitions.
 
-    Raises:
-        ValueError: If the file format is not supported.
-        FileNotFoundError: If the file doesn't exist.
+    Raises
+    ------
+    ValueError
+        If the file extension is not supported (.yaml, .yml, or .json).
+    FileNotFoundError
+        If the configuration file doesn't exist.
+
+    Examples
+    --------
+    Load a YAML configuration:
+
+        >>> from insideLLMs.runtime.runner import load_config
+        >>>
+        >>> config = load_config("experiment.yaml")
+        >>> print(config["model"]["type"])
+        'openai'
+
+    Load a JSON configuration:
+
+        >>> config = load_config("experiment.json")
+        >>> print(config["probe"]["type"])
+        'factuality'
+
+    Check configuration contents:
+
+        >>> config = load_config("config.yaml")
+        >>> for key in config:
+        ...     print(f"{key}: {type(config[key])}")
+        model: <class 'dict'>
+        probe: <class 'dict'>
+        dataset: <class 'dict'>
+
+    See Also
+    --------
+    run_experiment_from_config : Load and run an experiment in one step.
     """
     path = Path(path)
 
@@ -1981,37 +3867,132 @@ def run_experiment_from_config(
     batch_workers: Optional[int] = None,
     return_experiment: bool = False,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
-    """Run an experiment from a configuration file.
+    """Run an experiment defined in a YAML or JSON configuration file.
 
-    The configuration file should specify:
-    - model: type and args
-    - probe: type and args
-    - dataset: format, path/name, and optional split
+    Loads the configuration file, creates the model and probe instances,
+    loads the dataset, and runs the experiment. This is the primary entry
+    point for configuration-driven experimentation.
 
-    Args:
-        config_path: Path to the YAML or JSON configuration file.
-        progress_callback: Optional callback for progress updates.
-        resume: Whether to resume from existing records.jsonl.
-        use_probe_batch: Whether to use Probe.run_batch for execution.
-        batch_workers: Worker count for probe batch execution.
-        return_experiment: Whether to return an ExperimentResult.
+    The configuration file must specify:
 
-    Returns:
-        A list of result dictionaries or an ExperimentResult.
+    - ``model``: Model type and arguments
+    - ``probe``: Probe type and arguments
+    - ``dataset``: Dataset format, path/name, and optional split
 
-    Example config (YAML):
-        ```yaml
-        model:
-          type: openai
-          args:
-            model_name: gpt-4
-        probe:
-          type: factuality
-          args: {}
-        dataset:
-          format: jsonl
-          path: data/questions.jsonl
-        ```
+    Parameters
+    ----------
+    config_path : Union[str, Path]
+        Path to the YAML (.yaml, .yml) or JSON (.json) configuration file.
+    progress_callback : Optional[Callable[[int, int], None]], default None
+        Callback for progress updates with signature (current, total).
+    validate_output : bool, default False
+        If True, validate outputs against the schema.
+    schema_version : str, default DEFAULT_SCHEMA_VERSION
+        Schema version for validation.
+    validation_mode : str, default "strict"
+        Validation mode: "strict" or "lenient".
+    emit_run_artifacts : bool, default True
+        If True, write records.jsonl and manifest.json to run directory.
+    run_dir : Optional[Union[str, Path]], default None
+        Explicit directory for run artifacts.
+    run_root : Optional[Union[str, Path]], default None
+        Root directory under which run directories are created.
+    run_id : Optional[str], default None
+        Explicit run ID. If None, generated deterministically from config.
+    overwrite : bool, default False
+        If True, overwrite existing run directory.
+    resume : bool, default False
+        If True, resume from existing records.jsonl.
+    use_probe_batch : bool, default False
+        If True, use Probe.run_batch for potentially faster execution.
+    batch_workers : Optional[int], default None
+        Number of workers for Probe.run_batch.
+    return_experiment : bool, default False
+        If True, return ExperimentResult instead of list of dicts.
+
+    Returns
+    -------
+    Union[list[dict[str, Any]], ExperimentResult]
+        If return_experiment is False: list of result dictionaries.
+        If return_experiment is True: ExperimentResult with aggregated metrics.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the configuration file doesn't exist.
+    ValueError
+        If the configuration is invalid or has unknown model/probe types.
+
+    Examples
+    --------
+    Basic usage with a YAML config file:
+
+        >>> from insideLLMs.runtime.runner import run_experiment_from_config
+        >>>
+        >>> # experiment.yaml:
+        >>> # model:
+        >>> #   type: openai
+        >>> #   args:
+        >>> #     model_name: gpt-4
+        >>> # probe:
+        >>> #   type: factuality
+        >>> #   args: {}
+        >>> # dataset:
+        >>> #   format: jsonl
+        >>> #   path: data/questions.jsonl
+        >>>
+        >>> results = run_experiment_from_config("experiment.yaml")
+        >>> print(f"Processed {len(results)} examples")
+
+    With progress tracking:
+
+        >>> def on_progress(current, total):
+        ...     print(f"\\rProgress: {current}/{total}", end="")
+        >>>
+        >>> results = run_experiment_from_config(
+        ...     "experiment.yaml",
+        ...     progress_callback=on_progress
+        ... )
+
+    Getting ExperimentResult with full metadata:
+
+        >>> experiment = run_experiment_from_config(
+        ...     "experiment.yaml",
+        ...     return_experiment=True
+        ... )
+        >>> print(f"Experiment ID: {experiment.experiment_id}")
+        >>> print(f"Score: {experiment.score}")
+
+    Saving artifacts to a specific directory:
+
+        >>> results = run_experiment_from_config(
+        ...     "experiment.yaml",
+        ...     emit_run_artifacts=True,
+        ...     run_root="./my_experiments",
+        ... )
+
+    Configuration with HuggingFace dataset:
+
+        >>> # hf_experiment.yaml:
+        >>> # model:
+        >>> #   type: anthropic
+        >>> #   args:
+        >>> #     model_name: claude-3-opus-20240229
+        >>> # probe:
+        >>> #   type: bias
+        >>> #   args: {}
+        >>> # dataset:
+        >>> #   format: hf
+        >>> #   name: cais/mmlu
+        >>> #   split: test
+        >>>
+        >>> results = run_experiment_from_config("hf_experiment.yaml")
+
+    See Also
+    --------
+    run_experiment_from_config_async : Async version with concurrency support.
+    run_harness_from_config : Run multi-model/multi-probe harness.
+    load_config : Load configuration file without running.
     """
     config_path = Path(config_path)
     config = load_config(config_path)
@@ -2058,18 +4039,109 @@ def run_harness_from_config(
 ) -> dict[str, Any]:
     """Run a cross-model probe harness from a configuration file.
 
-    The configuration file should specify:
-    - models: list of model configs (type + args)
-    - probes: list of probe configs (type + args)
-    - dataset: format, path/name, and optional split
-    - max_examples: optional limit
+    Executes all combinations of models and probes defined in the configuration
+    against a shared dataset. This is useful for comparing multiple models
+    across multiple probes in a single run.
 
-    Args:
-        config_path: Path to the YAML or JSON configuration file.
-        progress_callback: Optional callback for progress updates.
+    The configuration file must specify:
 
-    Returns:
-        Dictionary with per-example records, experiments, and summary.
+    - ``models``: List of model configurations (type + args)
+    - ``probes``: List of probe configurations (type + args)
+    - ``dataset``: Dataset format, path/name, and optional split
+    - ``max_examples``: Optional limit on number of examples
+
+    Parameters
+    ----------
+    config_path : Union[str, Path]
+        Path to the YAML (.yaml, .yml) or JSON (.json) configuration file.
+    progress_callback : Optional[Callable[[int, int], None]], default None
+        Callback for progress updates. Called with (current, total) where
+        total = len(models) * len(probes) * len(dataset).
+    validate_output : bool, default False
+        If True, validate outputs against the schema.
+    schema_version : str, default DEFAULT_SCHEMA_VERSION
+        Schema version for validation.
+    validation_mode : str, default "strict"
+        Validation mode: "strict" or "lenient".
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+
+        - ``records``: List of per-example result records
+        - ``experiments``: List of ExperimentResult objects
+        - ``summary``: Statistical summary report
+        - ``config``: The loaded configuration
+        - ``run_id``: Unique harness run identifier
+        - ``generated_at``: Timestamp of run completion
+
+    Raises
+    ------
+    ValueError
+        If configuration is missing required fields (models, probes, dataset).
+    FileNotFoundError
+        If the configuration file doesn't exist.
+
+    Examples
+    --------
+    Basic harness execution:
+
+        >>> from insideLLMs.runtime.runner import run_harness_from_config
+        >>>
+        >>> # harness.yaml:
+        >>> # models:
+        >>> #   - type: openai
+        >>> #     args:
+        >>> #       model_name: gpt-4
+        >>> #   - type: anthropic
+        >>> #     args:
+        >>> #       model_name: claude-3-opus-20240229
+        >>> # probes:
+        >>> #   - type: factuality
+        >>> #     args: {}
+        >>> #   - type: bias
+        >>> #     args: {}
+        >>> # dataset:
+        >>> #   format: jsonl
+        >>> #   path: data/questions.jsonl
+        >>> # max_examples: 100
+        >>>
+        >>> results = run_harness_from_config("harness.yaml")
+        >>> print(f"Total records: {len(results['records'])}")
+        >>> print(f"Experiments: {len(results['experiments'])}")
+
+    Accessing the summary report:
+
+        >>> results = run_harness_from_config("harness.yaml")
+        >>> summary = results["summary"]
+        >>> for model_name, scores in summary.items():
+        ...     print(f"{model_name}: {scores}")
+
+    With progress tracking:
+
+        >>> def on_progress(current, total):
+        ...     pct = current / total * 100
+        ...     print(f"\\rHarness progress: {pct:.1f}%", end="")
+        >>>
+        >>> results = run_harness_from_config(
+        ...     "harness.yaml",
+        ...     progress_callback=on_progress
+        ... )
+
+    Analyzing individual experiments:
+
+        >>> results = run_harness_from_config("harness.yaml")
+        >>> for experiment in results["experiments"]:
+        ...     print(f"Model: {experiment.model_info.name}")
+        ...     print(f"Probe: {experiment.probe_name}")
+        ...     print(f"Score: {experiment.score}")
+        ...     print()
+
+    See Also
+    --------
+    run_experiment_from_config : Run single model/probe experiment.
+    run_experiment_from_config_async : Async version of single experiment.
     """
     config_path = Path(config_path)
     config = load_config(config_path)
@@ -2317,20 +4389,119 @@ async def run_experiment_from_config_async(
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
     """Run an experiment asynchronously from a configuration file.
 
-    Like run_experiment_from_config, but uses async execution for
-    parallel processing.
+    Like :func:`run_experiment_from_config`, but uses async execution for
+    concurrent processing, which can significantly speed up API-based workloads.
 
-    Args:
-        config_path: Path to the configuration file.
-        concurrency: Maximum number of concurrent executions.
-        progress_callback: Optional callback for progress updates.
-        resume: Whether to resume from existing records.jsonl.
-        use_probe_batch: Whether to use Probe.run_batch for execution.
-        batch_workers: Worker count for probe batch execution.
-        return_experiment: Whether to return an ExperimentResult.
+    Parameters
+    ----------
+    config_path : Union[str, Path]
+        Path to the YAML (.yaml, .yml) or JSON (.json) configuration file.
+    concurrency : int, default 5
+        Maximum number of concurrent executions.
+    progress_callback : Optional[Callable[[int, int], None]], default None
+        Callback for progress updates with signature (current, total).
+    validate_output : bool, default False
+        If True, validate outputs against the schema.
+    schema_version : str, default DEFAULT_SCHEMA_VERSION
+        Schema version for validation.
+    validation_mode : str, default "strict"
+        Validation mode: "strict" or "lenient".
+    emit_run_artifacts : bool, default True
+        If True, write records.jsonl and manifest.json to run directory.
+    run_dir : Optional[Union[str, Path]], default None
+        Explicit directory for run artifacts.
+    run_root : Optional[Union[str, Path]], default None
+        Root directory under which run directories are created.
+    run_id : Optional[str], default None
+        Explicit run ID. If None, generated deterministically from config.
+    overwrite : bool, default False
+        If True, overwrite existing run directory.
+    resume : bool, default False
+        If True, resume from existing records.jsonl.
+    use_probe_batch : bool, default False
+        If True, use Probe.run_batch (runs in thread pool).
+    batch_workers : Optional[int], default None
+        Number of workers for Probe.run_batch.
+    return_experiment : bool, default False
+        If True, return ExperimentResult instead of list of dicts.
 
-    Returns:
-        A list of result dictionaries or an ExperimentResult.
+    Returns
+    -------
+    Union[list[dict[str, Any]], ExperimentResult]
+        If return_experiment is False: list of result dictionaries.
+        If return_experiment is True: ExperimentResult with aggregated metrics.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the configuration file doesn't exist.
+    ValueError
+        If the configuration is invalid or has unknown model/probe types.
+
+    Examples
+    --------
+    Basic async execution from config:
+
+        >>> import asyncio
+        >>> from insideLLMs.runtime.runner import run_experiment_from_config_async
+        >>>
+        >>> async def main():
+        ...     results = await run_experiment_from_config_async(
+        ...         "experiment.yaml",
+        ...         concurrency=10
+        ...     )
+        ...     return results
+        >>>
+        >>> results = asyncio.run(main())
+
+    With progress tracking:
+
+        >>> async def main_with_progress():
+        ...     def on_progress(current, total):
+        ...         print(f"\\rProgress: {current}/{total}", end="")
+        ...
+        ...     results = await run_experiment_from_config_async(
+        ...         "experiment.yaml",
+        ...         concurrency=20,
+        ...         progress_callback=on_progress
+        ...     )
+        ...     return results
+
+    Getting ExperimentResult:
+
+        >>> async def main_experiment():
+        ...     experiment = await run_experiment_from_config_async(
+        ...         "experiment.yaml",
+        ...         concurrency=10,
+        ...         return_experiment=True
+        ...     )
+        ...     print(f"Score: {experiment.score}")
+        ...     return experiment
+
+    Comparing timing with sync version:
+
+        >>> import time
+        >>>
+        >>> # Sync version (for reference)
+        >>> start = time.time()
+        >>> results_sync = run_experiment_from_config("experiment.yaml")
+        >>> print(f"Sync: {time.time() - start:.1f}s")
+        >>>
+        >>> # Async version with concurrency
+        >>> async def timed_async():
+        ...     start = time.time()
+        ...     results = await run_experiment_from_config_async(
+        ...         "experiment.yaml",
+        ...         concurrency=10
+        ...     )
+        ...     print(f"Async: {time.time() - start:.1f}s")
+        ...     return results
+
+    See Also
+    --------
+    run_experiment_from_config : Synchronous version.
+    run_harness_from_config : Run multi-model/multi-probe harness.
+    AsyncProbeRunner : Direct access to async runner.
     """
     config_path = Path(config_path)
     config = load_config(config_path)
@@ -2380,14 +4551,92 @@ def create_experiment_result(
 ) -> ExperimentResult:
     """Create a structured ExperimentResult from raw results.
 
-    Args:
-        model: The model that was tested.
-        probe: The probe that was run.
-        results: The raw result dictionaries.
-        config: Optional configuration used for the experiment.
+    Converts raw result dictionaries or ProbeResult objects into a structured
+    ExperimentResult that includes aggregated scores, model/probe metadata,
+    and timing information.
 
-    Returns:
-        An ExperimentResult with structured data and scores.
+    Parameters
+    ----------
+    model : Model
+        The model that was tested.
+    probe : Probe
+        The probe that was run.
+    results : Union[list[dict[str, Any]], list[ProbeResult]]
+        The raw results, either as dictionaries with "input", "output",
+        "status", etc., or as ProbeResult objects.
+    config : Optional[ConfigDict], default None
+        Optional configuration dictionary used for the experiment.
+    experiment_id : Optional[str], default None
+        Unique experiment identifier. If None, generated deterministically
+        from inputs.
+    started_at : Optional[datetime], default None
+        Experiment start time. If None, generated deterministically.
+    completed_at : Optional[datetime], default None
+        Experiment completion time. If None, generated deterministically.
+
+    Returns
+    -------
+    ExperimentResult
+        Structured result containing:
+
+        - ``experiment_id``: Unique identifier
+        - ``model_info``: ModelInfo with model metadata
+        - ``probe_name``: Name of the probe
+        - ``probe_category``: Category of the probe
+        - ``results``: List of ProbeResult objects
+        - ``score``: Aggregated score from probe.score()
+        - ``started_at``: Start timestamp
+        - ``completed_at``: Completion timestamp
+        - ``config``: Configuration dictionary
+
+    Examples
+    --------
+    Creating from raw result dictionaries:
+
+        >>> from insideLLMs.runtime.runner import create_experiment_result
+        >>>
+        >>> results = [
+        ...     {"input": "Q1", "output": "A1", "status": "success"},
+        ...     {"input": "Q2", "output": "A2", "status": "success"},
+        ... ]
+        >>> experiment = create_experiment_result(model, probe, results)
+        >>> print(f"Score: {experiment.score}")
+        >>> print(f"Success count: {sum(1 for r in experiment.results if r.status.value == 'success')}")
+
+    Creating from ProbeResult objects:
+
+        >>> from insideLLMs.types import ProbeResult, ResultStatus
+        >>>
+        >>> probe_results = [
+        ...     ProbeResult(input="Q1", output="A1", status=ResultStatus.SUCCESS),
+        ...     ProbeResult(input="Q2", output="A2", status=ResultStatus.ERROR, error="Failed"),
+        ... ]
+        >>> experiment = create_experiment_result(model, probe, probe_results)
+
+    With explicit experiment ID and timestamps:
+
+        >>> from datetime import datetime
+        >>>
+        >>> experiment = create_experiment_result(
+        ...     model, probe, results,
+        ...     experiment_id="exp_001",
+        ...     started_at=datetime(2024, 1, 1, 12, 0),
+        ...     completed_at=datetime(2024, 1, 1, 12, 30),
+        ... )
+
+    Including configuration:
+
+        >>> config = {
+        ...     "model": {"type": "openai", "args": {"model_name": "gpt-4"}},
+        ...     "probe": {"type": "factuality"},
+        ... }
+        >>> experiment = create_experiment_result(model, probe, results, config=config)
+        >>> print(experiment.config)
+
+    See Also
+    --------
+    ExperimentResult : The structured result type.
+    ProbeRunner.run : Returns ExperimentResult when return_experiment=True.
     """
 
     def _coerce_status(value: Any) -> ResultStatus:
@@ -2498,6 +4747,58 @@ def derive_run_id_from_config_path(
     *,
     schema_version: str = DEFAULT_SCHEMA_VERSION,
 ) -> str:
+    """Derive a deterministic run ID from a configuration file.
+
+    Generates a unique run ID based on the contents of the configuration file.
+    The same configuration will always produce the same run ID, enabling
+    reproducibility and caching.
+
+    Parameters
+    ----------
+    config_path : Union[str, Path]
+        Path to the YAML or JSON configuration file.
+    schema_version : str, default DEFAULT_SCHEMA_VERSION
+        Schema version to include in the hash.
+
+    Returns
+    -------
+    str
+        A 32-character hexadecimal run ID derived from the configuration.
+
+    Examples
+    --------
+    Get the run ID before running an experiment:
+
+        >>> from insideLLMs.runtime.runner import derive_run_id_from_config_path
+        >>>
+        >>> run_id = derive_run_id_from_config_path("experiment.yaml")
+        >>> print(f"Run ID: {run_id}")
+        Run ID: a1b2c3d4e5f6789012345678901234ab
+
+    Check if a run already exists:
+
+        >>> from pathlib import Path
+        >>>
+        >>> run_id = derive_run_id_from_config_path("experiment.yaml")
+        >>> run_dir = Path.home() / ".insidellms" / "runs" / run_id
+        >>> if run_dir.exists():
+        ...     print("Run already exists, loading results...")
+        ... else:
+        ...     print("New run, executing experiment...")
+
+    Using with run_experiment_from_config:
+
+        >>> run_id = derive_run_id_from_config_path("experiment.yaml")
+        >>> results = run_experiment_from_config(
+        ...     "experiment.yaml",
+        ...     run_id=run_id  # Optional, would be the same anyway
+        ... )
+
+    See Also
+    --------
+    run_experiment_from_config : Runs an experiment from config.
+    load_config : Loads a configuration file.
+    """
     config_path = Path(config_path)
     config = load_config(config_path)
     config_snapshot = _build_resolved_config_snapshot(config, config_path.parent)

@@ -1,5 +1,6 @@
 """
 Context Window Management Module
+================================
 
 Smart context management for LLM applications including:
 - Token budget allocation and tracking
@@ -8,6 +9,57 @@ Smart context management for LLM applications including:
 - Context compression techniques
 - Sliding window management
 - Multi-turn conversation context handling
+
+This module provides a comprehensive set of tools for managing context windows
+in Large Language Model (LLM) applications. It handles the complex task of
+fitting conversation history, system prompts, tool calls, and other content
+within the token limits of various LLMs.
+
+Key Components
+--------------
+- **ContextWindow**: Main context window manager with budget allocation
+- **ConversationManager**: Multi-turn conversation context handling
+- **SlidingWindowManager**: Fixed-size sliding window for recent content
+- **ContextTruncator**: Truncation strategies (priority, semantic, etc.)
+- **ContextCompressor**: Content compression techniques
+- **TokenCounter**: Cached token counting utility
+
+Examples
+--------
+Basic context window usage:
+
+>>> from insideLLMs.context_window import ContextWindow, ContentType, PriorityLevel
+>>> window = ContextWindow(max_tokens=8000)
+>>> window.add("You are a helpful assistant.", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+>>> window.add("What is Python?", ContentType.USER)
+>>> window.add("Python is a programming language.", ContentType.ASSISTANT)
+>>> print(window.get_used_tokens())
+25
+
+Using conversation manager for multi-turn conversations:
+
+>>> from insideLLMs.context_window import ConversationManager
+>>> manager = ConversationManager(max_turns=50)
+>>> manager.add_turn("system", "You are a helpful assistant.")
+>>> manager.add_turn("user", "Hello!")
+>>> manager.add_turn("assistant", "Hi there! How can I help?")
+>>> messages = manager.get_context_for_model()
+
+Creating a sliding window for streaming content:
+
+>>> from insideLLMs.context_window import SlidingWindowManager
+>>> slider = SlidingWindowManager(window_size=5, overlap=1)
+>>> for chunk in ["chunk1", "chunk2", "chunk3", "chunk4", "chunk5", "chunk6"]:
+...     slider.add(chunk)
+>>> len(slider.get_window())  # Only keeps 5 most recent
+5
+
+Using token budgets for allocation:
+
+>>> from insideLLMs.context_window import create_budget
+>>> budget = create_budget(total=32000, system_ratio=0.15, reserved_ratio=0.2)
+>>> print(f"System allocation: {budget.system} tokens")
+System allocation: 3840 tokens
 """
 
 import hashlib
@@ -21,7 +73,64 @@ from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 
 class TruncationStrategy(Enum):
-    """Strategy for truncating content when exceeding limits."""
+    """
+    Strategy for truncating content when exceeding token limits.
+
+    Different strategies are appropriate for different use cases:
+    - PRIORITY: Best for general use when content has varying importance
+    - TAIL: Best when beginning content (like system prompts) is most important
+    - HEAD: Best for chat where recent messages matter most
+    - MIDDLE: Best when both beginning and end are important
+    - SEMANTIC: Best for preserving readable, coherent content
+    - SLIDING_WINDOW: Best for streaming or real-time content
+
+    Attributes
+    ----------
+    TAIL : str
+        Keep beginning, remove end. Preserves initial context like system prompts.
+    HEAD : str
+        Keep end, remove beginning. Preserves recent conversation history.
+    MIDDLE : str
+        Keep beginning and end, remove middle. Good for long documents.
+    SEMANTIC : str
+        Use semantic boundaries (sentences, paragraphs) for cleaner cuts.
+    PRIORITY : str
+        Remove lowest priority content first. Most flexible strategy.
+    SLIDING_WINDOW : str
+        Keep most recent content with overlap. Good for streaming.
+
+    Examples
+    --------
+    Using different strategies for truncation:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextTruncator, ContextBlock, ContentType, PriorityLevel, TruncationStrategy
+    ... )
+    >>> truncator = ContextTruncator()
+    >>> blocks = [
+    ...     ContextBlock("Important system prompt", ContentType.SYSTEM, PriorityLevel.HIGH),
+    ...     ContextBlock("User message 1", ContentType.USER),
+    ...     ContextBlock("User message 2", ContentType.USER),
+    ... ]
+
+    Priority-based truncation (removes lowest priority first):
+
+    >>> result = truncator.truncate(blocks, target_tokens=50, strategy=TruncationStrategy.PRIORITY)
+    >>> result.strategy_used
+    <TruncationStrategy.PRIORITY: 'priority'>
+
+    Tail truncation (keeps beginning):
+
+    >>> result = truncator.truncate(blocks, target_tokens=30, strategy=TruncationStrategy.TAIL)
+    >>> len(result.content) <= len(blocks)
+    True
+
+    Semantic truncation (respects sentence boundaries):
+
+    >>> result = truncator.truncate(blocks, target_tokens=40, strategy=TruncationStrategy.SEMANTIC)
+    >>> result.success
+    True
+    """
 
     TAIL = "tail"  # Keep beginning, remove end
     HEAD = "head"  # Keep end, remove beginning
@@ -32,7 +141,69 @@ class TruncationStrategy(Enum):
 
 
 class ContentType(Enum):
-    """Types of content in context."""
+    """
+    Types of content that can be stored in the context window.
+
+    Content types help the context manager understand the role and importance
+    of different pieces of content. This is used for budget allocation and
+    intelligent truncation decisions.
+
+    Attributes
+    ----------
+    SYSTEM : str
+        System prompts and instructions. Usually highest priority.
+    USER : str
+        User messages in the conversation.
+    ASSISTANT : str
+        Assistant/model responses.
+    TOOL_CALL : str
+        Tool/function call requests from the model.
+    TOOL_RESULT : str
+        Results returned from tool/function executions.
+    CONTEXT : str
+        Additional context like documents or retrieved information.
+    EXAMPLE : str
+        Few-shot examples for prompting.
+    INSTRUCTION : str
+        Specific instructions (similar to system but for specific tasks).
+
+    Examples
+    --------
+    Categorizing different content types:
+
+    >>> from insideLLMs.context_window import ContextBlock, ContentType, PriorityLevel
+    >>> system_block = ContextBlock(
+    ...     content="You are a helpful assistant.",
+    ...     content_type=ContentType.SYSTEM,
+    ...     priority=PriorityLevel.CRITICAL
+    ... )
+    >>> system_block.content_type
+    <ContentType.SYSTEM: 'system'>
+
+    Adding user and assistant messages:
+
+    >>> user_msg = ContextBlock("What is Python?", ContentType.USER)
+    >>> assistant_msg = ContextBlock("Python is a programming language.", ContentType.ASSISTANT)
+    >>> user_msg.content_type.value
+    'user'
+
+    Working with tool calls and results:
+
+    >>> tool_call = ContextBlock('{"function": "search", "args": {"query": "python"}}', ContentType.TOOL_CALL)
+    >>> tool_result = ContextBlock('{"results": ["Python docs", "Python tutorial"]}', ContentType.TOOL_RESULT)
+    >>> tool_call.content_type == ContentType.TOOL_CALL
+    True
+
+    Adding context documents:
+
+    >>> doc_context = ContextBlock(
+    ...     "Python was created by Guido van Rossum in 1991.",
+    ...     ContentType.CONTEXT,
+    ...     metadata={"source": "wikipedia"}
+    ... )
+    >>> doc_context.content_type.value
+    'context'
+    """
 
     SYSTEM = "system"
     USER = "user"
@@ -45,7 +216,66 @@ class ContentType(Enum):
 
 
 class CompressionMethod(Enum):
-    """Methods for compressing context content."""
+    """
+    Methods for compressing context content to reduce token usage.
+
+    Compression methods provide different approaches to reducing content size
+    while attempting to preserve important information. The choice of method
+    depends on the content type and acceptable information loss.
+
+    Attributes
+    ----------
+    NONE : str
+        No compression applied. Content remains unchanged.
+    SUMMARIZE : str
+        Create a summary of the content. Good for long documents.
+    EXTRACT_KEY_POINTS : str
+        Extract bullet points and key information. Good for structured content.
+    REMOVE_REDUNDANCY : str
+        Remove duplicate and redundant content. Safe, minimal information loss.
+    ABBREVIATE : str
+        Replace common phrases with abbreviations. Lightweight compression.
+
+    Examples
+    --------
+    Using different compression methods:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextCompressor, ContextBlock, ContentType, CompressionMethod
+    ... )
+    >>> compressor = ContextCompressor()
+    >>> blocks = [ContextBlock("This is a long document. This is a long document.", ContentType.CONTEXT)]
+
+    Remove redundancy (safest method):
+
+    >>> compressed, result = compressor.compress(blocks, method=CompressionMethod.REMOVE_REDUNDANCY)
+    >>> result.compression_ratio < 1.0 or len(blocks[0].content) == len(compressed[0].content)
+    True
+
+    Summarize content:
+
+    >>> long_block = ContextBlock(
+    ...     "First sentence here. Second sentence here. Third sentence here. Fourth sentence.",
+    ...     ContentType.CONTEXT
+    ... )
+    >>> compressed, result = compressor.compress([long_block], target_ratio=0.5, method=CompressionMethod.SUMMARIZE)
+    >>> result.method_used
+    <CompressionMethod.SUMMARIZE: 'summarize'>
+
+    Abbreviate common phrases:
+
+    >>> text_block = ContextBlock("For example, the application configuration is important.", ContentType.CONTEXT)
+    >>> compressed, result = compressor.compress([text_block], method=CompressionMethod.ABBREVIATE)
+    >>> # "For example" -> "e.g.", "application" -> "app", "configuration" -> "config"
+    >>> result.success
+    True
+
+    No compression (passthrough):
+
+    >>> compressed, result = compressor.compress(blocks, method=CompressionMethod.NONE)
+    >>> result.compression_ratio
+    1.0
+    """
 
     NONE = "none"
     SUMMARIZE = "summarize"
@@ -55,7 +285,63 @@ class CompressionMethod(Enum):
 
 
 class PriorityLevel(Enum):
-    """Priority levels for context content."""
+    """
+    Priority levels for context content.
+
+    Priority levels determine which content is preserved during truncation.
+    Higher priority content is kept while lower priority content is removed
+    first when the context window exceeds its token limit.
+
+    The numeric values (1-5) allow for comparison and sorting. Higher values
+    indicate higher priority.
+
+    Attributes
+    ----------
+    CRITICAL : int
+        Value 5. Must never be removed. Use for essential system prompts.
+    HIGH : int
+        Value 4. Important content. Use for recent user messages.
+    MEDIUM : int
+        Value 3. Standard priority. Default for most content.
+    LOW : int
+        Value 2. Less important. Can be removed if needed.
+    OPTIONAL : int
+        Value 1. Can be removed first. Use for supplementary information.
+
+    Examples
+    --------
+    Assigning priorities to context blocks:
+
+    >>> from insideLLMs.context_window import ContextBlock, ContentType, PriorityLevel
+    >>> critical = ContextBlock("System prompt", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+    >>> critical.priority.value
+    5
+
+    Comparing priorities:
+
+    >>> high = PriorityLevel.HIGH
+    >>> low = PriorityLevel.LOW
+    >>> high.value > low.value
+    True
+
+    Using priorities with truncation:
+
+    >>> from insideLLMs.context_window import ContextWindow, TruncationStrategy
+    >>> window = ContextWindow(max_tokens=100)
+    >>> window.add("Must keep!", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+    >>> window.add("Optional info", ContentType.CONTEXT, PriorityLevel.OPTIONAL)
+    >>> window.add("More optional", ContentType.CONTEXT, PriorityLevel.OPTIONAL)
+    >>> # When truncation happens, OPTIONAL content is removed first
+    >>> result = window.truncate(target_tokens=50, strategy=TruncationStrategy.PRIORITY)
+    >>> any(b.priority == PriorityLevel.CRITICAL for b in result.content)
+    True
+
+    Priority-based filtering:
+
+    >>> blocks = window.get_blocks(min_priority=PriorityLevel.HIGH)
+    >>> all(b.priority.value >= PriorityLevel.HIGH.value for b in blocks)
+    True
+    """
 
     CRITICAL = 5  # Must never be removed
     HIGH = 4
@@ -66,7 +352,75 @@ class PriorityLevel(Enum):
 
 @dataclass
 class ContentAllocationBudget:
-    """Token budget allocation for context."""
+    """
+    Token budget allocation for different content types in the context window.
+
+    This class manages how the total token budget is distributed among different
+    types of content (system prompts, user messages, assistant responses, etc.).
+    It ensures that each content type has a dedicated allocation while reserving
+    space for the model's response.
+
+    If no specific allocations are provided, sensible defaults are calculated
+    automatically based on the total token budget.
+
+    Attributes
+    ----------
+    total : int
+        Total token budget for the context window.
+    system : int
+        Tokens allocated for system prompts and instructions.
+    user : int
+        Tokens allocated for user messages.
+    assistant : int
+        Tokens allocated for assistant responses in history.
+    tools : int
+        Tokens allocated for tool calls and results.
+    context : int
+        Tokens allocated for additional context (documents, RAG content).
+    reserved : int
+        Tokens reserved for the model's response output.
+
+    Examples
+    --------
+    Creating a budget with automatic allocation:
+
+    >>> from insideLLMs.context_window import ContentAllocationBudget
+    >>> budget = ContentAllocationBudget(total=32000)
+    >>> budget.reserved > 0  # Response space is automatically reserved
+    True
+    >>> budget.system + budget.user + budget.context + budget.tools + budget.reserved <= budget.total
+    True
+
+    Creating a custom budget:
+
+    >>> custom_budget = ContentAllocationBudget(
+    ...     total=16000,
+    ...     system=2000,
+    ...     user=4000,
+    ...     assistant=4000,
+    ...     tools=1000,
+    ...     context=2000,
+    ...     reserved=3000
+    ... )
+    >>> custom_budget.system
+    2000
+
+    Checking remaining tokens:
+
+    >>> budget = ContentAllocationBudget(total=8000)
+    >>> usage = {"system": 500, "user": 1000, "assistant": 800}
+    >>> remaining = budget.remaining(usage)
+    >>> remaining == budget.total - budget.reserved - 2300
+    True
+
+    Getting allocation for a content type:
+
+    >>> from insideLLMs.context_window import ContentType
+    >>> budget = ContentAllocationBudget(total=32000)
+    >>> system_allocation = budget.allocation_for(ContentType.SYSTEM)
+    >>> system_allocation == budget.system
+    True
+    """
 
     total: int
     system: int = 0
@@ -77,6 +431,7 @@ class ContentAllocationBudget:
     reserved: int = 0  # Reserved for response
 
     def __post_init__(self):
+        """Initialize default allocations if not specified."""
         if self.system == 0 and self.user == 0:
             # Default allocation if not specified
             self.reserved = min(self.total // 4, 4096)
@@ -88,12 +443,51 @@ class ContentAllocationBudget:
             self.assistant = self.user  # Share with user
 
     def remaining(self, current_usage: dict[str, int]) -> int:
-        """Calculate remaining tokens."""
+        """
+        Calculate remaining tokens based on current usage.
+
+        Args
+        ----
+        current_usage : dict[str, int]
+            Dictionary mapping content type names to token counts used.
+
+        Returns
+        -------
+        int
+            Number of tokens remaining (can be negative if over budget).
+
+        Examples
+        --------
+        >>> budget = ContentAllocationBudget(total=8000)
+        >>> usage = {"system": 500, "user": 1000}
+        >>> budget.remaining(usage)  # doctest: +SKIP
+        4500
+        """
         used = sum(current_usage.values())
         return self.total - self.reserved - used
 
     def allocation_for(self, content_type: ContentType) -> int:
-        """Get allocation for content type."""
+        """
+        Get the token allocation for a specific content type.
+
+        Args
+        ----
+        content_type : ContentType
+            The type of content to get allocation for.
+
+        Returns
+        -------
+        int
+            Token allocation for the specified content type.
+
+        Examples
+        --------
+        >>> budget = ContentAllocationBudget(total=32000)
+        >>> budget.allocation_for(ContentType.SYSTEM) == budget.system
+        True
+        >>> budget.allocation_for(ContentType.TOOL_CALL) == budget.tools
+        True
+        """
         mapping = {
             ContentType.SYSTEM: self.system,
             ContentType.USER: self.user,
@@ -107,7 +501,24 @@ class ContentAllocationBudget:
         return mapping.get(content_type, self.context)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the budget to a dictionary representation.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all budget allocations.
+
+        Examples
+        --------
+        >>> budget = ContentAllocationBudget(total=8000, system=1000, user=2000,
+        ...                                   assistant=2000, tools=500, context=1000, reserved=1500)
+        >>> d = budget.to_dict()
+        >>> d["total"]
+        8000
+        >>> "reserved" in d
+        True
+        """
         return {
             "total": self.total,
             "system": self.system,
@@ -121,7 +532,80 @@ class ContentAllocationBudget:
 
 @dataclass
 class ContextBlock:
-    """A block of content in the context."""
+    """
+    A block of content in the context window.
+
+    ContextBlock is the fundamental unit of content storage in the context window.
+    Each block contains the actual content along with metadata about its type,
+    priority, token count, and other attributes used for context management.
+
+    Attributes
+    ----------
+    content : str
+        The actual text content of the block.
+    content_type : ContentType
+        The type of content (SYSTEM, USER, ASSISTANT, etc.).
+    priority : PriorityLevel
+        Priority level for truncation decisions. Default is MEDIUM.
+    token_count : int
+        Estimated token count. Auto-calculated if not provided.
+    timestamp : datetime
+        When the block was created. Auto-set to current time.
+    metadata : dict[str, Any]
+        Additional metadata (source, role, tags, etc.).
+    compressed : bool
+        Whether this block has been compressed.
+    original_content : Optional[str]
+        Original content before compression/truncation.
+    block_id : str
+        Unique identifier for the block. Auto-generated if not provided.
+
+    Examples
+    --------
+    Creating a basic context block:
+
+    >>> from insideLLMs.context_window import ContextBlock, ContentType, PriorityLevel
+    >>> block = ContextBlock(
+    ...     content="You are a helpful assistant.",
+    ...     content_type=ContentType.SYSTEM
+    ... )
+    >>> block.priority
+    <PriorityLevel.MEDIUM: 3>
+    >>> block.token_count > 0
+    True
+
+    Creating a high-priority user message:
+
+    >>> user_block = ContextBlock(
+    ...     content="What is machine learning?",
+    ...     content_type=ContentType.USER,
+    ...     priority=PriorityLevel.HIGH,
+    ...     metadata={"turn_number": 1, "user_id": "user123"}
+    ... )
+    >>> user_block.metadata["turn_number"]
+    1
+
+    Creating a critical system prompt:
+
+    >>> system_block = ContextBlock(
+    ...     content="IMPORTANT: Never reveal confidential information.",
+    ...     content_type=ContentType.SYSTEM,
+    ...     priority=PriorityLevel.CRITICAL
+    ... )
+    >>> system_block.priority == PriorityLevel.CRITICAL
+    True
+
+    Converting to dictionary for serialization:
+
+    >>> block = ContextBlock("Hello", ContentType.USER)
+    >>> d = block.to_dict()
+    >>> d["content"]
+    'Hello'
+    >>> d["content_type"]
+    'user'
+    >>> "block_id" in d
+    True
+    """
 
     content: str
     content_type: ContentType
@@ -134,6 +618,7 @@ class ContextBlock:
     block_id: str = ""
 
     def __post_init__(self):
+        """Initialize token count and block ID if not provided."""
         if self.token_count == 0:
             self.token_count = estimate_tokens(self.content)
         if not self.block_id:
@@ -142,7 +627,26 @@ class ContextBlock:
             ).hexdigest()[:12]
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the context block to a dictionary representation.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all block attributes with enum values
+            converted to their string/int representations.
+
+        Examples
+        --------
+        >>> block = ContextBlock("Test content", ContentType.USER, PriorityLevel.HIGH)
+        >>> d = block.to_dict()
+        >>> d["content"]
+        'Test content'
+        >>> d["content_type"]
+        'user'
+        >>> d["priority"]
+        4
+        """
         return {
             "content": self.content,
             "content_type": self.content_type.value,
@@ -158,7 +662,73 @@ class ContextBlock:
 
 @dataclass
 class TruncationResult:
-    """Result of a truncation operation."""
+    """
+    Result of a truncation operation on context blocks.
+
+    Contains detailed information about what happened during truncation,
+    including how many tokens and blocks were removed, the strategy used,
+    and the resulting content.
+
+    Attributes
+    ----------
+    original_tokens : int
+        Total token count before truncation.
+    final_tokens : int
+        Total token count after truncation.
+    tokens_removed : int
+        Number of tokens removed during truncation.
+    blocks_removed : int
+        Number of complete blocks removed.
+    blocks_truncated : int
+        Number of blocks that were partially truncated.
+    strategy_used : TruncationStrategy
+        The truncation strategy that was applied.
+    success : bool
+        Whether truncation achieved the target token count.
+    content : list[ContextBlock]
+        The resulting context blocks after truncation.
+
+    Examples
+    --------
+    Examining truncation results:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextTruncator, ContextBlock, ContentType, TruncationStrategy, PriorityLevel
+    ... )
+    >>> truncator = ContextTruncator()
+    >>> blocks = [
+    ...     ContextBlock("First block", ContentType.CONTEXT, PriorityLevel.HIGH),
+    ...     ContextBlock("Second block", ContentType.CONTEXT, PriorityLevel.LOW),
+    ...     ContextBlock("Third block", ContentType.CONTEXT, PriorityLevel.LOW),
+    ... ]
+    >>> result = truncator.truncate(blocks, target_tokens=20, strategy=TruncationStrategy.PRIORITY)
+    >>> result.success
+    True
+    >>> result.tokens_removed >= 0
+    True
+
+    Checking if truncation was needed:
+
+    >>> result = truncator.truncate(blocks, target_tokens=1000)
+    >>> result.tokens_removed
+    0
+    >>> result.original_tokens == result.final_tokens
+    True
+
+    Analyzing truncation statistics:
+
+    >>> result = truncator.truncate(blocks, target_tokens=15, strategy=TruncationStrategy.TAIL)
+    >>> result.strategy_used
+    <TruncationStrategy.TAIL: 'tail'>
+
+    Converting to dictionary for logging:
+
+    >>> result_dict = result.to_dict()
+    >>> "original_tokens" in result_dict
+    True
+    >>> "strategy_used" in result_dict
+    True
+    """
 
     original_tokens: int
     final_tokens: int
@@ -170,7 +740,29 @@ class TruncationResult:
     content: list["ContextBlock"]
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the truncation result to a dictionary representation.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all result attributes, with nested
+            ContextBlocks also converted to dictionaries.
+
+        Examples
+        --------
+        >>> from insideLLMs.context_window import TruncationResult, TruncationStrategy
+        >>> result = TruncationResult(
+        ...     original_tokens=100, final_tokens=50, tokens_removed=50,
+        ...     blocks_removed=2, blocks_truncated=0, strategy_used=TruncationStrategy.PRIORITY,
+        ...     success=True, content=[]
+        ... )
+        >>> d = result.to_dict()
+        >>> d["tokens_removed"]
+        50
+        >>> d["strategy_used"]
+        'priority'
+        """
         return {
             "original_tokens": self.original_tokens,
             "final_tokens": self.final_tokens,
@@ -185,7 +777,65 @@ class TruncationResult:
 
 @dataclass
 class ContextCompressionResult:
-    """Result of a compression operation."""
+    """
+    Result of a compression operation on context blocks.
+
+    Contains detailed information about the compression operation including
+    the compression ratio achieved and how many blocks were affected.
+
+    Attributes
+    ----------
+    original_tokens : int
+        Total token count before compression.
+    compressed_tokens : int
+        Total token count after compression.
+    compression_ratio : float
+        Ratio of compressed to original tokens (0.5 = 50% of original size).
+    method_used : CompressionMethod
+        The compression method that was applied.
+    blocks_compressed : int
+        Number of blocks that were actually compressed.
+    success : bool
+        Whether compression completed successfully.
+
+    Examples
+    --------
+    Examining compression results:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextCompressor, ContextBlock, ContentType, CompressionMethod
+    ... )
+    >>> compressor = ContextCompressor()
+    >>> blocks = [ContextBlock("This is repeated. This is repeated.", ContentType.CONTEXT)]
+    >>> compressed_blocks, result = compressor.compress(blocks, method=CompressionMethod.REMOVE_REDUNDANCY)
+    >>> result.success
+    True
+    >>> 0 < result.compression_ratio <= 1.0
+    True
+
+    Checking compression effectiveness:
+
+    >>> blocks = [ContextBlock("Short text", ContentType.CONTEXT)]
+    >>> _, result = compressor.compress(blocks, method=CompressionMethod.ABBREVIATE)
+    >>> result.original_tokens >= result.compressed_tokens
+    True
+
+    No compression (passthrough):
+
+    >>> _, result = compressor.compress(blocks, method=CompressionMethod.NONE)
+    >>> result.compression_ratio
+    1.0
+    >>> result.blocks_compressed
+    0
+
+    Analyzing compression statistics:
+
+    >>> long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+    >>> blocks = [ContextBlock(long_text, ContentType.CONTEXT)]
+    >>> _, result = compressor.compress(blocks, target_ratio=0.5, method=CompressionMethod.SUMMARIZE)
+    >>> result.method_used
+    <CompressionMethod.SUMMARIZE: 'summarize'>
+    """
 
     original_tokens: int
     compressed_tokens: int
@@ -195,7 +845,27 @@ class ContextCompressionResult:
     success: bool
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the compression result to a dictionary representation.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all result attributes.
+
+        Examples
+        --------
+        >>> from insideLLMs.context_window import ContextCompressionResult, CompressionMethod
+        >>> result = ContextCompressionResult(
+        ...     original_tokens=100, compressed_tokens=60, compression_ratio=0.6,
+        ...     method_used=CompressionMethod.SUMMARIZE, blocks_compressed=3, success=True
+        ... )
+        >>> d = result.to_dict()
+        >>> d["compression_ratio"]
+        0.6
+        >>> d["method_used"]
+        'summarize'
+        """
         return {
             "original_tokens": self.original_tokens,
             "compressed_tokens": self.compressed_tokens,
@@ -208,7 +878,73 @@ class ContextCompressionResult:
 
 @dataclass
 class ContextWindowState:
-    """Current state of the context window."""
+    """
+    Current state snapshot of the context window.
+
+    Provides a comprehensive view of the context window's current state,
+    including token usage, available capacity, and overflow status.
+    Useful for monitoring and debugging context management.
+
+    Attributes
+    ----------
+    total_tokens : int
+        Maximum tokens the context window can hold.
+    used_tokens : int
+        Number of tokens currently used.
+    available_tokens : int
+        Number of tokens available for new content.
+    block_count : int
+        Number of context blocks currently stored.
+    usage_by_type : dict[str, int]
+        Token usage breakdown by content type.
+    budget : ContentAllocationBudget
+        The token budget configuration.
+    overflow : bool
+        True if used tokens exceed available capacity.
+
+    Examples
+    --------
+    Getting context window state:
+
+    >>> from insideLLMs.context_window import ContextWindow, ContentType, PriorityLevel
+    >>> window = ContextWindow(max_tokens=1000)
+    >>> window.add("System prompt", ContentType.SYSTEM, PriorityLevel.HIGH)
+    >>> window.add("User message", ContentType.USER)
+    >>> state = window.get_state()
+    >>> state.block_count
+    2
+    >>> state.used_tokens > 0
+    True
+    >>> state.overflow
+    False
+
+    Checking token usage by type:
+
+    >>> state = window.get_state()
+    >>> "system" in state.usage_by_type
+    True
+    >>> "user" in state.usage_by_type
+    True
+
+    Monitoring for overflow:
+
+    >>> large_window = ContextWindow(max_tokens=100)
+    >>> for i in range(20):
+    ...     large_window.add(f"Message {i} with some content", ContentType.USER)
+    >>> state = large_window.get_state()
+    >>> # Window auto-truncates, so overflow should be False after truncation
+    >>> isinstance(state.overflow, bool)
+    True
+
+    Converting to dictionary for logging:
+
+    >>> state = window.get_state()
+    >>> d = state.to_dict()
+    >>> "total_tokens" in d
+    True
+    >>> "budget" in d
+    True
+    """
 
     total_tokens: int
     used_tokens: int
@@ -219,7 +955,30 @@ class ContextWindowState:
     overflow: bool
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """
+        Convert the context window state to a dictionary representation.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all state attributes, with nested
+            budget also converted to a dictionary.
+
+        Examples
+        --------
+        >>> from insideLLMs.context_window import ContextWindowState, ContentAllocationBudget
+        >>> budget = ContentAllocationBudget(total=1000)
+        >>> state = ContextWindowState(
+        ...     total_tokens=1000, used_tokens=500, available_tokens=250,
+        ...     block_count=5, usage_by_type={"user": 300, "system": 200},
+        ...     budget=budget, overflow=False
+        ... )
+        >>> d = state.to_dict()
+        >>> d["used_tokens"]
+        500
+        >>> d["overflow"]
+        False
+        """
         return {
             "total_tokens": self.total_tokens,
             "used_tokens": self.used_tokens,
@@ -234,13 +993,107 @@ class ContextWindowState:
 def estimate_tokens(text: str) -> int:
     """
     Estimate token count for text.
-    Uses approximation of ~4 characters per token for English.
+
+    Uses an approximation of ~4 characters per token for English text.
+    This is a fast estimation suitable for context window management
+    but should not be used for precise token counting in production.
+
+    For accurate token counting, use a proper tokenizer from the
+    model provider (e.g., tiktoken for OpenAI models).
+
+    Args
+    ----
+    text : str
+        The text to estimate tokens for.
+
+    Returns
+    -------
+    int
+        Estimated number of tokens.
+
+    Examples
+    --------
+    Estimating tokens for short text:
+
+    >>> from insideLLMs.context_window import estimate_tokens
+    >>> estimate_tokens("Hello, world!")
+    4
+
+    Estimating tokens for longer text:
+
+    >>> tokens = estimate_tokens("This is a longer piece of text that spans multiple words.")
+    >>> tokens > 10
+    True
+
+    Empty string returns zero:
+
+    >>> estimate_tokens("")
+    0
+
+    Estimating for code content:
+
+    >>> code = "def hello():\\n    print('Hello, World!')"
+    >>> tokens = estimate_tokens(code)
+    >>> tokens > 0
+    True
     """
     return _canonical_estimate_tokens(text)
 
 
 def find_semantic_boundaries(text: str) -> list[int]:
-    """Find sentence and paragraph boundaries in text."""
+    """
+    Find sentence and paragraph boundaries in text.
+
+    Identifies natural breaking points in text that can be used for
+    semantic truncation. This ensures truncation happens at sentence
+    or paragraph boundaries rather than mid-word or mid-sentence.
+
+    Args
+    ----
+    text : str
+        The text to analyze for boundaries.
+
+    Returns
+    -------
+    list[int]
+        Sorted list of character positions representing boundaries.
+        Always includes 0 (start) and len(text) (end).
+
+    Examples
+    --------
+    Finding boundaries in simple text:
+
+    >>> from insideLLMs.context_window import find_semantic_boundaries
+    >>> text = "First sentence. Second sentence."
+    >>> boundaries = find_semantic_boundaries(text)
+    >>> 0 in boundaries
+    True
+    >>> len(text) in boundaries
+    True
+
+    Finding paragraph boundaries:
+
+    >>> text = "First paragraph.\\n\\nSecond paragraph."
+    >>> boundaries = find_semantic_boundaries(text)
+    >>> len(boundaries) >= 2
+    True
+
+    Single sentence:
+
+    >>> text = "Just one sentence here."
+    >>> boundaries = find_semantic_boundaries(text)
+    >>> boundaries[0]
+    0
+    >>> boundaries[-1] == len(text)
+    True
+
+    Text with multiple sentence endings:
+
+    >>> text = "Question? Exclamation! Statement."
+    >>> boundaries = find_semantic_boundaries(text)
+    >>> len(boundaries) >= 3
+    True
+    """
     boundaries = [0]
 
     # Find paragraph breaks
@@ -256,14 +1109,83 @@ def find_semantic_boundaries(text: str) -> list[int]:
 
 
 class TokenCounter:
-    """Token counting utility with caching."""
+    """
+    Token counting utility with caching for improved performance.
+
+    TokenCounter provides efficient token counting by caching results
+    for previously counted text. This is particularly useful when the
+    same content is counted multiple times during context management.
+
+    Supports custom tokenizers (e.g., tiktoken) or falls back to
+    estimation-based counting.
+
+    Attributes
+    ----------
+    tokenizer : Optional[Callable[[str], list]]
+        Custom tokenizer function that returns a list of tokens.
+    _cache : dict[str, int]
+        Internal cache mapping content hashes to token counts.
+    _cache_hits : int
+        Number of cache hits for statistics.
+    _cache_misses : int
+        Number of cache misses for statistics.
+
+    Examples
+    --------
+    Basic token counting with default estimator:
+
+    >>> from insideLLMs.context_window import TokenCounter
+    >>> counter = TokenCounter()
+    >>> tokens = counter.count("Hello, world!")
+    >>> tokens > 0
+    True
+
+    Counting with caching:
+
+    >>> counter = TokenCounter()
+    >>> text = "This text will be counted multiple times."
+    >>> count1 = counter.count(text)
+    >>> count2 = counter.count(text)  # Uses cache
+    >>> count1 == count2
+    True
+    >>> counter.get_stats()["cache_hits"] >= 1
+    True
+
+    Counting messages in a conversation:
+
+    >>> counter = TokenCounter()
+    >>> messages = [
+    ...     {"role": "user", "content": "Hello!"},
+    ...     {"role": "assistant", "content": "Hi there!"}
+    ... ]
+    >>> total = counter.count_messages(messages)
+    >>> total > 0
+    True
+
+    Using a custom tokenizer:
+
+    >>> def simple_tokenizer(text):
+    ...     return text.split()  # Simple word-based tokenizer
+    >>> counter = TokenCounter(tokenizer=simple_tokenizer)
+    >>> counter.count("Hello world")
+    2
+    """
 
     def __init__(self, tokenizer: Optional[Callable[[str], list]] = None):
         """
         Initialize token counter.
 
-        Args:
-            tokenizer: Optional custom tokenizer function
+        Args
+        ----
+        tokenizer : Optional[Callable[[str], list]]
+            Optional custom tokenizer function that takes a string and
+            returns a list of tokens. If not provided, uses estimation.
+
+        Examples
+        --------
+        >>> counter = TokenCounter()  # Use default estimation
+        >>> counter.count("test") > 0
+        True
         """
         self.tokenizer = tokenizer
         self._cache: dict[str, int] = {}
@@ -271,7 +1193,27 @@ class TokenCounter:
         self._cache_misses = 0
 
     def count(self, text: str) -> int:
-        """Count tokens in text."""
+        """
+        Count tokens in text with caching.
+
+        Args
+        ----
+        text : str
+            The text to count tokens for.
+
+        Returns
+        -------
+        int
+            Number of tokens in the text.
+
+        Examples
+        --------
+        >>> counter = TokenCounter()
+        >>> counter.count("Hello, how are you?")
+        5
+        >>> counter.count("")
+        0
+        """
         if not text:
             return 0
 
@@ -293,7 +1235,29 @@ class TokenCounter:
         return count
 
     def count_messages(self, messages: list[dict]) -> int:
-        """Count tokens in a list of messages."""
+        """
+        Count tokens in a list of chat messages.
+
+        Includes overhead for message structure (approximately 4 tokens
+        per message for role and formatting).
+
+        Args
+        ----
+        messages : list[dict]
+            List of message dictionaries with 'content' key.
+
+        Returns
+        -------
+        int
+            Total token count including message overhead.
+
+        Examples
+        --------
+        >>> counter = TokenCounter()
+        >>> messages = [{"role": "user", "content": "Hi"}]
+        >>> counter.count_messages(messages) >= 1
+        True
+        """
         total = 0
         for msg in messages:
             if isinstance(msg.get("content"), str):
@@ -303,7 +1267,25 @@ class TokenCounter:
         return total
 
     def get_stats(self) -> dict[str, Any]:
-        """Get cache statistics."""
+        """
+        Get cache statistics.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with cache_hits, cache_misses, hit_rate, and cache_size.
+
+        Examples
+        --------
+        >>> counter = TokenCounter()
+        >>> counter.count("test")
+        1
+        >>> stats = counter.get_stats()
+        >>> "cache_hits" in stats
+        True
+        >>> stats["cache_misses"] >= 1
+        True
+        """
         total = self._cache_hits + self._cache_misses
         return {
             "cache_hits": self._cache_hits,
@@ -313,21 +1295,94 @@ class TokenCounter:
         }
 
     def clear_cache(self):
-        """Clear the token cache."""
+        """
+        Clear the token cache and reset statistics.
+
+        Examples
+        --------
+        >>> counter = TokenCounter()
+        >>> counter.count("test")
+        1
+        >>> counter.clear_cache()
+        >>> counter.get_stats()["cache_size"]
+        0
+        """
         self._cache.clear()
         self._cache_hits = 0
         self._cache_misses = 0
 
 
 class ContextTruncator:
-    """Truncates context using various strategies."""
+    """
+    Truncates context blocks using various strategies to fit token limits.
+
+    ContextTruncator provides multiple strategies for reducing context size
+    while attempting to preserve the most important information. Different
+    strategies are suitable for different use cases.
+
+    Attributes
+    ----------
+    token_counter : TokenCounter
+        Token counter used for measuring content size.
+
+    Examples
+    --------
+    Basic truncation with priority strategy:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextTruncator, ContextBlock, ContentType, PriorityLevel, TruncationStrategy
+    ... )
+    >>> truncator = ContextTruncator()
+    >>> blocks = [
+    ...     ContextBlock("Important", ContentType.SYSTEM, PriorityLevel.HIGH),
+    ...     ContextBlock("Less important", ContentType.CONTEXT, PriorityLevel.LOW),
+    ... ]
+    >>> result = truncator.truncate(blocks, target_tokens=20)
+    >>> result.success
+    True
+
+    Using tail truncation (keep beginning):
+
+    >>> truncator = ContextTruncator()
+    >>> blocks = [ContextBlock(f"Block {i}", ContentType.USER) for i in range(5)]
+    >>> result = truncator.truncate(blocks, target_tokens=15, strategy=TruncationStrategy.TAIL)
+    >>> result.strategy_used
+    <TruncationStrategy.TAIL: 'tail'>
+
+    Preserving critical content:
+
+    >>> truncator = ContextTruncator()
+    >>> blocks = [
+    ...     ContextBlock("CRITICAL", ContentType.SYSTEM, PriorityLevel.CRITICAL),
+    ...     ContextBlock("Optional", ContentType.CONTEXT, PriorityLevel.OPTIONAL),
+    ... ]
+    >>> result = truncator.truncate(blocks, target_tokens=10, preserve_critical=True)
+    >>> any(b.priority == PriorityLevel.CRITICAL for b in result.content)
+    True
+
+    Semantic truncation at sentence boundaries:
+
+    >>> truncator = ContextTruncator()
+    >>> blocks = [ContextBlock("First. Second. Third.", ContentType.CONTEXT)]
+    >>> result = truncator.truncate(blocks, target_tokens=8, strategy=TruncationStrategy.SEMANTIC)
+    >>> result.strategy_used
+    <TruncationStrategy.SEMANTIC: 'semantic'>
+    """
 
     def __init__(self, token_counter: Optional[TokenCounter] = None):
         """
         Initialize truncator.
 
-        Args:
-            token_counter: Token counter to use
+        Args
+        ----
+        token_counter : Optional[TokenCounter]
+            Token counter to use. Creates a default one if not provided.
+
+        Examples
+        --------
+        >>> truncator = ContextTruncator()
+        >>> truncator.token_counter is not None
+        True
         """
         self.token_counter = token_counter or TokenCounter()
 
@@ -341,11 +1396,32 @@ class ContextTruncator:
         """
         Truncate blocks to fit within token limit.
 
-        Args:
-            blocks: Context blocks to truncate
-            target_tokens: Target token count
-            strategy: Truncation strategy to use
-            preserve_critical: Whether to preserve critical priority blocks
+        Args
+        ----
+        blocks : list[ContextBlock]
+            Context blocks to truncate.
+        target_tokens : int
+            Maximum token count for the result.
+        strategy : TruncationStrategy
+            Strategy to use for truncation. Default is PRIORITY.
+        preserve_critical : bool
+            Whether to preserve CRITICAL priority blocks regardless of
+            token limit. Default is True.
+
+        Returns
+        -------
+        TruncationResult
+            Result containing truncated blocks and statistics.
+
+        Examples
+        --------
+        >>> truncator = ContextTruncator()
+        >>> blocks = [ContextBlock("Test", ContentType.USER)]
+        >>> result = truncator.truncate(blocks, target_tokens=100)
+        >>> result.success
+        True
+        >>> result.tokens_removed
+        0
         """
         original_tokens = sum(b.token_count for b in blocks)
 
@@ -727,7 +1803,60 @@ class ContextTruncator:
 
 
 class ContextCompressor:
-    """Compresses context content to save tokens."""
+    """
+    Compresses context content to reduce token usage.
+
+    ContextCompressor provides multiple compression methods for reducing
+    the size of context content while attempting to preserve important
+    information. Different methods are suitable for different content types.
+
+    Attributes
+    ----------
+    token_counter : TokenCounter
+        Token counter used for measuring compression effectiveness.
+    summarizer : Optional[Callable[[str], str]]
+        Custom summarization function for SUMMARIZE method.
+
+    Examples
+    --------
+    Basic compression with redundancy removal:
+
+    >>> from insideLLMs.context_window import (
+    ...     ContextCompressor, ContextBlock, ContentType, CompressionMethod
+    ... )
+    >>> compressor = ContextCompressor()
+    >>> blocks = [ContextBlock("Hello hello world world", ContentType.CONTEXT)]
+    >>> compressed, result = compressor.compress(blocks, method=CompressionMethod.REMOVE_REDUNDANCY)
+    >>> result.success
+    True
+
+    Summarization compression:
+
+    >>> compressor = ContextCompressor()
+    >>> long_text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+    >>> blocks = [ContextBlock(long_text, ContentType.CONTEXT)]
+    >>> compressed, result = compressor.compress(blocks, target_ratio=0.5, method=CompressionMethod.SUMMARIZE)
+    >>> result.method_used
+    <CompressionMethod.SUMMARIZE: 'summarize'>
+
+    Using abbreviation compression:
+
+    >>> compressor = ContextCompressor()
+    >>> blocks = [ContextBlock("For example, the application configuration is here.", ContentType.CONTEXT)]
+    >>> compressed, result = compressor.compress(blocks, method=CompressionMethod.ABBREVIATE)
+    >>> result.success
+    True
+
+    Custom summarizer function:
+
+    >>> def my_summarizer(text):
+    ...     return text[:50] + "..." if len(text) > 50 else text
+    >>> compressor = ContextCompressor(summarizer=my_summarizer)
+    >>> blocks = [ContextBlock("A" * 100, ContentType.CONTEXT)]
+    >>> compressed, result = compressor.compress(blocks, method=CompressionMethod.SUMMARIZE)
+    >>> len(compressed[0].content) < 100
+    True
+    """
 
     def __init__(
         self,
@@ -737,9 +1866,19 @@ class ContextCompressor:
         """
         Initialize compressor.
 
-        Args:
-            token_counter: Token counter to use
-            summarizer: Optional function to summarize text
+        Args
+        ----
+        token_counter : Optional[TokenCounter]
+            Token counter to use. Creates a default one if not provided.
+        summarizer : Optional[Callable[[str], str]]
+            Custom function to summarize text. Used when compression
+            method is SUMMARIZE.
+
+        Examples
+        --------
+        >>> compressor = ContextCompressor()
+        >>> compressor.token_counter is not None
+        True
         """
         self.token_counter = token_counter or TokenCounter()
         self.summarizer = summarizer
@@ -752,13 +1891,38 @@ class ContextCompressor:
         min_priority: PriorityLevel = PriorityLevel.LOW,
     ) -> tuple[list[ContextBlock], ContextCompressionResult]:
         """
-        Compress context blocks.
+        Compress context blocks using the specified method.
 
-        Args:
-            blocks: Blocks to compress
-            target_ratio: Target compression ratio (0.5 = 50% of original)
-            method: Compression method to use
-            min_priority: Minimum priority level to compress
+        Compresses blocks with priority at or below min_priority. Higher
+        priority blocks are preserved unchanged.
+
+        Args
+        ----
+        blocks : list[ContextBlock]
+            Blocks to compress.
+        target_ratio : float
+            Target compression ratio (0.5 = 50% of original size).
+            Only used by SUMMARIZE method.
+        method : CompressionMethod
+            Compression method to use. Default is REMOVE_REDUNDANCY.
+        min_priority : PriorityLevel
+            Only compress blocks at or below this priority level.
+            Default is LOW.
+
+        Returns
+        -------
+        tuple[list[ContextBlock], ContextCompressionResult]
+            Tuple of (compressed blocks, compression statistics).
+
+        Examples
+        --------
+        >>> compressor = ContextCompressor()
+        >>> blocks = [ContextBlock("test test", ContentType.CONTEXT)]
+        >>> compressed, result = compressor.compress(blocks)
+        >>> result.success
+        True
+        >>> result.compression_ratio <= 1.0
+        True
         """
         original_tokens = sum(b.token_count for b in blocks)
         result_blocks = []
@@ -916,9 +2080,91 @@ class ContextCompressor:
 
 class ContextWindow:
     """
-    Main context window manager.
+    Main context window manager for LLM applications.
 
-    Manages context blocks with budget allocation, truncation, and compression.
+    ContextWindow is the primary interface for managing context in LLM
+    applications. It handles content storage, budget allocation, automatic
+    truncation, and compression to ensure content fits within model limits.
+
+    Features:
+    - Automatic token budget management
+    - Priority-based content management
+    - Multiple truncation strategies
+    - Content compression
+    - Action history tracking
+
+    Attributes
+    ----------
+    max_tokens : int
+        Maximum tokens the context window can hold.
+    budget : ContentAllocationBudget
+        Token budget allocation for different content types.
+    token_counter : TokenCounter
+        Token counter used for measurements.
+    default_strategy : TruncationStrategy
+        Default strategy for automatic truncation.
+    truncator : ContextTruncator
+        Truncator instance for truncation operations.
+    compressor : ContextCompressor
+        Compressor instance for compression operations.
+
+    Examples
+    --------
+    Basic context window usage:
+
+    >>> from insideLLMs.context_window import ContextWindow, ContentType, PriorityLevel
+    >>> window = ContextWindow(max_tokens=8000)
+    >>> window.add("You are helpful.", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+    >>> window.add("Hello!", ContentType.USER)
+    >>> window.get_used_tokens() > 0
+    True
+
+    Adding chat messages:
+
+    >>> window = ContextWindow(max_tokens=4000)
+    >>> window.add_message("system", "Be helpful.")
+    >>> window.add_message("user", "Hi!")
+    >>> window.add_message("assistant", "Hello!")
+    >>> messages = window.get_messages()
+    >>> len(messages)
+    3
+
+    Automatic truncation when over budget:
+
+    >>> window = ContextWindow(max_tokens=100)
+    >>> for i in range(20):
+    ...     window.add(f"Message {i} content here", ContentType.USER)
+    >>> window.get_used_tokens() <= 100 - window.budget.reserved
+    True
+
+    Manual truncation with specific strategy:
+
+    >>> from insideLLMs.context_window import TruncationStrategy
+    >>> window = ContextWindow(max_tokens=1000)
+    >>> for i in range(10):
+    ...     window.add(f"Content {i}", ContentType.CONTEXT)
+    >>> result = window.truncate(target_tokens=50, strategy=TruncationStrategy.TAIL)
+    >>> result.success
+    True
+
+    Content compression:
+
+    >>> from insideLLMs.context_window import CompressionMethod
+    >>> window = ContextWindow(max_tokens=1000)
+    >>> window.add("Repeated word word content content here here", ContentType.CONTEXT)
+    >>> result = window.compress(method=CompressionMethod.REMOVE_REDUNDANCY)
+    >>> result.success
+    True
+
+    Getting context state:
+
+    >>> window = ContextWindow(max_tokens=8000)
+    >>> window.add("Test", ContentType.USER)
+    >>> state = window.get_state()
+    >>> state.block_count
+    1
+    >>> state.overflow
+    False
     """
 
     def __init__(
@@ -931,11 +2177,24 @@ class ContextWindow:
         """
         Initialize context window.
 
-        Args:
-            max_tokens: Maximum tokens for the context window
-            budget: Token budget allocation
-            token_counter: Token counter to use
-            default_strategy: Default truncation strategy
+        Args
+        ----
+        max_tokens : int
+            Maximum tokens for the context window. Default is 128000.
+        budget : Optional[ContentAllocationBudget]
+            Token budget allocation. Creates default if not provided.
+        token_counter : Optional[TokenCounter]
+            Token counter to use. Creates default if not provided.
+        default_strategy : TruncationStrategy
+            Default truncation strategy. Default is PRIORITY.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=4000)
+        >>> window.max_tokens
+        4000
+        >>> window.budget is not None
+        True
         """
         self.max_tokens = max_tokens
         self.budget = budget or ContentAllocationBudget(total=max_tokens)
@@ -958,11 +2217,40 @@ class ContextWindow:
         """
         Add content to the context window.
 
-        Args:
-            content: Content to add
-            content_type: Type of content
-            priority: Priority level
-            metadata: Optional metadata
+        Creates a new ContextBlock and adds it to the window. If the total
+        tokens exceed the budget (max_tokens - reserved), automatic truncation
+        is triggered.
+
+        Args
+        ----
+        content : str
+            The text content to add.
+        content_type : ContentType
+            Type of content being added. Default is CONTEXT.
+        priority : PriorityLevel
+            Priority level for truncation decisions. Default is MEDIUM.
+        metadata : Optional[dict]
+            Additional metadata to store with the block.
+
+        Returns
+        -------
+        ContextBlock
+            The created context block.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> block = window.add("Hello, world!", ContentType.USER)
+        >>> block.content
+        'Hello, world!'
+
+        >>> block = window.add("System prompt", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+        >>> block.priority
+        <PriorityLevel.CRITICAL: 5>
+
+        >>> block = window.add("Data", ContentType.CONTEXT, metadata={"source": "api"})
+        >>> block.metadata["source"]
+        'api'
         """
         block = ContextBlock(
             content=content,
@@ -991,11 +2279,46 @@ class ContextWindow:
         """
         Add a chat message to context.
 
-        Args:
-            role: Message role (system, user, assistant)
-            content: Message content
-            priority: Priority level (auto-determined if not specified)
-            metadata: Optional metadata
+        Convenience method for adding chat-style messages. Automatically maps
+        roles to content types and assigns default priorities based on role.
+
+        Args
+        ----
+        role : str
+            Message role: "system", "user", or "assistant".
+        content : str
+            Message content.
+        priority : Optional[PriorityLevel]
+            Priority level. If not specified, defaults to HIGH for system
+            messages and MEDIUM for user/assistant messages.
+        metadata : Optional[dict]
+            Additional metadata. Role is automatically added.
+
+        Returns
+        -------
+        ContextBlock
+            The created context block with role in metadata.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=4000)
+        >>> block = window.add_message("system", "You are helpful.")
+        >>> block.content_type
+        <ContentType.SYSTEM: 'system'>
+        >>> block.metadata["role"]
+        'system'
+
+        >>> block = window.add_message("user", "Hello!")
+        >>> block.priority
+        <PriorityLevel.MEDIUM: 3>
+
+        >>> block = window.add_message("assistant", "Hi!", priority=PriorityLevel.HIGH)
+        >>> block.priority
+        <PriorityLevel.HIGH: 4>
+
+        >>> messages = window.get_messages()
+        >>> len(messages)
+        3
         """
         # Map role to content type
         role_mapping = {
@@ -1022,7 +2345,29 @@ class ContextWindow:
         )
 
     def remove(self, block_id: str) -> bool:
-        """Remove a block by ID."""
+        """
+        Remove a block by its ID.
+
+        Args
+        ----
+        block_id : str
+            The unique identifier of the block to remove.
+
+        Returns
+        -------
+        bool
+            True if a block was found and removed, False otherwise.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> block = window.add("Test content", ContentType.USER)
+        >>> block_id = block.block_id
+        >>> window.remove(block_id)
+        True
+        >>> window.remove("nonexistent_id")
+        False
+        """
         for i, block in enumerate(self._blocks):
             if block.block_id == block_id:
                 removed = self._blocks.pop(i)
@@ -1034,8 +2379,26 @@ class ContextWindow:
         """
         Clear context window.
 
-        Args:
-            preserve_critical: Whether to keep critical priority blocks
+        Removes all blocks from the context window, optionally preserving
+        blocks with CRITICAL priority.
+
+        Args
+        ----
+        preserve_critical : bool
+            If True, keeps blocks with CRITICAL priority. Default is True.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> window.add("Keep this", ContentType.SYSTEM, PriorityLevel.CRITICAL)
+        >>> window.add("Remove this", ContentType.USER)
+        >>> window.clear(preserve_critical=True)
+        >>> len(window.get_blocks())
+        1
+
+        >>> window.clear(preserve_critical=False)
+        >>> len(window.get_blocks())
+        0
         """
         if preserve_critical:
             self._blocks = [b for b in self._blocks if b.priority == PriorityLevel.CRITICAL]
@@ -1050,11 +2413,37 @@ class ContextWindow:
         strategy: Optional[TruncationStrategy] = None,
     ) -> TruncationResult:
         """
-        Truncate context to fit within limits.
+        Truncate context to fit within token limits.
 
-        Args:
-            target_tokens: Target token count
-            strategy: Truncation strategy to use
+        Removes or trims content blocks to meet the target token count.
+        Always preserves blocks with CRITICAL priority.
+
+        Args
+        ----
+        target_tokens : Optional[int]
+            Target token count. Defaults to max_tokens minus reserved.
+        strategy : Optional[TruncationStrategy]
+            Truncation strategy to use. Uses default_strategy if not specified.
+
+        Returns
+        -------
+        TruncationResult
+            Result containing truncated blocks and statistics.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> for i in range(10):
+        ...     window.add(f"Message {i}", ContentType.USER)
+        >>> result = window.truncate(target_tokens=50)
+        >>> result.success
+        True
+        >>> result.final_tokens <= 50
+        True
+
+        >>> result = window.truncate(strategy=TruncationStrategy.TAIL)
+        >>> result.strategy_used
+        <TruncationStrategy.TAIL: 'tail'>
         """
         target = target_tokens or (self.max_tokens - self.budget.reserved)
         strat = strategy or self.default_strategy
@@ -1077,11 +2466,38 @@ class ContextWindow:
         method: CompressionMethod = CompressionMethod.REMOVE_REDUNDANCY,
     ) -> ContextCompressionResult:
         """
-        Compress context content.
+        Compress context content to reduce token usage.
 
-        Args:
-            target_ratio: Target compression ratio
-            method: Compression method to use
+        Applies compression to eligible blocks (those with priority at or
+        below LOW). High priority content is preserved unchanged.
+
+        Args
+        ----
+        target_ratio : float
+            Target compression ratio (0.5 = 50% of original). Only used
+            by SUMMARIZE method.
+        method : CompressionMethod
+            Compression method to use. Default is REMOVE_REDUNDANCY.
+
+        Returns
+        -------
+        ContextCompressionResult
+            Result containing compression statistics.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> window.add("Same same content content here here", ContentType.CONTEXT)
+        >>> result = window.compress(method=CompressionMethod.REMOVE_REDUNDANCY)
+        >>> result.success
+        True
+        >>> result.compression_ratio <= 1.0
+        True
+
+        >>> window.add("For example, the application configuration", ContentType.CONTEXT)
+        >>> result = window.compress(method=CompressionMethod.ABBREVIATE)
+        >>> result.method_used
+        <CompressionMethod.ABBREVIATE: 'abbreviate'>
         """
         self._blocks, result = self.compressor.compress(
             self._blocks,
@@ -1099,11 +2515,33 @@ class ContextWindow:
         min_priority: Optional[PriorityLevel] = None,
     ) -> list[ContextBlock]:
         """
-        Get blocks, optionally filtered.
+        Get blocks, optionally filtered by type and/or priority.
 
-        Args:
-            content_type: Filter by content type
-            min_priority: Filter by minimum priority
+        Args
+        ----
+        content_type : Optional[ContentType]
+            If provided, only return blocks of this type.
+        min_priority : Optional[PriorityLevel]
+            If provided, only return blocks at or above this priority.
+
+        Returns
+        -------
+        list[ContextBlock]
+            List of matching context blocks.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> window.add("System", ContentType.SYSTEM, PriorityLevel.HIGH)
+        >>> window.add("User", ContentType.USER, PriorityLevel.MEDIUM)
+        >>> len(window.get_blocks())
+        2
+
+        >>> len(window.get_blocks(content_type=ContentType.USER))
+        1
+
+        >>> len(window.get_blocks(min_priority=PriorityLevel.HIGH))
+        1
         """
         blocks = self._blocks
 
@@ -1116,11 +2554,56 @@ class ContextWindow:
         return blocks
 
     def get_content(self, separator: str = "\n\n") -> str:
-        """Get all content as a single string."""
+        """
+        Get all content as a single concatenated string.
+
+        Args
+        ----
+        separator : str
+            String to use between blocks. Default is double newline.
+
+        Returns
+        -------
+        str
+            All block content joined by the separator.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> window.add("First", ContentType.USER)
+        >>> window.add("Second", ContentType.USER)
+        >>> window.get_content()
+        'First\\n\\nSecond'
+        >>> window.get_content(separator=" | ")
+        'First | Second'
+        """
         return separator.join(b.content for b in self._blocks)
 
     def get_messages(self) -> list[dict[str, str]]:
-        """Get blocks as chat messages."""
+        """
+        Get blocks as chat messages format.
+
+        Only includes blocks that have a 'role' in their metadata
+        (typically blocks added via add_message).
+
+        Returns
+        -------
+        list[dict[str, str]]
+            List of message dictionaries with 'role' and 'content' keys.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=4000)
+        >>> window.add_message("system", "Be helpful.")
+        >>> window.add_message("user", "Hi!")
+        >>> messages = window.get_messages()
+        >>> len(messages)
+        2
+        >>> messages[0]["role"]
+        'system'
+        >>> messages[1]["content"]
+        'Hi!'
+        """
         messages = []
         for block in self._blocks:
             role = block.metadata.get("role")
@@ -1129,15 +2612,68 @@ class ContextWindow:
         return messages
 
     def get_used_tokens(self) -> int:
-        """Get total tokens currently used."""
+        """
+        Get total tokens currently used in the context window.
+
+        Returns
+        -------
+        int
+            Sum of token counts from all blocks.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> window.add("Hello world", ContentType.USER)
+        >>> window.get_used_tokens() > 0
+        True
+        """
         return sum(b.token_count for b in self._blocks)
 
     def get_available_tokens(self) -> int:
-        """Get available tokens."""
+        """
+        Get number of tokens available for new content.
+
+        Calculated as max_tokens minus reserved tokens minus used tokens.
+
+        Returns
+        -------
+        int
+            Available token count.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=1000)
+        >>> initial_available = window.get_available_tokens()
+        >>> window.add("Some content", ContentType.USER)
+        >>> window.get_available_tokens() < initial_available
+        True
+        """
         return self.max_tokens - self.budget.reserved - self.get_used_tokens()
 
     def get_state(self) -> ContextWindowState:
-        """Get current context window state."""
+        """
+        Get current context window state snapshot.
+
+        Returns a comprehensive view of the context window's current state
+        including token usage, available capacity, and usage breakdown.
+
+        Returns
+        -------
+        ContextWindowState
+            State object with usage information.
+
+        Examples
+        --------
+        >>> window = ContextWindow(max_tokens=8000)
+        >>> window.add("Test", ContentType.USER)
+        >>> state = window.get_state()
+        >>> state.block_count
+        1
+        >>> state.total_tokens
+        8000
+        >>> state.overflow
+        False
+        """
         usage_by_type: dict[str, int] = {}
         for block in self._blocks:
             type_name = block.content_type.value
@@ -1176,10 +2712,60 @@ class ContextWindow:
 
 class ConversationManager:
     """
-    Manages multi-turn conversation context.
+    Manages multi-turn conversation context with automatic summarization.
 
-    Provides specialized handling for conversation history with
-    automatic summarization of older messages.
+    ConversationManager provides specialized handling for conversation history,
+    automatically summarizing older messages when the conversation exceeds
+    a configurable threshold to manage context window usage.
+
+    Attributes
+    ----------
+    context_window : ContextWindow
+        Underlying context window for storage.
+    max_turns : int
+        Maximum conversation turns to keep.
+    summarize_after : int
+        Summarize messages after this many turns.
+    summarizer : Optional[Callable[[list[dict]], str]]
+        Custom function to summarize turns.
+
+    Examples
+    --------
+    Basic conversation management:
+
+    >>> from insideLLMs.context_window import ConversationManager
+    >>> manager = ConversationManager(max_turns=50)
+    >>> manager.add_turn("system", "You are helpful.")
+    >>> manager.add_turn("user", "Hello!")
+    >>> manager.add_turn("assistant", "Hi! How can I help?")
+    >>> len(manager.get_turns())
+    3
+
+    Getting formatted messages for model:
+
+    >>> messages = manager.get_context_for_model()
+    >>> len(messages)
+    3
+    >>> messages[0]["role"]
+    'system'
+
+    Automatic summarization (with custom summarizer):
+
+    >>> def my_summarizer(turns):
+    ...     return f"Summary of {len(turns)} turns"
+    >>> manager = ConversationManager(summarize_after=5, summarizer=my_summarizer)
+    >>> for i in range(10):
+    ...     manager.add_turn("user", f"Message {i}")
+    >>> manager.get_stats()["has_summary"]
+    True
+
+    Getting conversation statistics:
+
+    >>> manager = ConversationManager()
+    >>> manager.add_turn("user", "Test")
+    >>> stats = manager.get_stats()
+    >>> stats["total_turns"]
+    1
     """
 
     def __init__(
@@ -1192,11 +2778,23 @@ class ConversationManager:
         """
         Initialize conversation manager.
 
-        Args:
-            context_window: Context window to use
-            max_turns: Maximum conversation turns to keep
-            summarize_after: Summarize messages after this many turns
-            summarizer: Optional function to summarize messages
+        Args
+        ----
+        context_window : Optional[ContextWindow]
+            Context window to use. Creates default if not provided.
+        max_turns : int
+            Maximum conversation turns to keep. Default is 50.
+        summarize_after : int
+            Summarize messages after this many turns. Default is 20.
+        summarizer : Optional[Callable[[list[dict]], str]]
+            Custom function to summarize messages. If not provided,
+            uses a simple default summarizer.
+
+        Examples
+        --------
+        >>> manager = ConversationManager(max_turns=100, summarize_after=30)
+        >>> manager.max_turns
+        100
         """
         self.context_window = context_window or ContextWindow()
         self.max_turns = max_turns
@@ -1216,10 +2814,34 @@ class ConversationManager:
         """
         Add a conversation turn.
 
-        Args:
-            role: Message role
-            content: Message content
-            metadata: Optional metadata
+        Adds a new turn to the conversation history. Automatically triggers
+        summarization if the turn count exceeds summarize_after threshold.
+
+        Args
+        ----
+        role : str
+            Message role: "system", "user", or "assistant".
+        content : str
+            Message content.
+        metadata : Optional[dict]
+            Additional metadata for this turn.
+
+        Returns
+        -------
+        dict[str, Any]
+            The created turn dictionary with role, content, timestamp,
+            turn_number, and metadata.
+
+        Examples
+        --------
+        >>> manager = ConversationManager()
+        >>> turn = manager.add_turn("user", "Hello!")
+        >>> turn["role"]
+        'user'
+        >>> turn["turn_number"]
+        1
+        >>> "timestamp" in turn
+        True
         """
         turn = {
             "role": role,
@@ -1242,17 +2864,66 @@ class ConversationManager:
         return turn
 
     def get_turns(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
-        """Get conversation turns."""
+        """
+        Get conversation turns.
+
+        Args
+        ----
+        limit : Optional[int]
+            If provided, return only the most recent N turns.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of turn dictionaries.
+
+        Examples
+        --------
+        >>> manager = ConversationManager()
+        >>> manager.add_turn("user", "First")
+        >>> manager.add_turn("assistant", "Second")
+        >>> manager.add_turn("user", "Third")
+        >>> len(manager.get_turns())
+        3
+        >>> len(manager.get_turns(limit=2))
+        2
+        """
         if limit:
             return self._turns[-limit:]
         return self._turns.copy()
 
     def get_context_for_model(self, max_tokens: Optional[int] = None) -> list[dict[str, str]]:
         """
-        Get conversation context formatted for model.
+        Get conversation context formatted for model API.
 
-        Args:
-            max_tokens: Optional token limit
+        Returns a list of messages suitable for sending to an LLM API.
+        Includes any accumulated summary as a system message prefix.
+
+        Args
+        ----
+        max_tokens : Optional[int]
+            If provided, truncates to fit within this token limit
+            by removing oldest non-system messages.
+
+        Returns
+        -------
+        list[dict[str, str]]
+            List of message dictionaries with 'role' and 'content' keys.
+
+        Examples
+        --------
+        >>> manager = ConversationManager()
+        >>> manager.add_turn("system", "Be helpful.")
+        >>> manager.add_turn("user", "Hello!")
+        >>> messages = manager.get_context_for_model()
+        >>> messages[0]["role"]
+        'system'
+        >>> messages[1]["content"]
+        'Hello!'
+
+        >>> messages = manager.get_context_for_model(max_tokens=10)
+        >>> len(messages) >= 1
+        True
         """
         messages = []
 
@@ -1293,8 +2964,28 @@ class ConversationManager:
         """
         Clear conversation history.
 
-        Args:
-            keep_system: Whether to keep system messages
+        Removes all turns from history, optionally preserving system messages.
+        Also clears any accumulated summary.
+
+        Args
+        ----
+        keep_system : bool
+            If True, keeps turns with role "system". Default is True.
+
+        Examples
+        --------
+        >>> manager = ConversationManager()
+        >>> manager.add_turn("system", "Be helpful.")
+        >>> manager.add_turn("user", "Hello!")
+        >>> manager.clear(keep_system=True)
+        >>> len(manager.get_turns())
+        1
+        >>> manager.get_turns()[0]["role"]
+        'system'
+
+        >>> manager.clear(keep_system=False)
+        >>> len(manager.get_turns())
+        0
         """
         if keep_system:
             self._turns = [t for t in self._turns if t["role"] == "system"]
@@ -1341,7 +3032,26 @@ class ConversationManager:
         return "\n".join(summary_parts)
 
     def get_stats(self) -> dict[str, Any]:
-        """Get conversation statistics."""
+        """
+        Get conversation statistics.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with conversation metrics including total_turns,
+            active_turns, summarized_turns, has_summary, context_tokens,
+            and available_tokens.
+
+        Examples
+        --------
+        >>> manager = ConversationManager()
+        >>> manager.add_turn("user", "Hello")
+        >>> stats = manager.get_stats()
+        >>> stats["total_turns"]
+        1
+        >>> stats["has_summary"]
+        False
+        """
         return {
             "total_turns": len(self._turns) + self._summary_turn_count,
             "active_turns": len(self._turns),
@@ -1356,7 +3066,58 @@ class SlidingWindowManager:
     """
     Sliding window context management.
 
-    Maintains a fixed-size window of recent content.
+    Maintains a fixed-size window of recent content, automatically archiving
+    older items when the window exceeds its capacity. Useful for streaming
+    content or maintaining a rolling context.
+
+    Attributes
+    ----------
+    window_size : int
+        Maximum number of items in the active window.
+    overlap : int
+        Number of items to keep when sliding (for context continuity).
+    token_counter : TokenCounter
+        Token counter for measurements.
+
+    Examples
+    --------
+    Basic sliding window usage:
+
+    >>> from insideLLMs.context_window import SlidingWindowManager
+    >>> slider = SlidingWindowManager(window_size=5, overlap=1)
+    >>> for i in range(7):
+    ...     slider.add(f"Item {i}")
+    >>> len(slider.get_window())
+    5
+    >>> len(slider.get_archived())
+    2
+
+    Getting window content:
+
+    >>> slider = SlidingWindowManager(window_size=3)
+    >>> slider.add("First")
+    >>> slider.add("Second")
+    >>> slider.add("Third")
+    >>> "First" in slider.get_content()
+    True
+
+    Window statistics:
+
+    >>> slider = SlidingWindowManager(window_size=5)
+    >>> slider.add("Test content")
+    >>> stats = slider.get_stats()
+    >>> stats["current_items"]
+    1
+    >>> stats["window_tokens"] > 0
+    True
+
+    Including archived content:
+
+    >>> slider = SlidingWindowManager(window_size=2)
+    >>> for i in range(5):
+    ...     slider.add(f"Item {i}")
+    >>> len(slider.get_content(include_archived=True)) > len(slider.get_content())
+    True
     """
 
     def __init__(
@@ -1368,10 +3129,20 @@ class SlidingWindowManager:
         """
         Initialize sliding window.
 
-        Args:
-            window_size: Number of items in window
-            overlap: Overlap between windows
-            token_counter: Token counter to use
+        Args
+        ----
+        window_size : int
+            Maximum number of items in the active window. Default is 10.
+        overlap : int
+            Items to retain for context continuity when sliding. Default is 2.
+        token_counter : Optional[TokenCounter]
+            Token counter to use. Creates default if not provided.
+
+        Examples
+        --------
+        >>> slider = SlidingWindowManager(window_size=20, overlap=3)
+        >>> slider.window_size
+        20
         """
         self.window_size = window_size
         self.overlap = overlap
@@ -1387,7 +3158,35 @@ class SlidingWindowManager:
         priority: PriorityLevel = PriorityLevel.MEDIUM,
         metadata: Optional[dict] = None,
     ) -> ContextBlock:
-        """Add item to sliding window."""
+        """
+        Add item to sliding window.
+
+        If adding this item exceeds window_size, older items are automatically
+        archived to make room.
+
+        Args
+        ----
+        content : str
+            Content to add.
+        content_type : ContentType
+            Type of content. Default is CONTEXT.
+        priority : PriorityLevel
+            Priority level. Default is MEDIUM.
+        metadata : Optional[dict]
+            Additional metadata.
+
+        Returns
+        -------
+        ContextBlock
+            The created context block.
+
+        Examples
+        --------
+        >>> slider = SlidingWindowManager(window_size=3)
+        >>> block = slider.add("Test content")
+        >>> block.content
+        'Test content'
+        """
         block = ContextBlock(
             content=content,
             content_type=content_type,

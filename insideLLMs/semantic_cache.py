@@ -1,29 +1,170 @@
 """Semantic Caching Module for insideLLMs.
 
-This module provides advanced caching capabilities:
-- Redis-based distributed caching
-- Vector-based semantic similarity caching
-- Embedding-powered cache lookups
+This module provides advanced caching capabilities that go beyond simple key-value
+storage by enabling semantic similarity matching. When a query is semantically
+similar to a previously cached query (even if not identical), the cached response
+can be returned, significantly reducing API costs and latency.
 
-Features:
-- RedisCache: Fast distributed caching with Redis
-- VectorCache: Semantic similarity-based cache using embeddings
-- SemanticCacheModel: Model wrapper with semantic caching
-- Hybrid caching strategies
+Overview
+--------
+The semantic caching system supports multiple caching backends and strategies:
 
-Example:
-    >>> from insideLLMs.semantic_cache import SemanticCache, quick_semantic_cache
+- **In-Memory Cache**: Fast, single-process caching using Python dictionaries
+  with optional LRU eviction and TTL support.
+
+- **Redis Cache**: Distributed caching using Redis for multi-process or
+  multi-server deployments.
+
+- **Vector Cache**: Embedding-based semantic similarity lookup that finds
+  cached entries based on meaning rather than exact string matching.
+
+- **Semantic Cache**: High-level interface combining exact and semantic matching
+  with configurable similarity thresholds.
+
+Architecture
+------------
+The caching system is organized in layers:
+
+1. **Configuration Layer**: ``SemanticCacheConfig`` provides centralized settings
+   for all cache components including TTL, size limits, similarity thresholds,
+   and Redis connection parameters.
+
+2. **Entry Layer**: ``SemanticCacheEntry`` stores cached values along with
+   metadata including embeddings, access statistics, and expiration times.
+
+3. **Backend Layer**: ``RedisCache`` and ``VectorCache`` provide the actual
+   storage and retrieval mechanisms.
+
+4. **Interface Layer**: ``SemanticCache`` and ``SemanticCacheModel`` provide
+   high-level APIs for common use cases.
+
+Key Features
+------------
+- **Semantic Similarity**: Uses embeddings to find semantically similar queries
+- **Configurable Thresholds**: Fine-tune the similarity threshold for cache hits
+- **TTL Support**: Automatic expiration of cached entries
+- **LRU Eviction**: Automatic eviction when cache reaches maximum size
+- **Access Tracking**: Statistics on cache hits, misses, and similarity scores
+- **Thread Safety**: All caches are thread-safe with proper locking
+- **Redis Integration**: Optional distributed caching with Redis
+- **Model Wrapper**: Easy integration with any LLM through SemanticCacheModel
+
+Dependencies
+------------
+Required:
+    - Python 3.9+
+
+Optional:
+    - redis: For Redis-based distributed caching
+    - numpy: For optimized vector similarity calculations
+
+Examples
+--------
+Basic semantic caching with similarity lookup:
+
+    >>> from insideLLMs.semantic_cache import SemanticCache
+    >>>
+    >>> # Create a cache with 85% similarity threshold
+    >>> cache = SemanticCache()
+    >>> cache.config.similarity_threshold = 0.85
+    >>>
+    >>> # Cache a response for a query
+    >>> cache.set("What is artificial intelligence?",
+    ...           "AI is the simulation of human intelligence by machines.")
+    >>>
+    >>> # Query with semantically similar text - returns cached response
+    >>> result = cache.get_similar("What's AI and how does it work?")
+    >>> if result.hit:
+    ...     print(f"Cache hit! Similarity: {result.similarity:.2f}")
+    ...     print(f"Response: {result.value}")
+    Cache hit! Similarity: 0.92
+    Response: AI is the simulation of human intelligence by machines.
+
+Using the quick helper function:
+
+    >>> from insideLLMs.semantic_cache import quick_semantic_cache
+    >>>
+    >>> def expensive_api_call(prompt):
+    ...     # Simulates an expensive LLM API call
+    ...     return f"Generated response for: {prompt}"
+    >>>
+    >>> # First call - generates and caches
+    >>> response, was_cached, similarity = quick_semantic_cache(
+    ...     "Explain quantum computing",
+    ...     expensive_api_call
+    ... )
+    >>> print(f"Cached: {was_cached}, Similarity: {similarity}")
+    Cached: False, Similarity: 1.0
+    >>>
+    >>> # Second call with similar query - returns cached
+    >>> response, was_cached, similarity = quick_semantic_cache(
+    ...     "What is quantum computing?",
+    ...     expensive_api_call
+    ... )
+    >>> print(f"Cached: {was_cached}")
+    Cached: True
+
+Wrapping a model with semantic caching:
+
+    >>> from insideLLMs.semantic_cache import wrap_model_with_semantic_cache
     >>> from insideLLMs import DummyModel
     >>>
-    >>> # Simple semantic caching
-    >>> cache = SemanticCache(similarity_threshold=0.85)
-    >>> cache.set("What is AI?", "AI is artificial intelligence...")
-    >>> result = cache.get_similar("What's artificial intelligence?")
-    >>>
-    >>> # With model wrapper
+    >>> # Wrap any model with semantic caching
     >>> model = DummyModel()
-    >>> cached_model = SemanticCacheModel(model, cache)
-    >>> response = cached_model.generate("Explain machine learning")
+    >>> cached_model = wrap_model_with_semantic_cache(
+    ...     model,
+    ...     similarity_threshold=0.90,
+    ...     max_size=500,
+    ...     ttl_seconds=7200  # 2 hours
+    ... )
+    >>>
+    >>> # Generate responses - similar prompts will use cache
+    >>> response1 = cached_model.generate("What is machine learning?")
+    >>> response2 = cached_model.generate("Explain ML to me")  # May hit cache
+    >>>
+    >>> # Check cache statistics
+    >>> stats = cached_model.cache.stats()
+    >>> print(f"Hit rate: {stats.hit_rate:.1%}")
+
+Using Redis as a distributed backend:
+
+    >>> from insideLLMs.semantic_cache import create_semantic_cache
+    >>>
+    >>> # Create cache with Redis backend for distributed caching
+    >>> cache = create_semantic_cache(
+    ...     use_redis=True,
+    ...     redis_host="localhost",
+    ...     redis_port=6379,
+    ...     redis_db=1,
+    ...     redis_prefix="myapp:"
+    ... )
+    >>>
+    >>> # Use like any other cache - now distributed across processes
+    >>> cache.set("query", "response")
+    >>> result = cache.get("query")
+
+Notes
+-----
+- The ``SimpleEmbedder`` provides a basic fallback embedding when no external
+  embedding model is available. For production use, consider using a proper
+  embedding model (e.g., sentence-transformers) for better semantic matching.
+
+- When using Redis, ensure the Redis server is running and accessible. The
+  cache will raise an ImportError if redis-py is not installed.
+
+- The similarity threshold significantly affects cache behavior:
+  - Higher threshold (0.95+): Only very similar queries match
+  - Lower threshold (0.70-0.85): More queries match, but may be less relevant
+  - Recommended starting point: 0.85
+
+- For deterministic results with LLMs, set temperature=0 when using
+  ``SemanticCacheModel.generate()``. By default, only temperature=0 responses
+  are cached to ensure consistency.
+
+See Also
+--------
+insideLLMs.caching_unified : Unified caching system with multiple backends
+insideLLMs.tokens.EmbeddingUtils : Utilities for working with embeddings
 """
 
 import hashlib
@@ -66,7 +207,110 @@ T = TypeVar("T")
 
 @dataclass
 class SemanticCacheConfig:
-    """Configuration for semantic caching."""
+    """Configuration for semantic caching behavior.
+
+    This dataclass centralizes all configuration options for the semantic caching
+    system, including cache size limits, TTL settings, similarity thresholds,
+    embedding parameters, and Redis connection details.
+
+    Parameters
+    ----------
+    max_size : int, default=1000
+        Maximum number of entries the cache can hold. When this limit is reached,
+        the least recently used (LRU) entry is evicted to make room for new entries.
+    ttl_seconds : int or None, default=3600
+        Default time-to-live for cache entries in seconds. After this duration,
+        entries are considered expired and will not be returned. Set to None for
+        no expiration.
+    similarity_threshold : float, default=0.85
+        Minimum cosine similarity score (0.0 to 1.0) required for a semantic match.
+        Higher values require closer matches; lower values allow more distant matches.
+    embedding_dimension : int, default=384
+        Dimensionality of embedding vectors used for similarity calculations.
+        Should match the output dimension of your embedding model.
+    use_embeddings : bool, default=True
+        Whether to compute and store embeddings for semantic similarity lookup.
+        Set to False to disable semantic matching and use only exact key matching.
+    redis_host : str, default="localhost"
+        Hostname or IP address of the Redis server for distributed caching.
+    redis_port : int, default=6379
+        Port number of the Redis server.
+    redis_db : int, default=0
+        Redis database number to use (0-15 on most Redis configurations).
+    redis_password : str or None, default=None
+        Password for Redis authentication. Set to None if no authentication is required.
+    redis_prefix : str, default="insideLLMs:"
+        Prefix for all Redis keys. Useful for namespacing when multiple applications
+        share the same Redis instance.
+    max_candidates : int, default=100
+        Maximum number of cache entries to consider during similarity search.
+        Higher values improve accuracy but increase search time.
+    index_batch_size : int, default=50
+        Batch size for indexing operations when adding multiple entries.
+
+    Attributes
+    ----------
+    max_size : int
+        Maximum cache size.
+    ttl_seconds : int or None
+        Default TTL in seconds.
+    similarity_threshold : float
+        Minimum similarity for cache hits.
+    embedding_dimension : int
+        Vector dimension for embeddings.
+    use_embeddings : bool
+        Whether semantic matching is enabled.
+    redis_host : str
+        Redis server hostname.
+    redis_port : int
+        Redis server port.
+    redis_db : int
+        Redis database number.
+    redis_password : str or None
+        Redis authentication password.
+    redis_prefix : str
+        Prefix for Redis keys.
+    max_candidates : int
+        Max entries to search for similarity.
+    index_batch_size : int
+        Batch size for indexing.
+
+    Examples
+    --------
+    Creating a basic in-memory cache configuration:
+
+        >>> config = SemanticCacheConfig(
+        ...     max_size=500,
+        ...     ttl_seconds=1800,  # 30 minutes
+        ...     similarity_threshold=0.90
+        ... )
+        >>> cache = SemanticCache(config)
+
+    Configuration for a high-precision semantic cache:
+
+        >>> config = SemanticCacheConfig(
+        ...     similarity_threshold=0.95,  # Require very close matches
+        ...     max_candidates=200,  # Search more entries for better matches
+        ...     embedding_dimension=768  # Use larger embeddings
+        ... )
+
+    Configuration for Redis-backed distributed cache:
+
+        >>> config = SemanticCacheConfig(
+        ...     redis_host="redis.mycompany.com",
+        ...     redis_port=6380,
+        ...     redis_db=2,
+        ...     redis_password="secret123",
+        ...     redis_prefix="chatbot_cache:",
+        ...     ttl_seconds=7200  # 2 hours
+        ... )
+
+    See Also
+    --------
+    SemanticCache : Main cache class that uses this configuration
+    VectorCache : Vector-based cache implementation
+    RedisCache : Redis-backed cache implementation
+    """
 
     # Basic settings
     max_size: int = 1000
@@ -89,7 +333,33 @@ class SemanticCacheConfig:
     index_batch_size: int = 50
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert configuration to a dictionary.
+
+        Returns a dictionary representation of all configuration parameters,
+        useful for serialization, logging, or passing to other components.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all configuration parameters with their
+            current values.
+
+        Examples
+        --------
+        Serializing configuration for logging:
+
+            >>> config = SemanticCacheConfig(max_size=500, ttl_seconds=1800)
+            >>> config_dict = config.to_dict()
+            >>> print(f"Cache size limit: {config_dict['max_size']}")
+            Cache size limit: 500
+
+        Saving configuration to JSON:
+
+            >>> import json
+            >>> config = SemanticCacheConfig()
+            >>> with open("cache_config.json", "w") as f:
+            ...     json.dump(config.to_dict(), f, indent=2)
+        """
         return {
             "max_size": self.max_size,
             "ttl_seconds": self.ttl_seconds,
@@ -106,7 +376,107 @@ class SemanticCacheConfig:
 
 @dataclass
 class SemanticCacheEntry(CacheEntryMixin):
-    """A cache entry with semantic metadata."""
+    """A cache entry with semantic metadata and embedding information.
+
+    This dataclass represents a single entry in the semantic cache, storing
+    the cached value along with its embedding vector, access statistics,
+    and expiration information. It inherits from ``CacheEntryMixin`` which
+    provides ``is_expired()`` and ``touch()`` methods.
+
+    Parameters
+    ----------
+    key : str
+        Unique identifier for this cache entry, typically a hash of the prompt.
+    value : Any
+        The cached value (e.g., model response, computation result).
+    prompt : str
+        The original prompt text that was used to generate the cached value.
+    embedding : list[float] or None, default=None
+        Vector embedding of the prompt for semantic similarity matching.
+        None if embeddings are disabled.
+    created_at : datetime, default=datetime.now()
+        Timestamp when the entry was created.
+    expires_at : datetime or None, default=None
+        Timestamp when the entry expires. None means no expiration.
+    access_count : int, default=0
+        Number of times this entry has been accessed (cache hits).
+    last_accessed : datetime, default=datetime.now()
+        Timestamp of the most recent access to this entry.
+    similarity_score : float, default=1.0
+        Similarity score when this entry was matched. 1.0 indicates exact match,
+        lower values indicate semantic matches.
+    metadata : dict[str, Any], default={}
+        Additional metadata associated with the entry (e.g., model info, temperature).
+
+    Attributes
+    ----------
+    key : str
+        Cache entry key (hash of prompt).
+    value : Any
+        Cached response value.
+    prompt : str
+        Original prompt text.
+    embedding : list[float] or None
+        Prompt embedding vector.
+    created_at : datetime
+        Creation timestamp.
+    expires_at : datetime or None
+        Expiration timestamp.
+    access_count : int
+        Number of accesses.
+    last_accessed : datetime
+        Last access timestamp.
+    similarity_score : float
+        Match similarity score.
+    metadata : dict[str, Any]
+        Additional metadata.
+
+    Examples
+    --------
+    Creating a cache entry manually:
+
+        >>> from datetime import datetime, timedelta
+        >>> entry = SemanticCacheEntry(
+        ...     key="abc123",
+        ...     value="The capital of France is Paris.",
+        ...     prompt="What is the capital of France?",
+        ...     embedding=[0.1, 0.2, 0.3],  # Simplified embedding
+        ...     expires_at=datetime.now() + timedelta(hours=1)
+        ... )
+        >>> print(f"Prompt: {entry.prompt}")
+        Prompt: What is the capital of France?
+
+    Checking if an entry is expired:
+
+        >>> from datetime import datetime, timedelta
+        >>> # Create an already-expired entry
+        >>> entry = SemanticCacheEntry(
+        ...     key="expired",
+        ...     value="old data",
+        ...     prompt="old query",
+        ...     expires_at=datetime.now() - timedelta(hours=1)
+        ... )
+        >>> entry.is_expired()
+        True
+
+    Updating access statistics:
+
+        >>> entry = SemanticCacheEntry(
+        ...     key="test",
+        ...     value="response",
+        ...     prompt="query"
+        ... )
+        >>> entry.access_count
+        0
+        >>> entry.touch()  # Simulates a cache hit
+        >>> entry.access_count
+        1
+
+    See Also
+    --------
+    SemanticLookupResult : Result returned from cache lookups
+    CacheEntryMixin : Mixin providing is_expired() and touch() methods
+    """
 
     key: str
     value: Any
@@ -122,7 +492,41 @@ class SemanticCacheEntry(CacheEntryMixin):
     # is_expired() and touch() inherited from CacheEntryMixin
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert cache entry to a dictionary.
+
+        Serializes the cache entry to a dictionary format suitable for
+        JSON serialization, logging, or storage. Datetime fields are
+        converted to ISO format strings.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary representation of the cache entry with all fields.
+
+        Examples
+        --------
+        Serializing an entry for logging:
+
+            >>> entry = SemanticCacheEntry(
+            ...     key="test123",
+            ...     value="Hello, World!",
+            ...     prompt="Say hello"
+            ... )
+            >>> d = entry.to_dict()
+            >>> print(d["prompt"])
+            Say hello
+
+        Saving entry to JSON file:
+
+            >>> import json
+            >>> entry = SemanticCacheEntry(
+            ...     key="json_test",
+            ...     value={"response": "data"},
+            ...     prompt="Get data",
+            ...     metadata={"model": "gpt-4"}
+            ... )
+            >>> json_str = json.dumps(entry.to_dict(), indent=2)
+        """
         return {
             "key": self.key,
             "value": self.value,
@@ -139,7 +543,89 @@ class SemanticCacheEntry(CacheEntryMixin):
 
 @dataclass
 class SemanticLookupResult:
-    """Result of a semantic cache lookup."""
+    """Result of a semantic cache lookup operation.
+
+    This dataclass encapsulates the result of a cache lookup, including
+    whether a matching entry was found (hit), the cached value, similarity
+    score, and performance metrics. It provides all information needed to
+    determine how to proceed after a cache lookup.
+
+    Parameters
+    ----------
+    hit : bool
+        Whether the lookup found a matching cache entry. True indicates
+        a cache hit (exact or semantic match found), False indicates a miss.
+    value : Any or None
+        The cached value if hit is True, None otherwise.
+    key : str
+        The cache key that was looked up or matched.
+    similarity : float, default=0.0
+        Cosine similarity score between the query and matched entry.
+        1.0 for exact matches, lower values for semantic matches,
+        0.0 for cache misses.
+    entry : SemanticCacheEntry or None, default=None
+        The full cache entry if hit is True, None otherwise.
+        Provides access to metadata, access statistics, and embedding.
+    lookup_time_ms : float, default=0.0
+        Time taken for the lookup operation in milliseconds.
+        Useful for performance monitoring and optimization.
+    candidates_checked : int, default=0
+        Number of cache entries examined during semantic similarity search.
+        Higher values indicate more thorough but slower searches.
+
+    Attributes
+    ----------
+    hit : bool
+        Whether lookup was successful.
+    value : Any or None
+        Cached value or None.
+    key : str
+        Cache key looked up.
+    similarity : float
+        Match similarity score.
+    entry : SemanticCacheEntry or None
+        Full entry details.
+    lookup_time_ms : float
+        Lookup duration in ms.
+    candidates_checked : int
+        Entries examined in search.
+
+    Examples
+    --------
+    Handling a cache lookup result:
+
+        >>> cache = SemanticCache()
+        >>> cache.set("What is Python?", "Python is a programming language.")
+        >>> result = cache.get_similar("Tell me about Python")
+        >>> if result.hit:
+        ...     print(f"Cache hit! Similarity: {result.similarity:.2f}")
+        ...     print(f"Cached response: {result.value}")
+        ... else:
+        ...     print("Cache miss - need to generate response")
+        Cache hit! Similarity: 0.89
+        Cached response: Python is a programming language.
+
+    Monitoring cache performance:
+
+        >>> result = cache.get_similar("Some query")
+        >>> print(f"Lookup took {result.lookup_time_ms:.2f}ms")
+        >>> print(f"Checked {result.candidates_checked} candidates")
+        Lookup took 1.23ms
+        Checked 50 candidates
+
+    Accessing full entry metadata on a hit:
+
+        >>> result = cache.get("Cached query")
+        >>> if result.hit and result.entry:
+        ...     print(f"Entry accessed {result.entry.access_count} times")
+        ...     print(f"Created at: {result.entry.created_at}")
+
+    See Also
+    --------
+    SemanticCacheEntry : The cache entry returned in the entry field
+    SemanticCache.get : Method that returns this result type
+    SemanticCache.get_similar : Semantic lookup returning this result
+    """
 
     hit: bool
     value: Optional[Any]
@@ -150,7 +636,30 @@ class SemanticLookupResult:
     candidates_checked: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert lookup result to a dictionary.
+
+        Serializes the lookup result to a dictionary format for logging,
+        analysis, or API responses. Nested entry is also converted.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary representation of the lookup result.
+
+        Examples
+        --------
+        Logging cache lookup results:
+
+            >>> result = cache.get_similar("test query")
+            >>> result_dict = result.to_dict()
+            >>> print(f"Hit: {result_dict['hit']}, Similarity: {result_dict['similarity']}")
+
+        Sending result as JSON API response:
+
+            >>> import json
+            >>> result = cache.get("query")
+            >>> json_response = json.dumps(result.to_dict())
+        """
         return {
             "hit": self.hit,
             "value": self.value,
@@ -164,7 +673,89 @@ class SemanticLookupResult:
 
 @dataclass
 class SemanticCacheStats:
-    """Statistics for semantic cache."""
+    """Statistics and metrics for semantic cache performance monitoring.
+
+    This dataclass tracks cache performance metrics including hit/miss counts,
+    the breakdown between exact and semantic matches, average similarity scores,
+    and lookup timing. Use these statistics to monitor cache effectiveness and
+    tune configuration parameters.
+
+    Parameters
+    ----------
+    hits : int, default=0
+        Total number of cache hits (both exact and semantic matches).
+    misses : int, default=0
+        Total number of cache misses.
+    semantic_hits : int, default=0
+        Number of hits that were semantic matches (similarity < 1.0).
+    exact_hits : int, default=0
+        Number of hits that were exact key matches (similarity = 1.0).
+    entry_count : int, default=0
+        Current number of entries in the cache.
+    avg_similarity : float, default=0.0
+        Average similarity score across all semantic hits.
+    total_lookups : int, default=0
+        Total number of lookup operations performed.
+    avg_lookup_time_ms : float, default=0.0
+        Average time per lookup in milliseconds.
+
+    Attributes
+    ----------
+    hits : int
+        Total cache hits.
+    misses : int
+        Total cache misses.
+    semantic_hits : int
+        Hits via semantic similarity.
+    exact_hits : int
+        Hits via exact match.
+    entry_count : int
+        Current cache size.
+    avg_similarity : float
+        Mean similarity of semantic hits.
+    total_lookups : int
+        Total lookups performed.
+    avg_lookup_time_ms : float
+        Mean lookup time in ms.
+    hit_rate : float
+        Ratio of hits to total lookups (property).
+    semantic_hit_rate : float
+        Ratio of semantic hits to total hits (property).
+
+    Examples
+    --------
+    Monitoring cache effectiveness:
+
+        >>> cache = SemanticCache()
+        >>> # ... perform many cache operations ...
+        >>> stats = cache.stats()
+        >>> print(f"Cache hit rate: {stats.hit_rate:.1%}")
+        >>> print(f"Total entries: {stats.entry_count}")
+        >>> print(f"Semantic match rate: {stats.semantic_hit_rate:.1%}")
+        Cache hit rate: 75.2%
+        Total entries: 247
+        Semantic match rate: 45.3%
+
+    Analyzing performance metrics:
+
+        >>> stats = cache.stats()
+        >>> print(f"Avg lookup time: {stats.avg_lookup_time_ms:.2f}ms")
+        >>> print(f"Avg semantic similarity: {stats.avg_similarity:.3f}")
+        Avg lookup time: 0.85ms
+        Avg semantic similarity: 0.912
+
+    Exporting stats for dashboards:
+
+        >>> stats = cache.stats()
+        >>> stats_dict = stats.to_dict()
+        >>> # Send to monitoring system
+        >>> metrics.record(stats_dict)
+
+    See Also
+    --------
+    SemanticCache.stats : Method that returns these statistics
+    VectorCache.stats : Vector cache statistics method
+    """
 
     hits: int = 0
     misses: int = 0
@@ -177,17 +768,93 @@ class SemanticCacheStats:
 
     @property
     def hit_rate(self) -> float:
-        """Calculate hit rate."""
+        """Calculate the cache hit rate.
+
+        Computes the ratio of cache hits to total lookups. This is a key
+        metric for evaluating cache effectiveness - higher values indicate
+        better cache utilization and cost savings.
+
+        Returns
+        -------
+        float
+            Hit rate as a decimal between 0.0 and 1.0.
+            Returns 0.0 if no lookups have been performed.
+
+        Examples
+        --------
+        Checking hit rate:
+
+            >>> stats = SemanticCacheStats(hits=75, misses=25)
+            >>> stats.hit_rate
+            0.75
+
+        Formatting as percentage:
+
+            >>> stats = SemanticCacheStats(hits=85, misses=15)
+            >>> print(f"Hit rate: {stats.hit_rate:.1%}")
+            Hit rate: 85.0%
+        """
         total = self.hits + self.misses
         return self.hits / total if total > 0 else 0.0
 
     @property
     def semantic_hit_rate(self) -> float:
-        """Calculate semantic hit rate."""
+        """Calculate the semantic hit rate among all hits.
+
+        Computes the ratio of semantic matches to total hits. This metric
+        shows how often semantic similarity matching is providing value
+        beyond exact key matching.
+
+        Returns
+        -------
+        float
+            Semantic hit rate as a decimal between 0.0 and 1.0.
+            Returns 0.0 if no hits have occurred.
+
+        Examples
+        --------
+        Understanding semantic match contribution:
+
+            >>> stats = SemanticCacheStats(hits=100, semantic_hits=40, exact_hits=60)
+            >>> stats.semantic_hit_rate
+            0.4
+
+        Evaluating if semantic matching is valuable:
+
+            >>> stats = cache.stats()
+            >>> if stats.semantic_hit_rate > 0.3:
+            ...     print("Semantic matching is providing significant value")
+            ... else:
+            ...     print("Consider adjusting similarity threshold")
+        """
         return self.semantic_hits / self.hits if self.hits > 0 else 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert statistics to a dictionary.
+
+        Serializes all statistics including computed properties (hit_rate,
+        semantic_hit_rate) to a dictionary format suitable for JSON
+        serialization or monitoring systems.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all statistics with descriptive keys.
+
+        Examples
+        --------
+        Exporting to JSON for logging:
+
+            >>> import json
+            >>> stats = cache.stats()
+            >>> print(json.dumps(stats.to_dict(), indent=2))
+
+        Sending to monitoring system:
+
+            >>> stats = cache.stats()
+            >>> datadog.gauge("cache.hit_rate", stats.to_dict()["hit_rate"])
+            >>> datadog.gauge("cache.entries", stats.to_dict()["entry_count"])
+        """
         return {
             "hits": self.hits,
             "misses": self.misses,

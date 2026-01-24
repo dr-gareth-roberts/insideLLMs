@@ -1,11 +1,70 @@
 """
 Prompt templates library for common LLM interaction patterns.
 
-Provides:
-- Pre-built templates for common use cases
-- Template categories (reasoning, extraction, classification, etc.)
-- Template variants and customization
-- Best practices built-in
+This module provides a comprehensive library of reusable prompt templates for
+various LLM interaction patterns. It includes pre-built templates organized by
+category, a flexible template rendering system, and utilities for template
+management and discovery.
+
+Key Components:
+    - TemplateCategory: Enum defining categories like REASONING, EXTRACTION, etc.
+    - PromptTemplateInfo: Dataclass representing a prompt template with metadata.
+    - TemplateLibrary: Registry for managing and accessing templates.
+    - Module-level functions: Convenience functions for the default library.
+
+Features:
+    - Pre-built templates for common use cases (chain-of-thought, extraction, etc.)
+    - Template categories (reasoning, extraction, classification, generation, etc.)
+    - Template variants and customization through variable substitution
+    - Best practices and tips built into each template
+    - Extensible design allowing custom template registration
+
+Examples:
+    Basic template rendering:
+
+        >>> from insideLLMs.templates import render_template
+        >>> prompt = render_template(
+        ...     "chain_of_thought",
+        ...     question="What is 15% of 80?"
+        ... )
+        >>> print(prompt)
+        Let's approach this step by step.
+
+        Question: What is 15% of 80?
+
+        Think through this carefully, showing your reasoning at each step:
+
+    Listing templates by category:
+
+        >>> from insideLLMs.templates import list_templates, TemplateCategory
+        >>> reasoning_templates = list_templates(TemplateCategory.REASONING)
+        >>> for t in reasoning_templates:
+        ...     print(f"{t.name}: {t.description}")
+        chain_of_thought: Encourages step-by-step reasoning
+        chain_of_thought_zero_shot: Zero-shot chain of thought with simple trigger
+        step_back: Abstracts to higher-level concepts before answering
+
+    Searching for templates:
+
+        >>> from insideLLMs.templates import search_templates
+        >>> code_templates = search_templates("code")
+        >>> print([t.name for t in code_templates])
+        ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+    Creating and registering custom templates:
+
+        >>> from insideLLMs.templates import (
+        ...     PromptTemplateInfo, TemplateCategory, register_template
+        ... )
+        >>> custom = PromptTemplateInfo(
+        ...     name="my_template",
+        ...     category=TemplateCategory.GENERATION,
+        ...     description="Generate haikus",
+        ...     template="Write a haiku about {topic}:\\n\\n",
+        ...     variables=["topic"],
+        ...     best_for=["poetry", "creative writing"],
+        ... )
+        >>> register_template(custom)
 """
 
 from dataclasses import dataclass, field
@@ -14,7 +73,73 @@ from typing import Optional
 
 
 class TemplateCategory(Enum):
-    """Categories of prompt templates."""
+    """Categories of prompt templates for organizing and filtering templates.
+
+    This enum defines the primary categories used to classify prompt templates.
+    Each category groups templates that serve similar purposes, making it easier
+    to discover and select appropriate templates for specific tasks.
+
+    Attributes:
+        REASONING: Templates for logical reasoning and step-by-step thinking.
+            Use for math problems, logical puzzles, and complex decisions.
+        EXTRACTION: Templates for extracting structured data from text.
+            Use for NER, data mining, and information extraction.
+        CLASSIFICATION: Templates for categorizing or labeling text.
+            Use for sentiment analysis, topic classification, and tagging.
+        GENERATION: Templates for creating new content.
+            Use for creative writing, content expansion, and rewriting.
+        SUMMARIZATION: Templates for condensing text.
+            Use for creating summaries, bullet points, and abstracts.
+        TRANSLATION: Templates for language translation tasks.
+            Use for translating between languages.
+        CODING: Templates for programming-related tasks.
+            Use for code generation, review, explanation, and refactoring.
+        ANALYSIS: Templates for analyzing content.
+            Use for sentiment analysis, comparisons, and SWOT analysis.
+        CONVERSATION: Templates for dialogue and persona-based interactions.
+            Use for roleplay, tutoring, and specialized assistance.
+        INSTRUCTION: Templates for generating instructions and guides.
+            Use for tutorials, task decomposition, and how-to content.
+
+    Examples:
+        Filtering templates by category:
+
+            >>> from insideLLMs.templates import list_templates, TemplateCategory
+            >>> coding_templates = list_templates(TemplateCategory.CODING)
+            >>> print([t.name for t in coding_templates])
+            ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+        Using category in template info:
+
+            >>> from insideLLMs.templates import PromptTemplateInfo, TemplateCategory
+            >>> template = PromptTemplateInfo(
+            ...     name="debug_helper",
+            ...     category=TemplateCategory.CODING,
+            ...     description="Help debug code issues",
+            ...     template="Debug this {language} code: {code}",
+            ...     variables=["language", "code"],
+            ... )
+            >>> print(template.category.value)
+            'coding'
+
+        Iterating over categories:
+
+            >>> from insideLLMs.templates import TemplateCategory
+            >>> for category in TemplateCategory:
+            ...     print(f"{category.name}: {category.value}")
+            REASONING: reasoning
+            EXTRACTION: extraction
+            CLASSIFICATION: classification
+            ...
+
+        Checking if a template matches a category:
+
+            >>> from insideLLMs.templates import get_template, TemplateCategory
+            >>> template = get_template("chain_of_thought")
+            >>> is_reasoning = template.category == TemplateCategory.REASONING
+            >>> print(is_reasoning)
+            True
+    """
 
     REASONING = "reasoning"
     EXTRACTION = "extraction"
@@ -30,7 +155,90 @@ class TemplateCategory(Enum):
 
 @dataclass
 class PromptTemplateInfo:
-    """Information about a prompt template."""
+    """Information about a prompt template with metadata and rendering capabilities.
+
+    This dataclass represents a complete prompt template, including the template
+    string, required variables, usage examples, and best practice tips. It provides
+    methods for rendering templates with variable substitution and validation.
+
+    Attributes:
+        name: Unique identifier for the template (e.g., "chain_of_thought").
+            Used for retrieval from the template library.
+        category: The TemplateCategory this template belongs to.
+            Used for filtering and organization.
+        description: Brief human-readable description of what the template does.
+        template: The actual prompt template string with {variable} placeholders.
+            Variables are enclosed in curly braces and replaced during rendering.
+        variables: List of variable names required by the template.
+            These must be provided when rendering.
+        examples: List of example usage dictionaries showing input/output pairs.
+            Each dict maps variable names to example values.
+        best_for: List of use cases where this template excels.
+            Helps users select the right template.
+        tips: List of tips for using the template effectively.
+            Includes best practices and caveats.
+
+    Examples:
+        Creating a simple template:
+
+            >>> from insideLLMs.templates import PromptTemplateInfo, TemplateCategory
+            >>> template = PromptTemplateInfo(
+            ...     name="greeting",
+            ...     category=TemplateCategory.GENERATION,
+            ...     description="Generate a greeting message",
+            ...     template="Hello {name}, welcome to {place}!",
+            ...     variables=["name", "place"],
+            ...     best_for=["welcome messages", "onboarding"],
+            ...     tips=["Keep the place specific for better personalization"],
+            ... )
+            >>> print(template.render(name="Alice", place="Wonderland"))
+            Hello Alice, welcome to Wonderland!
+
+        Checking for missing variables:
+
+            >>> template = PromptTemplateInfo(
+            ...     name="email",
+            ...     category=TemplateCategory.GENERATION,
+            ...     description="Email template",
+            ...     template="Dear {recipient},\\n\\n{body}\\n\\nBest,\\n{sender}",
+            ...     variables=["recipient", "body", "sender"],
+            ... )
+            >>> missing = template.get_missing_vars({"recipient", "body"})
+            >>> print(missing)
+            {'sender'}
+
+        Creating a template with examples:
+
+            >>> template = PromptTemplateInfo(
+            ...     name="translate",
+            ...     category=TemplateCategory.TRANSLATION,
+            ...     description="Translate text between languages",
+            ...     template="Translate to {target_lang}: {text}",
+            ...     variables=["target_lang", "text"],
+            ...     examples=[
+            ...         {"target_lang": "Spanish", "text": "Hello world"},
+            ...         {"target_lang": "French", "text": "Good morning"},
+            ...     ],
+            ... )
+            >>> print(template.examples[0])
+            {'target_lang': 'Spanish', 'text': 'Hello world'}
+
+        Using template metadata for documentation:
+
+            >>> template = PromptTemplateInfo(
+            ...     name="code_review",
+            ...     category=TemplateCategory.CODING,
+            ...     description="Review code for issues",
+            ...     template="Review this {language} code:\\n{code}",
+            ...     variables=["language", "code"],
+            ...     best_for=["quality assurance", "learning"],
+            ...     tips=["Specify the language for better context"],
+            ... )
+            >>> print(f"Best for: {', '.join(template.best_for)}")
+            Best for: quality assurance, learning
+            >>> print(f"Tips: {template.tips[0]}")
+            Tips: Specify the language for better context
+    """
 
     name: str
     category: TemplateCategory
@@ -42,13 +250,71 @@ class PromptTemplateInfo:
     tips: list[str] = field(default_factory=list)
 
     def render(self, **kwargs) -> str:
-        """Render template with variables.
+        """Render template by substituting variable placeholders with provided values.
+
+        This method replaces all {variable} placeholders in the template string
+        with the corresponding values from kwargs. Variables not provided in kwargs
+        are left unchanged in the output.
 
         Args:
-            **kwargs: Variable values.
+            **kwargs: Variable name-value pairs for substitution. Keys should match
+                the variable names defined in self.variables. Values are converted
+                to strings using str() before substitution.
 
         Returns:
-            Rendered template.
+            The rendered template string with variables replaced by their values.
+            Unprovided variables remain as {variable} placeholders.
+
+        Examples:
+            Basic rendering with all variables:
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("chain_of_thought")
+                >>> prompt = template.render(question="What is 2 + 2?")
+                >>> print(prompt)
+                Let's approach this step by step.
+
+                Question: What is 2 + 2?
+
+                Think through this carefully, showing your reasoning at each step:
+
+            Rendering with multiple variables:
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("binary_classification")
+                >>> prompt = template.render(
+                ...     category_a="spam",
+                ...     category_b="not spam",
+                ...     text="Buy now! Limited offer!"
+                ... )
+                >>> "spam" in prompt and "not spam" in prompt
+                True
+
+            Partial rendering (missing variables stay as placeholders):
+
+                >>> from insideLLMs.templates import PromptTemplateInfo, TemplateCategory
+                >>> template = PromptTemplateInfo(
+                ...     name="test",
+                ...     category=TemplateCategory.GENERATION,
+                ...     description="Test",
+                ...     template="Hello {name}, your {item} is ready",
+                ...     variables=["name", "item"],
+                ... )
+                >>> print(template.render(name="Bob"))
+                Hello Bob, your {item} is ready
+
+            Values are converted to strings:
+
+                >>> from insideLLMs.templates import PromptTemplateInfo, TemplateCategory
+                >>> template = PromptTemplateInfo(
+                ...     name="math",
+                ...     category=TemplateCategory.REASONING,
+                ...     description="Math problem",
+                ...     template="Calculate {num1} + {num2}",
+                ...     variables=["num1", "num2"],
+                ... )
+                >>> print(template.render(num1=42, num2=58))
+                Calculate 42 + 58
         """
         result = self.template
         for var in self.variables:
@@ -57,13 +323,60 @@ class PromptTemplateInfo:
         return result
 
     def get_missing_vars(self, provided: set[str]) -> set[str]:
-        """Get missing required variables.
+        """Get missing required variables by comparing provided names against required.
+
+        This method helps validate that all required variables have been provided
+        before rendering a template. It computes the set difference between the
+        template's required variables and the provided variable names.
 
         Args:
-            provided: Set of provided variable names.
+            provided: Set of variable names that have been provided. This should
+                contain the keys that will be passed to render().
 
         Returns:
-            Set of missing variable names.
+            Set of variable names that are required by the template but were not
+            provided. Returns an empty set if all variables are provided.
+
+        Examples:
+            Checking for missing variables before rendering:
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("binary_classification")
+                >>> provided = {"category_a", "text"}
+                >>> missing = template.get_missing_vars(provided)
+                >>> print(missing)
+                {'category_b'}
+
+            All variables provided (returns empty set):
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("chain_of_thought")
+                >>> provided = {"question"}
+                >>> missing = template.get_missing_vars(provided)
+                >>> print(missing)
+                set()
+                >>> print(len(missing) == 0)
+                True
+
+            Validating user input before rendering:
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("code_generation")
+                >>> user_vars = {"language": "Python"}
+                >>> missing = template.get_missing_vars(set(user_vars.keys()))
+                >>> if missing:
+                ...     print(f"Please provide: {', '.join(missing)}")
+                Please provide: requirements
+
+            Using with kwargs from function call:
+
+                >>> from insideLLMs.templates import get_template
+                >>> template = get_template("creative_writing")
+                >>> kwargs = {"content_type": "poem", "topic": "nature"}
+                >>> missing = template.get_missing_vars(set(kwargs.keys()))
+                >>> # Returns {'style', 'tone', 'length'}
+                >>> len(missing) == 3
+                True
         """
         return set(self.variables) - provided
 
@@ -563,15 +876,125 @@ Subtasks:""",
 
 # Template Registry
 class TemplateLibrary:
-    """Library of prompt templates."""
+    """Library of prompt templates with registration, retrieval, and search capabilities.
+
+    This class serves as a registry for prompt templates, providing methods to
+    register, retrieve, list, and search templates. It comes pre-populated with
+    a comprehensive set of built-in templates covering common LLM use cases.
+
+    The library supports:
+        - Template retrieval by name
+        - Listing templates with optional category filtering
+        - Keyword-based template search
+        - Custom template registration
+        - Direct template rendering by name
+
+    Attributes:
+        _templates: Internal dictionary mapping template names to PromptTemplateInfo
+            instances.
+
+    Examples:
+        Creating and using a template library:
+
+            >>> from insideLLMs.templates import TemplateLibrary
+            >>> library = TemplateLibrary()
+            >>> template = library.get("chain_of_thought")
+            >>> print(template.description)
+            Encourages step-by-step reasoning
+
+        Listing templates by category:
+
+            >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+            >>> library = TemplateLibrary()
+            >>> coding_templates = library.list_templates(TemplateCategory.CODING)
+            >>> print([t.name for t in coding_templates])
+            ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+        Searching for templates:
+
+            >>> from insideLLMs.templates import TemplateLibrary
+            >>> library = TemplateLibrary()
+            >>> results = library.search("sentiment")
+            >>> print([t.name for t in results])
+            ['sentiment_analysis']
+
+        Registering custom templates:
+
+            >>> from insideLLMs.templates import (
+            ...     TemplateLibrary, PromptTemplateInfo, TemplateCategory
+            ... )
+            >>> library = TemplateLibrary()
+            >>> custom = PromptTemplateInfo(
+            ...     name="my_custom_template",
+            ...     category=TemplateCategory.GENERATION,
+            ...     description="Custom generation template",
+            ...     template="Generate {output_type} about {topic}",
+            ...     variables=["output_type", "topic"],
+            ... )
+            >>> library.register(custom)
+            >>> print(library.get("my_custom_template").description)
+            Custom generation template
+    """
 
     def __init__(self):
-        """Initialize with built-in templates."""
+        """Initialize a new TemplateLibrary with built-in templates.
+
+        Creates an empty template registry and populates it with the default
+        set of built-in templates covering reasoning, extraction, classification,
+        generation, summarization, coding, analysis, conversation, and instruction
+        categories.
+
+        Examples:
+            Creating a new library instance:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> print(len(library.list_templates()) > 0)
+                True
+
+            Built-in templates are immediately available:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> template = library.get("chain_of_thought")
+                >>> print(template is not None)
+                True
+
+            Each instance has its own template registry:
+
+                >>> from insideLLMs.templates import TemplateLibrary, PromptTemplateInfo, TemplateCategory
+                >>> lib1 = TemplateLibrary()
+                >>> lib2 = TemplateLibrary()
+                >>> custom = PromptTemplateInfo(
+                ...     name="unique", category=TemplateCategory.GENERATION,
+                ...     description="test", template="test", variables=[]
+                ... )
+                >>> lib1.register(custom)
+                >>> print(lib1.get("unique") is not None)
+                True
+                >>> print(lib2.get("unique") is None)
+                True
+        """
         self._templates: dict[str, PromptTemplateInfo] = {}
         self._register_builtins()
 
     def _register_builtins(self) -> None:
-        """Register built-in templates."""
+        """Register the built-in templates to the library.
+
+        This internal method populates the library with the default set of
+        prompt templates. It is called automatically during initialization.
+
+        The built-in templates include:
+            - Reasoning: chain_of_thought, chain_of_thought_zero_shot, step_back
+            - Extraction: entity_extraction, structured_extraction, key_value_extraction
+            - Classification: binary, multi_class, multi_label classification
+            - Summarization: concise_summary, bullet_summary, structured_summary
+            - Generation: creative_writing, content_expansion, rewrite
+            - Coding: code_generation, code_explanation, code_review, code_refactor
+            - Analysis: sentiment_analysis, comparative_analysis, swot_analysis
+            - Conversation: persona, socratic
+            - Instruction: step_by_step, task_decomposition
+        """
         builtins = [
             CHAIN_OF_THOUGHT,
             CHAIN_OF_THOUGHT_ZERO_SHOT,
@@ -604,26 +1027,123 @@ class TemplateLibrary:
             self._templates[template.name] = template
 
     def get(self, name: str) -> Optional[PromptTemplateInfo]:
-        """Get template by name.
+        """Get a template by its unique name.
+
+        Retrieves a PromptTemplateInfo instance from the library by its name.
+        This is the primary method for accessing specific templates when you
+        know the template name.
 
         Args:
-            name: Template name.
+            name: The unique name of the template to retrieve (e.g., "chain_of_thought",
+                "code_review"). Names are case-sensitive.
 
         Returns:
-            Template or None if not found.
+            The PromptTemplateInfo instance if found, or None if no template
+            with the given name exists in the library.
+
+        Examples:
+            Getting a built-in template:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> template = library.get("chain_of_thought")
+                >>> print(template.name)
+                chain_of_thought
+                >>> print(template.category.value)
+                reasoning
+
+            Handling non-existent templates:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> template = library.get("nonexistent_template")
+                >>> print(template is None)
+                True
+
+            Using the returned template:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> template = library.get("binary_classification")
+                >>> if template:
+                ...     prompt = template.render(
+                ...         category_a="positive",
+                ...         category_b="negative",
+                ...         text="Great product!"
+                ...     )
+                ...     print("positive" in prompt)
+                True
+
+            Checking template metadata:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> template = library.get("code_generation")
+                >>> print(template.variables)
+                ['language', 'requirements']
+                >>> print(template.best_for)
+                ['new function creation', 'algorithm implementation']
         """
         return self._templates.get(name)
 
     def list_templates(
         self, category: Optional[TemplateCategory] = None
     ) -> list[PromptTemplateInfo]:
-        """List available templates.
+        """List all available templates, optionally filtered by category.
+
+        Returns a list of all PromptTemplateInfo instances in the library.
+        When a category is specified, only templates belonging to that category
+        are returned.
 
         Args:
-            category: Optional category filter.
+            category: Optional TemplateCategory to filter by. If None, all
+                templates are returned. If specified, only templates with
+                matching category are returned.
 
         Returns:
-            List of templates.
+            List of PromptTemplateInfo instances. Returns all templates if
+            no category filter is specified, or only matching templates
+            if a category is provided.
+
+        Examples:
+            Listing all templates:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> all_templates = library.list_templates()
+                >>> print(len(all_templates) >= 20)  # Many built-in templates
+                True
+
+            Filtering by category:
+
+                >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+                >>> library = TemplateLibrary()
+                >>> reasoning = library.list_templates(TemplateCategory.REASONING)
+                >>> print([t.name for t in reasoning])
+                ['chain_of_thought', 'chain_of_thought_zero_shot', 'step_back']
+
+            Iterating over templates in a category:
+
+                >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+                >>> library = TemplateLibrary()
+                >>> for template in library.list_templates(TemplateCategory.CODING):
+                ...     print(f"{template.name}: {template.description}")
+                code_generation: Generate code from description
+                code_explanation: Explain what code does
+                code_review: Review code for issues and improvements
+                code_refactor: Refactor code for improvements
+
+            Building a template catalog:
+
+                >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+                >>> library = TemplateLibrary()
+                >>> catalog = {}
+                >>> for cat in TemplateCategory:
+                ...     templates = library.list_templates(cat)
+                ...     if templates:
+                ...         catalog[cat.value] = [t.name for t in templates]
+                >>> print("reasoning" in catalog)
+                True
         """
         templates = list(self._templates.values())
         if category:
@@ -631,36 +1151,224 @@ class TemplateLibrary:
         return templates
 
     def list_names(self, category: Optional[TemplateCategory] = None) -> list[str]:
-        """List template names.
+        """List template names, optionally filtered by category.
+
+        Returns a list of template names (strings) rather than full template
+        objects. This is useful for quick lookups, displaying available options,
+        or building selection menus.
 
         Args:
-            category: Optional category filter.
+            category: Optional TemplateCategory to filter by. If None, all
+                template names are returned. If specified, only names of
+                templates with matching category are returned.
 
         Returns:
-            List of template names.
+            List of template name strings. Returns all names if no category
+            filter is specified.
+
+        Examples:
+            Getting all template names:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> names = library.list_names()
+                >>> print("chain_of_thought" in names)
+                True
+                >>> print("code_review" in names)
+                True
+
+            Getting names by category:
+
+                >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+                >>> library = TemplateLibrary()
+                >>> extraction_names = library.list_names(TemplateCategory.EXTRACTION)
+                >>> print(extraction_names)
+                ['entity_extraction', 'structured_extraction', 'key_value_extraction']
+
+            Building a selection menu:
+
+                >>> from insideLLMs.templates import TemplateLibrary, TemplateCategory
+                >>> library = TemplateLibrary()
+                >>> print("Available reasoning templates:")
+                Available reasoning templates:
+                >>> for i, name in enumerate(library.list_names(TemplateCategory.REASONING), 1):
+                ...     print(f"  {i}. {name}")
+                  1. chain_of_thought
+                  2. chain_of_thought_zero_shot
+                  3. step_back
+
+            Checking if a template exists:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> available = library.list_names()
+                >>> print("binary_classification" in available)
+                True
+                >>> print("nonexistent" in available)
+                False
         """
         return [t.name for t in self.list_templates(category)]
 
     def register(self, template: PromptTemplateInfo) -> None:
-        """Register a custom template.
+        """Register a custom template to the library.
+
+        Adds a new template to the library, making it available for retrieval,
+        listing, and searching. If a template with the same name already exists,
+        it will be overwritten.
 
         Args:
-            template: Template to register.
+            template: The PromptTemplateInfo instance to register. The template's
+                name attribute will be used as the key for retrieval.
+
+        Examples:
+            Registering a simple custom template:
+
+                >>> from insideLLMs.templates import (
+                ...     TemplateLibrary, PromptTemplateInfo, TemplateCategory
+                ... )
+                >>> library = TemplateLibrary()
+                >>> template = PromptTemplateInfo(
+                ...     name="greeting",
+                ...     category=TemplateCategory.GENERATION,
+                ...     description="Generate a greeting",
+                ...     template="Hello {name}, welcome to {place}!",
+                ...     variables=["name", "place"],
+                ... )
+                >>> library.register(template)
+                >>> print(library.get("greeting") is not None)
+                True
+
+            Overwriting an existing template:
+
+                >>> from insideLLMs.templates import (
+                ...     TemplateLibrary, PromptTemplateInfo, TemplateCategory
+                ... )
+                >>> library = TemplateLibrary()
+                >>> original = library.get("chain_of_thought")
+                >>> custom_cot = PromptTemplateInfo(
+                ...     name="chain_of_thought",  # Same name, will overwrite
+                ...     category=TemplateCategory.REASONING,
+                ...     description="Custom chain of thought",
+                ...     template="Think step by step about: {question}",
+                ...     variables=["question"],
+                ... )
+                >>> library.register(custom_cot)
+                >>> print(library.get("chain_of_thought").description)
+                Custom chain of thought
+
+            Registering with full metadata:
+
+                >>> from insideLLMs.templates import (
+                ...     TemplateLibrary, PromptTemplateInfo, TemplateCategory
+                ... )
+                >>> library = TemplateLibrary()
+                >>> template = PromptTemplateInfo(
+                ...     name="email_draft",
+                ...     category=TemplateCategory.GENERATION,
+                ...     description="Draft a professional email",
+                ...     template="Write an email to {recipient} about {subject}.",
+                ...     variables=["recipient", "subject"],
+                ...     examples=[{"recipient": "team", "subject": "meeting"}],
+                ...     best_for=["business communication", "professional emails"],
+                ...     tips=["Keep it concise", "Include clear action items"],
+                ... )
+                >>> library.register(template)
+                >>> registered = library.get("email_draft")
+                >>> print(registered.best_for)
+                ['business communication', 'professional emails']
+
+            Registering multiple templates:
+
+                >>> from insideLLMs.templates import (
+                ...     TemplateLibrary, PromptTemplateInfo, TemplateCategory
+                ... )
+                >>> library = TemplateLibrary()
+                >>> initial_count = len(library.list_templates())
+                >>> templates = [
+                ...     PromptTemplateInfo(
+                ...         name=f"custom_{i}",
+                ...         category=TemplateCategory.GENERATION,
+                ...         description=f"Custom template {i}",
+                ...         template=f"Template {i}: {{input}}",
+                ...         variables=["input"],
+                ...     )
+                ...     for i in range(3)
+                ... ]
+                >>> for t in templates:
+                ...     library.register(t)
+                >>> print(len(library.list_templates()) == initial_count + 3)
+                True
         """
         self._templates[template.name] = template
 
     def render(self, name: str, **kwargs) -> str:
-        """Render a template by name.
+        """Render a template by name with variable substitution.
+
+        Retrieves a template by name and renders it with the provided variable
+        values. This is a convenience method that combines get() and render()
+        in a single call.
 
         Args:
-            name: Template name.
-            **kwargs: Template variables.
+            name: The name of the template to render. Must match a registered
+                template name exactly (case-sensitive).
+            **kwargs: Variable name-value pairs for substitution. Keys should
+                match the variable names defined in the template. Values are
+                converted to strings during substitution.
 
         Returns:
-            Rendered template.
+            The rendered template string with variables replaced by their values.
 
         Raises:
-            KeyError: If template not found.
+            KeyError: If no template with the given name exists in the library.
+
+        Examples:
+            Basic rendering:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> prompt = library.render(
+                ...     "chain_of_thought",
+                ...     question="What is the capital of France?"
+                ... )
+                >>> print("What is the capital of France?" in prompt)
+                True
+
+            Rendering with multiple variables:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> prompt = library.render(
+                ...     "code_generation",
+                ...     language="Python",
+                ...     requirements="a function that calculates factorial"
+                ... )
+                >>> print("Python" in prompt)
+                True
+                >>> print("factorial" in prompt)
+                True
+
+            Handling missing templates:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> try:
+                ...     library.render("nonexistent", var="value")
+                ... except KeyError as e:
+                ...     print("Template not found")
+                Template not found
+
+            Rendering classification template:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> prompt = library.render(
+                ...     "binary_classification",
+                ...     category_a="spam",
+                ...     category_b="not spam",
+                ...     text="Win a free iPhone now!"
+                ... )
+                >>> print("spam" in prompt and "not spam" in prompt)
+                True
         """
         template = self._templates.get(name)
         if not template:
@@ -668,13 +1376,66 @@ class TemplateLibrary:
         return template.render(**kwargs)
 
     def search(self, query: str) -> list[PromptTemplateInfo]:
-        """Search templates by keyword.
+        """Search templates by keyword across names, descriptions, and use cases.
+
+        Performs a case-insensitive search across template names, descriptions,
+        and best_for lists. This is useful for discovering templates when you
+        know what you want to accomplish but not the exact template name.
 
         Args:
-            query: Search query.
+            query: The search keyword or phrase to look for. The search is
+                case-insensitive and matches partial strings.
 
         Returns:
-            Matching templates.
+            List of PromptTemplateInfo instances that match the query. Returns
+            an empty list if no matches are found.
+
+        Examples:
+            Searching by functionality:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> results = library.search("code")
+                >>> print([t.name for t in results])
+                ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+            Searching by use case:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> results = library.search("sentiment")
+                >>> print(len(results) >= 1)
+                True
+                >>> print(results[0].name)
+                sentiment_analysis
+
+            Case-insensitive search:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> lower = library.search("chain")
+                >>> upper = library.search("CHAIN")
+                >>> print(len(lower) == len(upper))
+                True
+
+            Searching for task types:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> results = library.search("classification")
+                >>> names = [t.name for t in results]
+                >>> print("binary_classification" in names)
+                True
+                >>> print("multi_class_classification" in names)
+                True
+
+            Handling no results:
+
+                >>> from insideLLMs.templates import TemplateLibrary
+                >>> library = TemplateLibrary()
+                >>> results = library.search("xyznonexistent")
+                >>> print(len(results) == 0)
+                True
         """
         query = query.lower()
         results = []
@@ -693,67 +1454,389 @@ _default_library = TemplateLibrary()
 
 
 def get_template(name: str) -> Optional[PromptTemplateInfo]:
-    """Get template from default library.
+    """Get a template by name from the default library.
+
+    This is a convenience function that retrieves a template from the global
+    default library instance. Use this when you need quick access to built-in
+    or registered templates without managing your own library instance.
 
     Args:
-        name: Template name.
+        name: The unique name of the template to retrieve (e.g., "chain_of_thought",
+            "code_review"). Names are case-sensitive.
 
     Returns:
-        Template or None.
+        The PromptTemplateInfo instance if found, or None if no template
+        with the given name exists.
+
+    Examples:
+        Getting a built-in template:
+
+            >>> from insideLLMs.templates import get_template
+            >>> template = get_template("chain_of_thought")
+            >>> print(template.name)
+            chain_of_thought
+            >>> print(template.description)
+            Encourages step-by-step reasoning
+
+        Checking if template exists:
+
+            >>> from insideLLMs.templates import get_template
+            >>> template = get_template("nonexistent")
+            >>> print(template is None)
+            True
+
+        Using the template:
+
+            >>> from insideLLMs.templates import get_template
+            >>> template = get_template("binary_classification")
+            >>> prompt = template.render(
+            ...     category_a="positive",
+            ...     category_b="negative",
+            ...     text="I love this!"
+            ... )
+            >>> print("positive" in prompt)
+            True
+
+        Accessing template metadata:
+
+            >>> from insideLLMs.templates import get_template
+            >>> template = get_template("code_generation")
+            >>> print(template.variables)
+            ['language', 'requirements']
+            >>> print(template.category.value)
+            coding
     """
     return _default_library.get(name)
 
 
 def list_templates(category: Optional[TemplateCategory] = None) -> list[PromptTemplateInfo]:
-    """List templates from default library.
+    """List all templates from the default library, optionally filtered by category.
+
+    This is a convenience function that lists templates from the global default
+    library instance. Use this to discover available templates or to filter
+    templates by category.
 
     Args:
-        category: Optional category filter.
+        category: Optional TemplateCategory to filter by. If None, all templates
+            are returned. If specified, only templates with matching category
+            are returned.
 
     Returns:
-        List of templates.
+        List of PromptTemplateInfo instances. Returns all templates if no
+        category filter is specified.
+
+    Examples:
+        Listing all templates:
+
+            >>> from insideLLMs.templates import list_templates
+            >>> templates = list_templates()
+            >>> print(len(templates) >= 20)
+            True
+
+        Filtering by category:
+
+            >>> from insideLLMs.templates import list_templates, TemplateCategory
+            >>> reasoning = list_templates(TemplateCategory.REASONING)
+            >>> print([t.name for t in reasoning])
+            ['chain_of_thought', 'chain_of_thought_zero_shot', 'step_back']
+
+        Iterating over templates:
+
+            >>> from insideLLMs.templates import list_templates, TemplateCategory
+            >>> for template in list_templates(TemplateCategory.EXTRACTION):
+            ...     print(f"{template.name}: {len(template.variables)} vars")
+            entity_extraction: 2 vars
+            structured_extraction: 2 vars
+            key_value_extraction: 1 vars
+
+        Counting templates by category:
+
+            >>> from insideLLMs.templates import list_templates, TemplateCategory
+            >>> for cat in [TemplateCategory.CODING, TemplateCategory.ANALYSIS]:
+            ...     count = len(list_templates(cat))
+            ...     print(f"{cat.value}: {count} templates")
+            coding: 4 templates
+            analysis: 3 templates
     """
     return _default_library.list_templates(category)
 
 
 def render_template(name: str, **kwargs) -> str:
-    """Render template from default library.
+    """Render a template from the default library with variable substitution.
+
+    This is a convenience function that retrieves and renders a template from
+    the global default library instance in a single call. This is the most
+    common way to use templates.
 
     Args:
-        name: Template name.
-        **kwargs: Template variables.
+        name: The name of the template to render. Must match a registered
+            template name exactly (case-sensitive).
+        **kwargs: Variable name-value pairs for substitution. Keys should
+            match the variable names defined in the template.
 
     Returns:
-        Rendered template.
+        The rendered template string with variables replaced by their values.
+
+    Raises:
+        KeyError: If no template with the given name exists in the library.
+
+    Examples:
+        Rendering a chain-of-thought prompt:
+
+            >>> from insideLLMs.templates import render_template
+            >>> prompt = render_template(
+            ...     "chain_of_thought",
+            ...     question="What is 15% of 80?"
+            ... )
+            >>> print("15% of 80" in prompt)
+            True
+
+        Rendering a code generation prompt:
+
+            >>> from insideLLMs.templates import render_template
+            >>> prompt = render_template(
+            ...     "code_generation",
+            ...     language="Python",
+            ...     requirements="a function to reverse a string"
+            ... )
+            >>> print("Python" in prompt)
+            True
+
+        Rendering a classification prompt:
+
+            >>> from insideLLMs.templates import render_template
+            >>> prompt = render_template(
+            ...     "multi_class_classification",
+            ...     categories="positive, negative, neutral",
+            ...     text="The product works as expected."
+            ... )
+            >>> print("positive, negative, neutral" in prompt)
+            True
+
+        Error handling for missing templates:
+
+            >>> from insideLLMs.templates import render_template
+            >>> try:
+            ...     render_template("nonexistent", var="value")
+            ... except KeyError:
+            ...     print("Template not found")
+            Template not found
     """
     return _default_library.render(name, **kwargs)
 
 
 def register_template(template: PromptTemplateInfo) -> None:
-    """Register template to default library.
+    """Register a custom template to the default library.
+
+    This is a convenience function that registers a template to the global
+    default library instance. Use this to add custom templates that will be
+    available throughout your application via the module-level functions.
+
+    Note: Templates registered here will be available globally. If you need
+    isolated template registries, create your own TemplateLibrary instance.
 
     Args:
-        template: Template to register.
+        template: The PromptTemplateInfo instance to register. The template's
+            name attribute will be used as the key for retrieval.
+
+    Examples:
+        Registering a simple template:
+
+            >>> from insideLLMs.templates import (
+            ...     register_template, get_template,
+            ...     PromptTemplateInfo, TemplateCategory
+            ... )
+            >>> template = PromptTemplateInfo(
+            ...     name="my_greeting",
+            ...     category=TemplateCategory.GENERATION,
+            ...     description="Generate a personalized greeting",
+            ...     template="Hello {name}! Welcome to {service}.",
+            ...     variables=["name", "service"],
+            ... )
+            >>> register_template(template)
+            >>> retrieved = get_template("my_greeting")
+            >>> print(retrieved is not None)
+            True
+
+        Registering with full metadata:
+
+            >>> from insideLLMs.templates import (
+            ...     register_template, render_template,
+            ...     PromptTemplateInfo, TemplateCategory
+            ... )
+            >>> template = PromptTemplateInfo(
+            ...     name="api_doc",
+            ...     category=TemplateCategory.CODING,
+            ...     description="Generate API documentation",
+            ...     template="Document this {language} API:\\n{code}",
+            ...     variables=["language", "code"],
+            ...     best_for=["API docs", "code documentation"],
+            ...     tips=["Include examples in the code"],
+            ... )
+            >>> register_template(template)
+            >>> prompt = render_template("api_doc", language="Python", code="def foo(): pass")
+            >>> print("Python" in prompt)
+            True
+
+        Overwriting an existing template:
+
+            >>> from insideLLMs.templates import (
+            ...     register_template, get_template,
+            ...     PromptTemplateInfo, TemplateCategory
+            ... )
+            >>> custom = PromptTemplateInfo(
+            ...     name="chain_of_thought",  # Overwrites built-in
+            ...     category=TemplateCategory.REASONING,
+            ...     description="My custom CoT",
+            ...     template="Think carefully: {question}",
+            ...     variables=["question"],
+            ... )
+            >>> register_template(custom)
+            >>> print(get_template("chain_of_thought").description)
+            My custom CoT
+
+        Registering domain-specific templates:
+
+            >>> from insideLLMs.templates import (
+            ...     register_template, search_templates,
+            ...     PromptTemplateInfo, TemplateCategory
+            ... )
+            >>> medical_template = PromptTemplateInfo(
+            ...     name="medical_summary",
+            ...     category=TemplateCategory.SUMMARIZATION,
+            ...     description="Summarize medical documents",
+            ...     template="Summarize this medical report:\\n{report}",
+            ...     variables=["report"],
+            ...     best_for=["medical summaries", "clinical notes"],
+            ... )
+            >>> register_template(medical_template)
+            >>> results = search_templates("medical")
+            >>> print(len(results) >= 1)
+            True
     """
     _default_library.register(template)
 
 
 def search_templates(query: str) -> list[PromptTemplateInfo]:
-    """Search templates in default library.
+    """Search templates in the default library by keyword.
+
+    This is a convenience function that searches templates in the global
+    default library instance. The search is case-insensitive and matches
+    against template names, descriptions, and best_for lists.
 
     Args:
-        query: Search query.
+        query: The search keyword or phrase to look for. The search is
+            case-insensitive and matches partial strings.
 
     Returns:
-        Matching templates.
+        List of PromptTemplateInfo instances that match the query. Returns
+        an empty list if no matches are found.
+
+    Examples:
+        Searching for code-related templates:
+
+            >>> from insideLLMs.templates import search_templates
+            >>> results = search_templates("code")
+            >>> print([t.name for t in results])
+            ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+        Searching for summarization templates:
+
+            >>> from insideLLMs.templates import search_templates
+            >>> results = search_templates("summary")
+            >>> names = [t.name for t in results]
+            >>> print("concise_summary" in names)
+            True
+            >>> print("bullet_summary" in names)
+            True
+
+        Case-insensitive search:
+
+            >>> from insideLLMs.templates import search_templates
+            >>> lower = search_templates("reasoning")
+            >>> upper = search_templates("REASONING")
+            >>> mixed = search_templates("ReAsOnInG")
+            >>> print(len(lower) == len(upper) == len(mixed))
+            True
+
+        Searching by use case:
+
+            >>> from insideLLMs.templates import search_templates
+            >>> results = search_templates("spam")
+            >>> # Finds binary_classification which has 'spam detection' in best_for
+            >>> print(any("classification" in t.name for t in results))
+            True
+
+        Handling no results:
+
+            >>> from insideLLMs.templates import search_templates
+            >>> results = search_templates("xyznonexistent123")
+            >>> print(results)
+            []
     """
     return _default_library.search(query)
 
 
 def get_library() -> TemplateLibrary:
-    """Get the default template library.
+    """Get the default template library instance.
+
+    Returns the global TemplateLibrary instance that is used by all the
+    module-level convenience functions. This is useful when you need direct
+    access to the library object for advanced operations or to share it
+    with other components.
 
     Returns:
-        Default template library.
+        The default TemplateLibrary instance used by this module. This is
+        the same instance used by get_template(), list_templates(),
+        render_template(), register_template(), and search_templates().
+
+    Examples:
+        Getting the library instance:
+
+            >>> from insideLLMs.templates import get_library
+            >>> library = get_library()
+            >>> print(type(library).__name__)
+            TemplateLibrary
+
+        Using library methods directly:
+
+            >>> from insideLLMs.templates import get_library
+            >>> library = get_library()
+            >>> template = library.get("chain_of_thought")
+            >>> print(template.name)
+            chain_of_thought
+
+        Passing library to other functions:
+
+            >>> from insideLLMs.templates import get_library
+            >>> library = get_library()
+            >>> def count_templates(lib):
+            ...     return len(lib.list_templates())
+            >>> print(count_templates(library) >= 20)
+            True
+
+        Using list_names method (not exposed at module level):
+
+            >>> from insideLLMs.templates import get_library, TemplateCategory
+            >>> library = get_library()
+            >>> names = library.list_names(TemplateCategory.CODING)
+            >>> print(names)
+            ['code_generation', 'code_explanation', 'code_review', 'code_refactor']
+
+        Verifying it is the same instance:
+
+            >>> from insideLLMs.templates import get_library, register_template
+            >>> from insideLLMs.templates import PromptTemplateInfo, TemplateCategory
+            >>> library = get_library()
+            >>> custom = PromptTemplateInfo(
+            ...     name="verify_same_instance",
+            ...     category=TemplateCategory.GENERATION,
+            ...     description="Test",
+            ...     template="Test",
+            ...     variables=[],
+            ... )
+            >>> register_template(custom)  # Uses default library
+            >>> print(library.get("verify_same_instance") is not None)
+            True
     """
     return _default_library

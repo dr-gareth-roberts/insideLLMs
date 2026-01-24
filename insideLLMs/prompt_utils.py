@@ -1,14 +1,142 @@
-"""Advanced prompt templating utilities.
+"""Advanced prompt templating utilities for LLM applications.
 
-This module provides tools for creating, formatting, and chaining prompts
-for use with LLM models.
+This module provides a comprehensive toolkit for creating, formatting, validating,
+and managing prompts for use with Large Language Model (LLM) APIs. It supports
+various prompt engineering patterns including few-shot learning, chat-style
+conversations, template composition, and prompt versioning.
 
-Key features:
-- PromptTemplate: Simple {placeholder} style templates
-- PromptBuilder: Fluent API for building complex prompts
-- PromptLibrary: Named template storage and versioning
-- PromptComposer: Compose prompts from reusable components
-- Validation and parsing utilities
+Overview
+--------
+The module is organized around several core abstractions:
+
+**Templates and Formatting**
+    - `PromptTemplate`: Simple {placeholder} style templates with Python string formatting
+    - `render_prompt`: Quick template rendering function
+    - `render_jinja_template`: Advanced Jinja2 template support for complex logic
+
+**Message Building**
+    - `PromptMessage`: Dataclass representing a single conversation message
+    - `PromptRole`: Enum defining standard chat roles (system, user, assistant, etc.)
+    - `PromptBuilder`: Fluent API for constructing multi-turn conversations
+    - `format_chat_messages`: Convert message lists to formatted strings
+
+**Prompt Management**
+    - `PromptLibrary`: Named template storage with versioning and tagging
+    - `PromptVersion`: Versioned prompt metadata with content hashing
+    - `PromptComposer`: Compose prompts from reusable sections
+
+**Validation and Utilities**
+    - `PromptValidator`: Validate prompts against custom rules
+    - `extract_variables`: Extract placeholder names from templates
+    - `validate_template_variables`: Check for missing variables
+    - `escape_template`: Escape braces to prevent substitution
+    - `truncate_prompt`: Truncate prompts to length limits
+    - `estimate_tokens`: Estimate token count (delegates to tokens module)
+    - `split_prompt_by_tokens`: Split prompts for chunked processing
+
+**Few-Shot Learning**
+    - `create_few_shot_prompt`: Build few-shot prompts with examples
+
+Key Features
+------------
+- **Type Safety**: Full type hints for IDE support and static analysis
+- **Fluent APIs**: Chainable methods for readable prompt construction
+- **Versioning**: Track prompt versions with content hashing
+- **Validation**: Custom validation rules for prompt quality
+- **Jinja2 Support**: Optional advanced templating with conditionals and loops
+- **Token Estimation**: Integrate with token counting for context management
+- **Serialization**: Export/import prompt libraries as dictionaries
+
+Examples
+--------
+Basic template usage:
+
+>>> from insideLLMs.prompt_utils import PromptTemplate
+>>> template = PromptTemplate("Translate the following {source_lang} to {target_lang}: {text}")
+>>> prompt = template.format(source_lang="English", target_lang="French", text="Hello, world!")
+>>> print(prompt)
+Translate the following English to French: Hello, world!
+
+Building chat-style prompts with PromptBuilder:
+
+>>> from insideLLMs.prompt_utils import PromptBuilder
+>>> builder = PromptBuilder()
+>>> messages = (builder
+...     .system("You are a helpful coding assistant specializing in Python.")
+...     .user("How do I read a JSON file?")
+...     .assistant("You can use the `json` module...")
+...     .user("Can you show me an example?")
+...     .build())
+>>> print(messages[0])
+{'role': 'system', 'content': 'You are a helpful coding assistant specializing in Python.'}
+
+Creating few-shot prompts:
+
+>>> from insideLLMs.prompt_utils import create_few_shot_prompt
+>>> examples = [
+...     {"input": "The food was great", "output": "positive"},
+...     {"input": "Terrible service", "output": "negative"},
+...     {"input": "It was okay", "output": "neutral"}
+... ]
+>>> prompt = create_few_shot_prompt(
+...     instruction="Classify the sentiment of the text as positive, negative, or neutral.",
+...     examples=examples,
+...     query="The movie was absolutely fantastic!"
+... )
+
+Using the prompt library for version management:
+
+>>> from insideLLMs.prompt_utils import PromptLibrary
+>>> library = PromptLibrary()
+>>> library.register(
+...     name="summarize",
+...     content="Summarize the following text in {num_sentences} sentences:\\n\\n{text}",
+...     version="1.0",
+...     description="Text summarization prompt",
+...     tags=["summarization", "text-processing"]
+... )
+>>> template = library.get("summarize")
+>>> prompt = template.format(num_sentences=3, text="Your long text here...")
+
+Composing prompts from reusable sections:
+
+>>> from insideLLMs.prompt_utils import PromptComposer
+>>> composer = PromptComposer()
+>>> composer.add_section("persona", "You are a senior software engineer with 10 years of experience.")
+>>> composer.add_section("task", "Review the following code for bugs, security issues, and style.")
+>>> composer.add_section("output_format", "Provide your feedback in bullet points.")
+>>> prompt = composer.compose(["persona", "task", "output_format"])
+
+Validating prompts:
+
+>>> from insideLLMs.prompt_utils import PromptValidator
+>>> validator = PromptValidator()
+>>> validator.require_variables("name", "task")
+>>> validator.add_rule("max_length", lambda p: len(p) <= 2000, "Prompt exceeds 2000 characters")
+>>> is_valid, errors = validator.validate("Hello {name}, please {task}.")
+>>> print(is_valid)
+True
+
+Notes
+-----
+- The module delegates token estimation to `insideLLMs.tokens.estimate_tokens` for
+  consistency across the codebase.
+- Jinja2 is an optional dependency; install with `pip install jinja2` for advanced
+  template features.
+- Prompt hashes use SHA-256 truncated to 12 characters for quick identification.
+- The default prompt library is a module-level singleton accessed via
+  `get_default_library()` and `set_default_library()`.
+
+See Also
+--------
+insideLLMs.tokens : Token counting and analysis utilities
+insideLLMs.models : Model interaction utilities that consume prompts
+
+References
+----------
+.. [1] OpenAI Chat Completions API: https://platform.openai.com/docs/guides/chat
+.. [2] Anthropic Messages API: https://docs.anthropic.com/claude/reference/messages
+.. [3] Prompt Engineering Guide: https://www.promptingguide.ai/
 """
 
 import hashlib
@@ -32,7 +160,66 @@ from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 
 class PromptRole(Enum):
-    """Standard roles for chat-style prompts."""
+    """Standard roles for chat-style prompts in LLM conversations.
+
+    This enum defines the standard message roles used in chat-completion APIs
+    such as OpenAI's Chat API and Anthropic's Messages API. Each role represents
+    a different participant or component in a conversation.
+
+    Attributes
+    ----------
+    SYSTEM : str
+        The system role, used for setting context, instructions, and behavior
+        guidelines for the assistant. System messages typically appear first
+        and are not shown to end users.
+    USER : str
+        The user role, representing messages from the human user interacting
+        with the assistant.
+    ASSISTANT : str
+        The assistant role, representing responses generated by the LLM.
+    TOOL : str
+        The tool role, used for tool/function call results in newer API formats.
+        Contains the output from external tool executions.
+    FUNCTION : str
+        The function role, used for function call results in older API formats.
+        Deprecated in favor of TOOL in most modern APIs.
+
+    Examples
+    --------
+    Using PromptRole with PromptMessage:
+
+    >>> from insideLLMs.prompt_utils import PromptRole, PromptMessage
+    >>> system_msg = PromptMessage(role=PromptRole.SYSTEM, content="You are helpful.")
+    >>> user_msg = PromptMessage(role=PromptRole.USER, content="Hello!")
+    >>> print(system_msg.role_str)
+    system
+    >>> print(user_msg.role_str)
+    user
+
+    Checking role values:
+
+    >>> PromptRole.SYSTEM.value
+    'system'
+    >>> PromptRole.USER.value
+    'user'
+    >>> PromptRole.ASSISTANT.value
+    'assistant'
+
+    Iterating over all roles:
+
+    >>> for role in PromptRole:
+    ...     print(f"{role.name}: {role.value}")
+    SYSTEM: system
+    USER: user
+    ASSISTANT: assistant
+    TOOL: tool
+    FUNCTION: function
+
+    See Also
+    --------
+    PromptMessage : Dataclass that uses PromptRole
+    PromptBuilder : Fluent API with role-specific methods
+    """
 
     SYSTEM = "system"
     USER = "user"
@@ -45,11 +232,80 @@ class PromptRole(Enum):
 class PromptMessage:
     """A single message in a conversation-style prompt.
 
-    Attributes:
-        role: The role of the message sender.
-        content: The message content.
-        name: Optional name for the sender.
-        metadata: Optional metadata dict.
+    This dataclass represents one message in a multi-turn conversation with an LLM.
+    It encapsulates the role (who is speaking), the content (what they said), and
+    optional metadata for tracking and debugging purposes.
+
+    Parameters
+    ----------
+    role : Union[PromptRole, str]
+        The role of the message sender. Can be a PromptRole enum value or a string.
+        Common values: "system", "user", "assistant", "tool", "function".
+    content : str
+        The text content of the message.
+    name : Optional[str], default=None
+        Optional name identifier for the sender. Useful when multiple users or
+        tools are involved in a conversation.
+    metadata : dict[str, Any], default={}
+        Optional metadata dictionary for storing additional information such as
+        timestamps, token counts, or custom tracking data.
+
+    Attributes
+    ----------
+    role : Union[PromptRole, str]
+        The message sender's role.
+    content : str
+        The message text content.
+    name : Optional[str]
+        The sender's name, if provided.
+    metadata : dict[str, Any]
+        Additional metadata associated with the message.
+
+    Examples
+    --------
+    Creating a simple user message:
+
+    >>> from insideLLMs.prompt_utils import PromptMessage, PromptRole
+    >>> msg = PromptMessage(role=PromptRole.USER, content="What is Python?")
+    >>> print(msg.content)
+    What is Python?
+    >>> print(msg.role_str)
+    user
+
+    Creating a system message with string role:
+
+    >>> msg = PromptMessage(role="system", content="You are a helpful assistant.")
+    >>> print(msg.to_dict())
+    {'role': 'system', 'content': 'You are a helpful assistant.'}
+
+    Creating a message with name and metadata:
+
+    >>> msg = PromptMessage(
+    ...     role=PromptRole.USER,
+    ...     content="Hello!",
+    ...     name="alice",
+    ...     metadata={"timestamp": "2024-01-15T10:30:00Z", "token_count": 2}
+    ... )
+    >>> print(msg.to_dict())
+    {'role': 'user', 'content': 'Hello!', 'name': 'alice'}
+    >>> print(msg.metadata["timestamp"])
+    2024-01-15T10:30:00Z
+
+    Using with tool/function responses:
+
+    >>> tool_result = PromptMessage(
+    ...     role=PromptRole.TOOL,
+    ...     content='{"temperature": 72, "unit": "fahrenheit"}',
+    ...     name="get_weather",
+    ...     metadata={"tool_call_id": "call_abc123"}
+    ... )
+    >>> print(tool_result.role_str)
+    tool
+
+    See Also
+    --------
+    PromptRole : Enum of standard message roles
+    PromptBuilder : Fluent API for building message lists
     """
 
     role: Union[PromptRole, str]
@@ -59,11 +315,75 @@ class PromptMessage:
 
     @property
     def role_str(self) -> str:
-        """Get role as string."""
+        """Get the role as a string value.
+
+        Converts PromptRole enum values to their string representation, or
+        returns the role directly if it's already a string.
+
+        Returns
+        -------
+        str
+            The role as a lowercase string (e.g., "system", "user", "assistant").
+
+        Examples
+        --------
+        >>> msg = PromptMessage(role=PromptRole.SYSTEM, content="Be helpful.")
+        >>> msg.role_str
+        'system'
+
+        >>> msg = PromptMessage(role="custom_role", content="Hello")
+        >>> msg.role_str
+        'custom_role'
+        """
         return self.role.value if isinstance(self.role, PromptRole) else self.role
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary format for API calls."""
+        """Convert the message to a dictionary format suitable for API calls.
+
+        Creates a dictionary with 'role' and 'content' keys, and optionally
+        includes 'name' if it was provided. This format is compatible with
+        most LLM chat completion APIs (OpenAI, Anthropic, etc.).
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary with keys:
+            - "role": The role string
+            - "content": The message content
+            - "name": (optional) The sender name, if provided
+
+        Notes
+        -----
+        The metadata field is intentionally not included in the output as it
+        is meant for internal tracking and is not part of the API payload.
+
+        Examples
+        --------
+        Basic conversion:
+
+        >>> msg = PromptMessage(role=PromptRole.USER, content="Hello!")
+        >>> msg.to_dict()
+        {'role': 'user', 'content': 'Hello!'}
+
+        Conversion with name:
+
+        >>> msg = PromptMessage(
+        ...     role=PromptRole.ASSISTANT,
+        ...     content="Hi there!",
+        ...     name="claude"
+        ... )
+        >>> msg.to_dict()
+        {'role': 'assistant', 'content': 'Hi there!', 'name': 'claude'}
+
+        Using the result with an API:
+
+        >>> messages = [
+        ...     PromptMessage(role=PromptRole.SYSTEM, content="Be concise."),
+        ...     PromptMessage(role=PromptRole.USER, content="What is 2+2?")
+        ... ]
+        >>> api_messages = [m.to_dict() for m in messages]
+        >>> # api_messages is now ready for use with chat completion APIs
+        """
         result: dict[str, Any] = {
             "role": self.role_str,
             "content": self.content,
@@ -75,15 +395,99 @@ class PromptMessage:
 
 @dataclass
 class PromptVersion:
-    """A versioned prompt with metadata.
+    """A versioned prompt with metadata for tracking and management.
 
-    Attributes:
-        content: The prompt content.
-        version: Version identifier.
-        created_at: Creation timestamp.
-        description: Optional description.
-        tags: Optional tags for categorization.
-        hash: Content hash for integrity.
+    This dataclass represents a single version of a prompt template, including
+    metadata for version control, categorization, and content integrity. It is
+    primarily used by PromptLibrary for managing multiple versions of prompts.
+
+    Parameters
+    ----------
+    content : str
+        The prompt template content, which may include {placeholder} variables.
+    version : str, default="1.0"
+        A version identifier string. Typically follows semantic versioning
+        (e.g., "1.0", "1.1", "2.0.0-beta").
+    created_at : datetime, default=datetime.now()
+        Timestamp when this version was created.
+    description : Optional[str], default=None
+        Human-readable description of this prompt version, including its
+        purpose, changes from previous versions, or usage notes.
+    tags : list[str], default=[]
+        List of tags for categorization and searchability. Useful for
+        organizing prompts by domain, task type, or status.
+    hash : str, default=""
+        SHA-256 hash (first 12 characters) of the content for integrity
+        verification. Automatically computed if not provided.
+
+    Attributes
+    ----------
+    content : str
+        The prompt template content.
+    version : str
+        The version identifier.
+    created_at : datetime
+        When this version was created.
+    description : Optional[str]
+        Description of this version.
+    tags : list[str]
+        Categorization tags.
+    hash : str
+        Content hash for integrity checking.
+
+    Examples
+    --------
+    Creating a basic prompt version:
+
+    >>> from insideLLMs.prompt_utils import PromptVersion
+    >>> pv = PromptVersion(
+    ...     content="Summarize the following text: {text}",
+    ...     version="1.0",
+    ...     description="Basic summarization prompt"
+    ... )
+    >>> print(pv.version)
+    1.0
+    >>> print(len(pv.hash))
+    12
+
+    Creating a versioned prompt with tags:
+
+    >>> pv = PromptVersion(
+    ...     content="You are a {expertise} expert. Answer: {question}",
+    ...     version="2.0",
+    ...     description="Added expertise customization",
+    ...     tags=["qa", "customizable", "production"]
+    ... )
+    >>> "production" in pv.tags
+    True
+
+    Verifying content integrity:
+
+    >>> pv1 = PromptVersion(content="Hello {name}!", version="1.0")
+    >>> pv2 = PromptVersion(content="Hello {name}!", version="1.1")
+    >>> pv1.hash == pv2.hash  # Same content = same hash
+    True
+    >>> pv3 = PromptVersion(content="Hi {name}!", version="1.0")
+    >>> pv1.hash == pv3.hash  # Different content = different hash
+    False
+
+    Using with PromptLibrary:
+
+    >>> from insideLLMs.prompt_utils import PromptLibrary
+    >>> library = PromptLibrary()
+    >>> pv = library.register(
+    ...     name="greeting",
+    ...     content="Hello, {name}!",
+    ...     version="1.0",
+    ...     tags=["simple", "greeting"]
+    ... )
+    >>> print(type(pv))
+    <class 'insideLLMs.prompt_utils.PromptVersion'>
+
+    See Also
+    --------
+    PromptLibrary : Storage and retrieval of named prompt versions
+    PromptTemplate : Simple template for rendering prompts
     """
 
     content: str
@@ -94,76 +498,346 @@ class PromptVersion:
     hash: str = field(default="")
 
     def __post_init__(self):
-        """Compute hash if not provided."""
+        """Compute content hash if not provided.
+
+        This method is automatically called after dataclass initialization.
+        It computes a SHA-256 hash of the content, truncated to 12 characters,
+        which can be used for quick content identification and integrity checks.
+
+        Notes
+        -----
+        The hash is only computed if the hash field is empty. This allows
+        for explicit hash values to be provided during deserialization.
+
+        Examples
+        --------
+        >>> pv = PromptVersion(content="Test prompt")
+        >>> len(pv.hash)
+        12
+        >>> pv.hash.isalnum()
+        True
+        """
         if not self.hash:
             self.hash = hashlib.sha256(self.content.encode()).hexdigest()[:12]
 
 
 class PromptTemplate:
-    """A simple prompt template using Python string formatting.
+    """A simple prompt template using Python's string formatting syntax.
 
-    Example:
-        >>> template = PromptTemplate("Hello, {name}! You are a {role}.")
-        >>> template.format(name="Alice", role="developer")
-        "Hello, Alice! You are a developer."
+    This class wraps a template string containing {placeholder} style variables
+    and provides methods to format it with actual values. It uses Python's
+    built-in str.format() method under the hood, supporting all standard
+    format specifications.
+
+    Parameters
+    ----------
+    template : str
+        A string containing {placeholder} style variables. Variables can include
+        format specifications like {name:>20} for right-aligned padding.
+
+    Attributes
+    ----------
+    template : str
+        The original template string.
+
+    Examples
+    --------
+    Basic variable substitution:
+
+    >>> from insideLLMs.prompt_utils import PromptTemplate
+    >>> template = PromptTemplate("Hello, {name}! You are a {role}.")
+    >>> result = template.format(name="Alice", role="developer")
+    >>> print(result)
+    Hello, Alice! You are a developer.
+
+    Building a translation prompt:
+
+    >>> template = PromptTemplate(
+    ...     "Translate the following {source_lang} text to {target_lang}:\\n\\n{text}"
+    ... )
+    >>> prompt = template.format(
+    ...     source_lang="English",
+    ...     target_lang="Spanish",
+    ...     text="The weather is beautiful today."
+    ... )
+    >>> print(prompt)
+    Translate the following English text to Spanish:
+    <BLANKLINE>
+    The weather is beautiful today.
+
+    Using format specifications:
+
+    >>> template = PromptTemplate("Score: {score:>5.2f} | Status: {status:<10}")
+    >>> template.format(score=95.5, status="PASS")
+    'Score: 95.50 | Status: PASS      '
+
+    Creating a code review prompt:
+
+    >>> template = PromptTemplate('''
+    ... Review the following {language} code for:
+    ... 1. Bugs and errors
+    ... 2. Security vulnerabilities
+    ... 3. Performance issues
+    ...
+    ... Code:
+    ... ```{language}
+    ... {code}
+    ... ```
+    ... ''')
+    >>> prompt = template.format(
+    ...     language="python",
+    ...     code="def greet(name):\\n    print('Hello ' + name)"
+    ... )
+
+    Reusing templates:
+
+    >>> greeting = PromptTemplate("Dear {title} {name},")
+    >>> print(greeting.format(title="Dr.", name="Smith"))
+    Dear Dr. Smith,
+    >>> print(greeting.format(title="Prof.", name="Jones"))
+    Dear Prof. Jones,
+
+    Notes
+    -----
+    - Use double braces {{ and }} to include literal braces in the output.
+    - For more complex templating needs (conditionals, loops), use
+      `render_jinja_template()` instead.
+    - Variable names must be valid Python identifiers.
+
+    See Also
+    --------
+    render_prompt : Function-based template rendering
+    render_jinja_template : Advanced Jinja2 template rendering
+    extract_variables : Extract variable names from templates
+    PromptLibrary : Store and manage named templates
     """
 
     def __init__(self, template: str):
-        """Initialize the template.
+        """Initialize the template with a format string.
 
-        Args:
-            template: A string with {placeholder} style variables.
+        Parameters
+        ----------
+        template : str
+            A string with {placeholder} style variables for substitution.
+
+        Examples
+        --------
+        >>> t = PromptTemplate("Hello, {name}!")
+        >>> t.template
+        'Hello, {name}!'
+
+        >>> t = PromptTemplate("User {user_id} requested {action}")
+        >>> t.template
+        'User {user_id} requested {action}'
         """
         self.template = template
 
     def format(self, **kwargs: Any) -> str:
-        """Format the template with the given variables.
+        """Format the template by substituting placeholder variables.
 
-        Args:
-            **kwargs: Variables to substitute into the template.
+        Replaces all {placeholder} patterns in the template with the
+        corresponding values from kwargs.
 
-        Returns:
-            The formatted string.
+        Parameters
+        ----------
+        **kwargs : Any
+            Keyword arguments where keys are variable names and values
+            are the substitution values. All placeholders in the template
+            must have corresponding keys.
+
+        Returns
+        -------
+        str
+            The formatted string with all placeholders replaced.
+
+        Raises
+        ------
+        KeyError
+            If a placeholder variable is not provided in kwargs.
+        ValueError
+            If a format specification is invalid for the provided value.
+
+        Examples
+        --------
+        Simple substitution:
+
+        >>> template = PromptTemplate("Hello, {name}!")
+        >>> template.format(name="World")
+        'Hello, World!'
+
+        Multiple variables:
+
+        >>> template = PromptTemplate("{greeting}, {name}! Welcome to {place}.")
+        >>> template.format(greeting="Hi", name="Alice", place="Python")
+        'Hi, Alice! Welcome to Python.'
+
+        With numeric formatting:
+
+        >>> template = PromptTemplate("Temperature: {temp:.1f}C")
+        >>> template.format(temp=23.456)
+        'Temperature: 23.5C'
+
+        Building an API request prompt:
+
+        >>> template = PromptTemplate(
+        ...     "Using the {api_name} API, {action} the resource at endpoint {endpoint}."
+        ... )
+        >>> template.format(api_name="REST", action="GET", endpoint="/users/123")
+        'Using the REST API, GET the resource at endpoint /users/123.'
         """
         return self.template.format(**kwargs)
 
     def __repr__(self) -> str:
+        """Return a string representation of the template.
+
+        Returns
+        -------
+        str
+            A repr string showing the first 50 characters of the template.
+
+        Examples
+        --------
+        >>> t = PromptTemplate("Short template")
+        >>> repr(t)
+        "PromptTemplate('Short template'...)"
+
+        >>> t = PromptTemplate("A" * 100)
+        >>> "..." in repr(t)
+        True
+        """
         return f"PromptTemplate({self.template[:50]!r}...)"
 
 
 def chain_prompts(prompts: list[str], separator: str = "\n") -> str:
-    """Chain multiple prompts together into a single prompt.
+    """Chain multiple prompt strings together into a single combined prompt.
 
-    Args:
-        prompts: List of prompt strings to chain.
-        separator: String to use between prompts (default: newline).
+    This utility function concatenates a list of prompt strings using a
+    specified separator. It's useful for combining system instructions,
+    context, and user queries into a single prompt string.
 
-    Returns:
-        A single string with all prompts joined.
+    Parameters
+    ----------
+    prompts : list[str]
+        List of prompt strings to chain together. Empty strings are
+        included in the output.
+    separator : str, default="\\n"
+        The string to insert between each prompt. Common choices include
+        "\\n" (newline), "\\n\\n" (paragraph break), or " " (space).
 
-    Example:
-        >>> chain_prompts(["System: You are helpful.", "User: Hello!"])
-        "System: You are helpful.\\nUser: Hello!"
+    Returns
+    -------
+    str
+        A single string with all prompts joined by the separator.
+
+    Examples
+    --------
+    Basic chaining with default newline separator:
+
+    >>> prompts = ["System: You are helpful.", "User: Hello!"]
+    >>> chain_prompts(prompts)
+    'System: You are helpful.\\nUser: Hello!'
+
+    Using a double newline for paragraph separation:
+
+    >>> sections = [
+    ...     "You are an expert Python developer.",
+    ...     "Review the following code for bugs.",
+    ...     "Code: def add(a, b): return a + b"
+    ... ]
+    >>> result = chain_prompts(sections, separator="\\n\\n")
+    >>> print(result)
+    You are an expert Python developer.
+    <BLANKLINE>
+    Review the following code for bugs.
+    <BLANKLINE>
+    Code: def add(a, b): return a + b
+
+    Building a multi-part instruction:
+
+    >>> parts = [
+    ...     "Step 1: Analyze the problem",
+    ...     "Step 2: Break it down into subtasks",
+    ...     "Step 3: Solve each subtask",
+    ...     "Step 4: Combine the solutions"
+    ... ]
+    >>> chain_prompts(parts, separator=" -> ")
+    'Step 1: Analyze the problem -> Step 2: Break it down into subtasks -> Step 3: Solve each subtask -> Step 4: Combine the solutions'
+
+    See Also
+    --------
+    PromptComposer : For named, reusable prompt sections
+    PromptBuilder : For building chat-style message lists
     """
     return separator.join(prompts)
 
 
 def render_prompt(template: str, variables: dict[str, Any]) -> str:
-    """Render a template string with variables.
+    """Render a template string by substituting variables.
 
-    Uses Python's str.format() for simple templates. For more advanced
-    templating, use render_jinja_template if jinja2 is installed.
+    A convenience function that applies Python's str.format() to a template
+    string using a dictionary of variables. This is equivalent to calling
+    template.format(**variables) but provides a more explicit function-based
+    interface.
 
-    Args:
-        template: A string with {placeholder} style variables.
-        variables: Dictionary of variables to substitute.
+    Parameters
+    ----------
+    template : str
+        A string containing {placeholder} style variables to be replaced.
+    variables : dict[str, Any]
+        Dictionary mapping variable names to their substitution values.
+        Keys must match placeholder names in the template.
 
-    Returns:
-        The rendered string.
+    Returns
+    -------
+    str
+        The rendered string with all placeholders replaced by their values.
 
-    Example:
-        >>> render_prompt("Hello {name}!", {"name": "World"})
-        "Hello World!"
+    Raises
+    ------
+    KeyError
+        If a placeholder in the template has no corresponding key in variables.
+
+    Examples
+    --------
+    Basic rendering:
+
+    >>> render_prompt("Hello {name}!", {"name": "World"})
+    'Hello World!'
+
+    Multiple variables:
+
+    >>> template = "The {animal} jumped over the {obstacle}."
+    >>> variables = {"animal": "fox", "obstacle": "fence"}
+    >>> render_prompt(template, variables)
+    'The fox jumped over the fence.'
+
+    Building a structured prompt:
+
+    >>> template = '''
+    ... Role: {role}
+    ... Task: {task}
+    ... Context: {context}
+    ... '''
+    >>> variables = {
+    ...     "role": "Data Analyst",
+    ...     "task": "Analyze sales trends",
+    ...     "context": "Q4 2024 data"
+    ... }
+    >>> result = render_prompt(template, variables)
+
+    Using with dynamic variable dictionaries:
+
+    >>> base_vars = {"model": "GPT-4", "temperature": 0.7}
+    >>> user_vars = {"query": "Explain quantum computing"}
+    >>> all_vars = {**base_vars, **user_vars}
+    >>> render_prompt("Using {model} at temp {temperature}: {query}", all_vars)
+    'Using GPT-4 at temp 0.7: Explain quantum computing'
+
+    See Also
+    --------
+    PromptTemplate : Object-oriented template wrapper
+    render_jinja_template : Advanced templating with Jinja2
+    validate_template_variables : Check for missing variables before rendering
     """
     return template.format(**variables)
 

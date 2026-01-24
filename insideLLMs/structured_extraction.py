@@ -1,12 +1,112 @@
 """
 Model output parsing and structured extraction utilities.
 
-Provides tools for:
-- Extracting structured data from LLM responses
-- Parsing specific response formats (JSON, XML, YAML)
-- Schema validation and type coercion
-- Entity and field extraction
-- Multi-format response handling
+This module provides a comprehensive suite of tools for extracting structured data
+from Large Language Model (LLM) responses and other unstructured text sources.
+It supports multiple extraction formats, schema validation, entity recognition,
+and intelligent format auto-detection.
+
+Overview
+--------
+The module is organized around several key concepts:
+
+1. **Extractors**: Specialized classes for parsing specific data formats
+   - `JSONExtractor`: Extracts JSON objects from text, handling code blocks
+   - `KeyValueExtractor`: Parses key-value pairs with configurable separators
+   - `ListExtractor`: Identifies and extracts bulleted/numbered lists
+   - `TableExtractor`: Parses markdown and whitespace-aligned tables
+   - `EntityExtractor`: Recognizes named entities (emails, URLs, dates, etc.)
+   - `StructuredExtractor`: Main orchestrator with auto-detection capabilities
+
+2. **Schema Validation**: Define and validate extraction schemas
+   - `FieldSchema`: Individual field definitions with type and constraint validation
+   - `ExtractionSchema`: Collection of fields with strict/lenient modes
+
+3. **Results**: Structured output with confidence scores and diagnostics
+   - `ExtractionResult`: Complete extraction outcome with status and metadata
+   - `EntityMatch`: Individual entity occurrence with position information
+
+Features
+--------
+- Auto-detection of JSON, key-value, list, and table formats
+- Schema-based validation with type coercion
+- Configurable extraction parameters (separators, patterns, strictness)
+- Confidence scoring for extraction quality assessment
+- Entity recognition for common patterns (email, URL, phone, date, etc.)
+- Support for nested JSON and balanced brace matching
+- Markdown table parsing with header detection
+
+Examples
+--------
+Basic JSON extraction from LLM response:
+
+>>> from insideLLMs.structured_extraction import extract_json
+>>> response = '''
+... Here is the user data:
+... ```json
+... {"name": "Alice", "age": 30, "email": "alice@example.com"}
+... ```
+... '''
+>>> result = extract_json(response)
+>>> result.is_success
+True
+>>> result.extracted_data
+{'name': 'Alice', 'age': 30, 'email': 'alice@example.com'}
+
+Schema-validated extraction:
+
+>>> from insideLLMs.structured_extraction import (
+...     create_schema, StructuredExtractor, FieldType
+... )
+>>> schema = create_schema([
+...     {"name": "username", "type": "string", "min_length": 3},
+...     {"name": "score", "type": "integer", "min_value": 0, "max_value": 100},
+... ])
+>>> extractor = StructuredExtractor(schema=schema)
+>>> result = extractor.extract('{"username": "bob", "score": 85}')
+>>> result.status.value
+'success'
+
+Auto-detecting format from mixed content:
+
+>>> from insideLLMs.structured_extraction import extract_structured
+>>> text = '''
+... Name: John Doe
+... Role: Engineer
+... Active: yes
+... '''
+>>> result = extract_structured(text)
+>>> result.format_detected.value
+'key_value'
+>>> result.extracted_data
+{'Name': 'John Doe', 'Role': 'Engineer', 'Active': True}
+
+Entity extraction from text:
+
+>>> from insideLLMs.structured_extraction import extract_entities
+>>> text = "Contact us at support@company.com or visit https://company.com"
+>>> entities = extract_entities(text)
+>>> [(e.entity_type, e.text) for e in entities]
+[('email', 'support@company.com'), ('url', 'https://company.com')]
+
+Notes
+-----
+- JSON extraction supports code blocks with or without language hints
+- Key-value extraction automatically coerces types (numbers, booleans, lists)
+- Entity patterns are case-insensitive by default
+- Table extraction attempts markdown format first, then whitespace-aligned
+- Schema validation can be strict (reject extra fields) or lenient
+
+See Also
+--------
+- `insideLLMs.probing`: LLM probing utilities that may produce responses
+  requiring structured extraction
+- `insideLLMs.visualization`: Tools for visualizing extraction results
+
+Module Attributes
+-----------------
+DEFAULT_PATTERNS : dict
+    Default regex patterns for entity extraction (defined in EntityExtractor)
 """
 
 import json
@@ -18,7 +118,63 @@ from typing import Any, Optional
 
 
 class ExtractionFormat(Enum):
-    """Supported extraction formats."""
+    """Enumeration of supported extraction formats for structured data parsing.
+
+    This enum defines the various data formats that the extraction utilities
+    can recognize, parse, and convert to structured Python dictionaries.
+    Used throughout the module to indicate both expected and detected formats.
+
+    Attributes
+    ----------
+    JSON : str
+        JavaScript Object Notation format. Supports nested objects, arrays,
+        and standard JSON data types. Extracted from code blocks or raw text.
+    XML : str
+        Extensible Markup Language format. Supports hierarchical tag-based
+        structures with attributes and text content.
+    YAML : str
+        YAML Ain't Markup Language format. Human-readable data serialization
+        with indentation-based nesting.
+    KEY_VALUE : str
+        Simple key-value pair format. Lines contain keys and values separated
+        by configurable delimiters (e.g., ":", "=", "->").
+    LIST : str
+        Bulleted or numbered list format. Supports markers like "-", "*",
+        numbers with periods or parentheses, and letter prefixes.
+    TABLE : str
+        Tabular data format. Supports markdown tables with pipe delimiters
+        and whitespace-aligned columns.
+    MARKDOWN : str
+        General markdown format. May contain mixed structures including
+        headers, lists, code blocks, and inline formatting.
+    FREE_TEXT : str
+        Unstructured plain text. Used as fallback when no structured format
+        is detected. The text is returned as-is in the extraction result.
+
+    Examples
+    --------
+    Using format hints with StructuredExtractor:
+
+    >>> from insideLLMs.structured_extraction import (
+    ...     StructuredExtractor, ExtractionFormat
+    ... )
+    >>> extractor = StructuredExtractor()
+    >>> text = "name: Alice\\nage: 30"
+    >>> result = extractor.extract(text, expected_format=ExtractionFormat.KEY_VALUE)
+    >>> result.format_detected == ExtractionFormat.KEY_VALUE
+    True
+
+    Checking detected format after extraction:
+
+    >>> result = extractor.extract('{"key": "value"}')
+    >>> result.format_detected
+    <ExtractionFormat.JSON: 'json'>
+
+    See Also
+    --------
+    StructuredExtractor : Main extraction class that uses these format types.
+    ExtractionResult : Contains the detected format in its `format_detected` field.
+    """
 
     JSON = "json"
     XML = "xml"
@@ -31,7 +187,76 @@ class ExtractionFormat(Enum):
 
 
 class FieldType(Enum):
-    """Field data types for schema validation."""
+    """Enumeration of field data types for schema validation.
+
+    Defines the allowed data types for fields in an ExtractionSchema. Each type
+    has associated validation logic in FieldSchema.validate() that checks whether
+    extracted values conform to the expected type. The TypeCoercer class can
+    convert values between types when possible.
+
+    Attributes
+    ----------
+    STRING : str
+        Text string values. Validates using isinstance(value, str).
+    INTEGER : str
+        Whole number values. Excludes boolean values despite Python's int subclass
+        relationship. Validates that value is int but not bool.
+    FLOAT : str
+        Decimal number values. Accepts both int and float values, but excludes
+        booleans. Useful for fields that may receive whole or fractional numbers.
+    BOOLEAN : str
+        True/False values. Validates using isinstance(value, bool). TypeCoercer
+        can convert strings like "yes", "true", "1" to boolean.
+    LIST : str
+        Array/list values. Validates using isinstance(value, list). TypeCoercer
+        can split comma-separated strings into lists.
+    DICT : str
+        Dictionary/object values. Validates using isinstance(value, dict).
+    DATE : str
+        Date values in standard formats (e.g., "2024-01-15", "01/15/2024").
+        Currently relies on pattern validation rather than parsing.
+    DATETIME : str
+        Date and time values. Extends DATE with time component support.
+    EMAIL : str
+        Email address values. Validates against a basic email regex pattern
+        matching the format "user@domain.tld".
+    URL : str
+        Web URL values. Validates against a pattern requiring "http://" or
+        "https://" prefix followed by non-whitespace characters.
+    ANY : str
+        Accepts any value type. Skips type validation entirely. Useful for
+        fields where the type is unknown or intentionally flexible.
+
+    Examples
+    --------
+    Creating a typed field schema:
+
+    >>> from insideLLMs.structured_extraction import FieldSchema, FieldType
+    >>> email_field = FieldSchema(
+    ...     name="contact_email",
+    ...     field_type=FieldType.EMAIL,
+    ...     required=True
+    ... )
+    >>> email_field.validate("user@example.com")
+    (True, None)
+    >>> email_field.validate("invalid-email")
+    (False, "Field 'contact_email' must be a valid email")
+
+    Using TypeCoercer for type conversion:
+
+    >>> from insideLLMs.structured_extraction import TypeCoercer, FieldType
+    >>> TypeCoercer.coerce("42", FieldType.INTEGER)
+    (42, True)
+    >>> TypeCoercer.coerce("yes", FieldType.BOOLEAN)
+    (True, True)
+    >>> TypeCoercer.coerce("a, b, c", FieldType.LIST)
+    (['a', 'b', 'c'], True)
+
+    See Also
+    --------
+    FieldSchema : Uses FieldType for field definitions and validation.
+    TypeCoercer : Converts values between FieldType types.
+    """
 
     STRING = "string"
     INTEGER = "integer"
@@ -47,7 +272,71 @@ class FieldType(Enum):
 
 
 class ExtractionStatus(Enum):
-    """Status of extraction operation."""
+    """Enumeration of extraction operation outcomes.
+
+    Represents the result status of an extraction attempt, indicating whether
+    the operation succeeded, partially succeeded, or failed. The status helps
+    consumers decide how to handle the extracted data and whether to apply
+    fallback strategies.
+
+    Attributes
+    ----------
+    SUCCESS : str
+        Extraction completed successfully with high confidence. The extracted
+        data fully matches the expected format and passes all validations.
+        Safe to use the extracted data directly.
+    PARTIAL : str
+        Extraction partially succeeded. Some data was extracted but may be
+        incomplete or have lower confidence. Common when auto-detection falls
+        back to FREE_TEXT format. Check `warnings` in ExtractionResult.
+    FAILED : str
+        Extraction failed entirely. No usable data was extracted. The `errors`
+        list in ExtractionResult contains failure reasons. May occur when
+        input text contains no recognizable structured format.
+    VALIDATION_ERROR : str
+        Extraction succeeded but schema validation failed. The data was parsed
+        correctly but does not conform to the provided ExtractionSchema.
+        Check `errors` for specific validation failures (missing required
+        fields, type mismatches, constraint violations).
+
+    Examples
+    --------
+    Checking extraction status for error handling:
+
+    >>> from insideLLMs.structured_extraction import (
+    ...     extract_json, ExtractionStatus
+    ... )
+    >>> result = extract_json("This has no JSON in it")
+    >>> result.status == ExtractionStatus.FAILED
+    True
+    >>> result.errors
+    ['No JSON found in text']
+
+    Handling partial success:
+
+    >>> from insideLLMs.structured_extraction import extract_structured
+    >>> result = extract_structured("Just some plain text here")
+    >>> result.status == ExtractionStatus.PARTIAL
+    True
+    >>> result.warnings
+    ['No structured format detected, returning raw text']
+
+    Schema validation failure:
+
+    >>> from insideLLMs.structured_extraction import (
+    ...     StructuredExtractor, create_schema
+    ... )
+    >>> schema = create_schema([{"name": "required_field", "required": True}])
+    >>> extractor = StructuredExtractor(schema=schema)
+    >>> result = extractor.extract('{"other_field": "value"}')
+    >>> result.status == ExtractionStatus.VALIDATION_ERROR
+    True
+
+    See Also
+    --------
+    ExtractionResult : Contains status along with extracted data and diagnostics.
+    ExtractionResult.is_success : Property that checks for SUCCESS or PARTIAL status.
+    """
 
     SUCCESS = "success"
     PARTIAL = "partial"
@@ -57,7 +346,132 @@ class ExtractionStatus(Enum):
 
 @dataclass
 class FieldSchema:
-    """Schema definition for a field."""
+    """Schema definition for a single field in structured data extraction.
+
+    Defines the expected name, type, and constraints for a field that should
+    be extracted from text. Used within ExtractionSchema to specify the complete
+    structure of expected data. Provides validation logic for checking extracted
+    values against the defined constraints.
+
+    Parameters
+    ----------
+    name : str
+        The field name/key as it appears in the extracted data. Case-sensitive
+        matching is used during validation.
+    field_type : FieldType, optional
+        The expected data type for this field. Defaults to FieldType.STRING.
+        Used for type validation and can guide type coercion.
+    required : bool, optional
+        Whether this field must be present in extracted data. Defaults to True.
+        Missing required fields cause validation to fail.
+    default : Any, optional
+        Default value when field is missing. Only used if required=False.
+        Defaults to None.
+    description : str, optional
+        Human-readable description of the field's purpose. Useful for
+        documentation and error messages. Defaults to empty string.
+    pattern : str, optional
+        Regular expression pattern for string validation. Only applied to
+        string values. Uses re.match() for validation. Defaults to None.
+    min_value : float, optional
+        Minimum allowed value for numeric fields (INTEGER, FLOAT). Values
+        below this threshold fail validation. Defaults to None (no minimum).
+    max_value : float, optional
+        Maximum allowed value for numeric fields. Values above this
+        threshold fail validation. Defaults to None (no maximum).
+    min_length : int, optional
+        Minimum length for strings and lists. Uses len() for validation.
+        Defaults to None (no minimum length).
+    max_length : int, optional
+        Maximum length for strings and lists. Defaults to None (no maximum).
+    allowed_values : list[Any], optional
+        Explicit list of permitted values. If set, extracted value must be
+        in this list. Defaults to None (any value allowed).
+    nested_schema : list[FieldSchema], optional
+        For DICT or LIST types, defines the schema for nested elements.
+        Enables validation of complex nested structures. Defaults to None.
+
+    Attributes
+    ----------
+    name : str
+        The field identifier.
+    field_type : FieldType
+        The expected data type.
+    required : bool
+        Whether the field is mandatory.
+    default : Any
+        Default value for optional fields.
+    description : str
+        Field documentation.
+    pattern : str or None
+        Regex pattern constraint.
+    min_value : float or None
+        Minimum numeric value.
+    max_value : float or None
+        Maximum numeric value.
+    min_length : int or None
+        Minimum length constraint.
+    max_length : int or None
+        Maximum length constraint.
+    allowed_values : list or None
+        Enumerated allowed values.
+    nested_schema : list[FieldSchema] or None
+        Schema for nested structures.
+
+    Examples
+    --------
+    Basic string field with length constraints:
+
+    >>> from insideLLMs.structured_extraction import FieldSchema, FieldType
+    >>> username_field = FieldSchema(
+    ...     name="username",
+    ...     field_type=FieldType.STRING,
+    ...     required=True,
+    ...     min_length=3,
+    ...     max_length=20,
+    ...     pattern=r"^[a-zA-Z0-9_]+$"
+    ... )
+    >>> username_field.validate("alice_123")
+    (True, None)
+    >>> username_field.validate("ab")
+    (False, "Field 'username' must have length >= 3")
+
+    Numeric field with range validation:
+
+    >>> score_field = FieldSchema(
+    ...     name="score",
+    ...     field_type=FieldType.INTEGER,
+    ...     min_value=0,
+    ...     max_value=100,
+    ...     description="User's score from 0-100"
+    ... )
+    >>> score_field.validate(85)
+    (True, None)
+    >>> score_field.validate(150)
+    (False, "Field 'score' must be <= 100")
+
+    Optional field with allowed values:
+
+    >>> status_field = FieldSchema(
+    ...     name="status",
+    ...     field_type=FieldType.STRING,
+    ...     required=False,
+    ...     default="pending",
+    ...     allowed_values=["pending", "active", "completed", "cancelled"]
+    ... )
+    >>> status_field.validate("active")
+    (True, None)
+    >>> status_field.validate("unknown")
+    (False, "Field 'status' must be one of ['pending', 'active', 'completed', 'cancelled']")
+    >>> status_field.validate(None)  # Optional field allows None
+    (True, None)
+
+    See Also
+    --------
+    ExtractionSchema : Combines multiple FieldSchema instances.
+    FieldType : Enumeration of supported field types.
+    create_schema : Convenience function for creating schemas from dicts.
+    """
 
     name: str
     field_type: FieldType = FieldType.STRING
@@ -73,7 +487,60 @@ class FieldSchema:
     nested_schema: Optional[list["FieldSchema"]] = None
 
     def validate(self, value: Any) -> tuple[bool, Optional[str]]:
-        """Validate a value against this schema."""
+        """Validate a value against this field's schema constraints.
+
+        Performs comprehensive validation including type checking, pattern
+        matching, range validation, length constraints, and allowed value
+        verification. Returns a tuple indicating success and an optional
+        error message.
+
+        Args
+        ----
+        value : Any
+            The value to validate. Can be any type; type checking is
+            performed based on field_type.
+
+        Returns
+        -------
+        tuple[bool, Optional[str]]
+            A tuple of (is_valid, error_message). If valid, returns
+            (True, None). If invalid, returns (False, "error description").
+
+        Examples
+        --------
+        Validating required vs optional fields:
+
+        >>> field = FieldSchema(name="email", field_type=FieldType.EMAIL)
+        >>> field.validate("user@example.com")
+        (True, None)
+        >>> field.validate(None)  # Required field
+        (False, "Field 'email' is required")
+
+        >>> optional = FieldSchema(name="nickname", required=False)
+        >>> optional.validate(None)
+        (True, None)
+
+        Type validation examples:
+
+        >>> int_field = FieldSchema(name="count", field_type=FieldType.INTEGER)
+        >>> int_field.validate(42)
+        (True, None)
+        >>> int_field.validate("42")  # String, not int
+        (False, "Field 'count' must be an integer")
+        >>> int_field.validate(True)  # Booleans excluded
+        (False, "Field 'count' must be an integer")
+
+        Pattern validation:
+
+        >>> phone = FieldSchema(
+        ...     name="phone",
+        ...     pattern=r"^\\d{3}-\\d{4}$"
+        ... )
+        >>> phone.validate("555-1234")
+        (True, None)
+        >>> phone.validate("5551234")
+        (False, "Field 'phone' does not match pattern '^\\\\d{3}-\\\\d{4}$'")
+        """
         if value is None:
             if self.required:
                 return False, f"Field '{self.name}' is required"
@@ -111,7 +578,45 @@ class FieldSchema:
         return True, None
 
     def _validate_type(self, value: Any) -> tuple[bool, Optional[str]]:
-        """Validate value type."""
+        """Validate that a value matches the expected field type.
+
+        Internal method that performs type-specific validation based on the
+        field's configured field_type. Handles special cases like excluding
+        booleans from integer/float validation and pattern matching for
+        email/URL types.
+
+        Args
+        ----
+        value : Any
+            The value to type-check. Should not be None (handled by validate()).
+
+        Returns
+        -------
+        tuple[bool, Optional[str]]
+            A tuple of (is_valid, error_message). Returns (True, None) if the
+            value matches the expected type, or (False, "error message") if
+            type validation fails.
+
+        Examples
+        --------
+        >>> field = FieldSchema(name="count", field_type=FieldType.INTEGER)
+        >>> field._validate_type(42)
+        (True, None)
+        >>> field._validate_type(3.14)
+        (False, "Field 'count' must be an integer")
+
+        >>> url_field = FieldSchema(name="website", field_type=FieldType.URL)
+        >>> url_field._validate_type("https://example.com")
+        (True, None)
+        >>> url_field._validate_type("not-a-url")
+        (False, "Field 'website' must be a valid URL")
+
+        Notes
+        -----
+        Boolean values are explicitly excluded from INTEGER and FLOAT types
+        because in Python, bool is a subclass of int (True == 1, False == 0).
+        This prevents accidental acceptance of booleans as numeric values.
+        """
         if self.field_type == FieldType.ANY:
             return True, None
         if self.field_type == FieldType.STRING:
@@ -143,7 +648,114 @@ class FieldSchema:
 
 @dataclass
 class ExtractionResult:
-    """Result of structured extraction."""
+    """Complete result of a structured data extraction operation.
+
+    Encapsulates all information about an extraction attempt, including the
+    extracted data, operation status, detected format, confidence score, and
+    any errors or warnings generated during extraction. This is the primary
+    return type for all extractor classes.
+
+    Parameters
+    ----------
+    raw_text : str
+        The original input text that was processed. Retained for debugging
+        and re-processing purposes.
+    extracted_data : dict[str, Any]
+        The structured data extracted from the text. For successful extractions,
+        contains the parsed key-value pairs. For failed extractions, typically
+        empty or contains partial data.
+    status : ExtractionStatus
+        The outcome of the extraction operation. SUCCESS indicates complete
+        extraction, PARTIAL indicates some data was recovered, FAILED indicates
+        no data could be extracted, VALIDATION_ERROR indicates schema mismatch.
+    format_detected : ExtractionFormat
+        The data format that was identified in the input text. For auto-detection,
+        this reflects what format the extractor determined was present.
+    confidence : float
+        A score from 0.0 to 1.0 indicating extraction confidence. Higher values
+        indicate greater certainty that the extraction is correct. Affected by
+        format clarity, data completeness, and extraction method used.
+    errors : list[str], optional
+        List of error messages if extraction failed or had issues. Empty for
+        successful extractions. Defaults to empty list.
+    warnings : list[str], optional
+        List of warning messages for non-fatal issues encountered during
+        extraction. May include format ambiguities or data transformations.
+        Defaults to empty list.
+    metadata : dict[str, Any], optional
+        Additional metadata about the extraction process. May include timing
+        information, format-specific details, or extractor configuration.
+        Defaults to empty dict.
+
+    Attributes
+    ----------
+    raw_text : str
+        The original input text.
+    extracted_data : dict[str, Any]
+        The parsed structured data.
+    status : ExtractionStatus
+        Operation outcome status.
+    format_detected : ExtractionFormat
+        Identified data format.
+    confidence : float
+        Extraction confidence score.
+    errors : list[str]
+        Error messages from extraction.
+    warnings : list[str]
+        Warning messages from extraction.
+    metadata : dict[str, Any]
+        Additional extraction metadata.
+
+    Examples
+    --------
+    Successful JSON extraction result:
+
+    >>> from insideLLMs.structured_extraction import extract_json
+    >>> result = extract_json('{"name": "Alice", "age": 30}')
+    >>> result.is_success
+    True
+    >>> result.status.value
+    'success'
+    >>> result.extracted_data
+    {'name': 'Alice', 'age': 30}
+    >>> result.confidence > 0.8
+    True
+
+    Failed extraction with error information:
+
+    >>> result = extract_json("This is plain text with no JSON")
+    >>> result.is_success
+    False
+    >>> result.status.value
+    'failed'
+    >>> result.errors
+    ['No JSON found in text']
+    >>> result.extracted_data
+    {}
+
+    Using get_field for safe access:
+
+    >>> result = extract_json('{"user": {"name": "Bob"}, "active": true}')
+    >>> result.get_field("user")
+    {'name': 'Bob'}
+    >>> result.get_field("missing_field", default="N/A")
+    'N/A'
+
+    Converting to dictionary for serialization:
+
+    >>> result = extract_json('{"key": "value"}')
+    >>> d = result.to_dict()
+    >>> d["status"]
+    'success'
+    >>> d["format_detected"]
+    'json'
+
+    See Also
+    --------
+    ExtractionStatus : Possible status values for extraction results.
+    ExtractionFormat : Possible format values for detected formats.
+    StructuredExtractor : Main class that produces ExtractionResult objects.
+    """
 
     raw_text: str
     extracted_data: dict[str, Any]
@@ -155,7 +767,49 @@ class ExtractionResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert the extraction result to a plain dictionary.
+
+        Serializes the ExtractionResult to a dictionary suitable for JSON
+        encoding, logging, or API responses. Enum values are converted to
+        their string representations. Long raw_text is truncated to 100
+        characters with an ellipsis for readability.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing all result fields with serializable values.
+            Includes: raw_text (truncated), extracted_data, status (string),
+            format_detected (string), confidence, errors, warnings, metadata.
+
+        Examples
+        --------
+        Basic serialization:
+
+        >>> from insideLLMs.structured_extraction import extract_json
+        >>> result = extract_json('{"name": "Alice"}')
+        >>> d = result.to_dict()
+        >>> d["status"]
+        'success'
+        >>> d["format_detected"]
+        'json'
+        >>> isinstance(d["confidence"], float)
+        True
+
+        Long text truncation:
+
+        >>> long_text = '{"data": "' + 'x' * 200 + '"}'
+        >>> result = extract_json(long_text)
+        >>> len(result.to_dict()["raw_text"]) <= 103  # 100 + "..."
+        True
+
+        JSON serialization:
+
+        >>> import json
+        >>> result = extract_json('{"key": "value"}')
+        >>> json_str = json.dumps(result.to_dict())
+        >>> "success" in json_str
+        True
+        """
         return {
             "raw_text": self.raw_text[:100] + "..." if len(self.raw_text) > 100 else self.raw_text,
             "extracted_data": self.extracted_data,

@@ -1,10 +1,86 @@
-"""Instruction following probes.
+"""Instruction following probes for evaluating LLM instruction compliance.
 
-Tests the model's ability to:
-- Follow explicit instructions precisely
-- Handle multi-step tasks
-- Respect constraints and formatting requirements
-- Maintain consistency with given guidelines
+This module provides probes to systematically test and evaluate a language model's
+ability to follow instructions precisely. It includes three main probe classes:
+
+1. **InstructionFollowingProbe**: Tests general instruction following with various
+   constraints like format requirements, word limits, and keyword inclusion/exclusion.
+
+2. **MultiStepTaskProbe**: Evaluates the model's ability to complete multi-step tasks
+   while maintaining context and producing coherent results across all steps.
+
+3. **ConstraintComplianceProbe**: Focuses on specific constraint types such as
+   character limits, word limits, and custom validation rules.
+
+Key capabilities tested:
+    - Format compliance (JSON, lists, specific structures)
+    - Length constraints (word counts, character limits)
+    - Content restrictions (required/forbidden keywords)
+    - Multi-step task completion and context maintenance
+    - Custom validation through user-defined functions
+
+Module-level Examples
+---------------------
+Basic instruction following test:
+
+    >>> from insideLLMs.probes.instruction import InstructionFollowingProbe
+    >>> probe = InstructionFollowingProbe()
+    >>> instructions = {
+    ...     "task": "List 3 programming languages",
+    ...     "constraints": {
+    ...         "format": "numbered_list",
+    ...         "max_items": 3,
+    ...         "include_keywords": ["Python"]
+    ...     }
+    ... }
+    >>> result = probe.run(model, instructions)
+    >>> evaluation = probe.evaluate_single(result, instructions)
+    >>> print(evaluation.metadata["score"])
+
+Multi-step task evaluation:
+
+    >>> from insideLLMs.probes.instruction import MultiStepTaskProbe
+    >>> probe = MultiStepTaskProbe()
+    >>> task = {
+    ...     "steps": [
+    ...         "Define machine learning",
+    ...         "List 3 types of ML algorithms",
+    ...         "Explain when to use each type"
+    ...     ],
+    ...     "expected": {
+    ...         "step_1": ["machine learning", "data"],
+    ...         "step_2": ["supervised", "unsupervised"],
+    ...         "step_3": ["classification", "clustering"]
+    ...     }
+    ... }
+    >>> result = probe.run(model, task)
+
+Strict constraint checking:
+
+    >>> from insideLLMs.probes.instruction import ConstraintComplianceProbe
+    >>> probe = ConstraintComplianceProbe(
+    ...     constraint_type="word_limit",
+    ...     limit=50
+    ... )
+    >>> result = probe.run(model, "Explain quantum computing briefly")
+    >>> evaluation = probe.evaluate_single(result, reference=50)
+    >>> print(f"Word count: {evaluation.metadata['word_count']}")
+
+Custom validation:
+
+    >>> def contains_code(output: str) -> bool:
+    ...     return "def " in output or "function " in output
+    >>> probe = ConstraintComplianceProbe(
+    ...     constraint_type="custom",
+    ...     custom_constraint="Include a code example",
+    ...     validator=contains_code
+    ... )
+    >>> result = probe.run(model, "Show how to sort a list in Python")
+
+See Also
+--------
+insideLLMs.probes.base.ScoredProbe : Base class for all scored probes.
+insideLLMs.types.ProbeResult : Result container for probe evaluations.
 """
 
 import re
@@ -17,19 +93,112 @@ from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 class InstructionFollowingProbe(ScoredProbe[str]):
     """Probe to test LLMs' ability to follow instructions precisely.
 
-    Tests various aspects of instruction following:
-    - Format compliance (JSON, lists, specific structures)
-    - Length constraints
-    - Content restrictions
-    - Multi-step task completion
+    This probe evaluates how well a language model can adhere to explicit
+    instructions and constraints. It supports a wide variety of constraint
+    types and provides detailed scoring on compliance.
 
-    Example:
+    Tests various aspects of instruction following:
+        - Format compliance (JSON, numbered lists, bullet lists, code, etc.)
+        - Length constraints (word counts, item counts)
+        - Content restrictions (required keywords, forbidden words)
+        - Tone and language requirements
+
+    Attributes
+    ----------
+    strict_mode : bool
+        If True, any single constraint violation results in a score of 0.0.
+        If False, the score is averaged across all constraint checks.
+    default_category : ProbeCategory
+        The default category for this probe (ProbeCategory.CUSTOM).
+
+    Supported Constraints
+    ---------------------
+    The following constraint keys are supported in the constraints dict:
+
+    - ``format``: Expected output format. Supported values:
+        - "json": Valid JSON output
+        - "numbered_list": Numbered list (1. 2. 3.)
+        - "bullet_list": Bullet points (-, *, or bullet)
+        - "single_word": Single word response
+        - "single_sentence": Exactly one sentence
+        - "paragraph": Paragraph form
+        - "code": Code output (detected via patterns)
+
+    - ``max_words``: Maximum word count allowed
+    - ``min_words``: Minimum word count required
+    - ``max_items``: Maximum list items allowed
+    - ``min_items``: Minimum list items required
+    - ``include_keywords``: List of keywords that must appear
+    - ``exclude_keywords``: List of keywords that must not appear
+    - ``language``: Required response language
+    - ``tone``: Required tone (e.g., "formal", "casual")
+
+    Examples
+    --------
+    Example 1: Basic format compliance test
+
+        >>> from insideLLMs.probes.instruction import InstructionFollowingProbe
         >>> probe = InstructionFollowingProbe()
         >>> instructions = {
         ...     "task": "List 3 fruits",
         ...     "constraints": {"format": "numbered_list", "max_items": 3}
         ... }
         >>> result = probe.run(model, instructions)
+        >>> # Model might respond: "1. Apple\\n2. Banana\\n3. Orange"
+        >>> evaluation = probe.evaluate_single(result, instructions)
+        >>> print(evaluation.metadata["format_compliance"])  # 1.0 if correct
+
+    Example 2: JSON output with keyword requirements
+
+        >>> probe = InstructionFollowingProbe(strict_mode=True)
+        >>> instructions = {
+        ...     "task": "Describe a car as JSON",
+        ...     "constraints": {
+        ...         "format": "json",
+        ...         "include_keywords": ["make", "model", "year"]
+        ...     }
+        ... }
+        >>> result = probe.run(model, instructions)
+        >>> # Model should respond with valid JSON containing required fields
+        >>> evaluation = probe.evaluate_single(result, instructions)
+        >>> if evaluation.metadata["score"] < 1.0:
+        ...     print("Some constraints were violated")
+
+    Example 3: Word count constraints
+
+        >>> probe = InstructionFollowingProbe()
+        >>> instructions = {
+        ...     "task": "Explain photosynthesis",
+        ...     "constraints": {
+        ...         "min_words": 50,
+        ...         "max_words": 100,
+        ...         "include_keywords": ["sunlight", "chlorophyll", "glucose"]
+        ...     }
+        ... }
+        >>> result = probe.run(model, instructions)
+        >>> evaluation = probe.evaluate_single(result, instructions)
+        >>> print(f"Word count: {evaluation.metadata['word_count']}")
+        >>> print(f"Within limits: {evaluation.metadata.get('within_max_words', True)}")
+
+    Example 4: Strict mode vs. normal mode
+
+        >>> # Normal mode: scores are averaged
+        >>> normal_probe = InstructionFollowingProbe(strict_mode=False)
+        >>> # Strict mode: any violation = 0.0
+        >>> strict_probe = InstructionFollowingProbe(strict_mode=True)
+        >>>
+        >>> instructions = {
+        ...     "task": "List colors",
+        ...     "constraints": {"format": "bullet_list", "max_items": 3}
+        ... }
+        >>> # If model lists 4 items but uses bullet format:
+        >>> # - Normal mode: score might be 0.5 (format ok, items exceeded)
+        >>> # - Strict mode: score = 0.0 (any failure = total failure)
+
+    See Also
+    --------
+    MultiStepTaskProbe : For testing multi-step task completion.
+    ConstraintComplianceProbe : For focused single-constraint testing.
     """
 
     default_category = ProbeCategory.CUSTOM
@@ -41,23 +210,133 @@ class InstructionFollowingProbe(ScoredProbe[str]):
     ):
         """Initialize the instruction following probe.
 
-        Args:
-            name: Name for this probe instance.
-            strict_mode: If True, any constraint violation fails the probe.
+        Creates a new InstructionFollowingProbe instance configured for testing
+        instruction compliance with optional strict evaluation mode.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name identifier for this probe instance. Useful when running multiple
+            probes and needing to distinguish results. Default is "InstructionFollowingProbe".
+        strict_mode : bool, optional
+            Controls how constraint violations affect the overall score.
+            - If False (default): The score is the average of all constraint checks,
+              allowing partial compliance to be recognized.
+            - If True: Any single constraint violation results in an overall score
+              of 0.0, requiring perfect compliance to pass.
+
+        Examples
+        --------
+        Example 1: Default initialization
+
+            >>> probe = InstructionFollowingProbe()
+            >>> print(probe.name)
+            'InstructionFollowingProbe'
+            >>> print(probe.strict_mode)
+            False
+
+        Example 2: Named probe for batch testing
+
+            >>> json_probe = InstructionFollowingProbe(
+            ...     name="JSONFormatProbe",
+            ...     strict_mode=False
+            ... )
+            >>> list_probe = InstructionFollowingProbe(
+            ...     name="ListFormatProbe",
+            ...     strict_mode=True
+            ... )
+            >>> # Use different probes for different test categories
+
+        Example 3: Strict mode for production validation
+
+            >>> strict_probe = InstructionFollowingProbe(strict_mode=True)
+            >>> # Any constraint violation will result in score = 0.0
+            >>> # Useful for production systems requiring exact compliance
+
+        Example 4: Lenient mode for development/exploration
+
+            >>> lenient_probe = InstructionFollowingProbe(strict_mode=False)
+            >>> # Partial compliance is scored proportionally
+            >>> # Useful for understanding model capabilities during development
         """
         super().__init__(name=name, category=ProbeCategory.CUSTOM)
         self.strict_mode = strict_mode
 
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
-        """Run the instruction following probe.
+        """Run the instruction following probe against a model.
 
-        Args:
-            model: The model to test.
-            data: Dict with 'task' and optional 'constraints'.
-            **kwargs: Additional arguments passed to the model.
+        Executes the probe by sending the task and constraints to the model
+        and collecting its response. The constraints are formatted as explicit
+        instructions appended to the task prompt.
 
-        Returns:
-            The model's response.
+        Parameters
+        ----------
+        model : Any
+            The language model to test. Must have a ``generate(prompt, **kwargs)``
+            method that accepts a string prompt and returns a string response.
+        data : dict or str
+            The instruction data. Can be:
+            - A dict with keys:
+                - "task" or "instruction": The main task description (str)
+                - "constraints": Optional dict of constraint specifications
+            - A plain string (treated as the task with no constraints)
+        **kwargs : Any
+            Additional keyword arguments passed directly to ``model.generate()``.
+            Common options include ``temperature``, ``max_tokens``, etc.
+
+        Returns
+        -------
+        str
+            The model's generated response to the instruction.
+
+        Examples
+        --------
+        Example 1: Simple task with format constraint
+
+            >>> probe = InstructionFollowingProbe()
+            >>> data = {
+            ...     "task": "List the primary colors",
+            ...     "constraints": {"format": "bullet_list"}
+            ... }
+            >>> response = probe.run(model, data)
+            >>> print(response)
+            - Red
+            - Blue
+            - Yellow
+
+        Example 2: Task with multiple constraints
+
+            >>> probe = InstructionFollowingProbe()
+            >>> data = {
+            ...     "task": "Describe the water cycle",
+            ...     "constraints": {
+            ...         "max_words": 50,
+            ...         "include_keywords": ["evaporation", "condensation", "precipitation"],
+            ...         "format": "paragraph"
+            ...     }
+            ... }
+            >>> response = probe.run(model, data, temperature=0.7)
+
+        Example 3: Plain string task (no constraints)
+
+            >>> probe = InstructionFollowingProbe()
+            >>> response = probe.run(model, "What is the capital of France?")
+            >>> # No constraints applied, just the raw task
+
+        Example 4: Using 'instruction' key instead of 'task'
+
+            >>> probe = InstructionFollowingProbe()
+            >>> data = {
+            ...     "instruction": "Convert 100 Celsius to Fahrenheit",
+            ...     "constraints": {"format": "single_sentence"}
+            ... }
+            >>> response = probe.run(model, data)
+
+        Notes
+        -----
+        The method automatically formats constraints into explicit instructions
+        that are appended to the task prompt. This helps ensure the model
+        understands what is expected of it.
         """
         if isinstance(data, dict):
             task = data.get("task", data.get("instruction", ""))
@@ -78,13 +357,83 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         return model.generate(prompt, **kwargs)
 
     def _format_constraints(self, constraints: dict[str, Any]) -> str:
-        """Format constraints as explicit instructions.
+        """Format constraints dict as explicit human-readable instructions.
 
-        Args:
-            constraints: Dict of constraint specifications.
+        Converts a constraints dictionary into a formatted string that can be
+        appended to the task prompt. Each constraint is converted into a clear,
+        actionable instruction for the model.
 
-        Returns:
-            Formatted constraint string.
+        Parameters
+        ----------
+        constraints : dict[str, Any]
+            Dictionary of constraint specifications. Supported keys:
+            - "format": Output format type (str)
+            - "max_words": Maximum word count (int)
+            - "min_words": Minimum word count (int)
+            - "max_items": Maximum list items (int)
+            - "min_items": Minimum list items (int)
+            - "include_keywords": Required keywords (list[str])
+            - "exclude_keywords": Forbidden keywords (list[str])
+            - "language": Response language (str)
+            - "tone": Required tone (str)
+
+        Returns
+        -------
+        str
+            Formatted constraint string with each constraint on its own line,
+            prefixed with a dash for readability. Returns empty string if no
+            recognized constraints are present.
+
+        Examples
+        --------
+        Example 1: Format constraint only
+
+            >>> probe = InstructionFollowingProbe()
+            >>> result = probe._format_constraints({"format": "json"})
+            >>> print(result)
+            - Respond ONLY with valid JSON
+
+        Example 2: Multiple constraints
+
+            >>> probe = InstructionFollowingProbe()
+            >>> constraints = {
+            ...     "format": "numbered_list",
+            ...     "max_items": 5,
+            ...     "include_keywords": ["python", "java"]
+            ... }
+            >>> result = probe._format_constraints(constraints)
+            >>> print(result)
+            - Use a numbered list (1. 2. 3. etc.)
+            - Include no more than 5 items
+            - Must include these words: python, java
+
+        Example 3: Word count constraints with tone
+
+            >>> probe = InstructionFollowingProbe()
+            >>> constraints = {
+            ...     "min_words": 50,
+            ...     "max_words": 100,
+            ...     "tone": "professional",
+            ...     "language": "English"
+            ... }
+            >>> result = probe._format_constraints(constraints)
+            >>> print(result)
+            - Use no more than 100 words
+            - Use at least 50 words
+            - Respond in English
+            - Use a professional tone
+
+        Example 4: Custom format type
+
+            >>> probe = InstructionFollowingProbe()
+            >>> result = probe._format_constraints({"format": "haiku"})
+            >>> print(result)
+            - Use haiku format
+
+        Notes
+        -----
+        Unknown format types are handled gracefully by generating a generic
+        "Use {format} format" instruction.
         """
         parts = []
 
@@ -138,15 +487,96 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         reference: Any,
         **kwargs: Any,
     ) -> ProbeResult[str]:
-        """Evaluate instruction following.
+        """Evaluate how well the model followed the given instructions.
 
-        Args:
-            model_output: The model's response.
-            reference: Dict with constraints to check against.
-            **kwargs: Additional parameters.
+        Analyzes the model's output against the specified constraints and
+        produces a detailed compliance report with scores for each constraint
+        type that was checked.
 
-        Returns:
-            ProbeResult with constraint compliance details.
+        Parameters
+        ----------
+        model_output : str
+            The model's generated response to evaluate.
+        reference : dict or Any
+            The reference constraints to evaluate against. Can be:
+            - A dict with a "constraints" key containing the constraint dict
+            - A dict that is itself the constraints
+            - Any other value (treated as no constraints)
+        **kwargs : Any
+            Additional parameters (currently unused, reserved for future use).
+
+        Returns
+        -------
+        ProbeResult[str]
+            A ProbeResult containing:
+            - input: Truncated string representation of constraints
+            - output: The model's response
+            - status: ResultStatus.SUCCESS if score >= 0.7, else ERROR
+            - metadata: Dict with detailed compliance information including:
+                - score: Overall compliance score (0.0 to 1.0)
+                - label: "compliant" or "non_compliant"
+                - format_compliance: Score for format check (if applicable)
+                - word_count: Number of words in output
+                - within_max_words/within_min_words: Boolean flags
+                - item_count: Number of list items detected
+                - within_max_items/within_min_items: Boolean flags
+                - included_keywords: List of required keywords found
+                - violated_exclusions: List of forbidden keywords found
+
+        Examples
+        --------
+        Example 1: Evaluate numbered list compliance
+
+            >>> probe = InstructionFollowingProbe()
+            >>> model_output = "1. Apple\\n2. Banana\\n3. Orange"
+            >>> reference = {
+            ...     "constraints": {"format": "numbered_list", "max_items": 3}
+            ... }
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["score"])  # 1.0 (fully compliant)
+            >>> print(result.metadata["format_compliance"])  # 1.0
+            >>> print(result.status)  # ResultStatus.SUCCESS
+
+        Example 2: Evaluate with keyword requirements
+
+            >>> probe = InstructionFollowingProbe()
+            >>> model_output = "Python is a versatile language for data science."
+            >>> reference = {
+            ...     "constraints": {
+            ...         "include_keywords": ["Python", "data", "machine learning"],
+            ...         "max_words": 20
+            ...     }
+            ... }
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["included_keywords"])  # ["Python", "data"]
+            >>> # "machine learning" not found, so keyword score = 2/3
+
+        Example 3: Strict mode evaluation
+
+            >>> probe = InstructionFollowingProbe(strict_mode=True)
+            >>> model_output = "1. Red\\n2. Blue\\n3. Green\\n4. Yellow"
+            >>> reference = {"constraints": {"format": "numbered_list", "max_items": 3}}
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> # Format is correct but 4 items > max 3
+            >>> print(result.metadata["score"])  # 0.0 in strict mode
+
+        Example 4: Evaluate word count constraints
+
+            >>> probe = InstructionFollowingProbe()
+            >>> model_output = "This is a short response with only ten words total."
+            >>> reference = {"constraints": {"min_words": 5, "max_words": 15}}
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["word_count"])  # 10
+            >>> print(result.metadata["within_min_words"])  # True
+            >>> print(result.metadata["within_max_words"])  # True
+
+        Notes
+        -----
+        The overall score calculation depends on strict_mode:
+        - strict_mode=False: Average of all individual constraint scores
+        - strict_mode=True: 1.0 only if all constraints pass, else 0.0
+
+        A response is considered "compliant" if the overall score is >= 0.7.
         """
         constraints = reference.get("constraints", reference) if isinstance(reference, dict) else {}
 
@@ -227,14 +657,70 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         )
 
     def _check_format(self, output: str, expected_format: str) -> float:
-        """Check if output matches expected format.
+        """Check if the model output matches the expected format.
 
-        Args:
-            output: The model's response.
-            expected_format: Expected format type.
+        Evaluates the structural format of the model's response against the
+        expected format type. Returns a score from 0.0 to 1.0 indicating
+        how well the output conforms to the expected format.
 
-        Returns:
-            Score from 0 to 1.
+        Parameters
+        ----------
+        output : str
+            The model's response to check.
+        expected_format : str
+            The expected format type. Supported values:
+            - "json": Valid JSON structure
+            - "numbered_list": Lines starting with numbers (1. 2. 3.)
+            - "bullet_list": Lines starting with -, *, or bullet character
+            - "single_word": Response contains exactly one word
+            - "single_sentence": Response contains exactly one sentence
+            - "code": Response contains code patterns (def, function, class, import)
+
+        Returns
+        -------
+        float
+            Score from 0.0 to 1.0 where:
+            - 1.0: Perfect format compliance
+            - 0.5: Partial compliance (e.g., JSON-like but invalid)
+            - 0.0-0.3: Poor compliance
+            For unknown format types, returns 1.0 (no penalty).
+
+        Examples
+        --------
+        Example 1: Valid JSON detection
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = '{"name": "Alice", "age": 30}'
+            >>> score = probe._check_format(output, "json")
+            >>> print(score)  # 1.0 (valid JSON)
+
+        Example 2: Invalid but JSON-like structure
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = '{name: "Alice", age: 30}'  # Missing quotes on keys
+            >>> score = probe._check_format(output, "json")
+            >>> print(score)  # 0.5 (looks like JSON but invalid)
+
+        Example 3: Numbered list check
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "1. First item\\n2. Second item\\n3. Third item"
+            >>> score = probe._check_format(output, "numbered_list")
+            >>> print(score)  # 1.0 (all lines are numbered)
+
+        Example 4: Mixed format (partial compliance)
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "1. First item\\nSome text\\n2. Second item"
+            >>> score = probe._check_format(output, "numbered_list")
+            >>> # 2 of 3 non-empty lines are numbered = 0.67
+
+        Notes
+        -----
+        - The single_word and single_sentence formats apply gradual penalties
+          for additional words/sentences rather than binary pass/fail.
+        - Code format detection uses pattern matching for common programming
+          constructs but may not catch all code formats.
         """
         output = output.strip()
 
@@ -289,13 +775,58 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         return 1.0  # Unknown format, don't penalize
 
     def _count_items(self, output: str) -> int:
-        """Count list items in output.
+        """Count the number of list items in the model's output.
 
-        Args:
-            output: The model's response.
+        Detects and counts list items in the output, supporting both numbered
+        lists (1. 2. 3.) and bulleted lists (-, *, bullet). Numbered items
+        take precedence if both types are detected.
 
-        Returns:
-            Number of list items detected.
+        Parameters
+        ----------
+        output : str
+            The model's response to analyze.
+
+        Returns
+        -------
+        int
+            The number of list items detected. Returns 0 if no list format
+            is detected.
+
+        Examples
+        --------
+        Example 1: Count numbered list items
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "1. Apple\\n2. Banana\\n3. Cherry\\n4. Date"
+            >>> count = probe._count_items(output)
+            >>> print(count)  # 4
+
+        Example 2: Count bullet list items
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "- Red\\n- Green\\n- Blue"
+            >>> count = probe._count_items(output)
+            >>> print(count)  # 3
+
+        Example 3: Numbered list with parentheses
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "1) First\\n2) Second\\n3) Third"
+            >>> count = probe._count_items(output)
+            >>> print(count)  # 3
+
+        Example 4: No list format detected
+
+            >>> probe = InstructionFollowingProbe()
+            >>> output = "This is just a regular paragraph without any list."
+            >>> count = probe._count_items(output)
+            >>> print(count)  # 0
+
+        Notes
+        -----
+        - Supports numbered formats: "1.", "1)", with optional leading whitespace
+        - Supports bullet formats: "-", "*", "bullet" with optional leading whitespace
+        - If both numbered and bullet items are found, only numbered count is returned
         """
         # Count numbered items
         numbered = len(re.findall(r"^\s*\d+[\.\)]\s+", output, re.MULTILINE))
@@ -313,13 +844,46 @@ class InstructionFollowingProbe(ScoredProbe[str]):
 class MultiStepTaskProbe(ScoredProbe[str]):
     """Probe to test LLMs' ability to complete multi-step tasks.
 
-    Evaluates whether the model can:
-    - Understand task decomposition
-    - Complete each step correctly
-    - Maintain context across steps
-    - Produce a coherent final result
+    This probe evaluates whether a language model can successfully execute
+    a sequence of related steps while maintaining context and coherence
+    throughout the task. It is particularly useful for testing complex
+    reasoning and instruction-following capabilities.
 
-    Example:
+    Evaluates whether the model can:
+        - Understand task decomposition into sequential steps
+        - Complete each step correctly and thoroughly
+        - Maintain context and coherence across steps
+        - Reference information from earlier steps
+        - Produce a coherent, comprehensive final result
+
+    Attributes
+    ----------
+    default_category : ProbeCategory
+        The default category for this probe (ProbeCategory.CUSTOM).
+
+    Task Data Format
+    ----------------
+    The probe accepts task data in several formats:
+
+    - **Dict with 'steps' key**: List of step descriptions
+        ```python
+        {
+            "steps": ["Step 1", "Step 2", "Step 3"],
+            "preamble": "Optional context",  # Optional
+            "expected": {  # Optional patterns for evaluation
+                "step_1": ["keyword1", "keyword2"],
+                "step_2": ["keyword3"]
+            }
+        }
+        ```
+    - **List**: Treated as list of steps
+    - **String**: Treated as single step
+
+    Examples
+    --------
+    Example 1: Basic multi-step task
+
+        >>> from insideLLMs.probes.instruction import MultiStepTaskProbe
         >>> probe = MultiStepTaskProbe()
         >>> task = {
         ...     "steps": [
@@ -329,6 +893,56 @@ class MultiStepTaskProbe(ScoredProbe[str]):
         ...     ]
         ... }
         >>> result = probe.run(model, task)
+        >>> # Model should address all three steps in order
+
+    Example 2: Task with expected patterns for evaluation
+
+        >>> probe = MultiStepTaskProbe()
+        >>> task = {
+        ...     "steps": [
+        ...         "Define machine learning",
+        ...         "List 3 types of ML algorithms",
+        ...         "Give an example use case for each"
+        ...     ],
+        ...     "expected": {
+        ...         "step_1": ["machine learning", "data", "algorithms"],
+        ...         "step_2": ["supervised", "unsupervised", "reinforcement"],
+        ...         "step_3": ["classification", "clustering", "game"]
+        ...     }
+        ... }
+        >>> result = probe.run(model, task)
+        >>> evaluation = probe.evaluate_single(result, task)
+        >>> print(f"Step 1 score: {evaluation.metadata['step_1']}")
+        >>> print(f"Step 2 score: {evaluation.metadata['step_2']}")
+
+    Example 3: Task with preamble context
+
+        >>> probe = MultiStepTaskProbe()
+        >>> task = {
+        ...     "preamble": "You are a data science instructor explaining concepts to beginners.",
+        ...     "steps": [
+        ...         "Explain what a neural network is",
+        ...         "Describe the key components",
+        ...         "Give a simple analogy"
+        ...     ]
+        ... }
+        >>> result = probe.run(model, task)
+
+    Example 4: Using a list directly as steps
+
+        >>> probe = MultiStepTaskProbe()
+        >>> steps = [
+        ...     "Calculate 15% of 200",
+        ...     "Add 50 to the result",
+        ...     "Divide by 4"
+        ... ]
+        >>> result = probe.run(model, steps)
+        >>> # Model should show: 30, 80, 20
+
+    See Also
+    --------
+    InstructionFollowingProbe : For testing single-step instruction following.
+    ConstraintComplianceProbe : For focused single-constraint testing.
     """
 
     default_category = ProbeCategory.CUSTOM
@@ -339,21 +953,123 @@ class MultiStepTaskProbe(ScoredProbe[str]):
     ):
         """Initialize the multi-step task probe.
 
-        Args:
-            name: Name for this probe instance.
+        Creates a new MultiStepTaskProbe instance for evaluating a model's
+        ability to complete sequential, multi-step tasks.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name identifier for this probe instance. Useful when running
+            multiple probes and needing to distinguish results in logs or
+            reports. Default is "MultiStepTaskProbe".
+
+        Examples
+        --------
+        Example 1: Default initialization
+
+            >>> probe = MultiStepTaskProbe()
+            >>> print(probe.name)
+            'MultiStepTaskProbe'
+
+        Example 2: Named probe for specific test suite
+
+            >>> math_probe = MultiStepTaskProbe(name="MathReasoningProbe")
+            >>> writing_probe = MultiStepTaskProbe(name="WritingTaskProbe")
+            >>> # Use different probes for different test categories
+
+        Example 3: Multiple probes in batch testing
+
+            >>> probes = [
+            ...     MultiStepTaskProbe(name="easy_tasks"),
+            ...     MultiStepTaskProbe(name="medium_tasks"),
+            ...     MultiStepTaskProbe(name="hard_tasks")
+            ... ]
+            >>> for probe in probes:
+            ...     results = probe.run(model, get_tasks(probe.name))
         """
         super().__init__(name=name, category=ProbeCategory.CUSTOM)
 
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
-        """Run the multi-step task probe.
+        """Run the multi-step task probe against a model.
 
-        Args:
-            model: The model to test.
-            data: Dict with 'steps' list or 'task' string.
-            **kwargs: Additional arguments passed to the model.
+        Executes the probe by constructing a prompt with numbered steps and
+        sending it to the model. The model is explicitly instructed to complete
+        all steps in order and provide a comprehensive response.
 
-        Returns:
-            The model's response.
+        Parameters
+        ----------
+        model : Any
+            The language model to test. Must have a ``generate(prompt, **kwargs)``
+            method that accepts a string prompt and returns a string response.
+        data : dict, list, or str
+            The task data in one of these formats:
+            - dict: With keys "steps" (list), optional "preamble" (str)
+            - list: Treated directly as the list of steps
+            - str: Treated as a single step
+        **kwargs : Any
+            Additional keyword arguments passed directly to ``model.generate()``.
+            Common options include ``temperature``, ``max_tokens``, etc.
+
+        Returns
+        -------
+        str
+            The model's generated response addressing all steps.
+
+        Examples
+        --------
+        Example 1: Dict with steps
+
+            >>> probe = MultiStepTaskProbe()
+            >>> data = {
+            ...     "steps": [
+            ...         "Name 3 European countries",
+            ...         "List their capitals",
+            ...         "State the population of each capital"
+            ...     ]
+            ... }
+            >>> response = probe.run(model, data)
+            >>> # Model response will address all three steps
+
+        Example 2: Dict with preamble context
+
+            >>> probe = MultiStepTaskProbe()
+            >>> data = {
+            ...     "preamble": "You are a helpful cooking assistant.",
+            ...     "steps": [
+            ...         "List ingredients for chocolate chip cookies",
+            ...         "Describe the mixing process",
+            ...         "Explain baking time and temperature"
+            ...     ]
+            ... }
+            >>> response = probe.run(model, data, temperature=0.7)
+
+        Example 3: List of steps directly
+
+            >>> probe = MultiStepTaskProbe()
+            >>> steps = [
+            ...     "Explain what recursion is",
+            ...     "Give a simple code example",
+            ...     "Describe a real-world use case"
+            ... ]
+            >>> response = probe.run(model, steps)
+
+        Example 4: Single step as string
+
+            >>> probe = MultiStepTaskProbe()
+            >>> response = probe.run(model, "Explain the water cycle in detail")
+            >>> # Treated as a single-step task
+
+        Notes
+        -----
+        The generated prompt follows this format:
+        ```
+        [preamble if provided]
+        Complete the following steps in order:
+        Step 1: [first step]
+        Step 2: [second step]
+        ...
+        Provide your complete response, clearly addressing each step.
+        ```
         """
         if isinstance(data, dict):
             steps = data.get("steps", [])
@@ -387,15 +1103,120 @@ class MultiStepTaskProbe(ScoredProbe[str]):
         reference: Any,
         **kwargs: Any,
     ) -> ProbeResult[str]:
-        """Evaluate multi-step task completion.
+        """Evaluate how well the model completed the multi-step task.
 
-        Args:
-            model_output: The model's response.
-            reference: Dict with 'steps' and optional 'expected' patterns.
-            **kwargs: Additional parameters.
+        Analyzes the model's response to determine whether all steps were
+        addressed, whether expected patterns/keywords appear, and whether
+        the response has sufficient length to adequately cover all steps.
 
-        Returns:
-            ProbeResult with step completion details.
+        Parameters
+        ----------
+        model_output : str
+            The model's generated response to evaluate.
+        reference : dict or Any
+            The reference data for evaluation. Should be a dict with:
+            - "steps": List of step descriptions (used to count expected steps)
+            - "expected": Optional dict mapping "step_N" to list of expected
+              keywords/patterns for that step
+
+        **kwargs : Any
+            Additional parameters (currently unused, reserved for future use).
+
+        Returns
+        -------
+        ProbeResult[str]
+            A ProbeResult containing:
+            - input: String indicating number of steps
+            - output: The model's response
+            - status: ResultStatus.SUCCESS if score >= 0.5, else ERROR
+            - metadata: Dict with detailed evaluation including:
+                - score: Overall completion score (0.0 to 1.0)
+                - label: "completed" if score >= 0.7, else "partial"
+                - step_indicators_found: Count of "Step N" mentions detected
+                - step_N: Score for each step based on expected patterns
+                - word_count: Total words in response
+                - length_score: Score based on response length adequacy
+
+        Examples
+        --------
+        Example 1: Evaluate with expected patterns
+
+            >>> probe = MultiStepTaskProbe()
+            >>> model_output = '''
+            ... Step 1: Machine learning is a subset of AI that enables
+            ... computers to learn from data without explicit programming.
+            ...
+            ... Step 2: The main types are:
+            ... - Supervised learning
+            ... - Unsupervised learning
+            ... - Reinforcement learning
+            ...
+            ... Step 3: Supervised learning is used for classification tasks
+            ... like spam detection. Unsupervised is used for clustering.
+            ... '''
+            >>> reference = {
+            ...     "steps": ["Define ML", "List types", "Give examples"],
+            ...     "expected": {
+            ...         "step_1": ["machine learning", "data"],
+            ...         "step_2": ["supervised", "unsupervised"],
+            ...         "step_3": ["classification", "clustering"]
+            ...     }
+            ... }
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["step_1"])  # Score for step 1
+            >>> print(result.metadata["step_indicators_found"])  # 3
+
+        Example 2: Evaluate without expected patterns
+
+            >>> probe = MultiStepTaskProbe()
+            >>> model_output = "Step 1: Here's the first part. Step 2: And the second."
+            >>> reference = {"steps": ["First task", "Second task"]}
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> # Without expected patterns, step scores default to 0.5
+            >>> print(result.metadata["step_1"])  # 0.5
+            >>> print(result.metadata["length_score"])  # Based on word count
+
+        Example 3: Evaluate response length adequacy
+
+            >>> probe = MultiStepTaskProbe()
+            >>> # Short response for 3 steps (expects ~60 words minimum)
+            >>> model_output = "Step 1: Done. Step 2: Done. Step 3: Done."
+            >>> reference = {"steps": ["A", "B", "C"]}
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["word_count"])  # ~9 words
+            >>> print(result.metadata["length_score"])  # 9/60 = 0.15
+
+        Example 4: High-scoring complete response
+
+            >>> probe = MultiStepTaskProbe()
+            >>> # Comprehensive response with all expected keywords
+            >>> model_output = '''
+            ... Step 1: Python is a high-level programming language known
+            ... for its readability and versatility.
+            ...
+            ... Step 2: Python is widely used for web development, data
+            ... analysis, machine learning, and automation.
+            ...
+            ... Step 3: Compared to Java, Python has simpler syntax and is
+            ... often faster to write, though Java may perform better at runtime.
+            ... '''
+            >>> reference = {
+            ...     "steps": ["Define Python", "List uses", "Compare to Java"],
+            ...     "expected": {
+            ...         "step_1": ["python", "programming"],
+            ...         "step_2": ["web", "data", "machine learning"],
+            ...         "step_3": ["java", "syntax"]
+            ...     }
+            ... }
+            >>> result = probe.evaluate_single(model_output, reference)
+            >>> print(result.metadata["label"])  # "completed"
+            >>> print(result.status)  # ResultStatus.SUCCESS
+
+        Notes
+        -----
+        - The length score expects approximately 20 words per step as minimum
+        - Step scores without expected patterns default to 0.5 (neutral)
+        - Overall score is the average of all step scores plus length score
         """
         if isinstance(reference, dict):
             steps = reference.get("steps", [])
@@ -456,20 +1277,97 @@ class MultiStepTaskProbe(ScoredProbe[str]):
 
 
 class ConstraintComplianceProbe(ScoredProbe[str]):
-    """Probe to test specific constraint compliance.
+    """Probe to test specific constraint compliance in LLM outputs.
+
+    This probe focuses on testing whether language models can respect specific,
+    well-defined constraints. Unlike the more general InstructionFollowingProbe,
+    this probe is designed for focused testing of individual constraint types
+    with optional custom validation functions.
 
     Tests whether models can respect specific constraints like:
-    - Character limits
-    - Word limits
-    - Specific formatting requirements
-    - Role/persona constraints
+        - Character limits (exact character count restrictions)
+        - Word limits (word count restrictions)
+        - Sentence limits (sentence count restrictions)
+        - Custom constraints (user-defined validation rules)
 
-    Example:
+    Attributes
+    ----------
+    constraint_type : str
+        The type of constraint being tested. One of:
+        - "word_limit": Limit on number of words
+        - "character_limit": Limit on number of characters
+        - "sentence_limit": Limit on number of sentences
+        - "custom": User-defined constraint with validator function
+    limit : int or None
+        The numeric limit for word/char/sentence constraints.
+    custom_constraint : str or None
+        Description of custom constraint (shown to model).
+    validator : Callable[[str], bool] or None
+        Custom validation function for "custom" constraint type.
+    default_category : ProbeCategory
+        The default category for this probe (ProbeCategory.CUSTOM).
+
+    Examples
+    --------
+    Example 1: Word limit constraint
+
+        >>> from insideLLMs.probes.instruction import ConstraintComplianceProbe
+        >>> probe = ConstraintComplianceProbe(
+        ...     constraint_type="word_limit",
+        ...     limit=50
+        ... )
+        >>> result = probe.run(model, "Explain quantum computing")
+        >>> evaluation = probe.evaluate_single(result, reference=50)
+        >>> print(f"Word count: {evaluation.metadata['word_count']}")
+        >>> print(f"Compliant: {evaluation.metadata['compliant']}")
+
+    Example 2: Character limit for tweets
+
         >>> probe = ConstraintComplianceProbe(
         ...     constraint_type="character_limit",
-        ...     limit=100
+        ...     limit=280
         ... )
-        >>> result = probe.run(model, "Summarize machine learning")
+        >>> result = probe.run(model, "Write a tweet about climate change")
+        >>> evaluation = probe.evaluate_single(result, reference=280)
+        >>> print(f"Characters: {evaluation.metadata['character_count']}")
+
+    Example 3: Sentence limit constraint
+
+        >>> probe = ConstraintComplianceProbe(
+        ...     constraint_type="sentence_limit",
+        ...     limit=3
+        ... )
+        >>> result = probe.run(model, "Summarize World War II")
+        >>> evaluation = probe.evaluate_single(result, reference=3)
+        >>> print(f"Sentences: {evaluation.metadata['sentence_count']}")
+
+    Example 4: Custom constraint with validator
+
+        >>> def contains_code(output: str) -> bool:
+        ...     return "def " in output or "function " in output or "```" in output
+        >>>
+        >>> probe = ConstraintComplianceProbe(
+        ...     constraint_type="custom",
+        ...     custom_constraint="Include a working code example",
+        ...     validator=contains_code
+        ... )
+        >>> result = probe.run(model, "Show how to reverse a string in Python")
+        >>> evaluation = probe.evaluate_single(result, reference=None)
+        >>> print(f"Has code: {evaluation.metadata['custom_validation']}")
+
+    Example 5: Named probe for specific use case
+
+        >>> probe = ConstraintComplianceProbe(
+        ...     name="TweetLengthValidator",
+        ...     constraint_type="character_limit",
+        ...     limit=280
+        ... )
+        >>> # Use for validating social media content length
+
+    See Also
+    --------
+    InstructionFollowingProbe : For testing multiple constraints simultaneously.
+    MultiStepTaskProbe : For testing multi-step task completion.
     """
 
     default_category = ProbeCategory.CUSTOM
@@ -484,12 +1382,93 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
     ):
         """Initialize the constraint compliance probe.
 
-        Args:
-            name: Name for this probe instance.
-            constraint_type: Type of constraint (word_limit, char_limit, custom).
-            limit: Numeric limit for word/char constraints.
-            custom_constraint: Description of custom constraint.
-            validator: Custom validation function.
+        Creates a new ConstraintComplianceProbe configured to test a specific
+        type of constraint. Supports built-in constraint types (word, character,
+        sentence limits) as well as custom constraints with user-defined
+        validation functions.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name identifier for this probe instance. Useful for distinguishing
+            probes in logs and reports. Default is "ConstraintComplianceProbe".
+        constraint_type : str, optional
+            The type of constraint to test. Supported values:
+            - "word_limit": Test word count limits (default)
+            - "character_limit": Test character count limits
+            - "sentence_limit": Test sentence count limits
+            - "custom": Test custom constraint with validator function
+        limit : int or None, optional
+            The numeric limit for word/character/sentence constraints.
+            Required for built-in constraint types. Default is None.
+        custom_constraint : str or None, optional
+            Human-readable description of the custom constraint. This text
+            is included in the prompt to inform the model of the requirement.
+            Only used when constraint_type is "custom". Default is None.
+        validator : Callable[[str], bool] or None, optional
+            Custom validation function that takes the model output and returns
+            True if the constraint is satisfied, False otherwise. Only used
+            when constraint_type is "custom". Default is None.
+
+        Raises
+        ------
+        Note: No explicit validation is performed in __init__. Invalid
+        combinations (e.g., word_limit without a limit) will result in
+        no constraint being applied during evaluation.
+
+        Examples
+        --------
+        Example 1: Word limit constraint
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=100
+            ... )
+            >>> print(probe.constraint_type)
+            'word_limit'
+            >>> print(probe.limit)
+            100
+
+        Example 2: Character limit for short-form content
+
+            >>> tweet_probe = ConstraintComplianceProbe(
+            ...     name="TweetValidator",
+            ...     constraint_type="character_limit",
+            ...     limit=280
+            ... )
+
+        Example 3: Sentence limit for summaries
+
+            >>> summary_probe = ConstraintComplianceProbe(
+            ...     name="ThreeSentenceSummary",
+            ...     constraint_type="sentence_limit",
+            ...     limit=3
+            ... )
+
+        Example 4: Custom constraint with validator
+
+            >>> def has_bullet_points(output: str) -> bool:
+            ...     return any(line.strip().startswith(('-', '*', 'bullet'))
+            ...                for line in output.split('\\n'))
+            >>>
+            >>> probe = ConstraintComplianceProbe(
+            ...     name="BulletPointChecker",
+            ...     constraint_type="custom",
+            ...     custom_constraint="Response must use bullet points",
+            ...     validator=has_bullet_points
+            ... )
+
+        Example 5: Custom constraint checking for specific content
+
+            >>> def mentions_source(output: str) -> bool:
+            ...     keywords = ["according to", "source:", "reference:", "cited"]
+            ...     return any(kw in output.lower() for kw in keywords)
+            >>>
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="custom",
+            ...     custom_constraint="Must cite at least one source",
+            ...     validator=mentions_source
+            ... )
         """
         super().__init__(name=name, category=ProbeCategory.CUSTOM)
         self.constraint_type = constraint_type
@@ -498,15 +1477,82 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         self.validator = validator
 
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
-        """Run the constraint compliance probe.
+        """Run the constraint compliance probe against a model.
 
-        Args:
-            model: The model to test.
-            data: The task or prompt.
-            **kwargs: Additional arguments passed to the model.
+        Executes the probe by appending the constraint instruction to the task
+        and sending the combined prompt to the model. The constraint is stated
+        as an important requirement to maximize compliance.
 
-        Returns:
-            The model's response.
+        Parameters
+        ----------
+        model : Any
+            The language model to test. Must have a ``generate(prompt, **kwargs)``
+            method that accepts a string prompt and returns a string response.
+        data : dict or str
+            The task data. Can be:
+            - A dict with a "task" key containing the task description
+            - A plain string (used directly as the task)
+        **kwargs : Any
+            Additional keyword arguments passed directly to ``model.generate()``.
+            Common options include ``temperature``, ``max_tokens``, etc.
+
+        Returns
+        -------
+        str
+            The model's generated response.
+
+        Examples
+        --------
+        Example 1: Word limit with dict input
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=50
+            ... )
+            >>> data = {"task": "Explain the theory of relativity"}
+            >>> response = probe.run(model, data)
+            >>> # Prompt includes: "IMPORTANT: Your response must be 50 words or fewer."
+
+        Example 2: Character limit with string input
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="character_limit",
+            ...     limit=140
+            ... )
+            >>> response = probe.run(model, "Write a short bio for a software engineer")
+            >>> # Response should be 140 characters or fewer
+
+        Example 3: Custom constraint
+
+            >>> def has_examples(output: str) -> bool:
+            ...     return "example" in output.lower() or "e.g." in output.lower()
+            >>>
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="custom",
+            ...     custom_constraint="Include at least one concrete example",
+            ...     validator=has_examples
+            ... )
+            >>> response = probe.run(model, "Explain polymorphism in programming")
+            >>> # Prompt includes: "IMPORTANT: Include at least one concrete example"
+
+        Example 4: Sentence limit with temperature
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="sentence_limit",
+            ...     limit=2
+            ... )
+            >>> response = probe.run(
+            ...     model,
+            ...     "What is machine learning?",
+            ...     temperature=0.3
+            ... )
+
+        Notes
+        -----
+        The constraint instruction is formatted as:
+        "IMPORTANT: Your response must be [X] [words/characters/sentences] or fewer."
+        For custom constraints:
+        "IMPORTANT: [custom_constraint text]"
         """
         task = data.get("task", str(data)) if isinstance(data, dict) else str(data)
 
@@ -517,7 +1563,68 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         return model.generate(prompt, **kwargs)
 
     def _get_constraint_instruction(self) -> str:
-        """Get the constraint instruction text."""
+        """Generate the constraint instruction text to append to prompts.
+
+        Converts the probe's constraint configuration into a human-readable
+        instruction that clearly communicates the requirement to the model.
+        The instruction is prefixed with "IMPORTANT:" to emphasize its
+        significance.
+
+        Returns
+        -------
+        str
+            The formatted constraint instruction. Returns empty string if
+            no valid constraint is configured (e.g., word_limit without
+            a limit value).
+
+        Examples
+        --------
+        Example 1: Word limit instruction
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=50
+            ... )
+            >>> instruction = probe._get_constraint_instruction()
+            >>> print(instruction)
+            IMPORTANT: Your response must be 50 words or fewer.
+
+        Example 2: Character limit instruction
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="character_limit",
+            ...     limit=280
+            ... )
+            >>> instruction = probe._get_constraint_instruction()
+            >>> print(instruction)
+            IMPORTANT: Your response must be 280 characters or fewer.
+
+        Example 3: Sentence limit instruction
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="sentence_limit",
+            ...     limit=3
+            ... )
+            >>> instruction = probe._get_constraint_instruction()
+            >>> print(instruction)
+            IMPORTANT: Your response must be 3 sentence(s) or fewer.
+
+        Example 4: Custom constraint instruction
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="custom",
+            ...     custom_constraint="Include exactly 3 bullet points"
+            ... )
+            >>> instruction = probe._get_constraint_instruction()
+            >>> print(instruction)
+            IMPORTANT: Include exactly 3 bullet points
+
+        Notes
+        -----
+        If constraint_type is set but limit is None (for built-in types),
+        or if constraint_type is "custom" but custom_constraint is None,
+        an empty string is returned.
+        """
         if self.constraint_type == "word_limit" and self.limit:
             return f"IMPORTANT: Your response must be {self.limit} words or fewer."
         elif self.constraint_type == "character_limit" and self.limit:
@@ -535,15 +1642,102 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         reference: Any,
         **kwargs: Any,
     ) -> ProbeResult[str]:
-        """Evaluate constraint compliance.
+        """Evaluate whether the model output complies with the constraint.
 
-        Args:
-            model_output: The model's response.
-            reference: Optional override for limit.
-            **kwargs: Additional parameters.
+        Checks the model's response against the configured constraint type
+        and calculates a compliance score. For numeric constraints (word,
+        character, sentence limits), the score gradually decreases based
+        on how much the limit is exceeded.
 
-        Returns:
-            ProbeResult with compliance details.
+        Parameters
+        ----------
+        model_output : str
+            The model's generated response to evaluate.
+        reference : int or Any, optional
+            Optional override for the limit value. If an int is provided,
+            it replaces the probe's configured limit for this evaluation.
+            Useful for testing the same model against different thresholds.
+        **kwargs : Any
+            Additional parameters (currently unused, reserved for future use).
+
+        Returns
+        -------
+        ProbeResult[str]
+            A ProbeResult containing:
+            - input: The constraint type being tested
+            - output: The model's response
+            - status: ResultStatus.SUCCESS if compliant, else ERROR
+            - metadata: Dict with detailed evaluation including:
+                - compliant: Boolean indicating if constraint was met
+                - score: Compliance score (0.0 to 1.0)
+                - label: "compliant" or "violation"
+                - For word_limit: word_count, limit
+                - For character_limit: character_count, limit
+                - For sentence_limit: sentence_count, limit
+                - For custom: custom_validation (bool)
+
+        Examples
+        --------
+        Example 1: Evaluate word limit compliance
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=50
+            ... )
+            >>> # Model generates 45 words
+            >>> model_output = " ".join(["word"] * 45)
+            >>> result = probe.evaluate_single(model_output, reference=50)
+            >>> print(result.metadata["word_count"])  # 45
+            >>> print(result.metadata["compliant"])  # True
+            >>> print(result.metadata["score"])  # 1.0
+
+        Example 2: Evaluate with exceeded limit
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=50
+            ... )
+            >>> # Model generates 75 words (50% over limit)
+            >>> model_output = " ".join(["word"] * 75)
+            >>> result = probe.evaluate_single(model_output, reference=50)
+            >>> print(result.metadata["compliant"])  # False
+            >>> print(result.metadata["score"])  # 0.5 (gradual decrease)
+
+        Example 3: Override limit at evaluation time
+
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="word_limit",
+            ...     limit=100
+            ... )
+            >>> model_output = " ".join(["word"] * 75)
+            >>> # Test against stricter limit
+            >>> result = probe.evaluate_single(model_output, reference=50)
+            >>> print(result.metadata["limit"])  # 50 (override applied)
+            >>> print(result.metadata["compliant"])  # False
+
+        Example 4: Custom validator evaluation
+
+            >>> def has_greeting(output: str) -> bool:
+            ...     greetings = ["hello", "hi", "hey", "greetings"]
+            ...     return any(g in output.lower() for g in greetings)
+            >>>
+            >>> probe = ConstraintComplianceProbe(
+            ...     constraint_type="custom",
+            ...     custom_constraint="Start with a greeting",
+            ...     validator=has_greeting
+            ... )
+            >>> result = probe.evaluate_single("Hello! How are you?", reference=None)
+            >>> print(result.metadata["custom_validation"])  # True
+            >>> print(result.metadata["score"])  # 1.0
+
+        Notes
+        -----
+        Score calculation for limit violations:
+        - If compliant: score = 1.0
+        - If exceeded: score = max(0.0, 1.0 - (overage / limit))
+
+        For example, exceeding a 50-word limit by 25 words results in:
+        score = max(0.0, 1.0 - (25 / 50)) = 0.5
         """
         limit = reference if isinstance(reference, int) else self.limit
         details = {}
