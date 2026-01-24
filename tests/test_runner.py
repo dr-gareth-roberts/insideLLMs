@@ -73,6 +73,21 @@ class TestProbeRunner:
         # Should have latency
         assert "latency_ms" in result
 
+    def test_run_returns_experiment_result(self):
+        """Test returning ExperimentResult from runner."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.types import ExperimentResult
+
+        model = DummyModel()
+        probe = LogicProbe()
+        runner = ProbeRunner(model, probe)
+
+        result = runner.run(["Is the sky blue?"], emit_run_artifacts=False, return_experiment=True)
+        assert isinstance(result, ExperimentResult)
+        assert result.total_count == 1
+
 
 class TestRunExperimentFromConfig:
     """Test the run_experiment_from_config function."""
@@ -458,6 +473,110 @@ class TestResourceCleanup:
         content = records_path.read_text()
         assert "error" in content.lower()
 
+
+class TestRunnerResume:
+    """Tests for resume functionality."""
+
+    def test_proberunner_resume_appends(self, tmp_path):
+        """Test ProbeRunner resumes and appends remaining records."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        prompt_set = ["Q1?", "Q2?", "Q3?"]
+        run_dir = tmp_path / "resume_run"
+        run_id = "resume-test"
+
+        runner = ProbeRunner(DummyModel(), LogicProbe())
+        runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+        )
+
+        records_path = run_dir / "records.jsonl"
+        lines = records_path.read_text().splitlines()
+        records_path.write_text(lines[0] + "\n")
+
+        results = runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+            resume=True,
+        )
+        assert len(results) == len(prompt_set)
+        assert len(records_path.read_text().splitlines()) == len(prompt_set)
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_resume_appends(self, tmp_path):
+        """Test AsyncProbeRunner resumes and appends remaining records."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
+
+        prompt_set = ["Q1?", "Q2?", "Q3?"]
+        run_dir = tmp_path / "resume_async_run"
+        run_id = "resume-async-test"
+
+        runner = AsyncProbeRunner(DummyModel(), LogicProbe())
+        await runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+        )
+
+        records_path = run_dir / "records.jsonl"
+        lines = records_path.read_text().splitlines()
+        records_path.write_text(lines[0] + "\n")
+
+        results = await runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+            resume=True,
+        )
+        assert len(results) == len(prompt_set)
+        assert len(records_path.read_text().splitlines()) == len(prompt_set)
+
+
+class TestPipelineConfig:
+    """Tests for pipeline config loading."""
+
+    def test_create_model_with_pipeline(self):
+        """Test pipeline middleware wrapping."""
+        from insideLLMs.pipeline import ModelPipeline
+        from insideLLMs.runner import _create_model_from_config
+
+        config = {
+            "type": "dummy",
+            "pipeline": {
+                "middlewares": [{"type": "cache", "args": {"cache_size": 2}}],
+            },
+        }
+        model = _create_model_from_config(config)
+        assert isinstance(model, ModelPipeline)
+        info = model.info()
+        assert info.get("pipeline") is True
+
+    def test_create_model_with_async_pipeline(self):
+        """Test async pipeline wrapping."""
+        from insideLLMs.pipeline import AsyncModelPipeline
+        from insideLLMs.runner import _create_model_from_config
+
+        config = {
+            "type": "dummy",
+            "pipeline": {
+                "async": True,
+                "middlewares": ["cache"],
+            },
+        }
+        model = _create_model_from_config(config)
+        assert isinstance(model, AsyncModelPipeline)
+
     @pytest.mark.asyncio
     async def test_asyncrunner_closes_file_on_success(self, tmp_path):
         """Test that AsyncProbeRunner closes file handles after successful run."""
@@ -540,6 +659,10 @@ class TestRunConfig:
         assert config.concurrency == 5
         assert config.store_messages is True
         assert config.validation_mode == "strict"
+        assert config.resume is False
+        assert config.use_probe_batch is False
+        assert config.batch_workers is None
+        assert config.return_experiment is False
 
     def test_runconfig_custom_values(self):
         """Test RunConfig accepts custom values."""
@@ -550,11 +673,19 @@ class TestRunConfig:
             validate_output=True,
             concurrency=10,
             emit_run_artifacts=False,
+            resume=True,
+            use_probe_batch=True,
+            batch_workers=2,
+            return_experiment=True,
         )
         assert config.stop_on_error is True
         assert config.validate_output is True
         assert config.concurrency == 10
         assert config.emit_run_artifacts is False
+        assert config.resume is True
+        assert config.use_probe_batch is True
+        assert config.batch_workers == 2
+        assert config.return_experiment is True
 
     def test_runconfig_validation_mode_invalid(self):
         """Test RunConfig rejects invalid validation_mode."""
@@ -727,6 +858,22 @@ class TestRunConfigBuilder:
         info = {"name": "test-dataset", "version": "1.0"}
         config = RunConfigBuilder().with_dataset_info(info).build()
         assert config.dataset_info == info
+
+    def test_builder_with_resume_and_batch(self):
+        """Test builder resume/batch/output helpers."""
+        from insideLLMs.config_types import RunConfigBuilder
+
+        config = (
+            RunConfigBuilder()
+            .with_resume(True)
+            .with_probe_batch(enabled=True, batch_workers=3)
+            .with_output(return_experiment=True)
+            .build()
+        )
+        assert config.resume is True
+        assert config.use_probe_batch is True
+        assert config.batch_workers == 3
+        assert config.return_experiment is True
 
     def test_builder_chaining(self, tmp_path):
         """Test builder method chaining."""

@@ -45,6 +45,10 @@ class RunConfig:
         config_snapshot: Optional snapshot of the experiment configuration.
         store_messages: If True, store full message history in records.
         concurrency: Maximum concurrent executions (async only). Default 5.
+        resume: If True, resume from existing records.jsonl when possible.
+        use_probe_batch: If True, use Probe.run_batch when available.
+        batch_workers: Optional worker count for probe batch execution.
+        return_experiment: If True, return ExperimentResult instead of raw dicts.
     """
 
     # Error handling
@@ -70,6 +74,12 @@ class RunConfig:
     # Async-specific
     concurrency: int = 5
 
+    # Resume/batch/output controls
+    resume: bool = False
+    use_probe_batch: bool = False
+    batch_workers: Optional[int] = None
+    return_experiment: bool = False
+
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if self.validation_mode not in ("strict", "lenient"):
@@ -78,6 +88,8 @@ class RunConfig:
             )
         if self.concurrency < 1:
             raise ValueError(f"concurrency must be >= 1, got {self.concurrency}")
+        if self.batch_workers is not None and self.batch_workers < 1:
+            raise ValueError(f"batch_workers must be >= 1, got {self.batch_workers}")
 
     @classmethod
     def from_kwargs(cls, **kwargs: Any) -> "RunConfig":
@@ -144,6 +156,10 @@ class RunConfigBuilder:
         self._dataset_info: Optional[dict[str, Any]] = None
         self._config_snapshot: Optional[dict[str, Any]] = None
         self._concurrency: int = 5
+        self._resume: bool = False
+        self._use_probe_batch: bool = False
+        self._batch_workers: Optional[int] = None
+        self._return_experiment: bool = False
 
     def with_validation(
         self,
@@ -258,6 +274,49 @@ class RunConfigBuilder:
         self._store_messages = enabled
         return self
 
+    def with_resume(self, enabled: bool = True) -> "RunConfigBuilder":
+        """Enable resumable runs.
+
+        Args:
+            enabled: Whether to resume from existing run artifacts.
+
+        Returns:
+            Self for method chaining.
+        """
+        self._resume = enabled
+        return self
+
+    def with_probe_batch(
+        self,
+        enabled: bool = True,
+        batch_workers: Optional[int] = None,
+    ) -> "RunConfigBuilder":
+        """Enable probe batch execution.
+
+        Args:
+            enabled: Whether to use Probe.run_batch for execution.
+            batch_workers: Optional worker count for batch execution.
+
+        Returns:
+            Self for method chaining.
+        """
+        self._use_probe_batch = enabled
+        if batch_workers is not None:
+            self._batch_workers = batch_workers
+        return self
+
+    def with_output(self, return_experiment: bool = True) -> "RunConfigBuilder":
+        """Configure output format.
+
+        Args:
+            return_experiment: Whether to return ExperimentResult instead of raw dicts.
+
+        Returns:
+            Self for method chaining.
+        """
+        self._return_experiment = return_experiment
+        return self
+
     def build(self) -> RunConfig:
         """Build the RunConfig object.
 
@@ -281,6 +340,10 @@ class RunConfigBuilder:
             dataset_info=self._dataset_info,
             config_snapshot=self._config_snapshot,
             concurrency=self._concurrency,
+            resume=self._resume,
+            use_probe_batch=self._use_probe_batch,
+            batch_workers=self._batch_workers,
+            return_experiment=self._return_experiment,
         )
 
 

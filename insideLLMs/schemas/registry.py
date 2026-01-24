@@ -60,11 +60,14 @@ class SchemaRegistry:
     COMPARISON_REPORT = "ComparisonReport"  # comparison output
     DIFF_REPORT = "DiffReport"  # diff.json output
     EXPORT_METADATA = "ExportMetadata"  # export bundle metadata
+    CUSTOM_TRACE = "CustomTrace"  # ResultRecord.custom["trace"] bundle
 
     def __init__(self) -> None:
         self._cache: dict[tuple[str, str], SchemaHandle] = {}
 
     def available_versions(self, schema_name: str) -> list[str]:
+        if schema_name == self.CUSTOM_TRACE:
+            return ["insideLLMs.custom.trace@1"]
         if schema_name not in {
             self.RUNNER_ITEM,
             self.RUNNER_OUTPUT,
@@ -90,7 +93,13 @@ class SchemaRegistry:
         if cache_key in self._cache:
             return self._cache[cache_key].model
 
-        if v == "1.0.0":
+        if schema_name == self.CUSTOM_TRACE:
+            if v != "insideLLMs.custom.trace@1":
+                raise KeyError(f"Unknown schema version: {schema_name}@{v}")
+            from insideLLMs.schemas import custom_trace_v1
+
+            model = custom_trace_v1.TraceBundleV1
+        elif v == "1.0.0":
             from insideLLMs.schemas import v1_0_0
 
             model = v1_0_0.get_schema_model(schema_name)

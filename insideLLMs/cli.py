@@ -8,6 +8,8 @@ import argparse
 import asyncio
 import hashlib
 import html
+import importlib.metadata
+import importlib.util
 import json
 import os
 import platform
@@ -413,16 +415,44 @@ def _output_fingerprint(
 
 
 def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
-    """Extract trace fingerprint from record.custom.trace_fingerprint."""
+    """Extract trace fingerprint from ResultRecord.custom.
+
+    Supports both the legacy flat fields:
+      - record.custom.trace_fingerprint
+    and the structured trace bundle:
+      - record.custom.trace.fingerprint.value
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     fp = custom.get("trace_fingerprint")
-    return fp if isinstance(fp, str) else None
+    if isinstance(fp, str):
+        return fp
+
+    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    fingerprint = trace.get("fingerprint") if isinstance(trace.get("fingerprint"), dict) else {}
+    value = fingerprint.get("value")
+    if not isinstance(value, str) or not value:
+        return None
+    # If the bundle stores raw 64-hex without prefix, normalize to the legacy "sha256:<hex>" form.
+    if ":" not in value and len(value) == 64:
+        return f"sha256:{value}"
+    return value
 
 
 def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract trace violations from record.custom.trace_violations."""
+    """Extract trace violations from ResultRecord.custom.
+
+    Supports both the legacy flat fields:
+      - record.custom.trace_violations
+    and the structured trace bundle:
+      - record.custom.trace.violations
+    """
     custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
     violations = custom.get("trace_violations")
+    if isinstance(violations, list):
+        return violations
+
+    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    violations = trace.get("violations")
     return violations if isinstance(violations, list) else []
 
 
@@ -1049,6 +1079,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Allow overwriting an existing non-empty run directory (DANGEROUS).",
     )
     run_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from an existing run directory if records.jsonl is present.",
+    )
+    run_parser.add_argument(
         "--async",
         dest="use_async",
         action="store_true",
@@ -1287,6 +1322,26 @@ def create_parser() -> argparse.ArgumentParser:
         choices=["strict", "warn"],
         default="strict",
         help="On validation error: strict=exit non-zero, warn=continue",
+    )
+
+    # =========================================================================
+    # Doctor command
+    # =========================================================================
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Diagnose environment and optional dependencies",
+        formatter_class=CustomFormatter,
+    )
+    doctor_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    doctor_parser.add_argument(
+        "--fail-on-warn",
+        action="store_true",
+        help="Exit non-zero if any recommended dependency checks fail",
     )
 
     # =========================================================================
@@ -1587,6 +1642,27 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _module_version(dist_name: str) -> Optional[str]:
+    try:
+        return importlib.metadata.version(dist_name)
+    except Exception:
+        return None
+
+
+def _has_module(module: str) -> bool:
+    return importlib.util.find_spec(module) is not None
+
+
+def _check_nltk_resource(path: str) -> bool:
+    try:
+        import nltk
+
+        nltk.data.find(path)
+        return True
+    except Exception:
+        return False
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Execute the run command."""
     config_path = Path(args.config)
@@ -1650,6 +1726,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                     run_root=str(effective_run_root),
                     run_id=resolved_run_id,
                     overwrite=bool(args.overwrite),
+                    resume=bool(args.resume),
                 )
             )
         else:
@@ -1664,6 +1741,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 run_root=str(effective_run_root),
                 run_id=resolved_run_id,
                 overwrite=bool(args.overwrite),
+                resume=bool(args.resume),
             )
 
         elapsed = time.time() - start_time
@@ -1671,10 +1749,27 @@ def cmd_run(args: argparse.Namespace) -> int:
         if progress_bar:
             progress_bar.finish()
 
-        # Calculate summary
-        success_count = sum(1 for r in results if r.get("status") == "success")
-        error_count = sum(1 for r in results if r.get("status") == "error")
-        total = len(results)
+        experiment_result = results if isinstance(results, ExperimentResult) else None
+        if experiment_result is not None:
+            raw_results = [
+                {
+                    "input": r.input,
+                    "output": r.output,
+                    "error": r.error,
+                    "status": r.status.value if isinstance(r.status, Enum) else str(r.status),
+                    "latency_ms": r.latency_ms,
+                    "metadata": r.metadata,
+                }
+                for r in experiment_result.results
+            ]
+            success_count = experiment_result.success_count
+            error_count = experiment_result.error_count
+            total = experiment_result.total_count
+        else:
+            raw_results = results
+            success_count = sum(1 for r in results if r.get("status") == "success")
+            error_count = sum(1 for r in results if r.get("status") == "error")
+            total = len(results)
 
         # Output results
         if args.output:
@@ -1688,9 +1783,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print_success(f"Results saved to: {args.output}")
 
         if args.format == "json":
-            print(json.dumps(results, indent=2, default=str))
+            print(json.dumps(results, indent=2, default=_json_default))
         elif args.format == "markdown":
-            print(results_to_markdown(results))
+            print(results_to_markdown(raw_results))
         elif args.format == "summary":
             # Minimal summary output
             print(
@@ -1705,9 +1800,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print_key_value("Errors", f"{error_count} ({error_count / max(1, total) * 100:.1f}%)")
             print_key_value("Duration", f"{elapsed:.2f}s")
 
-            if results:
+            if raw_results:
                 latencies = [
-                    r.get("latency_ms", 0) for r in results if r.get("status") == "success"
+                    r.get("latency_ms", 0) for r in raw_results if r.get("status") == "success"
                 ]
                 if latencies:
                     avg_latency = sum(latencies) / len(latencies)
@@ -1718,7 +1813,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
             # Show first few results
             print_subheader("Sample Results")
-            for i, r in enumerate(results[:5]):
+            for i, r in enumerate(raw_results[:5]):
                 status_icon = (
                     colorize("OK", Colors.GREEN)
                     if r.get("status") == "success"
@@ -1729,8 +1824,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                     inp += "..."
                 print(f"  {status_icon} [{i + 1}] {inp}")
 
-            if len(results) > 5:
-                print(colorize(f"  ... and {len(results) - 5} more", Colors.DIM))
+            if len(raw_results) > 5:
+                print(colorize(f"  ... and {len(raw_results) - 5} more", Colors.DIM))
 
         # UX sugar: make it obvious where artifacts landed and how to validate.
         # Keep stdout JSON clean when --format json.
@@ -2075,6 +2170,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
             registry.COMPARISON_REPORT,
             registry.DIFF_REPORT,
             registry.EXPORT_METADATA,
+            registry.CUSTOM_TRACE,
         ]
         for name in schema_names:
             versions = registry.available_versions(name)
@@ -2181,6 +2277,111 @@ def cmd_schema(args: argparse.Namespace) -> int:
 
     print_error(f"Unknown schema op: {op}")
     return 1
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Diagnose environment and optional dependencies."""
+    checks: list[dict[str, Any]] = []
+
+    def add_check(*, name: str, ok: bool, hint: Optional[str] = None) -> None:
+        checks.append({"name": name, "ok": bool(ok), "hint": hint})
+
+    add_check(name="python", ok=True, hint=sys.version.split()[0])
+    add_check(name="platform", ok=True, hint=platform.platform())
+    add_check(name="insideLLMs", ok=True, hint=_module_version("insideLLMs"))
+
+    # Optional validation/schema tooling
+    add_check(name="pydantic", ok=_has_module("pydantic"), hint='pip install ".[dev]"')
+
+    # NLP extras
+    add_check(name="nltk", ok=_has_module("nltk"), hint='pip install ".[nlp]"')
+    add_check(name="sklearn", ok=_has_module("sklearn"), hint='pip install ".[nlp]"')
+    add_check(name="spacy", ok=_has_module("spacy"), hint='pip install ".[nlp]"')
+    add_check(name="gensim", ok=_has_module("gensim"), hint='pip install ".[nlp]"')
+    add_check(
+        name="nltk:punkt",
+        ok=_check_nltk_resource("tokenizers/punkt"),
+        hint="python -m nltk.downloader punkt",
+    )
+    add_check(
+        name="nltk:vader_lexicon",
+        ok=_check_nltk_resource("sentiment/vader_lexicon.zip")
+        or _check_nltk_resource("sentiment/vader_lexicon"),
+        hint="python -m nltk.downloader vader_lexicon",
+    )
+    add_check(
+        name="spacy:en_core_web_sm",
+        ok=_has_module("en_core_web_sm"),
+        hint="python -m spacy download en_core_web_sm",
+    )
+
+    # Visualization extras
+    add_check(
+        name="matplotlib", ok=_has_module("matplotlib"), hint='pip install ".[visualization]"'
+    )
+    add_check(name="pandas", ok=_has_module("pandas"), hint='pip install ".[visualization]"')
+    add_check(name="seaborn", ok=_has_module("seaborn"), hint='pip install ".[visualization]"')
+    add_check(name="plotly", ok=_has_module("plotly"), hint='pip install ".[visualization]"')
+    add_check(name="ipywidgets", ok=_has_module("ipywidgets"), hint="pip install ipywidgets")
+
+    # Optional integrations
+    add_check(name="redis", ok=_has_module("redis"), hint="pip install redis")
+    add_check(name="datasets", ok=_has_module("datasets"), hint="pip install datasets")
+
+    # API keys (informational)
+    add_check(name="OPENAI_API_KEY", ok=bool(os.environ.get("OPENAI_API_KEY")), hint="set env var")
+    add_check(
+        name="ANTHROPIC_API_KEY", ok=bool(os.environ.get("ANTHROPIC_API_KEY")), hint="set env var"
+    )
+
+    run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
+    add_check(
+        name="INSIDELLMS_RUN_ROOT",
+        ok=bool(run_root),
+        hint="(optional) override run artifacts root",
+    )
+
+    warn_checks = [
+        c
+        for c in checks
+        if c["name"]
+        not in {
+            "python",
+            "platform",
+            "insideLLMs",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "INSIDELLMS_RUN_ROOT",
+        }
+        and not c["ok"]
+    ]
+
+    if args.format == "json":
+        payload = {"checks": checks, "warnings": warn_checks}
+        print(json.dumps(payload, indent=2, default=_json_default))
+        return 1 if (args.fail_on_warn and warn_checks) else 0
+
+    print_header("insideLLMs Doctor")
+    print_subheader("Environment")
+    for item in checks[:3]:
+        print_key_value(item["name"], item["hint"] or "-")
+
+    print_subheader("Diagnostics")
+    for item in checks[3:]:
+        if item["ok"]:
+            print_success(item["name"])
+        else:
+            hint = f" ({item['hint']})" if item.get("hint") else ""
+            print_warning(f"{item['name']}{hint}")
+
+    if warn_checks:
+        print()
+        print_warning(f"{len(warn_checks)} recommended checks failed (optional deps missing).")
+    else:
+        print()
+        print_success("All recommended checks passed.")
+
+    return 1 if (args.fail_on_warn and warn_checks) else 0
 
 
 def cmd_report(args: argparse.Namespace) -> int:
@@ -3608,6 +3809,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "report": cmd_report,
         "diff": cmd_diff,
         "schema": cmd_schema,
+        "doctor": cmd_doctor,
         "list": cmd_list,
         "init": cmd_init,
         "info": cmd_info,

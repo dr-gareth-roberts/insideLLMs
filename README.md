@@ -60,6 +60,8 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -e ".[all]"
 ```
 
+Offline golden path (no API keys required): `docs/GOLDEN_PATH.md`
+
 Run a harness and produce reports:
 
 ```bash
@@ -91,6 +93,8 @@ insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 - [Quick Reference](QUICK_REFERENCE.md)
 - [Architecture](ARCHITECTURE.md)
 - [Examples](examples/)
+- [Plugins](docs/PLUGINS.md)
+- [Stability & Versioning](docs/STABILITY.md)
 
 ## Licence
 

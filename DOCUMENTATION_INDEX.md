@@ -75,6 +75,27 @@ flowchart LR
 
 ---
 
+### [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md)
+**A 5-minute offline, end-to-end workflow** (DummyModel → records → report → diff) suitable for CI gating.
+
+**Best for:** First-time users, CI diff-gating setup, verifying installation without API keys
+
+---
+
+### [docs/PLUGINS.md](docs/PLUGINS.md)
+**How to extend insideLLMs without forking** using Python entry points.
+
+**Best for:** Third-party integrations, adding private models/probes, sharing extensions
+
+---
+
+### [docs/STABILITY.md](docs/STABILITY.md)
+**Versioning and stability policy** for CLI, schemas, and determinism guarantees.
+
+**Best for:** Contributors, CI users, reviewing breaking changes
+
+---
+
 ## Quick Navigation
 
 ### I want to...

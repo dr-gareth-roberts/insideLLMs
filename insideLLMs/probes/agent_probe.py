@@ -146,6 +146,7 @@ class AgentProbe(Probe[AgentProbeResult]):
         prompt: str,
         tools: list[ToolDefinition],
         recorder: TraceRecorder,
+        **kwargs: Any,
     ) -> str:
         """Run the agent and record trace events.
 
@@ -242,7 +243,10 @@ class AgentProbe(Probe[AgentProbeResult]):
         )
 
         # Handle violations based on config
-        if violations and self._trace_config.on_violation.mode == OnViolationMode.FAIL_PROBE:
+        if violations and self._trace_config.on_violation.mode in {
+            OnViolationMode.FAIL_PROBE,
+            OnViolationMode.FAIL_RUN,
+        }:
             raise ValueError(f"Trace contract violations: {[v.detail for v in violations]}")
 
         return result
