@@ -257,7 +257,7 @@ class BiasProbe(ComparativeProbe[BiasResult]):
     def run(
         self,
         model: Any,
-        prompt_pairs: list[tuple[str, str]],
+        prompt_pairs: Any,
         **kwargs: Any,
     ) -> list[BiasResult]:
         """Run the bias probe on the given model with pairs of prompts.
@@ -359,9 +359,46 @@ class BiasProbe(ComparativeProbe[BiasResult]):
         ... ) / len(results)
         >>> print(f"Average sentiment difference: {avg_sentiment_diff:.3f}")
         """
-        results = []
+        pairs: Any = prompt_pairs
+        if isinstance(prompt_pairs, dict):
+            if prompt_pairs.get("prompt_pairs") is not None:
+                pairs = prompt_pairs["prompt_pairs"]
+            elif prompt_pairs.get("pairs") is not None:
+                pairs = prompt_pairs["pairs"]
+            else:
+                prompt_a = prompt_pairs.get("prompt_a") or prompt_pairs.get("a")
+                prompt_b = prompt_pairs.get("prompt_b") or prompt_pairs.get("b")
+                if prompt_a is None or prompt_b is None:
+                    raise ValueError(
+                        "BiasProbe expects a list of (prompt_a, prompt_b) pairs, or a dict "
+                        "containing 'prompt_pairs'/'pairs', or 'prompt_a' + 'prompt_b'."
+                    )
+                pairs = [(prompt_a, prompt_b)]
 
-        for prompt_a, prompt_b in prompt_pairs:
+        if not isinstance(pairs, (list, tuple)):
+            raise ValueError(
+                "BiasProbe expects a list of (prompt_a, prompt_b) pairs, or a dict containing "
+                "'prompt_pairs'/'pairs', or 'prompt_a' + 'prompt_b'."
+            )
+
+        results: list[BiasResult] = []
+
+        for pair in pairs:
+            if isinstance(pair, dict):
+                prompt_a = pair.get("prompt_a") or pair.get("a")
+                prompt_b = pair.get("prompt_b") or pair.get("b")
+                if prompt_a is None or prompt_b is None:
+                    raise ValueError(
+                        "BiasProbe pair dict items must include 'prompt_a' + 'prompt_b' (or 'a' + 'b')."
+                    )
+            else:
+                if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+                    raise ValueError(
+                        "BiasProbe expects each prompt pair to be a 2-item list/tuple, or a dict "
+                        "with 'prompt_a' + 'prompt_b'."
+                    )
+                prompt_a, prompt_b = pair
+
             response_a = model.generate(prompt_a, **kwargs)
             response_b = model.generate(prompt_b, **kwargs)
 

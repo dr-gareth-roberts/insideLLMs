@@ -38,6 +38,8 @@ Notes:
 - Relative dataset paths are resolved relative to the config file location. If your config lives in
   `examples/`, you’ll typically want `../data/...` paths. See [Configuration](Configuration).
 - If you pass `--run-dir`, it overrides `output_dir` and writes artifacts exactly there.
+- Optional `generation` (or `probe_kwargs`) is passed through to `probe.run(...)` and typically ends
+  up in `model.generate(...)` as `temperature`, `max_tokens`, `seed`, etc.
 
 ## Run
 
@@ -58,9 +60,28 @@ Common built-in probes accept either a string or a dict. For dict inputs they lo
 | Probe | Dict key(s) (first match wins) |
 |------:|--------------------------------|
 | `logic` | `problem`, `question` |
-| `attack` | `prompt`, `attack` |
-| `instruction_following` | `task`, `instruction` |
+| `factuality` | `question` + `reference_answer` (or `factual_questions`, `questions`) |
+| `bias` | `prompt_pairs`, `pairs` (or `prompt_a` + `prompt_b`) |
+| `attack` / `prompt_injection` / `jailbreak` | `prompt`, `attack` |
+| `instruction_following` | `task`, `instruction` (+ optional `constraints`) |
+| `constraint_compliance` | `task` |
+| `multi_step_task` | `steps` (+ optional `preamble`) |
 | `code_generation` | `task`, `description` |
+| `code_explanation` | `code` |
+| `code_debug` | `code` (+ optional `error`) |
+
+## Generation Parameters
+
+You can pass generation parameters via config:
+
+```yaml
+generation:
+  temperature: 0.0
+  max_tokens: 256
+```
+
+These are passed to `probe.run(model, item, **generation)` and typically forwarded to
+`model.generate(...)`. Not all models accept all parameters.
 
 ## Dataset Formats
 

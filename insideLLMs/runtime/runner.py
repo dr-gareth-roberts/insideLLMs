@@ -3662,6 +3662,32 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
     return snapshot
 
 
+def _extract_probe_kwargs_from_config(config: Any) -> dict[str, Any]:
+    """Extract `probe.run(...)` kwargs from a config dict.
+
+    We support a few synonymous keys so users can express generation settings in a
+    more natural way:
+
+    - `generation`: preferred name for model generation parameters
+    - `probe_kwargs`: explicit name matching ProbeRunner.run(**probe_kwargs)
+    - `run_kwargs`: legacy/alternate name
+
+    If multiple keys are present, later keys override earlier ones.
+    """
+    if not isinstance(config, dict):
+        return {}
+
+    merged: dict[str, Any] = {}
+    for key in ("generation", "probe_kwargs", "run_kwargs"):
+        value = config.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, dict):
+            raise ValueError(f"{key} must be a mapping/dict, got {type(value).__name__}")
+        merged.update(value)
+    return merged
+
+
 def _create_middlewares_from_config(items: Any) -> list[Any]:
     if not items:
         return []
@@ -4027,6 +4053,9 @@ def run_experiment_from_config(
     probe = _create_probe_from_config(config["probe"])
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
 
+    probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
+    probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
+
     runner = ProbeRunner(model, probe)
     return runner.run(
         dataset,
@@ -4045,6 +4074,7 @@ def run_experiment_from_config(
         use_probe_batch=use_probe_batch,
         batch_workers=batch_workers,
         return_experiment=return_experiment,
+        **probe_kwargs,
     )
 
 
@@ -4190,6 +4220,8 @@ def run_harness_from_config(
     if max_examples:
         dataset = dataset[:max_examples]
 
+    global_probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
+
     experiments: list[ExperimentResult] = []
     records: list[dict[str, Any]] = []
 
@@ -4280,6 +4312,9 @@ def run_harness_from_config(
                 if progress_callback and total_items:
                     progress_callback(run_offset + current, total_items)
 
+            probe_kwargs = dict(global_probe_kwargs)
+            probe_kwargs.update(_extract_probe_kwargs_from_config(probe_config))
+
             results = ProbeRunner(model, probe).run(
                 dataset,
                 progress_callback=local_progress if progress_callback else None,
@@ -4288,6 +4323,7 @@ def run_harness_from_config(
                 validation_mode=validation_mode,
                 emit_run_artifacts=False,
                 run_id=experiment_id,
+                **probe_kwargs,
             )
 
             experiment_config = {
@@ -4536,6 +4572,9 @@ async def run_experiment_from_config_async(
     probe = _create_probe_from_config(config["probe"])
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
 
+    probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
+    probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
+
     runner = AsyncProbeRunner(model, probe)
     return await runner.run(
         dataset,
@@ -4555,6 +4594,7 @@ async def run_experiment_from_config_async(
         use_probe_batch=use_probe_batch,
         batch_workers=batch_workers,
         return_experiment=return_experiment,
+        **probe_kwargs,
     )
 
 

@@ -72,6 +72,13 @@ pip install -e ".[visualization]"
 
 The harness also has a basic HTML fallback when optional visualization components aren’t present.
 
+## Ollama Connection / Auth Errors
+
+If `ollama` models fail to initialize or run:
+
+- Local: ensure the server is reachable (default `http://localhost:11434`)
+- Cloud: ensure `OLLAMA_API_KEY` is set and your `model.args.base_url` points at the right endpoint
+
 ## CI Failures (Lint / Types / Tests)
 
 Local mirrors of CI:

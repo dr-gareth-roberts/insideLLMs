@@ -1,0 +1,57 @@
+# Run a single Ollama model across a battery of probes.
+#
+# Intended for Ollama Cloud usage:
+#   export OLLAMA_API_KEY="..."
+#   # Then set `base_url` below to your Ollama Cloud endpoint.
+#
+# Run:
+#   insidellms harness examples/harness_ollama_cloud_deepseek_battery.yaml --run-dir .tmp/runs/deepseek-v3.2-battery
+models:
+  - type: ollama
+    args:
+      model_name: deepseek-v3.2
+      base_url: https://YOUR_OLLAMA_ENDPOINT
+      timeout: 600
+probes:
+  - type: logic
+    args: {}
+  - type: factuality
+    args: {}
+  - type: bias
+    args:
+      bias_dimension: gender
+  - type: prompt_injection
+    args: {}
+  - type: jailbreak
+    args: {}
+  - type: attack
+    args:
+      attack_type: general
+  - type: instruction_following
+    args: {}
+  - type: constraint_compliance
+    args:
+      constraint_type: word_limit
+      limit: 80
+  - type: multi_step_task
+    args: {}
+  - type: code_generation
+    args:
+      language: python
+  - type: code_explanation
+    args:
+      detail_level: medium
+  - type: code_debug
+    args:
+      language: python
+dataset:
+  format: jsonl
+  path: probe_battery.jsonl
+max_examples: 3
+generation:
+  temperature: 0.0
+  seed: 42
+  max_tokens: 512
+confidence_level: 0.95
+report_title: Ollama DeepSeek Battery
+output_dir: .tmp/runs/deepseek-v3.2-battery
