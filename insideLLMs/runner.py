@@ -190,6 +190,15 @@ This module exists solely for backward compatibility. New code should
 import directly from ``insideLLMs.runtime.runner``.
 """
 
+import warnings
+
+warnings.warn(
+    "insideLLMs.runner is deprecated. "
+    "Import from insideLLMs.runtime.runner instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from insideLLMs.runtime import runner as _runner
 
 # Re-export all public + private symbols to preserve legacy imports.
