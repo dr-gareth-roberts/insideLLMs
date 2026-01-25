@@ -661,7 +661,7 @@ class ToolResultsConfig:
     enabled: bool = True
     call_start_kind: str = "tool_call_start"
     call_result_kind: str = "tool_result"
-    call_id_key: str = "call_id"
+    call_id_key: str = "tool_call_id"
     require_exactly_one_result: bool = True
 
 
@@ -792,8 +792,8 @@ class ToolPayloadsConfig:
     """
 
     enabled: bool = True
-    tool_key: str = "tool"
-    args_key: str = "args"
+    tool_key: str = "tool_name"
+    args_key: str = "arguments"
     tools: dict[str, ToolPayloadSchemaConfig] = field(default_factory=dict)
 
 
@@ -2156,6 +2156,79 @@ def validate_with_config(
     tool_order_rules = compiled["tool_order_rules"]
     fail_fast = compiled["fail_fast"]
 
+    # Normalize events according to configurable kind/field mappings so the canonical
+    # validators (trace_contracts) can operate over heterogeneous trace sources.
+    gb_cfg = config.contracts.generate_boundaries
+    sb_cfg = config.contracts.stream_boundaries
+    tr_cfg = config.contracts.tool_results
+    tp_cfg = config.contracts.tool_payloads
+
+    kind_map = {
+        gb_cfg.start_kind: "generate_start",
+        gb_cfg.end_kind: "generate_end",
+        sb_cfg.start_kind: "stream_start",
+        sb_cfg.chunk_kind: "stream_chunk",
+        sb_cfg.end_kind: "stream_end",
+        tr_cfg.call_start_kind: "tool_call_start",
+        tr_cfg.call_result_kind: "tool_result",
+    }
+
+    normalized_events: list[dict[str, Any]] = []
+    for event in events:
+        if isinstance(event, dict):
+            e_dict: dict[str, Any] = dict(event)
+        else:
+            # TraceEvent has to_dict(); fall back to common attribute names.
+            to_dict = getattr(event, "to_dict", None)
+            if callable(to_dict):
+                e_dict = to_dict()
+            else:
+                e_dict = {
+                    "seq": getattr(event, "seq", 0),
+                    "kind": getattr(event, "kind", ""),
+                    "payload": getattr(event, "payload", {}),
+                }
+
+        kind = e_dict.get("kind", "")
+        e_dict["kind"] = kind_map.get(kind, kind)
+
+        payload = e_dict.get("payload") or {}
+        if not isinstance(payload, dict):
+            payload = {"value": payload}
+        kind = e_dict["kind"]
+
+        if kind in {"tool_call_start", "tool_result"}:
+            tool_name = payload.get("tool_name")
+            if tool_name is None and tp_cfg.tool_key:
+                tool_name = payload.get(tp_cfg.tool_key)
+            if tool_name is not None:
+                payload["tool_name"] = tool_name
+
+            call_id = payload.get("tool_call_id")
+            if call_id is None and tr_cfg.call_id_key:
+                call_id = payload.get(tr_cfg.call_id_key)
+            if call_id is not None:
+                payload["tool_call_id"] = call_id
+
+            if kind == "tool_call_start":
+                args = payload.get("arguments")
+                if args is None and tp_cfg.args_key:
+                    args = payload.get(tp_cfg.args_key)
+                if args is not None:
+                    payload["arguments"] = args
+
+        if kind == "stream_chunk":
+            chunk_index = payload.get("chunk_index")
+            if chunk_index is None and sb_cfg.chunk_index_key:
+                chunk_index = payload.get(sb_cfg.chunk_index_key)
+            if isinstance(chunk_index, int) and sb_cfg.first_chunk_index:
+                chunk_index = chunk_index - sb_cfg.first_chunk_index
+            if chunk_index is not None:
+                payload["chunk_index"] = chunk_index
+
+        e_dict["payload"] = payload
+        normalized_events.append(e_dict)
+
     all_violations: list[Violation] = []
 
     def _check_fail_fast() -> bool:
@@ -2163,27 +2236,41 @@ def validate_with_config(
         return fail_fast and len(all_violations) > 0
 
     if toggles.get("generate_boundaries", True):
-        all_violations.extend(validate_generate_boundaries(events))
+        all_violations.extend(validate_generate_boundaries(normalized_events))
         if _check_fail_fast():
             return all_violations
 
     if toggles.get("stream_boundaries", True):
-        all_violations.extend(validate_stream_boundaries(events))
+        stream_violations = validate_stream_boundaries(normalized_events)
+        if not sb_cfg.require_end:
+            stream_violations = [
+                v for v in stream_violations if v.code != "STREAM_NO_END"
+            ]
+        if not sb_cfg.require_monotonic_chunks:
+            stream_violations = [
+                v for v in stream_violations if v.code != "STREAM_CHUNK_INDEX_MISMATCH"
+            ]
+        all_violations.extend(stream_violations)
         if _check_fail_fast():
             return all_violations
 
     if toggles.get("tool_results", True):
-        all_violations.extend(validate_tool_results(events))
+        tool_result_violations = validate_tool_results(normalized_events)
+        if not tr_cfg.require_exactly_one_result:
+            tool_result_violations = [
+                v for v in tool_result_violations if v.code != "TOOL_NO_RESULT"
+            ]
+        all_violations.extend(tool_result_violations)
         if _check_fail_fast():
             return all_violations
 
     if toggles.get("tool_payloads", True) and tool_schemas:
-        all_violations.extend(validate_tool_payloads(events, tool_schemas))
+        all_violations.extend(validate_tool_payloads(normalized_events, tool_schemas))
         if _check_fail_fast():
             return all_violations
 
     if toggles.get("tool_order", True) and tool_order_rules:
-        all_violations.extend(validate_tool_order(events, tool_order_rules))
+        all_violations.extend(validate_tool_order(normalized_events, tool_order_rules))
 
     # Sort by event sequence for stable output
     all_violations.sort(key=lambda v: v.event_seq)
