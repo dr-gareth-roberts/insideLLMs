@@ -1,6 +1,7 @@
 """Tests for data export and serialization utilities."""
 
 import json
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -653,6 +654,49 @@ class TestCreateExportBundle:
 
         assert result.suffix == ".zip"
         assert result.exists()
+
+    def test_create_bundle_from_generator_exports_all_formats(self, tmp_path):
+        """Generators should only be consumed once when exporting multiple formats."""
+        data = ({"id": i} for i in range(3))
+
+        bundle_dir = create_export_bundle(
+            data,
+            tmp_path,
+            "gen_bundle",
+            formats=[ExportFormat.JSON, ExportFormat.CSV, ExportFormat.JSONL],
+            compress=False,
+        )
+
+        json_payload = json.loads((bundle_dir / "gen_bundle.json").read_text(encoding="utf-8"))
+        assert len(json_payload) == 3
+
+        csv_lines = (bundle_dir / "gen_bundle.csv").read_text(encoding="utf-8").splitlines()
+        assert len(csv_lines) == 4  # header + 3 rows
+
+        jsonl_lines = (bundle_dir / "gen_bundle.jsonl").read_text(encoding="utf-8").splitlines()
+        assert len(jsonl_lines) == 3
+
+        metadata = json.loads((bundle_dir / "metadata.json").read_text(encoding="utf-8"))
+        assert metadata["record_count"] == 3
+
+    def test_create_compressed_bundle_has_deterministic_metadata_and_timestamps(self, tmp_path):
+        """Export bundles should be stable by default (no wall-clock timestamps)."""
+        data = [{"name": "test", "value": 42}]
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        archive_path = create_export_bundle(
+            data,
+            out_dir,
+            "det_bundle",
+            compress=True,
+        )
+
+        with zipfile.ZipFile(archive_path) as zf:
+            for info in zf.infolist():
+                assert info.date_time == (1980, 1, 1, 0, 0, 0)
+            meta = json.loads(zf.read("metadata.json").decode("utf-8"))
+            assert meta["export_time"] == "1970-01-01T00:00:00"
 
 
 class TestEdgeCases:

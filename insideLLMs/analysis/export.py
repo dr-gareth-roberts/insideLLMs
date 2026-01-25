@@ -1121,6 +1121,10 @@ class Exporter(ABC):
         if isinstance(data, dict):
             return [serialize_record(data, self.config)]
 
+        if isinstance(data, (str, bytes, bytearray)):
+            # Strings/bytes are iterable but should be treated as scalar values for export.
+            return [serialize_record(data, self.config)]
+
         if isinstance(data, (list, tuple)):
             return [serialize_record(item, self.config) for item in data]
 
@@ -1919,7 +1923,11 @@ class DataArchiver:
         self.compression = compression
 
     def compress_file(
-        self, input_path: Union[str, Path], output_path: Optional[Union[str, Path]] = None
+        self,
+        input_path: Union[str, Path],
+        output_path: Optional[Union[str, Path]] = None,
+        *,
+        deterministic: bool = True,
     ) -> Path:
         """Compress a single file.
 
@@ -1943,12 +1951,17 @@ class DataArchiver:
             output_path = Path(output_path)
 
         if self.compression == CompressionType.GZIP:
-            with open(input_path, "rb") as f_in, gzip.open(output_path, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+            with open(input_path, "rb") as f_in, open(output_path, "wb") as raw_out:
+                with gzip.GzipFile(
+                    filename=input_path.name,
+                    mode="wb",
+                    fileobj=raw_out,
+                    mtime=0 if deterministic else None,
+                ) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
         elif self.compression == CompressionType.ZIP:
-            with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.write(input_path, input_path.name)
+            self.create_archive([input_path], output_path, deterministic=deterministic)
 
         elif self.compression == CompressionType.BZIP2:
             import bz2
@@ -1963,6 +1976,8 @@ class DataArchiver:
         files: list[Union[str, Path]],
         output_path: Union[str, Path],
         base_path: Optional[Union[str, Path]] = None,
+        *,
+        deterministic: bool = True,
     ) -> Path:
         """Create archive from multiple files.
 
@@ -1975,13 +1990,28 @@ class DataArchiver:
             Path to archive.
         """
         output_path = Path(output_path)
+        base_path_path = Path(base_path) if base_path else None
 
         if self.compression == CompressionType.ZIP:
             with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                entries: list[tuple[str, Path]] = []
                 for file_path in files:
-                    file_path = Path(file_path)
-                    arcname = file_path.relative_to(base_path) if base_path else file_path.name
-                    zf.write(file_path, arcname)
+                    path = Path(file_path)
+                    arcname_path = (
+                        path.relative_to(base_path_path) if base_path_path is not None else Path(path.name)
+                    )
+                    entries.append((arcname_path.as_posix(), path))
+
+                for arcname, path in sorted(entries, key=lambda item: item[0]):
+                    if deterministic:
+                        info = zipfile.ZipInfo(arcname)
+                        info.date_time = (1980, 1, 1, 0, 0, 0)
+                        info.compress_type = zipfile.ZIP_DEFLATED
+                        info.create_system = 3  # Unix
+                        info.external_attr = 0o644 << 16
+                        zf.writestr(info, path.read_bytes())
+                    else:
+                        zf.write(path, arcname)
         else:
             raise ValueError(f"Multi-file archive only supports ZIP, not {self.compression}")
 
@@ -2413,6 +2443,8 @@ def create_export_bundle(
     include_schema: bool = True,
     compress: bool = True,
     *,
+    deterministic: bool = True,
+    export_time: Optional[str] = None,
     validate_output: bool = False,
     validate_schema_name: Optional[str] = None,
     schema_version: str = DEFAULT_SCHEMA_VERSION,
@@ -2440,6 +2472,12 @@ def create_export_bundle(
 
     files = []
 
+    # Materialize/normalize once so generators/iterators can be exported to multiple formats safely.
+    prepared = JSONExporter(config)._prepare_data(data)
+    export_time_value = export_time
+    if export_time_value is None:
+        export_time_value = "1970-01-01T00:00:00" if deterministic else datetime.now().isoformat()
+
     # Export in each format
     for fmt in formats:
         ext = {
@@ -2452,12 +2490,15 @@ def create_export_bundle(
 
         file_path = bundle_dir / f"{name}{ext}"
         exporter = get_exporter(fmt, config)
-        exporter.export(data, file_path)
+        if fmt == ExportFormat.JSON and isinstance(data, dict) and prepared:
+            exporter.export(prepared[0], file_path)
+        else:
+            exporter.export(prepared, file_path)
         files.append(file_path)
 
     # Add metadata
-    prepared = JSONExporter(config)._prepare_data(data)
     metadata = ExportMetadata(
+        export_time=export_time_value,
         record_count=len(prepared),
         format=",".join(f.value for f in formats),
         schema_version=schema_version,
@@ -2496,7 +2537,7 @@ def create_export_bundle(
                         mode=validation_mode,  # type: ignore[arg-type]
                     )
 
-        json.dump(meta_dict, f, indent=2)
+        json.dump(meta_dict, f, indent=2, sort_keys=True)
     files.append(metadata_path)
 
     # Add schema if requested
@@ -2509,7 +2550,7 @@ def create_export_bundle(
             schema = registry.get_json_schema(validate_schema_name, schema_version)
             schema_path = bundle_dir / "schema.json"
             with open(schema_path, "w") as f:
-                json.dump(schema, f, indent=2)
+                json.dump(schema, f, indent=2, sort_keys=True)
             files.append(schema_path)
         else:
             schema_fields = []
@@ -2537,14 +2578,14 @@ def create_export_bundle(
             )
             schema_path = bundle_dir / "schema.json"
             with open(schema_path, "w") as f:
-                json.dump(schema.to_dict(), f, indent=2)
+                json.dump(schema.to_dict(), f, indent=2, sort_keys=True)
             files.append(schema_path)
 
     # Compress if requested
     if compress:
         archiver = DataArchiver(CompressionType.ZIP)
         archive_path = output_dir / f"{name}.zip"
-        archiver.create_archive(files, archive_path, bundle_dir)
+        archiver.create_archive(files, archive_path, bundle_dir, deterministic=deterministic)
         shutil.rmtree(bundle_dir)
         return archive_path
 
