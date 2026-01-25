@@ -1685,7 +1685,7 @@ class StrategyCache:
             while len(self._entries) >= self.config.max_size:
                 self._evict_one()
 
-            ttl = ttl_seconds or self.config.ttl_seconds
+            ttl = ttl_seconds if ttl_seconds is not None else self.config.ttl_seconds
             expires_at = None
             if ttl:
                 expires_at = datetime.now() + timedelta(seconds=ttl)
@@ -2804,6 +2804,7 @@ class ResponseDeduplicator:
     def __init__(self, similarity_threshold: float = 1.0):
         self.similarity_threshold = similarity_threshold
         self._responses: list[tuple[str, str, Any]] = []
+        self._duplicate_count = 0
 
     def add(
         self,
@@ -2814,6 +2815,7 @@ class ResponseDeduplicator:
         """Add response, returning whether it's a duplicate."""
         for i, (_, existing_response, _) in enumerate(self._responses):
             if self._is_duplicate(response, existing_response):
+                self._duplicate_count += 1
                 return True, i
 
         self._responses.append((prompt, response, metadata))
@@ -2842,11 +2844,12 @@ class ResponseDeduplicator:
 
     def get_duplicate_count(self) -> int:
         """Get count of duplicates found."""
-        return 0
+        return self._duplicate_count
 
     def clear(self):
         """Clear stored responses."""
         self._responses.clear()
+        self._duplicate_count = 0
 
 
 # =============================================================================
