@@ -98,6 +98,9 @@ insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 - [Plugins](docs/PLUGINS.md)
 - [Determinism](docs/DETERMINISM.md)
 - [Stability & Versioning](docs/STABILITY.md)
+- [Experiment Tracking](wiki/Experiment-Tracking.md)
+- [Performance & Caching](wiki/Performance-and-Caching.md)
+- [Tracing & Fingerprinting](wiki/Tracing-and-Fingerprinting.md)
 
 ## Licence
 

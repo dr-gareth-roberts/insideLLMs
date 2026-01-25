@@ -96,6 +96,27 @@ flowchart LR
 
 ---
 
+### [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
+**Experiment tracking backends** for logging metrics/params/artifacts (local, W&B, MLflow, TensorBoard).
+
+**Best for:** Logging runs to dashboards, correlating metadata outside deterministic artifacts
+
+---
+
+### [wiki/Performance-and-Caching.md](wiki/Performance-and-Caching.md)
+**Performance knobs and caching overview** (async, concurrency, rate limiting, cache layers).
+
+**Best for:** Speeding up runs, reducing cost, understanding caching tradeoffs
+
+---
+
+### [wiki/Tracing-and-Fingerprinting.md](wiki/Tracing-and-Fingerprinting.md)
+**Trace-aware diffing and fingerprinting** for CI gating and drift detection.
+
+**Best for:** Understanding `insidellms diff` trace flags and structured-output fingerprints
+
+---
+
 ## Quick Navigation
 
 ### I want to...
@@ -123,6 +144,15 @@ flowchart LR
 
 #### **Run a cross-model behavioural harness**
 → [README.md](README.md#behavioural-harness), [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+
+#### **Track runs in W&B / MLflow / TensorBoard**
+→ [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
+
+#### **Speed up runs with caching / concurrency**
+→ [wiki/Performance-and-Caching.md](wiki/Performance-and-Caching.md)
+
+#### **Use trace-aware diffing**
+→ [wiki/Tracing-and-Fingerprinting.md](wiki/Tracing-and-Fingerprinting.md)
 
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
