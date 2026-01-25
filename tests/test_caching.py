@@ -307,6 +307,17 @@ class TestBaseCache:
         result = cache.get("key1")
         assert not result.hit
 
+    def test_cache_ttl_override_zero_disables_expiration(self):
+        config = CacheConfig(ttl_seconds=1)
+        cache = BaseCache(config)
+        cache.set("key1", "value1", ttl_seconds=0)
+
+        time.sleep(1.1)
+
+        result = cache.get("key1")
+        assert result.hit
+        assert result.value == "value1"
+
     def test_cache_lru_eviction(self):
         config = CacheConfig(max_size=3, strategy=CacheStrategy.LRU)
         cache = BaseCache(config)
@@ -691,6 +702,17 @@ class TestResponseDeduplicator:
         dedup.clear()
 
         assert len(dedup.get_unique_responses()) == 0
+
+    def test_duplicate_count(self):
+        dedup = ResponseDeduplicator()
+        dedup.add("p1", "r1")
+        dedup.add("p2", "r1")
+        dedup.add("p3", "r1")
+
+        assert dedup.get_duplicate_count() == 2
+
+        dedup.clear()
+        assert dedup.get_duplicate_count() == 0
 
 
 class TestAsyncCacheAdapter:
