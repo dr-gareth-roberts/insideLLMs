@@ -18,6 +18,7 @@ diffs.
 - [Performance and Caching](Performance-and-Caching)
 - [Tracing and Fingerprinting](Tracing-and-Fingerprinting)
 - [Determinism and CI](Determinism-and-CI)
+- [LangChain and LangGraph](LangChain-and-LangGraph)
 - [Examples](Examples)
 - [Development](Development)
 - [Troubleshooting](Troubleshooting)
