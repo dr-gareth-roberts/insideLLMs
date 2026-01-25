@@ -8,14 +8,7 @@ All models share a single interface (`generate`, `chat`, `stream`). You can use:
 - Local runners (Ollama, llama.cpp, vLLM)
 - DummyModel for offline testing
 
-### Provider Configuration (Hosted)
-
-Set the provider keys in your environment:
-
-- OpenAI: `OPENAI_API_KEY`
-- Anthropic: `ANTHROPIC_API_KEY`
-- Google/Gemini: `GOOGLE_API_KEY`
-- Cohere: `CO_API_KEY` or `COHERE_API_KEY`
+For provider setup (API keys, local runners), see [Providers and Models](Providers-and-Models).
 
 Example:
 
@@ -72,9 +65,10 @@ class MyModel(Model):
 class MyProbe(Probe[str]):
     def run(self, model, data, **kwargs) -> str:
         return model.generate(str(data))
+```
 
 ## See Also
 
+- [Providers and Models](Providers-and-Models)
 - [Configuration](Configuration)
 - [Examples](Examples)
-```

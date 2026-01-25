@@ -10,7 +10,9 @@ diffs.
 - [Harness](Harness)
 - [CLI](CLI)
 - [Configuration](Configuration)
+- [Providers and Models](Providers-and-Models)
 - [Probes and Models](Probes-and-Models)
+- [Datasets and Harness](Datasets-and-Harness)
 - [Results and Reports](Results-and-Reports)
 - [Experiment Tracking](Experiment-Tracking)
 - [Performance and Caching](Performance-and-Caching)
@@ -18,6 +20,7 @@ diffs.
 - [Determinism and CI](Determinism-and-CI)
 - [Examples](Examples)
 - [Development](Development)
+- [Troubleshooting](Troubleshooting)
 - [FAQ](FAQ)
 
 ## Core Concepts
