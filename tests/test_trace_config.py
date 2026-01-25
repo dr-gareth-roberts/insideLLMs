@@ -413,6 +413,57 @@ class TestValidateWithConfig:
         # Should find all violations
         assert len(violations) >= 3
 
+    def test_respects_custom_event_kinds_and_payload_keys(self):
+        """validate_with_config should honor TraceConfig kind/key mappings."""
+        config = load_trace_config(
+            {
+                "contracts": {
+                    "generate_boundaries": {
+                        "start_kind": "completion_start",
+                        "end_kind": "completion_end",
+                    },
+                    "stream_boundaries": {
+                        "start_kind": "sse_open",
+                        "chunk_kind": "sse_message",
+                        "end_kind": "sse_close",
+                        "chunk_index_key": "message_index",
+                        "first_chunk_index": 1,
+                    },
+                    "tool_results": {
+                        "call_start_kind": "function_invoke",
+                        "call_result_kind": "function_return",
+                    },
+                    "tool_payloads": {
+                        "tool_key": "tool",
+                        "args_key": "args",
+                        "tools": {
+                            "search": {
+                                "args_schema": {
+                                    "type": "object",
+                                    "properties": {"query": {"type": "string"}},
+                                    "required": ["query"],
+                                }
+                            }
+                        },
+                    },
+                }
+            }
+        )
+        events = [
+            TraceEvent(seq=0, kind="completion_start", payload={"prompt": "hi"}),
+            TraceEvent(seq=1, kind="completion_end", payload={"response": "ok"}),
+            TraceEvent(seq=2, kind="sse_open", payload={"prompt": "x"}),
+            TraceEvent(seq=3, kind="sse_message", payload={"chunk": "a", "message_index": 1}),
+            TraceEvent(seq=4, kind="sse_message", payload={"chunk": "b", "message_index": 2}),
+            TraceEvent(seq=5, kind="sse_close", payload={}),
+            # Tool call uses custom kind + custom payload key names, and is missing required arg + result.
+            TraceEvent(seq=6, kind="function_invoke", payload={"tool": "search", "args": {}}),
+        ]
+        violations = validate_with_config(events, config)
+        codes = {v.code for v in violations}
+        assert ViolationCode.TOOL_MISSING_REQUIRED_ARG.value in codes
+        assert ViolationCode.TOOL_NO_RESULT.value in codes
+
 
 class TestEnhancedNormaliser:
     """Tests for enhanced TracePayloadNormaliser features."""

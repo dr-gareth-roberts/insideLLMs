@@ -1,6 +1,8 @@
 """Tests for insideLLMs.tracing module."""
 
 import importlib.util
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -343,6 +345,15 @@ class TestTraceRecorder:
         assert events1 is not events2
         assert events1 == events2
 
+    def test_record_copies_payload(self):
+        """Recorded payloads should not be affected by later caller mutations."""
+        recorder = TraceRecorder()
+        payload = {"nested": {"x": 1}}
+        event = recorder.record("custom", payload)
+        payload["nested"]["x"] = 999
+
+        assert event.payload["nested"]["x"] == 1
+
 
 class TestTraceFingerprint:
     """Tests for trace_fingerprint function."""
@@ -415,6 +426,18 @@ class TestTraceFingerprint:
     def test_empty_events(self):
         """Test fingerprint of empty events list."""
         fp = trace_fingerprint([])
+        assert fp.startswith("sha256:")
+
+    def test_handles_non_json_types(self):
+        """trace_fingerprint should tolerate common non-JSON payload types."""
+        events = [
+            TraceEvent(
+                seq=0,
+                kind=TraceEventKind.GENERATE_START.value,
+                payload={"when": datetime(2026, 1, 25, tzinfo=timezone.utc), "path": Path("/tmp/x")},
+            )
+        ]
+        fp = trace_fingerprint(events)
         assert fp.startswith("sha256:")
 
 

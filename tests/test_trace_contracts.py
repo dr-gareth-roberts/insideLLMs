@@ -235,6 +235,25 @@ class TestValidateToolPayloads:
         assert len(violations) == 1
         assert violations[0].code == ViolationCode.INVALID_PAYLOAD.value
 
+    def test_non_dict_arguments_is_invalid_payload(self):
+        """Tool arguments must be a dict (avoid TypeError crashes)."""
+        schemas = {"search": ToolSchema(name="search", required_args=["query"])}
+        events = [
+            TraceEvent(
+                seq=0,
+                kind="tool_call_start",
+                payload={"tool_name": "search", "arguments": None},
+            ),
+            TraceEvent(
+                seq=1,
+                kind="tool_call_start",
+                payload={"tool_name": "search", "arguments": "not-a-dict"},
+            ),
+        ]
+        violations = validate_tool_payloads(events, schemas)
+        assert len(violations) == 2
+        assert all(v.code == ViolationCode.INVALID_PAYLOAD.value for v in violations)
+
 
 class TestValidateToolOrder:
     """Tests for validate_tool_order function."""
@@ -250,6 +269,18 @@ class TestValidateToolOrder:
             name="test_rules",
             must_precede={"search": ["summarize"]},  # search must come before summarize
         )
+        violations = validate_tool_order(events, ruleset)
+        assert len(violations) == 0
+
+    def test_must_precede_allows_interleaving(self):
+        """must_precede means each 'after' needs a prior 'before' (A B A B is OK)."""
+        events = [
+            TraceEvent(seq=0, kind="tool_call_start", payload={"tool_name": "search"}),
+            TraceEvent(seq=1, kind="tool_call_start", payload={"tool_name": "summarize"}),
+            TraceEvent(seq=2, kind="tool_call_start", payload={"tool_name": "search"}),
+            TraceEvent(seq=3, kind="tool_call_start", payload={"tool_name": "summarize"}),
+        ]
+        ruleset = ToolOrderRule(name="test_rules", must_precede={"search": ["summarize"]})
         violations = validate_tool_order(events, ruleset)
         assert len(violations) == 0
 
@@ -479,6 +510,8 @@ class TestViolationsToCustomField:
         assert len(result) == 2
         assert result[0]["code"] == "ERROR_1"
         assert result[1]["code"] == "ERROR_2"
+        assert result[0]["message"] == "First error"
+        assert isinstance(result[0]["meta"], dict)
 
     def test_empty_list(self):
         """Test conversion of empty list."""

@@ -146,6 +146,7 @@ insideLLMs.tracing : Backwards-compatible import path.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import threading
@@ -153,6 +154,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Mapping, Optional
 
+from insideLLMs._serialization import serialize_value, stable_json_dumps
 
 class TraceEventKind(str, Enum):
     """Standard trace event kinds for common LLM operations.
@@ -917,11 +919,22 @@ class TraceRecorder:
         if isinstance(kind, TraceEventKind):
             kind = kind.value
 
+        # Defensive copy: callers may reuse/mutate payload dictionaries after recording.
+        if payload is None:
+            payload_snapshot: dict[str, Any] = {}
+        else:
+            try:
+                payload_snapshot = copy.deepcopy(payload)
+            except Exception:
+                # Fall back to a JSON-safe snapshot to avoid mutability leaks.
+                normalized = serialize_value(payload)
+                payload_snapshot = normalized if isinstance(normalized, dict) else {"value": normalized}
+
         with self._lock:
             event = TraceEvent(
                 seq=self._seq_counter,
                 kind=kind,
-                payload=payload or {},
+                payload=payload_snapshot,
                 run_id=self._run_id,
                 example_id=self._example_id,
             )
@@ -1858,8 +1871,8 @@ def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
     # Sort events by sequence to ensure deterministic ordering
     sorted_events = sorted(event_dicts, key=lambda e: e.get("seq", 0))
 
-    # Canonical JSON serialization (sorted keys, no extra whitespace)
-    canonical = json.dumps(sorted_events, sort_keys=True, separators=(",", ":"))
+    # Canonical JSON serialization (stable key ordering + JSON-safe normalization).
+    canonical = stable_json_dumps(sorted_events)
 
     # Compute hash
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()

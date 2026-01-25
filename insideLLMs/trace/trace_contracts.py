@@ -1104,6 +1104,20 @@ def validate_tool_payloads(
         tool_name = event.payload.get("tool_name")
         arguments = event.payload.get("arguments", {})
 
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            violations.append(
+                Violation(
+                    code=ViolationCode.INVALID_PAYLOAD.value,
+                    event_seq=event.seq,
+                    detail=f"tool_call_start arguments must be a dict, got {type(arguments).__name__}",
+                    event_kind=event.kind,
+                    context={"tool_name": tool_name, "arguments_type": type(arguments).__name__},
+                )
+            )
+            continue
+
         if not tool_name:
             violations.append(
                 Violation(
@@ -1301,27 +1315,27 @@ def validate_tool_order(
         tool_indices = [i for i, t in enumerate(tool_sequence) if t == tool]
         for after_tool in must_come_after:
             after_indices = [i for i, t in enumerate(tool_sequence) if t == after_tool]
-            for ti in tool_indices:
-                for ai in after_indices:
-                    if ti >= ai:
-                        # tool should come before after_tool, but it doesn't
-                        seq = tool_calls[ti][0]
-                        violations.append(
-                            Violation(
-                                code=ViolationCode.TOOL_ORDER_VIOLATION.value,
-                                event_seq=seq,
-                                detail=f"'{tool}' must precede '{after_tool}' but "
-                                f"appeared at position {ti} vs {ai}",
-                                event_kind=TraceEventKind.TOOL_CALL_START.value,
-                                context={
-                                    "rule_name": ruleset.name,
-                                    "tool": tool,
-                                    "must_precede": after_tool,
-                                    "tool_position": ti,
-                                    "after_position": ai,
-                                },
-                            )
+            for ai in after_indices:
+                # For each occurrence of after_tool, require at least one tool occurrence before it.
+                has_required_predecessor = any(ti < ai for ti in tool_indices)
+                if not has_required_predecessor:
+                    seq = tool_calls[ai][0]
+                    violations.append(
+                        Violation(
+                            code=ViolationCode.TOOL_ORDER_VIOLATION.value,
+                            event_seq=seq,
+                            detail=f"'{tool}' must precede '{after_tool}' but no '{tool}' appeared "
+                            f"before position {ai}",
+                            event_kind=TraceEventKind.TOOL_CALL_START.value,
+                            context={
+                                "rule_name": ruleset.name,
+                                "tool": tool,
+                                "must_precede": after_tool,
+                                "after_position": ai,
+                                "tool_positions": tool_indices,
+                            },
                         )
+                    )
 
     # Check must_follow constraints
     for tool, must_come_before in ruleset.must_follow.items():
@@ -1958,7 +1972,20 @@ def violations_to_custom_field(violations: list[Violation]) -> list[dict[str, An
     Violation.to_dict : Underlying conversion method
     validate_all : Produces violations for conversion
     """
-    return [v.to_dict() for v in violations]
+    out: list[dict[str, Any]] = []
+    for v in violations:
+        meta = dict(v.context or {})
+        if v.event_kind:
+            meta["event_kind"] = v.event_kind
+        out.append(
+            {
+                "code": v.code,
+                "message": v.detail,
+                "event_seq": v.event_seq,
+                "meta": meta,
+            }
+        )
+    return out
 
 
 # --- Helper Functions ---
