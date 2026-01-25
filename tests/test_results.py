@@ -231,6 +231,18 @@ class TestExperimentToHTML:
         assert "TestModel" in html
         assert "90.0%" in html  # Accuracy
 
+    def test_escapes_html_content(self):
+        """Model/user content should not be interpreted as HTML in reports."""
+        exp = self._create_experiment()
+        exp.results[0].input = "<script>alert(1)</script>"
+        exp.results[0].output = "<b>hi</b>"
+        html = experiment_to_html(exp)
+
+        assert "<script>" not in html
+        assert "<b>" not in html
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+        assert "&lt;b&gt;hi&lt;/b&gt;" in html
+
 
 class TestComparisonToMarkdown:
     """Tests for comparison_to_markdown function."""
