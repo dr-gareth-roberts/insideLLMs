@@ -30,6 +30,9 @@ jobs:
       - name: Ruff format
         run: ruff format --check .
 
+      - name: Wiki link check
+        run: python scripts/check_wiki_links.py
+
       - name: Mypy
         run: |
           pip install -e .[nlp]
