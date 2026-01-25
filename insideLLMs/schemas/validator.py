@@ -213,6 +213,7 @@ import warnings
 from dataclasses import asdict, is_dataclass
 from typing import Any, Literal, Optional
 
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.schemas.exceptions import OutputValidationError
 from insideLLMs.schemas.registry import SchemaRegistry, normalize_semver
 
@@ -578,7 +579,7 @@ class OutputValidator:
         schema_name: str,
         data: Any,
         *,
-        schema_version: str = "1.0.0",
+        schema_version: str = DEFAULT_SCHEMA_VERSION,
         mode: ValidationMode = "strict",
     ) -> Any:
         """Validate data against a versioned schema and return the parsed model.
@@ -617,7 +618,8 @@ class OutputValidator:
                 - Any object that can be converted to the schema format
 
             schema_version: The semantic version of the schema to validate against.
-                Defaults to ``"1.0.0"``. Short-form versions (e.g., ``"1.0"``) are
+                Defaults to :data:`~insideLLMs.schemas.constants.DEFAULT_SCHEMA_VERSION`. Short-form
+                versions (e.g., ``"1.0"``) are
                 automatically normalized to full SemVer format (e.g., ``"1.0.0"``).
                 Available versions can be queried via
                 :meth:`~insideLLMs.schemas.registry.SchemaRegistry.available_versions`.
