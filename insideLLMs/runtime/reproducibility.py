@@ -1007,7 +1007,7 @@ class SeedManager:
 class EnvironmentCapture:
     """Capture and compare environment state."""
 
-    def __init__(self, capture_env_vars: bool = True, env_var_prefix: Optional[str] = None):
+    def __init__(self, capture_env_vars: bool = False, env_var_prefix: Optional[str] = None):
         """Initialize environment capture.
 
         Args:
