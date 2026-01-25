@@ -123,19 +123,23 @@ def test_cache_middleware_lru_eviction():
     pipeline = ModelPipeline(model, middlewares=[cache])
 
     # Fill cache
+    pipeline.generate("prompt1")  # miss
+    pipeline.generate("prompt2")  # miss
+
+    # Touch prompt1 so prompt2 becomes least-recently-used.
+    pipeline.generate("prompt1")  # hit
+
+    # Add third item - should evict LRU (prompt2)
+    pipeline.generate("prompt3")
+
+    # prompt1 should still be cached (it was most recently used)
     pipeline.generate("prompt1")
+
+    # prompt2 should be evicted (LRU)
     pipeline.generate("prompt2")
+    assert cache.hits == 2
+    assert cache.misses == 4  # prompt1, prompt2, prompt3, prompt2 (evicted)
 
-    # Add third item - should evict oldest (prompt1)
-    pipeline.generate("prompt3")
-
-    # Access prompt1 again - should be cache miss (was evicted)
-    pipeline.generate("prompt1")
-    assert cache.misses == 4  # All original + evicted prompt1
-
-    # Access prompt3 - should still be cached (most recent)
-    pipeline.generate("prompt3")
-    assert cache.hits == 1
 
 
 def test_cache_hit_rate():
