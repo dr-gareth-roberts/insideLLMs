@@ -1581,6 +1581,35 @@ class TestWriteJsonl:
             assert json.loads(lines[1]) == {"id": 2, "name": "test2"}
 
 
+class TestCmdCompareJson:
+    """Ensure compare JSON output is pipe-friendly."""
+
+    def test_compare_json_stdout_is_clean(self, capsys):
+        from insideLLMs.cli import main
+
+        rc = main(["compare", "--models", "dummy", "--input", "Hello", "--format", "json"])
+        assert rc == 0
+
+        captured = capsys.readouterr()
+        payload = json.loads(captured.out)
+
+        assert isinstance(payload, list)
+        assert payload[0]["input"] == "Hello"
+        assert payload[0]["models"][0]["model"] == "dummy"
+
+    def test_compare_json_quiet_suppresses_status_output(self, capsys):
+        from insideLLMs.cli import main
+
+        rc = main(
+            ["compare", "--models", "dummy", "--input", "Hello", "--format", "json", "--quiet"]
+        )
+        assert rc == 0
+
+        captured = capsys.readouterr()
+        json.loads(captured.out)
+        assert captured.err == ""
+
+
 class TestSpinnerMethods:
     """Test additional Spinner methods."""
 
