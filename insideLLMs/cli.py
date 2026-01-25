@@ -2736,6 +2736,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     try:
         start_time = time.time()
+        tracker = None
 
         # Resolve deterministic run artifact location (used for both runner and UX hints)
         env_run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
@@ -2760,6 +2761,40 @@ def cmd_run(args: argparse.Namespace) -> int:
             if args.run_dir
             else (effective_run_root / resolved_run_id)
         )
+
+        if args.track:
+            try:
+                from insideLLMs.experiment_tracking import TrackingConfig, create_tracker
+
+                tracking_root = effective_run_dir.parent / "tracking"
+
+                tracker_kwargs: dict[str, Any] = {}
+                if args.track == "local":
+                    tracker_kwargs["output_dir"] = str(tracking_root)
+                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
+                elif args.track == "wandb":
+                    tracker_kwargs["project"] = args.track_project
+                elif args.track == "mlflow":
+                    tracker_kwargs["experiment_name"] = args.track_project
+                elif args.track == "tensorboard":
+                    tracker_kwargs["log_dir"] = str(
+                        tracking_root / "tensorboard" / args.track_project
+                    )
+                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
+
+                tracker = create_tracker(args.track, **tracker_kwargs)
+                tracker.start_run(run_name=resolved_run_id, run_id=resolved_run_id)
+                tracker.log_params(
+                    {
+                        "run_id": resolved_run_id,
+                        "run_dir": str(effective_run_dir),
+                        "config_path": str(config_path),
+                        "schema_version": args.schema_version,
+                    }
+                )
+            except Exception as e:
+                print_warning(f"Tracking disabled: {e}")
+                tracker = None
 
         if args.use_async:
             print_info(f"Using async execution with concurrency={args.concurrency}")
@@ -2877,6 +2912,52 @@ def cmd_run(args: argparse.Namespace) -> int:
             if len(raw_results) > 5:
                 print(colorize(f"  ... and {len(raw_results) - 5} more", Colors.DIM))
 
+        if tracker is not None:
+            try:
+                if experiment_result is not None:
+                    tracker.log_experiment_result(experiment_result)
+
+                metrics: dict[str, float] = {
+                    "wall_time_seconds": float(elapsed),
+                    "total_count": float(total),
+                    "success_count": float(success_count),
+                    "error_count": float(error_count),
+                }
+
+                latency_values = [
+                    float(latency_ms)
+                    for latency_ms in (
+                        r.get("latency_ms") for r in raw_results if r.get("status") == "success"
+                    )
+                    if isinstance(latency_ms, (int, float))
+                ]
+                if latency_values:
+                    metrics["avg_latency_ms"] = float(sum(latency_values) / len(latency_values))
+                    metrics["min_latency_ms"] = float(min(latency_values))
+                    metrics["max_latency_ms"] = float(max(latency_values))
+
+                tracker.log_metrics(metrics)
+
+                for artifact in (
+                    effective_run_dir / "manifest.json",
+                    effective_run_dir / "records.jsonl",
+                    effective_run_dir / "config.resolved.yaml",
+                    effective_run_dir / "summary.json",
+                    effective_run_dir / "report.html",
+                ):
+                    if artifact.exists():
+                        tracker.log_artifact(str(artifact), artifact_name=artifact.name)
+
+                if args.output and Path(args.output).exists():
+                    tracker.log_artifact(
+                        str(Path(args.output)), artifact_name=Path(args.output).name
+                    )
+
+                tracker.end_run(status="finished")
+                tracker = None
+            except Exception as e:
+                print_warning(f"Tracking error: {e}")
+
         # UX sugar: make it obvious where artifacts landed and how to validate.
         # Keep stdout JSON clean when --format json.
         hint_stream = sys.stderr if args.format == "json" else sys.stdout
@@ -2886,6 +2967,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 0
 
     except Exception as e:
+        if "tracker" in locals() and tracker is not None:
+            try:
+                tracker.end_run(status="failed")
+            except Exception:
+                pass
         print_error(f"Error running experiment: {e}")
         if args.verbose:
             import traceback
