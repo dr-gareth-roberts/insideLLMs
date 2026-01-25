@@ -208,6 +208,10 @@ class TestCreateParser:
                 "h-1",
                 "--overwrite",
                 "--skip-report",
+                "--track",
+                "local",
+                "--track-project",
+                "my-project",
                 "--validate-output",
                 "--schema-version",
                 "1.0.0",
@@ -223,6 +227,8 @@ class TestCreateParser:
         assert args.run_id == "h-1"
         assert args.overwrite is True
         assert args.skip_report is True
+        assert args.track == "local"
+        assert args.track_project == "my-project"
         assert args.validate_output is True
         assert args.schema_version == "1.0.0"
         assert args.validation_mode == "warn"
@@ -540,6 +546,46 @@ class TestCmdHarness:
 
         captured = capsys.readouterr()
         assert "Validate with:" in captured.out
+
+    def test_harness_track_local_writes_tracking_artifacts(self, tmp_path):
+        from insideLLMs.cli import main
+
+        config_path = self._write_minimal_harness_yaml_config(tmp_path)
+        run_dir = tmp_path / "harness_run"
+
+        rc = main(
+            [
+                "harness",
+                str(config_path),
+                "--run-dir",
+                str(run_dir),
+                "--run-id",
+                "harness-123",
+                "--track",
+                "local",
+                "--track-project",
+                "test-project",
+            ]
+        )
+        assert rc == 0
+
+        tracking_run_dir = tmp_path / "tracking" / "test-project" / "harness-123"
+        assert tracking_run_dir.exists()
+        assert (tracking_run_dir / "metadata.json").exists()
+        assert (tracking_run_dir / "final_state.json").exists()
+        assert (tracking_run_dir / "metrics.json").exists()
+        assert (tracking_run_dir / "params.json").exists()
+        assert (tracking_run_dir / "artifacts.json").exists()
+
+        metrics = json.loads((tracking_run_dir / "metrics.json").read_text(encoding="utf-8"))
+        assert any("wall_time_seconds" in item.get("metrics", {}) for item in metrics)
+
+        # Artifacts are copied to <tracking_run_dir>/artifacts/
+        assert (tracking_run_dir / "artifacts" / "manifest.json").exists()
+        assert (tracking_run_dir / "artifacts" / "records.jsonl").exists()
+
+        # Tracking output must not pollute the standardized run directory.
+        assert not (run_dir / "tracking").exists()
 
 
 class TestMainFunction:

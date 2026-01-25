@@ -118,6 +118,7 @@ from insideLLMs.registry import (
 from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runner import (
     derive_run_id_from_config_path,
+    load_config,
     run_experiment_from_config,
     run_experiment_from_config_async,
     run_harness_from_config,
@@ -2234,6 +2235,18 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show detailed progress and tracebacks",
     )
+    harness_parser.add_argument(
+        "--track",
+        type=str,
+        choices=["local", "wandb", "mlflow", "tensorboard"],
+        help="Enable experiment tracking with specified backend",
+    )
+    harness_parser.add_argument(
+        "--track-project",
+        type=str,
+        default="insidellms",
+        help="Project name for experiment tracking",
+    )
 
     _add_output_schema_args(harness_parser)
 
@@ -3001,8 +3014,66 @@ def cmd_harness(args: argparse.Namespace) -> int:
             progress_bar = ProgressBar(total, prefix="Evaluating")
         progress_bar.update(current)
 
+    tracker = None
+
     try:
         start_time = time.time()
+        resolved_run_id = args.run_id or derive_run_id_from_config_path(
+            config_path, schema_version=args.schema_version
+        )
+
+        # Precompute output_dir for tracking. Must match the precedence used later when emitting
+        # standardized run artifacts.
+        config = load_config(config_path)
+        effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
+        config_default_dir = (
+            Path(config.get("output_dir", "results")).expanduser().absolute()
+            if isinstance(config, dict)
+            else Path("results").expanduser().absolute()
+        )
+        if args.run_dir:
+            output_dir = Path(args.run_dir).expanduser().absolute()
+        elif args.output_dir:
+            output_dir = Path(args.output_dir).expanduser().absolute()
+        elif effective_run_root is not None:
+            output_dir = effective_run_root / resolved_run_id
+        else:
+            output_dir = config_default_dir
+
+        if args.track:
+            try:
+                from insideLLMs.experiment_tracking import TrackingConfig, create_tracker
+
+                tracking_root = output_dir.parent / "tracking"
+
+                tracker_kwargs: dict[str, Any] = {}
+                if args.track == "local":
+                    tracker_kwargs["output_dir"] = str(tracking_root)
+                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
+                elif args.track == "wandb":
+                    tracker_kwargs["project"] = args.track_project
+                elif args.track == "mlflow":
+                    tracker_kwargs["experiment_name"] = args.track_project
+                elif args.track == "tensorboard":
+                    tracker_kwargs["log_dir"] = str(
+                        tracking_root / "tensorboard" / args.track_project
+                    )
+                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
+
+                tracker = create_tracker(args.track, **tracker_kwargs)
+                tracker.start_run(run_name=resolved_run_id, run_id=resolved_run_id)
+                tracker.log_params(
+                    {
+                        "run_id": resolved_run_id,
+                        "run_dir": str(output_dir),
+                        "config_path": str(config_path),
+                        "schema_version": args.schema_version,
+                    }
+                )
+            except Exception as e:
+                print_warning(f"Tracking disabled: {e}")
+                tracker = None
+
         result = run_harness_from_config(
             config_path,
             progress_callback=progress_callback if args.verbose else None,
@@ -3030,12 +3101,15 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
 
-        resolved_run_id = args.run_id or result.get("run_id")
-        if not resolved_run_id:
-            resolved_run_id = _deterministic_run_id_from_config_snapshot(
-                config_snapshot,
-                schema_version=args.schema_version,
-            )
+        if args.run_id:
+            resolved_run_id = args.run_id
+        else:
+            resolved_run_id = result.get("run_id") or resolved_run_id
+            if not resolved_run_id:
+                resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                    config_snapshot,
+                    schema_version=args.schema_version,
+                )
 
         # Absolute paths reduce surprise when users pass relative paths.
         effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
@@ -3267,11 +3341,53 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         print_key_value("Elapsed", f"{elapsed:.2f}s")
 
+        if tracker is not None:
+            try:
+                metrics: dict[str, float] = {
+                    "wall_time_seconds": float(elapsed),
+                    "record_count": float(record_count),
+                    "success_count": float(success_count),
+                    "error_count": float(error_count),
+                    "experiment_count": float(len(result.get("experiments", []))),
+                }
+                tracker.log_metrics(metrics)
+
+                tracker.log_params(
+                    {
+                        "model_count": len(model_types),
+                        "probe_count": len(probe_types),
+                        "dataset_id": dataset_spec.get("dataset_id"),
+                        "dataset_version": dataset_spec.get("dataset_version"),
+                        "dataset_hash": dataset_spec.get("dataset_hash"),
+                        "dataset_provenance": dataset_spec.get("provenance"),
+                    }
+                )
+
+                for artifact in (
+                    output_dir / "manifest.json",
+                    output_dir / "records.jsonl",
+                    output_dir / "config.resolved.yaml",
+                    output_dir / "summary.json",
+                    output_dir / "report.html",
+                ):
+                    if artifact.exists():
+                        tracker.log_artifact(str(artifact), artifact_name=artifact.name)
+
+                tracker.end_run(status="finished")
+                tracker = None
+            except Exception as e:
+                print_warning(f"Tracking error: {e}")
+
         print(f"\nRun written to: {output_dir}")
         print(f"Validate with: insidellms validate {output_dir}")
         return 0
 
     except Exception as e:
+        if tracker is not None:
+            try:
+                tracker.end_run(status="failed")
+            except Exception:
+                pass
         print_error(f"Error running harness: {e}")
         if args.verbose:
             import traceback
