@@ -150,6 +150,7 @@ insideLLMs.analysis.statistics : Statistical analysis functions
 insideLLMs.export : Functions for exporting results to various formats
 """
 
+import html
 import hashlib
 import re
 from datetime import datetime
@@ -157,6 +158,14 @@ from enum import Enum
 from typing import Any, Optional
 
 from insideLLMs.types import ExperimentResult
+
+
+def _escape_html_text(value: object) -> str:
+    return html.escape(str(value), quote=False)
+
+
+def _escape_html_attr(value: object) -> str:
+    return html.escape(str(value), quote=True)
 
 try:
     import matplotlib.pyplot as plt
@@ -1758,11 +1767,12 @@ def create_html_report(
     experiment_summary_text : Text-based experiment summary
     plot_accuracy_comparison : Visual accuracy comparison
     """
+    title_html = _escape_html_text(title)
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>{title}</title>
+        <title>{title_html}</title>
         <style>
             body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #f5f6fa; }}
             h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
@@ -1780,7 +1790,7 @@ def create_html_report(
         </style>
     </head>
     <body>
-        <h1>{title}</h1>
+        <h1>{title_html}</h1>
     """
 
     # Add summary
@@ -1802,7 +1812,10 @@ def create_html_report(
         html += f"<h3>Result {i + 1}</h3>"
 
         if "input" in result:
-            html += f"<div class='input'><strong>Input:</strong> {result['input']}</div>"
+            html += (
+                "<div class='input'><strong>Input:</strong> "
+                f"{_escape_html_text(result['input'])}</div>"
+            )
 
         if "output" in result:
             output = result["output"]
@@ -1812,20 +1825,30 @@ def create_html_report(
                 html += "<table><tr><th>#</th><th>Output</th></tr>"
                 for j, item in enumerate(output):
                     if isinstance(item, tuple):
-                        html += f"<tr><td>{j + 1}</td><td>{item[0]}<br><em>vs.</em><br>{item[1]}</td></tr>"
+                        left = _escape_html_text(item[0])
+                        right = _escape_html_text(item[1])
+                        html += (
+                            f"<tr><td>{j + 1}</td><td>{left}<br><em>vs.</em><br>{right}</td></tr>"
+                        )
                     else:
-                        html += f"<tr><td>{j + 1}</td><td>{item}</td></tr>"
+                        html += f"<tr><td>{j + 1}</td><td>{_escape_html_text(item)}</td></tr>"
                 html += "</table>"
             elif isinstance(output, dict):
                 html += "<table><tr><th>Key</th><th>Value</th></tr>"
                 for key, value in output.items():
-                    html += f"<tr><td>{key}</td><td>{value}</td></tr>"
+                    html += (
+                        f"<tr><td>{_escape_html_text(key)}</td>"
+                        f"<td>{_escape_html_text(value)}</td></tr>"
+                    )
                 html += "</table>"
             else:
-                html += f"<p>{output}</p>"
+                html += f"<p>{_escape_html_text(output)}</p>"
 
         if "error" in result and result["error"]:
-            html += f"<div class='error'><strong>Error:</strong> {result['error']}</div>"
+            html += (
+                "<div class='error'><strong>Error:</strong> "
+                f"{_escape_html_text(result['error'])}</div>"
+            )
 
         html += "</div>"
 
@@ -2613,6 +2636,9 @@ def create_interactive_html_report(
 
     # Serialize experiment data for embedding
     experiments_json = _serialize_experiments_to_json(experiments)
+    # Prevent `</script>` sequences from terminating the JSON script tag early.
+    experiments_json_safe = experiments_json.replace("</", "<\\/")
+    title_html = _escape_html_text(title)
 
     # Generate charts
     charts_html = []
@@ -2780,7 +2806,7 @@ def create_interactive_html_report(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{title_html}</title>
     {plotly_script}
     <style>
         :root {{
@@ -3310,7 +3336,7 @@ def create_interactive_html_report(
 <body>
     <header class="header">
         <div class="header-content">
-            <h1>{title}</h1>
+            <h1>{title_html}</h1>
             <div class="header-actions">
                 <button class="btn btn-secondary" onclick="toggleTheme()" title="Toggle dark/light mode">
                     <svg class="btn-icon" id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3378,21 +3404,21 @@ def create_interactive_html_report(
                 <label class="filter-label">Model</label>
                 <select class="filter-select" id="filter-model" onchange="applyFilters()">
                     <option value="">All Models</option>
-                    {"".join(f'<option value="{m}">{m}</option>' for m in unique_models)}
+                    {"".join(f'<option value="{_escape_html_attr(m)}">{_escape_html_text(m)}</option>' for m in unique_models)}
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Probe</label>
                 <select class="filter-select" id="filter-probe" onchange="applyFilters()">
                     <option value="">All Probes</option>
-                    {"".join(f'<option value="{p}">{p}</option>' for p in unique_probes)}
+                    {"".join(f'<option value="{_escape_html_attr(p)}">{_escape_html_text(p)}</option>' for p in unique_probes)}
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Provider</label>
                 <select class="filter-select" id="filter-provider" onchange="applyFilters()">
                     <option value="">All Providers</option>
-                    {"".join(f'<option value="{p}">{p}</option>' for p in unique_providers)}
+                    {"".join(f'<option value="{_escape_html_attr(p)}">{_escape_html_text(p)}</option>' for p in unique_providers)}
                 </select>
             </div>
             <div class="filter-group">
@@ -3419,7 +3445,10 @@ def create_interactive_html_report(
     # Add chart tabs
     for i, (chart_title, chart_id, _) in enumerate(charts_html):
         active = "active" if i == 0 else ""
-        html += f'                <button class="chart-tab {active}" onclick="showChart(\'{chart_id}\')">{chart_title}</button>\n'
+        html += (
+            f'                <button class="chart-tab {active}" '
+            f'onclick="showChart(\'{chart_id}\')">{_escape_html_text(chart_title)}</button>\n'
+        )
 
     html += """            </div>
             <div class="chart-container">
@@ -3472,10 +3501,14 @@ def create_interactive_html_report(
         avg_lat = sum(stats["latency"]) / len(stats["latency"]) if stats["latency"] else 0
         success_pct = (stats["success"] / stats["total"] * 100) if stats["total"] > 0 else 0
 
-        html += f"""                <div class="comparison-card" data-model="{model}">
+        model_attr = _escape_html_attr(model)
+        model_text = _escape_html_text(model)
+        provider_text = _escape_html_text(stats["provider"])
+
+        html += f"""                <div class="comparison-card" data-model="{model_attr}">
                     <div class="comparison-header">
-                        <span class="comparison-model">{model}</span>
-                        <span class="status-badge status-success">{stats["provider"]}</span>
+                        <span class="comparison-model">{model_text}</span>
+                        <span class="status-badge status-success">{provider_text}</span>
                     </div>
                     <div class="comparison-metrics">
                         <div class="comparison-metric">
@@ -3544,14 +3577,26 @@ def create_interactive_html_report(
             )
 
             row_class = "expandable-row" if include_individual_results else ""
+            model_name = exp.model_info.name
+            probe_name = exp.probe_name
+            provider_name = exp.model_info.provider
+            model_attr = _escape_html_attr(model_name)
+            probe_attr = _escape_html_attr(probe_name)
+            provider_attr = _escape_html_attr(provider_name)
+            model_text = _escape_html_text(model_name)
+            probe_text = _escape_html_text(probe_name)
+            provider_text = _escape_html_text(provider_name)
+            category_text = _escape_html_text(category)
+            experiment_id_text = _escape_html_text(exp.experiment_id)
+            model_id_text = _escape_html_text(exp.model_info.model_id)
             html += f"""                        <tr class="{row_class}" data-row="{i}"
-                            data-model="{exp.model_info.name}"
-                            data-probe="{exp.probe_name}"
-                            data-provider="{exp.model_info.provider}"
+                            data-model="{model_attr}"
+                            data-probe="{probe_attr}"
+                            data-provider="{provider_attr}"
                             data-acc="{acc_val}" data-lat="{lat_val}">
-                            <td><span class="expand-icon">▶</span>{exp.model_info.name}</td>
-                            <td>{exp.probe_name}</td>
-                            <td>{category}</td>
+                            <td><span class="expand-icon">▶</span>{model_text}</td>
+                            <td>{probe_text}</td>
+                            <td>{category_text}</td>
                             <td>{exp.total_count}</td>
                             <td><span class="status-badge status-success">{exp.success_count}</span></td>
                             <td>{acc}</td>
@@ -3568,9 +3613,9 @@ def create_interactive_html_report(
                                     <div class="detail-grid">
                                         <div class="detail-card">
                                             <h4>Experiment Info</h4>
-                                            <p><strong>ID:</strong> {exp.experiment_id}</p>
-                                            <p><strong>Provider:</strong> {exp.model_info.provider}</p>
-                                            <p><strong>Model ID:</strong> {exp.model_info.model_id}</p>
+                                            <p><strong>ID:</strong> {experiment_id_text}</p>
+                                            <p><strong>Provider:</strong> {provider_text}</p>
+                                            <p><strong>Model ID:</strong> {model_id_text}</p>
                                         </div>
                                         <div class="detail-card">
                                             <h4>Metrics</h4>
@@ -3587,14 +3632,16 @@ def create_interactive_html_report(
                     status_class = (
                         "status-success" if result.status.value == "success" else "status-error"
                     )
+                    status_text = _escape_html_text(result.status.value)
                     input_preview = (
                         str(result.input)[:100] + "..."
                         if len(str(result.input)) > 100
                         else str(result.input)
                     )
+                    input_preview_text = _escape_html_text(input_preview)
                     html += f"""                                            <div class="result-item">
-                                                <span class="status-badge {status_class}">{result.status.value}</span>
-                                                <span style="margin-left: 8px;">{input_preview}</span>
+                                                <span class="status-badge {status_class}">{status_text}</span>
+                                                <span style="margin-left: 8px;">{input_preview_text}</span>
                                             </div>
 """
                 html += """                                        </div>
@@ -3621,7 +3668,7 @@ def create_interactive_html_report(
             (exp.completed_at for exp in experiments if getattr(exp, "completed_at", None)),
             default=None,
         )
-    generated_at_str = (generated_at or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+    generated_at_str = generated_at.strftime("%Y-%m-%d %H:%M:%S") if generated_at else "unknown"
     html += f"""
         <footer class="footer">
             <p>Generated by insideLLMs on {generated_at_str}</p>
@@ -3631,7 +3678,7 @@ def create_interactive_html_report(
 
     <!-- Embedded Data -->
     <script id="experiment-data" type="application/json">
-{experiments_json}
+{experiments_json_safe}
     </script>
 
     <script>

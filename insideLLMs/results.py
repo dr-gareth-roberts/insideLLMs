@@ -108,6 +108,7 @@ import csv
 import json
 from dataclasses import asdict
 from datetime import datetime
+from html import escape as _html_escape
 from typing import Any, Optional, Union
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
@@ -1139,6 +1140,9 @@ def save_results_csv(
 def experiment_to_html(
     experiment: ExperimentResult,
     include_statistics: bool = True,
+    *,
+    escape_html: bool = True,
+    generated_at: Optional[str] = None,
 ) -> str:
     """Convert an ExperimentResult to a styled HTML report.
 
@@ -1242,11 +1246,15 @@ def experiment_to_html(
     experiment_to_markdown : Markdown version of this report
     save_results_html : Save HTML to file
     """
+    def _esc(value: object) -> str:
+        text = str(value)
+        return _html_escape(text) if escape_html else text
+
     html_parts = [
         "<!DOCTYPE html>",
         "<html>",
         "<head>",
-        f"<title>Experiment Report: {experiment.experiment_id}</title>",
+        f"<title>Experiment Report: {_esc(experiment.experiment_id)}</title>",
         "<style>",
         "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }",
         "h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }",
@@ -1264,7 +1272,7 @@ def experiment_to_html(
         "</style>",
         "</head>",
         "<body>",
-        f"<h1>Experiment Report: {experiment.experiment_id}</h1>",
+        f"<h1>Experiment Report: {_esc(experiment.experiment_id)}</h1>",
     ]
 
     # Model Info
@@ -1272,9 +1280,9 @@ def experiment_to_html(
         [
             "<h2>Model Information</h2>",
             "<ul>",
-            f"<li><strong>Name:</strong> {experiment.model_info.name}</li>",
-            f"<li><strong>Provider:</strong> {experiment.model_info.provider}</li>",
-            f"<li><strong>Model ID:</strong> {experiment.model_info.model_id}</li>",
+            f"<li><strong>Name:</strong> {_esc(experiment.model_info.name)}</li>",
+            f"<li><strong>Provider:</strong> {_esc(experiment.model_info.provider)}</li>",
+            f"<li><strong>Model ID:</strong> {_esc(experiment.model_info.model_id)}</li>",
             "</ul>",
         ]
     )
@@ -1325,8 +1333,8 @@ def experiment_to_html(
 
     for i, result in enumerate(experiment.results, 1):
         status_class = "success" if result.status.value == "success" else "error"
-        input_str = str(result.input)[:100]
-        output_str = str(result.output)[:100] if result.output else ""
+        input_str = _esc(str(result.input)[:100])
+        output_str = _esc(str(result.output)[:100]) if result.output else ""
         latency = f"{result.latency_ms:.1f}" if result.latency_ms else "N/A"
         html_parts.append(
             f"<tr><td>{i}</td><td>{input_str}</td><td>{output_str}</td>"
@@ -1336,7 +1344,7 @@ def experiment_to_html(
     html_parts.extend(
         [
             "</table>",
-            f"<p><em>Generated at {datetime.now().isoformat()}</em></p>",
+            f"<p><em>Generated at {_esc(generated_at)}</em></p>" if generated_at else "",
             "</body>",
             "</html>",
         ]
