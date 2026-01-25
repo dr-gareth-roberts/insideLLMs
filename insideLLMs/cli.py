@@ -94,7 +94,6 @@ insideLLMs.visualization : Report generation utilities
 
 import argparse
 import asyncio
-import hashlib
 import html
 import importlib.metadata
 import importlib.util
@@ -104,12 +103,16 @@ import platform
 import shutil
 import sys
 import time
-from dataclasses import is_dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
+from insideLLMs._serialization import (
+    fingerprint_value as _fingerprint_value,
+    serialize_value as _serialize_value,
+    stable_json_dumps as _stable_json_dumps,
+)
 from insideLLMs.registry import (
     ensure_builtins_registered,
     model_registry,
@@ -132,6 +135,22 @@ from insideLLMs.types import (
     ProbeResult,
     ResultStatus,
 )
+
+__all__ = [
+    "Colors",
+    "ProgressBar",
+    "Spinner",
+    "colorize",
+    "create_parser",
+    "main",
+    "print_error",
+    "print_header",
+    "print_info",
+    "print_key_value",
+    "print_subheader",
+    "print_success",
+    "print_warning",
+]
 
 
 def _cli_version_string() -> str:
@@ -221,75 +240,16 @@ def _json_default(obj: Any) -> Any:
     JSON-serializable representations. Used as the ``default`` parameter
     for ``json.dumps()`` and ``json.dump()`` calls throughout the CLI.
 
+    This is a thin wrapper around the shared ``_serialize_value`` function
+    from ``insideLLMs._serialization``.
+
     Args:
         obj: Any Python object that the standard JSON encoder cannot handle.
-            Supported types include datetime, Enum, Path, set, frozenset,
-            and dataclass instances.
 
     Returns:
-        A JSON-serializable representation of the object:
-        - datetime objects return ISO 8601 formatted strings
-        - Enum members return their value
-        - Path objects return string representations
-        - Sets and frozensets return sorted lists
-        - Dataclass instances return their __dict__
-        - All other types return str(obj)
-
-    Raises:
-        No exceptions are raised; all objects are converted to strings as a fallback.
-
-    Examples:
-        Serializing a datetime:
-
-            >>> import json
-            >>> from datetime import datetime
-            >>> dt = datetime(2024, 1, 15, 12, 30, 0)
-            >>> json.dumps({"timestamp": dt}, default=_json_default)
-            '{"timestamp": "2024-01-15T12:30:00"}'
-
-        Serializing an Enum:
-
-            >>> from enum import Enum
-            >>> class Status(Enum):
-            ...     SUCCESS = "success"
-            ...     ERROR = "error"
-            >>> json.dumps({"status": Status.SUCCESS}, default=_json_default)
-            '{"status": "success"}'
-
-        Serializing a set:
-
-            >>> json.dumps({"tags": {"b", "a", "c"}}, default=_json_default)
-            '{"tags": ["a", "b", "c"]}'
-
-        Serializing a Path:
-
-            >>> from pathlib import Path
-            >>> json.dumps({"path": Path("/tmp/results")}, default=_json_default)
-            '{"path": "/tmp/results"}'
-
-    Notes:
-        Sets are sorted for deterministic output. If set elements cannot be
-        sorted directly (mixed types), they are sorted by their JSON representation.
+        A JSON-serializable representation of the object.
     """
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    if isinstance(obj, Enum):
-        return obj.value
-    if isinstance(obj, Path):
-        return str(obj)
-    if isinstance(obj, (set, frozenset)):
-        values = list(obj)
-        try:
-            return sorted(values)
-        except TypeError:
-            return sorted(
-                values,
-                key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
-            )
-    if is_dataclass(obj) and not isinstance(obj, type):
-        # Avoid importing asdict here; dataclass instances are rare in CLI outputs.
-        return obj.__dict__
-    return str(obj)
+    return _serialize_value(obj)
 
 
 # ============================================================================
@@ -969,68 +929,6 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
         except ValueError:
             return None
     return None
-
-
-def _stable_json_dumps(value: Any) -> str:
-    """Serialize a value to a deterministic JSON string.
-
-    Creates a JSON string with sorted keys and minimal whitespace,
-    ensuring identical values produce identical strings regardless
-    of dictionary insertion order.
-
-    Args:
-        value: Any JSON-serializable value (dict, list, str, int, etc.).
-
-    Returns:
-        A compact JSON string with sorted keys and no extra whitespace.
-
-    Examples:
-        >>> _stable_json_dumps({"b": 2, "a": 1})
-        '{"a":1,"b":2}'
-        >>> _stable_json_dumps([3, 1, 2])
-        '[3,1,2]'
-        >>> _stable_json_dumps("hello")
-        '"hello"'
-
-    Notes:
-        Used for generating consistent fingerprints and cache keys.
-    """
-    return json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        default=_json_default,
-    )
-
-
-def _fingerprint_value(value: Any) -> Optional[str]:
-    """Generate a short hash fingerprint for a value.
-
-    Creates a 12-character hexadecimal fingerprint using SHA-256 on the
-    stable JSON representation of the value. Useful for detecting changes
-    in structured data.
-
-    Args:
-        value: Any JSON-serializable value to fingerprint.
-
-    Returns:
-        A 12-character hex string, or None if value is None.
-
-    Examples:
-        >>> _fingerprint_value({"key": "value"})
-        'a43c1b587e6a'  # Example output, actual hash varies
-        >>> _fingerprint_value([1, 2, 3])
-        '2f5c7a8e3d1b'  # Example output
-        >>> _fingerprint_value(None)
-        None
-
-    Notes:
-        The fingerprint is deterministic - identical values always produce
-        identical fingerprints due to the use of _stable_json_dumps().
-    """
-    if value is None:
-        return None
-    return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
 
 
 def _status_from_record(value: Any) -> ResultStatus:

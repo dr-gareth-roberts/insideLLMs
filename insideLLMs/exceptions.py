@@ -84,6 +84,51 @@ information about the error, useful for logging and debugging.
 
 from typing import Any, Optional
 
+__all__ = [
+    # Base exception
+    "InsideLLMsError",
+    # Model errors
+    "ModelError",
+    "ModelNotFoundError",
+    "ModelInitializationError",
+    "ModelGenerationError",
+    "RateLimitError",
+    "APIError",
+    "TimeoutError",
+    # Probe errors
+    "ProbeError",
+    "ProbeNotFoundError",
+    "ProbeValidationError",
+    "ProbeExecutionError",
+    "RunnerExecutionError",
+    # Dataset errors
+    "DatasetError",
+    "DatasetNotFoundError",
+    "DatasetFormatError",
+    "DatasetValidationError",
+    # Configuration errors
+    "ConfigurationError",
+    "ConfigValidationError",
+    "ConfigNotFoundError",
+    "ConfigParseError",
+    # Cache errors
+    "CacheError",
+    "CacheMissError",
+    "CacheCorruptionError",
+    # Evaluation errors
+    "EvaluationError",
+    "EvaluatorNotFoundError",
+    "EvaluationFailedError",
+    # Registry errors
+    "RegistryError",
+    "AlreadyRegisteredError",
+    "NotRegisteredError",
+    # Utility functions
+    "wrap_exception",
+    "is_retryable",
+    "get_retry_delay",
+]
+
 
 class InsideLLMsError(Exception):
     """Base exception for all insideLLMs errors.

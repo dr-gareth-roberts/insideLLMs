@@ -91,6 +91,11 @@ from typing import Any, Callable, Optional, Union
 
 import yaml
 
+from insideLLMs._serialization import (
+    fingerprint_value as _fingerprint_value,
+    serialize_value as _serialize_value,
+    stable_json_dumps as _stable_json_dumps,
+)
 from insideLLMs.config_types import ProgressInfo, RunConfig
 from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models.base import Model
@@ -959,94 +964,6 @@ class ProbeRunner(_RunnerBase):
         return self.last_experiment if return_experiment else final_results
 
 
-def _serialize_value(value: Any) -> Any:
-    """Recursively serialize a value to JSON-compatible types.
-
-    Handles conversion of complex Python types (datetime, Path, Enum, dataclass,
-    sets, etc.) into JSON-serializable primitives. Used throughout the runner
-    for JSONL emission and manifest generation.
-
-    Parameters
-    ----------
-    value : Any
-        The value to serialize. Can be any Python type including nested
-        structures like dicts, lists, dataclasses, etc.
-
-    Returns
-    -------
-    Any
-        A JSON-serializable representation of the input value:
-
-        - datetime -> ISO format string
-        - Path -> string path
-        - Enum -> enum value
-        - dataclass -> dict
-        - dict/list/tuple -> recursively serialized
-        - set/frozenset -> sorted list
-        - None/str/int/float/bool -> unchanged
-        - Other types -> str(value)
-
-    Examples
-    --------
-    Serializing datetime and Path objects:
-
-        >>> from datetime import datetime, timezone
-        >>> from pathlib import Path
-        >>> _serialize_value(datetime(2024, 1, 15, tzinfo=timezone.utc))
-        '2024-01-15T00:00:00+00:00'
-        >>> _serialize_value(Path("/home/user/data"))
-        '/home/user/data'
-
-    Serializing nested structures:
-
-        >>> data = {"key": [1, 2, {3, 4}], "path": Path("/tmp")}
-        >>> _serialize_value(data)
-        {'key': [1, 2, [3, 4]], 'path': '/tmp'}
-
-    Handling sets (returns sorted list for determinism):
-
-        >>> _serialize_value({3, 1, 2})
-        [1, 2, 3]
-
-    Unknown types become strings:
-
-        >>> class CustomObj:
-        ...     def __str__(self): return "custom"
-        >>> _serialize_value(CustomObj())
-        'custom'
-
-    Notes
-    -----
-    This function is resilient and never raises exceptions. For unrecognized
-    types, it falls back to str() conversion to ensure JSONL emission succeeds.
-    """
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, Enum):
-        return value.value
-    if is_dataclass(value) and not isinstance(value, type):
-        return asdict(value)
-    if isinstance(value, dict):
-        return {k: _serialize_value(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_serialize_value(v) for v in value]
-    if isinstance(value, (set, frozenset)):
-        normalized = [_serialize_value(v) for v in value]
-        try:
-            return sorted(normalized)
-        except TypeError:
-            return sorted(
-                normalized,
-                key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
-            )
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    # Last-resort: keep JSONL/manifest emission resilient even for exotic objects.
-    return str(value)
-
-
 def _normalize_status(status: Any) -> str:
     """Normalize a status value to a string representation.
 
@@ -1477,50 +1394,6 @@ _DETERMINISTIC_TIME_BASE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 _DETERMINISTIC_TIME_RANGE_SECONDS = 10 * 365 * 24 * 60 * 60  # 10 years in seconds
 
 
-def _stable_json_dumps(data: Any) -> str:
-    """Serialize data to a stable, deterministic JSON string.
-
-    Produces identical JSON output for equivalent data structures regardless
-    of dict ordering or internal Python representation. Used for hashing
-    and fingerprinting where consistency is required.
-
-    Parameters
-    ----------
-    data : Any
-        Data to serialize. Passed through _serialize_value for type conversion.
-
-    Returns
-    -------
-    str
-        Compact JSON string with sorted keys and minimal separators.
-
-    Examples
-    --------
-    Consistent output regardless of dict order:
-
-        >>> _stable_json_dumps({"b": 2, "a": 1})
-        '{"a":1,"b":2}'
-        >>> _stable_json_dumps({"a": 1, "b": 2})
-        '{"a":1,"b":2}'
-
-    Nested structures:
-
-        >>> _stable_json_dumps({"outer": {"z": 3, "y": 2}})
-        '{"outer":{"y":2,"z":3}}'
-
-    See Also
-    --------
-    _serialize_value : Type conversion for JSON serialization.
-    _deterministic_hash : Hash generation using stable JSON.
-    """
-    return json.dumps(
-        _serialize_value(data),
-        sort_keys=True,
-        separators=(",", ":"),
-        default=_serialize_value,
-    )
-
-
 def _deterministic_hash(payload: Any) -> str:
     """Generate a deterministic SHA-256 hash of any payload.
 
@@ -1561,51 +1434,6 @@ def _deterministic_hash(payload: Any) -> str:
     _deterministic_run_id_from_inputs : Generate run IDs using this hash.
     """
     return hashlib.sha256(_stable_json_dumps(payload).encode("utf-8")).hexdigest()
-
-
-def _fingerprint_value(value: Any) -> Optional[str]:
-    """Generate a short fingerprint hash of a value.
-
-    Produces a 12-character hash suitable for use as a compact identifier
-    or deduplication key. Returns None for None input.
-
-    Parameters
-    ----------
-    value : Any
-        Value to fingerprint. Can be any JSON-serializable type.
-
-    Returns
-    -------
-    Optional[str]
-        12-character hexadecimal fingerprint, or None if value is None.
-
-    Examples
-    --------
-    Fingerprinting a value:
-
-        >>> fp = _fingerprint_value({"key": "value"})
-        >>> len(fp)
-        12
-        >>> fp.isalnum()
-        True
-
-    None returns None:
-
-        >>> _fingerprint_value(None) is None
-        True
-
-    Consistent fingerprints:
-
-        >>> _fingerprint_value([1, 2, 3]) == _fingerprint_value([1, 2, 3])
-        True
-
-    See Also
-    --------
-    _deterministic_hash : Full 64-character hash.
-    """
-    if value is None:
-        return None
-    return hashlib.sha256(_stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
 
 
 def _default_run_root() -> Path:
