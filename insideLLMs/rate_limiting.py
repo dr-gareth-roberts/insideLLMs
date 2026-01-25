@@ -914,6 +914,10 @@ class TokenBucketRateLimiter:
             >>> # Conservative limiter
             >>> limiter = TokenBucketRateLimiter(rate=1.0, capacity=5)
         """
+        if rate <= 0:
+            raise ValueError("rate must be > 0")
+        if capacity <= 0:
+            raise ValueError("capacity must be > 0")
         self.rate = rate
         self.capacity = capacity
         self._tokens = float(capacity)
@@ -963,6 +967,8 @@ class TokenBucketRateLimiter:
             >>> limiter.acquire(tokens=5, block=True)
             True
         """
+        if tokens < 1:
+            raise ValueError("tokens must be >= 1")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -1041,6 +1047,8 @@ class TokenBucketRateLimiter:
             ...         await limiter.acquire_async()
             ...         await process(item)
         """
+        if tokens < 1:
+            raise ValueError("tokens must be >= 1")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -1240,7 +1248,17 @@ class ThreadSafeSlidingWindowRateLimiter:
             ...     window_size_seconds=10.0
             ... )
         """
+        if requests_per_second <= 0:
+            raise ValueError("requests_per_second must be > 0")
+        if window_size_seconds <= 0:
+            raise ValueError("window_size_seconds must be > 0")
+
         self.max_requests = int(requests_per_second * window_size_seconds)
+        if self.max_requests < 1:
+            raise ValueError(
+                "window_size_seconds is too small for requests_per_second; "
+                "increase window_size_seconds or use TokenBucketRateLimiter"
+            )
         self.window_size = window_size_seconds
         self._requests: deque = deque()
         self._lock = threading.Lock()
