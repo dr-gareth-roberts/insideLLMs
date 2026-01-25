@@ -152,6 +152,12 @@ __all__ = [
     "print_warning",
 ]
 
+# CLI output routing:
+# - "status" output (headers, warnings, progress) is routed via _CLI_STATUS_STREAM
+# - machine-readable payloads (e.g., --format json) should go to stdout only
+_CLI_QUIET = False
+_CLI_STATUS_STREAM = sys.stdout
+
 
 def _cli_version_string() -> str:
     """Return the CLI version string.
@@ -517,12 +523,14 @@ def print_header(title: str) -> None:
         - The header uses BRIGHT_CYAN color with BOLD title text
         - Fixed width of 70 characters for consistent appearance
     """
+    if _CLI_QUIET:
+        return
     width = 70
     line = "═" * width
-    print()
-    print(colorize(line, Colors.BRIGHT_CYAN))
-    print(colorize(f"  {title}".center(width), Colors.BOLD, Colors.BRIGHT_CYAN))
-    print(colorize(line, Colors.BRIGHT_CYAN))
+    print(file=_CLI_STATUS_STREAM)
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
+    print(colorize(f"  {title}".center(width), Colors.BOLD, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
 
 
 def print_subheader(title: str) -> None:
@@ -558,8 +566,13 @@ def print_subheader(title: str) -> None:
         - Uses CYAN for the title and DIM for the trailing rule
         - The horizontal rule extends based on title length
     """
-    print()
-    print(colorize(f"── {title} ", Colors.CYAN) + colorize("─" * (50 - len(title)), Colors.DIM))
+    if _CLI_QUIET:
+        return
+    print(file=_CLI_STATUS_STREAM)
+    print(
+        colorize(f"── {title} ", Colors.CYAN) + colorize("─" * (50 - len(title)), Colors.DIM),
+        file=_CLI_STATUS_STREAM,
+    )
 
 
 def print_success(message: str) -> None:
@@ -599,7 +612,9 @@ def print_success(message: str) -> None:
         print_warning : For warning messages with yellow prefix
         print_info : For informational messages with blue prefix
     """
-    print(colorize("OK ", Colors.BRIGHT_GREEN) + message)
+    if _CLI_QUIET:
+        return
+    print(colorize("OK ", Colors.BRIGHT_GREEN) + message, file=_CLI_STATUS_STREAM)
 
 
 def print_error(message: str) -> None:
@@ -691,7 +706,12 @@ def print_warning(message: str) -> None:
         print_success : For success messages
         print_info : For informational messages
     """
-    print(colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW))
+    if _CLI_QUIET:
+        return
+    print(
+        colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW),
+        file=_CLI_STATUS_STREAM,
+    )
 
 
 def print_info(message: str) -> None:
@@ -736,7 +756,9 @@ def print_info(message: str) -> None:
         print_warning : For warning messages
         print_error : For error messages
     """
-    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message)
+    if _CLI_QUIET:
+        return
+    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message, file=_CLI_STATUS_STREAM)
 
 
 def print_key_value(key: str, value: Any, indent: int = 2) -> None:
@@ -786,8 +808,10 @@ def print_key_value(key: str, value: Any, indent: int = 2) -> None:
         - A colon is automatically appended to the key
         - Values are converted to strings, so any type is accepted
     """
+    if _CLI_QUIET:
+        return
     spaces = " " * indent
-    print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}")
+    print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}", file=_CLI_STATUS_STREAM)
 
 
 def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
@@ -1849,6 +1873,8 @@ class ProgressBar:
         Internal method that draws the current state of the progress bar.
         Uses carriage return to update in place without scrolling.
         """
+        if _CLI_QUIET:
+            return
         pct = 100 if self.total == 0 else min(100, self.current / self.total * 100)
 
         filled = int(self.width * self.current / max(1, self.total))
@@ -1862,8 +1888,11 @@ class ProgressBar:
         else:
             eta_str = ""
 
-        line = f"\r{self.prefix}: {colorize(bar, Colors.CYAN)} {pct:5.1f}% ({self.current}/{self.total}){eta_str}"
-        print(line, end="", flush=True)
+        line = (
+            f"\r{self.prefix}: {colorize(bar, Colors.CYAN)} "
+            f"{pct:5.1f}% ({self.current}/{self.total}){eta_str}"
+        )
+        print(line, end="", flush=True, file=_CLI_STATUS_STREAM)
 
     def finish(self) -> None:
         """Complete the progress bar and print final status.
@@ -1878,10 +1907,15 @@ class ProgressBar:
             ...     progress.update(i + 1)
             >>> progress.finish()  # Prints "Done in X.XXs" and newline
         """
+        if _CLI_QUIET:
+            return
         self.current = self.total
         self._render()
         elapsed = time.time() - self.start_time
-        print(f" {colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}")
+        print(
+            f" {colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}",
+            file=_CLI_STATUS_STREAM,
+        )
 
 
 class Spinner:
@@ -1896,16 +1930,31 @@ class Spinner:
 
     def spin(self) -> None:
         """Render a single spinner frame."""
+        if _CLI_QUIET:
+            return
         frame = self.FRAMES[self.frame_idx % len(self.FRAMES)]
-        print(f"\r{colorize(frame, Colors.CYAN)} {self.message}...", end="", flush=True)
+        print(
+            f"\r{colorize(frame, Colors.CYAN)} {self.message}...",
+            end="",
+            flush=True,
+            file=_CLI_STATUS_STREAM,
+        )
         self.frame_idx += 1
 
     def stop(self, success: bool = True) -> None:
         """Stop the spinner with a final status."""
+        if _CLI_QUIET:
+            return
         if success:
-            print(f"\r{colorize('OK', Colors.GREEN)} {self.message}... done")
+            print(
+                f"\r{colorize('OK', Colors.GREEN)} {self.message}... done",
+                file=_CLI_STATUS_STREAM,
+            )
         else:
-            print(f"\r{colorize('FAIL', Colors.RED)} {self.message}... failed")
+            print(
+                f"\r{colorize('FAIL', Colors.RED)} {self.message}... failed",
+                file=_CLI_STATUS_STREAM,
+            )
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -2640,7 +2689,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     def progress_callback(current: int, total: int) -> None:
         nonlocal progress_bar
-        if args.verbose:
+        if args.verbose and not args.quiet:
             if progress_bar is None:
                 progress_bar = ProgressBar(total, prefix="Evaluating")
             progress_bar.update(current)
@@ -2871,9 +2920,10 @@ def cmd_run(args: argparse.Namespace) -> int:
 
         # UX sugar: make it obvious where artifacts landed and how to validate.
         # Keep stdout JSON clean when --format json.
-        hint_stream = sys.stderr if args.format == "json" else sys.stdout
-        print(f"\nRun written to: {effective_run_dir}", file=hint_stream)
-        print(f"Validate with: insidellms validate {effective_run_dir}", file=hint_stream)
+        if not args.quiet:
+            hint_stream = sys.stderr if args.format == "json" else sys.stdout
+            print(f"\nRun written to: {effective_run_dir}", file=hint_stream)
+            print(f"Validate with: insidellms validate {effective_run_dir}", file=hint_stream)
 
         return 0
 
@@ -2906,7 +2956,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
     def progress_callback(current: int, total: int) -> None:
         nonlocal progress_bar
-        if not args.verbose:
+        if not args.verbose or args.quiet:
             return
         if progress_bar is None:
             progress_bar = ProgressBar(total, prefix="Evaluating")
@@ -3276,8 +3326,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
             except Exception as e:
                 print_warning(f"Tracking error: {e}")
 
-        print(f"\nRun written to: {output_dir}")
-        print(f"Validate with: insidellms validate {output_dir}")
+        if not args.quiet:
+            print(f"\nRun written to: {output_dir}")
+            print(f"Validate with: insidellms validate {output_dir}")
         return 0
 
     except Exception as e:
@@ -4484,79 +4535,195 @@ def cmd_compare(args: argparse.Namespace) -> int:
     """Execute the compare command."""
     ensure_builtins_registered()
 
-    print_header("Model Comparison")
+    try:
+        output_format = getattr(args, "format", "table") or "table"
 
-    models = [m.strip() for m in args.models.split(",")]
-    print_key_value("Models", ", ".join(models))
+        print_header("Model Comparison")
 
-    # Get inputs
-    inputs: list[str] = []
-    if args.input:
-        inputs = [args.input]
-    elif args.input_file:
-        input_path = Path(args.input_file)
-        if not input_path.exists():
-            print_error(f"Input file not found: {input_path}")
+        models = [m.strip() for m in str(args.models).split(",") if m.strip()]
+        if not models:
+            print_error("No models provided via --models")
+            return 1
+        print_key_value("Models", ", ".join(models))
+
+        inputs: list[str] = []
+        if args.input:
+            inputs = [str(args.input)]
+        elif args.input_file:
+            input_path = Path(args.input_file)
+            if not input_path.exists():
+                print_error(f"Input file not found: {input_path}")
+                return 1
+
+            try:
+                if input_path.suffix == ".json":
+                    with open(input_path, encoding="utf-8") as f:
+                        data = json.load(f)
+                    if isinstance(data, list):
+                        inputs = [
+                            d.get("input", d.get("question", str(d))) if isinstance(d, dict) else str(d)
+                            for d in data
+                        ]
+                    elif isinstance(data, dict):
+                        inputs = [data.get("input", data.get("question", str(data)))]
+                    else:
+                        inputs = [str(data)]
+                elif input_path.suffix == ".jsonl":
+                    with open(input_path, encoding="utf-8") as f:
+                        for line_no, line in enumerate(f, start=1):
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                data = json.loads(line)
+                            except json.JSONDecodeError as e:
+                                raise ValueError(f"Invalid JSON on line {line_no}: {e}") from e
+                            inputs.append(
+                                data.get("input", data.get("question", str(data)))
+                                if isinstance(data, dict)
+                                else str(data)
+                            )
+                else:
+                    with open(input_path, encoding="utf-8") as f:
+                        inputs = [line.strip() for line in f if line.strip()]
+            except Exception as e:
+                print_error(f"Could not read inputs from {input_path}: {e}")
+                return 1
+        else:
+            print_error("Please provide --input or --input-file")
             return 1
 
-        if input_path.suffix == ".json":
-            with open(input_path) as f:
-                data = json.load(f)
-                inputs = [d.get("input", d.get("question", str(d))) for d in data]
-        elif input_path.suffix == ".jsonl":
-            with open(input_path) as f:
-                for line in f:
-                    data = json.loads(line)
-                    inputs.append(data.get("input", data.get("question", str(data))))
-        else:
-            with open(input_path) as f:
-                inputs = [line.strip() for line in f if line.strip()]
-    else:
-        print_error("Please provide --input or --input-file")
-        return 1
+        print_key_value("Inputs", len(inputs))
 
-    print_key_value("Inputs", len(inputs))
+        # Instantiate models once (best-effort).
+        model_instances: dict[str, Any] = {}
+        for model_name in models:
+            try:
+                model_or_factory = model_registry.get(model_name)
+                model_instances[model_name] = (
+                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+                )
+            except Exception as e:
+                model_instances[model_name] = None
+                print_warning(f"Could not load model '{model_name}': {e}")
 
-    try:
         results: list[dict[str, Any]] = []
-
         for inp in inputs:
             inp_display = inp[:50] + "..." if len(inp) > 50 else inp
-            print_subheader(f"Input: {inp_display}")
+            if output_format == "table":
+                print_subheader(f"Input: {inp_display}")
 
-            row = {"input": inp}
-
+            item: dict[str, Any] = {"input": inp, "models": []}
             for model_name in models:
-                try:
-                    model_or_factory = model_registry.get(model_name)
-                    model = (
-                        model_or_factory()
-                        if isinstance(model_or_factory, type)
-                        else model_or_factory
+                model = model_instances.get(model_name)
+                if model is None:
+                    item["models"].append(
+                        {
+                            "model": model_name,
+                            "response": None,
+                            "latency_ms": None,
+                            "error": "model_init_failed",
+                        }
                     )
+                    continue
 
+                try:
                     start = time.time()
                     response = model.generate(inp)
                     elapsed = time.time() - start
+                    item["models"].append(
+                        {
+                            "model": model_name,
+                            "response": response,
+                            "latency_ms": elapsed * 1000,
+                            "error": None,
+                        }
+                    )
 
-                    row[f"{model_name}_response"] = response
-                    row[f"{model_name}_latency_ms"] = elapsed * 1000
-
-                    print(f"\n  {colorize(model_name, Colors.CYAN)}:")
-                    print(f"    {response[:100]}{'...' if len(response) > 100 else ''}")
-                    print(f"    {colorize(f'({elapsed * 1000:.1f}ms)', Colors.DIM)}")
-
+                    if output_format == "table":
+                        print(f"\n  {colorize(model_name, Colors.CYAN)}:")
+                        preview = str(response)
+                        print(
+                            f"    {preview[:100]}{'...' if len(preview) > 100 else ''}"
+                        )
+                        print(
+                            f"    {colorize(f'({elapsed * 1000:.1f}ms)', Colors.DIM)}"
+                        )
                 except Exception as e:
-                    row[f"{model_name}_response"] = f"ERROR: {e}"
-                    row[f"{model_name}_latency_ms"] = None
-                    print(f"\n  {colorize(model_name, Colors.RED)}: Error - {e}")
+                    item["models"].append(
+                        {
+                            "model": model_name,
+                            "response": None,
+                            "latency_ms": None,
+                            "error": str(e),
+                        }
+                    )
+                    if output_format == "table":
+                        print(f"\n  {colorize(model_name, Colors.RED)}: Error - {e}")
 
-            results.append(row)
+            results.append(item)
 
-        # Output results
+        if output_format == "json":
+            payload = json.dumps(results, indent=2, default=_json_default)
+            if args.output:
+                Path(args.output).write_text(payload, encoding="utf-8")
+                print_success(f"Results saved to: {args.output}")
+            else:
+                print(payload)
+            return 0
+
+        if output_format == "markdown":
+            rows: list[dict[str, Any]] = []
+            for item in results:
+                for model_item in item["models"]:
+                    rows.append(
+                        {
+                            "input": item["input"],
+                            "model": model_item["model"],
+                            "response": model_item.get("response") or "",
+                            "error": model_item.get("error") or "",
+                            "latency_ms": model_item.get("latency_ms"),
+                        }
+                    )
+
+            def escape_cell(value: Any) -> str:
+                text = "" if value is None else str(value)
+                return text.replace("|", "\\|").replace("\n", "<br>")
+
+            header = "| Input | Model | Response | Error | Latency (ms) |"
+            sep = "|---|---|---|---|---|"
+            lines = [header, sep]
+            for row in rows:
+                lines.append(
+                    "| "
+                    + " | ".join(
+                        [
+                            escape_cell(row["input"]),
+                            escape_cell(row["model"]),
+                            escape_cell(row["response"]),
+                            escape_cell(row["error"]),
+                            escape_cell(
+                                f"{float(row['latency_ms']):.1f}"
+                                if isinstance(row.get("latency_ms"), (int, float))
+                                else ""
+                            ),
+                        ]
+                    )
+                    + " |"
+                )
+            md = "\n".join(lines)
+
+            if args.output:
+                Path(args.output).write_text(md, encoding="utf-8")
+                print_success(f"Results saved to: {args.output}")
+            else:
+                print(md)
+            return 0
+
+        # table output already printed; optionally write JSON to file.
         if args.output:
-            with open(args.output, "w") as f:
-                json.dump(results, f, indent=2)
+            payload = json.dumps(results, indent=2, default=_json_default)
+            Path(args.output).write_text(payload, encoding="utf-8")
             print_success(f"Results saved to: {args.output}")
 
         return 0
@@ -4934,7 +5101,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point for the CLI."""
-    global USE_COLOR
+    global USE_COLOR, _CLI_QUIET, _CLI_STATUS_STREAM
 
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -4943,43 +5110,52 @@ def main(argv: Optional[list[str]] = None) -> int:
     if hasattr(args, "no_color") and args.no_color:
         USE_COLOR = False
 
-    if not args.command:
-        # Show a nice welcome message instead of just help
-        print_header("insideLLMs")
-        print(colorize("  A world-class toolkit for LLM evaluation and exploration", Colors.DIM))
-        print()
-        parser.print_help()
-        print()
-        print(
-            colorize("Quick start: ", Colors.BOLD)
-            + 'insidellms quicktest "Hello world" --model dummy'
-        )
-        return 0
+    prev_quiet = _CLI_QUIET
+    prev_stream = _CLI_STATUS_STREAM
+    try:
+        _CLI_QUIET = bool(getattr(args, "quiet", False))
+        _CLI_STATUS_STREAM = sys.stderr if getattr(args, "format", None) == "json" else sys.stdout
 
-    commands = {
-        "run": cmd_run,
-        "harness": cmd_harness,
-        "report": cmd_report,
-        "diff": cmd_diff,
-        "schema": cmd_schema,
-        "doctor": cmd_doctor,
-        "list": cmd_list,
-        "init": cmd_init,
-        "info": cmd_info,
-        "quicktest": cmd_quicktest,
-        "benchmark": cmd_benchmark,
-        "compare": cmd_compare,
-        "interactive": cmd_interactive,
-        "validate": cmd_validate,
-        "export": cmd_export,
-    }
+        if not args.command:
+            # Show a nice welcome message instead of just help
+            print_header("insideLLMs")
+            print(colorize("  A world-class toolkit for LLM evaluation and exploration", Colors.DIM))
+            print()
+            parser.print_help()
+            print()
+            print(
+                colorize("Quick start: ", Colors.BOLD)
+                + 'insidellms quicktest "Hello world" --model dummy'
+            )
+            return 0
 
-    handler = commands.get(args.command)
-    if handler:
-        return handler(args)
-    else:
+        commands = {
+            "run": cmd_run,
+            "harness": cmd_harness,
+            "report": cmd_report,
+            "diff": cmd_diff,
+            "schema": cmd_schema,
+            "doctor": cmd_doctor,
+            "list": cmd_list,
+            "init": cmd_init,
+            "info": cmd_info,
+            "quicktest": cmd_quicktest,
+            "benchmark": cmd_benchmark,
+            "compare": cmd_compare,
+            "interactive": cmd_interactive,
+            "validate": cmd_validate,
+            "export": cmd_export,
+        }
+
+        handler = commands.get(args.command)
+        if handler:
+            return handler(args)
+
         print_error(f"Unknown command: {args.command}")
         return 1
+    finally:
+        _CLI_QUIET = prev_quiet
+        _CLI_STATUS_STREAM = prev_stream
 
 
 if __name__ == "__main__":
