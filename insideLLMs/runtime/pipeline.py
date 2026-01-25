@@ -1946,6 +1946,8 @@ class CacheMiddleware(Middleware):
             >>> cache_mw = CacheMiddleware(cache_size=10000)
         """
         super().__init__()
+        if cache_size < 1:
+            raise ValueError("cache_size must be >= 1")
         self.cache: dict[str, tuple[str, float]] = {}
         self.cache_size = cache_size
         self.ttl_seconds = ttl_seconds
@@ -2073,13 +2075,14 @@ class CacheMiddleware(Middleware):
         key = self._cache_key(prompt, **kwargs)
 
         # Check cache
-        if key in self.cache:
-            response, timestamp = self.cache[key]
+        cached = self.cache.pop(key, None)
+        if cached is not None:
+            response, timestamp = cached
             if not self._is_expired(timestamp):
                 self.hits += 1
+                # True LRU: move most-recently-used key to the end.
+                self.cache[key] = (response, timestamp)
                 return response
-            # Expired, remove from cache
-            del self.cache[key]
 
         # Cache miss - generate and cache
         self.misses += 1
@@ -2146,13 +2149,13 @@ class CacheMiddleware(Middleware):
 
         # Check cache (async-safe since cache is just a dict read)
         async with self._get_lock():
-            if key in self.cache:
-                response, timestamp = self.cache[key]
+            cached = self.cache.pop(key, None)
+            if cached is not None:
+                response, timestamp = cached
                 if not self._is_expired(timestamp):
                     self.hits += 1
+                    self.cache[key] = (response, timestamp)
                     return response
-                # Expired, remove from cache
-                del self.cache[key]
 
             self.misses += 1
 
@@ -2386,8 +2389,12 @@ class RateLimitMiddleware(Middleware):
             ... )
         """
         super().__init__()
+        if requests_per_minute <= 0:
+            raise ValueError("requests_per_minute must be > 0")
+        if burst_size is not None and burst_size <= 0:
+            raise ValueError("burst_size must be > 0")
         self.rate = requests_per_minute / 60.0  # requests per second
-        self.burst_size = burst_size or requests_per_minute
+        self.burst_size = burst_size if burst_size is not None else requests_per_minute
         self.tokens = float(self.burst_size)
         self.last_update = time.time()
 
