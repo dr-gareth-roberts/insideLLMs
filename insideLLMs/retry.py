@@ -98,7 +98,6 @@ import functools
 import logging
 import random
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
@@ -1737,7 +1736,7 @@ class CircuitBreaker:
 
         In HALF_OPEN state, tracks consecutive successes and transitions
         to CLOSED if the success_threshold is reached. In CLOSED state,
-        this is a no-op (failure count is not reset on individual successes).
+        resets the failure count (consecutive failure semantics).
 
         Notes
         -----
@@ -1751,6 +1750,10 @@ class CircuitBreaker:
                 self._state = CircuitState.CLOSED
                 self._failure_count = 0
                 self._success_count = 0
+                self._last_failure_time = None
+                self._half_open_calls = 0
+        elif self._state == CircuitState.CLOSED:
+            self._failure_count = 0
 
     def _record_failure(self) -> None:
         """Record a failed operation and update circuit state.
@@ -1885,7 +1888,6 @@ class CircuitBreaker:
             self._record_failure()
             raise
 
-    @contextmanager
     def __enter__(self) -> "CircuitBreaker":
         """Enter the circuit breaker context manager.
 
@@ -1923,6 +1925,11 @@ class CircuitBreaker:
                 time.time() - (self._last_failure_time or 0)
             )
             raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
+
+        if self._state == CircuitState.HALF_OPEN:
+            if self._half_open_calls >= self.config.half_open_max_calls:
+                raise CircuitBreakerOpen(self.name, 0)
+            self._half_open_calls += 1
 
         return self
 
