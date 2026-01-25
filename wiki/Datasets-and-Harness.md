@@ -92,6 +92,7 @@ Key fields:
 - `dataset`: dataset section
 - `max_examples`: cap dataset size (useful for fast smoke tests)
 - `output_dir`: where the harness writes if `--run-dir` is not set (default: `results`)
+- `generation`: optional kwargs passed to `probe.run(...)` (e.g. `temperature`, `max_tokens`, `seed`)
 
 Run it:
 
@@ -99,6 +100,32 @@ Run it:
 insidellms harness harness.yaml --run-dir .tmp/runs/harness --overwrite
 insidellms validate .tmp/runs/harness
 ```
+
+## Generation Settings
+
+For config-driven runs, you can pass model generation params through the runner:
+
+```yaml
+generation:
+  temperature: 0.0
+  max_tokens: 512
+  seed: 42
+```
+
+For harnesses, you can also override per probe:
+
+```yaml
+generation:
+  temperature: 0.0
+probes:
+  - type: code_generation
+    args:
+      language: python
+    generation:
+      max_tokens: 800
+```
+
+`probe_kwargs` and `run_kwargs` are accepted as aliases for `generation`.
 
 ## Tips for Deterministic Datasets
 

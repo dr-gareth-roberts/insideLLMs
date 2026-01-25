@@ -103,6 +103,36 @@ model:
     base_url: http://localhost:11434
 ```
 
+#### Ollama Cloud
+
+If you’re using an Ollama-hosted endpoint that requires auth, set:
+
+- `OLLAMA_API_KEY` (used by the `ollama` Python client for bearer auth)
+- `base_url` in `model.args` (so insideLLMs targets the correct endpoint)
+
+Example (harness):
+
+```yaml
+models:
+  - type: ollama
+    args:
+      model_name: deepseek-v3.2
+      base_url: https://YOUR_OLLAMA_ENDPOINT
+      timeout: 600
+probes:
+  - type: logic
+    args: {}
+dataset:
+  format: jsonl
+  path: examples/probe_battery.jsonl
+max_examples: 3
+generation:
+  temperature: 0.0
+  seed: 42
+```
+
+See `examples/harness_ollama_cloud_deepseek_battery.yaml`.
+
 ### llama.cpp (GGUF)
 
 Run a local GGUF model via `llama-cpp-python`:

@@ -30,4 +30,6 @@ python examples/example_experiment_tracking.py
 
 - `examples/experiment.yaml`: minimal offline `insidellms run` config
 - `examples/harness.yaml`: hosted-model harness config (requires API keys)
+- `examples/harness_ollama_cloud_deepseek_battery.yaml`: Ollama DeepSeek battery (set `OLLAMA_API_KEY`)
+- `examples/probe_battery.jsonl`: small multi-probe dataset for battery runs
 - `ci/harness.yaml`: offline CI diff-gating harness

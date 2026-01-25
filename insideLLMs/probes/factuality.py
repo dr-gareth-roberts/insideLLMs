@@ -86,6 +86,7 @@ ConsistencyProbe : For testing response consistency
 """
 
 import re
+from typing import Any
 
 from .base import Probe
 
@@ -215,7 +216,7 @@ class FactualityProbe(Probe):
         """
         super().__init__(name)
 
-    def run(self, model, factual_questions: list, **kwargs):
+    def run(self, model, factual_questions: Any, **kwargs):
         """Execute the factuality probe on a model with the given questions.
 
         This method iterates through a list of factual questions, queries the
@@ -365,9 +366,34 @@ class FactualityProbe(Probe):
         --------
         _extract_direct_answer : Method used to extract concise answers from responses
         """
+        questions: Any = factual_questions
+        if isinstance(factual_questions, dict):
+            if factual_questions.get("factual_questions") is not None:
+                questions = factual_questions["factual_questions"]
+            elif factual_questions.get("questions") is not None:
+                questions = factual_questions["questions"]
+            elif (
+                factual_questions.get("question") is not None
+                and factual_questions.get("reference_answer") is not None
+            ):
+                questions = [factual_questions]
+            else:
+                raise ValueError(
+                    "FactualityProbe expects a list of question dicts, or a dict containing "
+                    "'factual_questions'/'questions', or a single question dict with "
+                    "'question' + 'reference_answer'."
+                )
+
+        if not isinstance(questions, list):
+            raise ValueError(
+                "FactualityProbe expects a list of question dicts, or a dict containing "
+                "'factual_questions'/'questions', or a single question dict with "
+                "'question' + 'reference_answer'."
+            )
+
         results = []
 
-        for item in factual_questions:
+        for item in questions:
             question = item["question"]
             reference = item["reference_answer"]
             category = item.get("category", "general")

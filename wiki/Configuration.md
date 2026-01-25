@@ -38,6 +38,7 @@ Key fields:
 - `dataset.path`: for `jsonl`/`csv`
 - `dataset.input_field`: which field from each row becomes the prompt (common for `run`)
 - `max_examples`: cap dataset size for quick runs
+- `generation`: optional kwargs passed to `probe.run(...)` (often forwarded to `model.generate(...)`)
 
 ## `insidellms harness` (cross-model sweep)
 
@@ -67,6 +68,7 @@ Notes:
 - Harness datasets are usually “wide” dict records so different probes can pick the fields they
   need (e.g. `question`, `prompt`, `task`).
 - If you don’t pass `--run-dir`, the harness writes to `output_dir` (default: `results`).
+- Optional `generation` (or `probe_kwargs`) is passed to `probe.run(...)` for every example.
 
 ## Dataset Formats
 
@@ -82,4 +84,3 @@ dataset:
   name: squad
   split: validation
 ```
-
