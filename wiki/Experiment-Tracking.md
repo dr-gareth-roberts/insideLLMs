@@ -100,13 +100,15 @@ Fan-out to multiple backends (e.g., local + W&B).
 
 ## Enabling Tracking
 
-### CLI (`run`)
+### CLI (`run` and `harness`)
 
 ```bash
 insidellms run experiment.yaml --track local --track-project my-project
 insidellms run experiment.yaml --track wandb --track-project my-project
 insidellms run experiment.yaml --track mlflow --track-project my-project
 insidellms run experiment.yaml --track tensorboard --track-project my-project
+
+insidellms harness harness.yaml --track local --track-project my-project
 ```
 
 Notes:

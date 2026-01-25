@@ -58,7 +58,7 @@ Common flags:
 
 - `--resume`: resume from an existing run directory if `records.jsonl` is present.
 - `--async` + `--concurrency`: enable async execution and set concurrency.
-- `--track` + `--track-project`: enable experiment tracking (see (Experiment-Tracking)).
+- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking)).
 - `--validate-output`: validate serialized outputs against a versioned schema (requires pydantic).
 - `--schema-version` and `--validation-mode`: schema version selection and strict vs warn behavior.
 
@@ -70,7 +70,13 @@ Run a cross-model probe harness.
 insidellms harness examples/harness.yaml
 insidellms harness examples/harness.yaml --run-dir .tmp/harness --report-title "Weekly Harness"
 insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --overwrite --skip-report
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --track local --track-project my-project
 ```
+
+Common flags:
+
+- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking)).
+- `--validate-output`: validate serialized outputs against a versioned schema (requires pydantic).
 
 ### `report`
 
