@@ -6,61 +6,30 @@ nav_order: 1
 
 # Models
 
-Models are the core abstraction for interacting with LLMs in insideLLMs.
+**Unified interface for all LLM providers.**
 
-## The Model Interface
-
-Every model implements a unified interface:
+## Interface
 
 ```python
 class Model:
-    name: str  # Human-readable identifier
-    
     def generate(self, prompt: str, **kwargs) -> str:
-        """Generate text from a prompt."""
-        
+        """Text completion."""
+
     def chat(self, messages: list[dict], **kwargs) -> str:
         """Multi-turn conversation."""
-        
-    def stream(self, prompt: str, **kwargs) -> Iterator[str]:
-        """Stream response tokens."""
-        
+
     def info(self) -> dict:
-        """Return model metadata."""
+        """Model metadata."""
 ```
 
-This abstraction means probes work identically across all providers.
+One interface. All providers.
 
-## Why This Matters
+## Why It Matters
 
-```mermaid
-graph LR
-    Probe[🔬 Probe] --> Interface[Model Interface]
-    Interface --> OpenAI[OpenAI]
-    Interface --> Anthropic[Anthropic]
-    Interface --> Ollama[Ollama]
-    Interface --> Custom[Your Model]
-```
-
-The same probe can test:
-- Cloud APIs (OpenAI, Anthropic, Google)
-- Local models (Ollama, llama.cpp, vLLM)
+Write probes once. Test across:
+- OpenAI, Anthropic, Google, Cohere
+- Ollama, llama.cpp, vLLM
 - Custom implementations
-- Mock models for testing
-
-## Model Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant R as Runner
-    participant M as Model
-    participant P as Provider
-    
-    R->>M: generate(prompt)
-    M->>P: API Request
-    P-->>M: Response
-    M-->>R: Text
-```
 
 ## Creating Models
 
@@ -137,11 +106,11 @@ class MyModel(Model):
     def __init__(self, endpoint: str, **kwargs):
         super().__init__(name="my_model", **kwargs)
         self.endpoint = endpoint
-    
+
     def generate(self, prompt: str, **kwargs) -> str:
         # Your API call here
         return response
-    
+
     def info(self) -> dict:
         return {
             "name": self.name,
