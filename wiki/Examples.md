@@ -1,4 +1,7 @@
-# Examples
+---
+title: Examples
+nav_order: 15
+---
 
 Runnable scripts live in `examples/`.
 

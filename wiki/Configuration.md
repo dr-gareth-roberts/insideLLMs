@@ -1,4 +1,7 @@
-# Configuration
+---
+title: Configuration
+nav_order: 5
+---
 
 insideLLMs supports two primary YAML/JSON config shapes:
 

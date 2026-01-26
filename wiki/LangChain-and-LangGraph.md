@@ -1,4 +1,7 @@
-# LangChain and LangGraph
+---
+title: LangChain and LangGraph
+nav_order: 14
+---
 
 This integration lets you use insideLLMs models inside the LangChain / LangGraph ecosystem.
 
@@ -51,6 +54,6 @@ print(runnable.invoke("Say hello"))
 
 ## See Also
 
-- [Providers and Models](Providers-and-Models)
-- [Experiment Tracking](Experiment-Tracking)
-- [Determinism and CI](Determinism-and-CI)
+- [Providers and Models](Providers-and-Models.md)
+- [Experiment Tracking](Experiment-Tracking.md)
+- [Determinism and CI](Determinism-and-CI.md)

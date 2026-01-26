@@ -1,8 +1,12 @@
-# CLI
+---
+title: CLI
+nav_order: 4
+---
 
 This page documents the `insidellms` command-line interface and its subcommands.
-For configs and end-to-end workflows, see (Getting-Started), (Configuration), (Harness), and
-(Results-and-Reports).
+For configs and end-to-end workflows, see [Getting Started](Getting-Started.md),
+[Configuration](Configuration.md), [Harness](Harness.md), and
+[Results and Reports](Results-and-Reports.md).
 
 Tip: when running from source without installing the console script, you can use:
 
@@ -40,7 +44,7 @@ Both `run` and `harness` write deterministic run artifacts (including `manifest.
   `--run-root`. If omitted, a deterministic run ID is derived from the resolved config snapshot.
 - `--overwrite`: allow overwriting an existing non-empty run directory (dangerous).
 
-See (Determinism-and-CI) for the byte-for-byte determinism contract.
+See [Determinism and CI](Determinism-and-CI.md) for the byte-for-byte determinism contract.
 
 ## Command Reference
 
@@ -58,7 +62,7 @@ Common flags:
 
 - `--resume`: resume from an existing run directory if `records.jsonl` is present.
 - `--async` + `--concurrency`: enable async execution and set concurrency.
-- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking)).
+- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking.md)).
 - `--validate-output`: validate serialized outputs against a versioned schema (requires pydantic).
 - `--schema-version` and `--validation-mode`: schema version selection and strict vs warn behavior.
 
@@ -75,7 +79,7 @@ insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --track local --trac
 
 Common flags:
 
-- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking)).
+- `--track` + `--track-project`: enable experiment tracking (see [Experiment Tracking](Experiment-Tracking.md)).
 - `--validate-output`: validate serialized outputs against a versioned schema (requires pydantic).
 
 ### `report`
@@ -104,7 +108,7 @@ Useful flags:
 - `--fail-on-trace-violations`: fail if contract violations increase (when present)
 - `--output-fingerprint-ignore`: ignore volatile keys when fingerprinting structured outputs
 
-See (Tracing-and-Fingerprinting) for details.
+See [Tracing and Fingerprinting](Tracing-and-Fingerprinting.md) for details.
 
 ### `schema`
 

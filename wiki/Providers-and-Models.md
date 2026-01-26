@@ -1,4 +1,7 @@
-# Providers and Models
+---
+title: Providers and Models
+nav_order: 6
+---
 
 insideLLMs uses a single `Model` interface (`generate`, `chat`, `stream`) across hosted providers and
 local runners. Most users interact with models via the registry using `model.type` in config files.
@@ -161,6 +164,6 @@ model:
 
 ## See Also
 
-- [Configuration](Configuration)
-- [Probes and Models](Probes-and-Models)
-- [Troubleshooting](Troubleshooting)
+- [Configuration](Configuration.md)
+- [Probes and Models](Probes-and-Models.md)
+- [Troubleshooting](Troubleshooting.md)

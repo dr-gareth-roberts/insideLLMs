@@ -1,4 +1,7 @@
-# Determinism and CI
+---
+title: Determinism and CI
+nav_order: 13
+---
 
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI
 diff-gating.
@@ -81,4 +84,4 @@ For structured outputs with volatile fields, use:
 insidellms diff ... --output-fingerprint-ignore timestamp,request_id
 ```
 
-See (Tracing-and-Fingerprinting) for details.
+See [Tracing and Fingerprinting](Tracing-and-Fingerprinting.md) for details.

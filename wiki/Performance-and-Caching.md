@@ -1,4 +1,7 @@
-# Performance and Caching
+---
+title: Performance and Caching
+nav_order: 11
+---
 
 This page collects the knobs that affect throughput, latency, cost, and determinism. It covers the
 middleware pipeline, caching modules, async runners, and rate limiting utilities.

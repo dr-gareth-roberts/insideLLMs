@@ -1,0 +1,33 @@
+title: insideLLMs Docs
+description: Deterministic behavioural probe harness for LLM comparison
+
+# Project Pages URL: https://<user>.github.io/<repo>/
+url: https://dr-gareth-roberts.github.io
+baseurl: /insideLLMs
+
+# Theme (Just the Docs)
+remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-remote-theme
+  - jekyll-relative-links
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+search_enabled: true
+color_scheme: dark
+
+# Make Markdown links to other .md files work on the built site.
+relative_links:
+  enabled: true
+
+aux_links:
+  GitHub: https://github.com/dr-gareth-roberts/insideLLMs
+aux_links_new_tab: true
+
+gh_edit_link: true
+gh_edit_link_text: Edit this page on GitHub
+gh_edit_repository: https://github.com/dr-gareth-roberts/insideLLMs
+gh_edit_branch: main
+gh_edit_source: wiki
+gh_edit_view_mode: tree
+
