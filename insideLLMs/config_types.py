@@ -156,8 +156,10 @@ Complete example with async runner:
 
 from __future__ import annotations
 
+import time
 import warnings
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -1158,6 +1160,10 @@ class RunConfigBuilder:
         self._stop_on_error = stop_on_error
         return self
 
+    def with_stop_on_error(self, stop_on_error: bool = True) -> "RunConfigBuilder":
+        """Alias for with_error_handling (backward compatibility)."""
+        return self.with_error_handling(stop_on_error=stop_on_error)
+
     def with_dataset_info(self, info: dict[str, Any]) -> "RunConfigBuilder":
         """Set dataset metadata for the run manifest.
 
@@ -1798,9 +1804,9 @@ class RunContext:
     """
 
     run_id: str
-    run_dir: Path
-    run_started_at: Any  # datetime
-    run_base_time: float  # time.perf_counter() at start
+    run_dir: Path = field(default_factory=lambda: Path("."))
+    run_started_at: datetime = field(default_factory=datetime.now)
+    run_base_time: float = field(default_factory=time.perf_counter)
 
     # Resolved specs for manifest
     model_spec: dict[str, Any] = field(default_factory=dict)
@@ -1970,7 +1976,7 @@ class ProgressInfo:
         """Calculate percentage of items completed.
 
         Returns the completion percentage as a float between 0 and 100.
-        Returns 100.0 if total is 0 (empty input, nothing to process).
+        Returns 0.0 if total is 0.
 
         Returns
         -------
@@ -1985,11 +1991,11 @@ class ProgressInfo:
             >>> info.percent
             25.0
 
-        Empty input returns 100%:
+        Empty input returns 0%:
 
             >>> info = ProgressInfo(current=0, total=0, elapsed_seconds=0.0)
             >>> info.percent
-            100.0
+            0.0
 
         Complete:
 
@@ -1998,8 +2004,13 @@ class ProgressInfo:
             100.0
         """
         if self.total == 0:
-            return 100.0
+            return 0.0
         return (self.current / self.total) * 100
+
+    @property
+    def percentage(self) -> float:
+        """Alias for percent (backward compatibility)."""
+        return self.percent
 
     @property
     def remaining(self) -> int:
