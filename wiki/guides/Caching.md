@@ -6,36 +6,15 @@ nav_order: 1
 
 # Caching
 
-Speed up runs and reduce costs with response caching.
+**Reduce costs. Speed up iteration.**
 
-## Why Cache?
-
-- **Cost reduction**: Avoid duplicate API calls
-- **Faster iteration**: Skip already-computed results
-- **Development**: Test without hitting rate limits
-- **Reproducibility**: Get consistent responses for same inputs
-
-## Enabling Caching
-
-### In Config
+## Enable
 
 ```yaml
 cache:
   enabled: true
   backend: sqlite
   path: .cache/insidellms.db
-```
-
-### Programmatically
-
-```python
-from insideLLMs.caching_unified import CacheConfig, UnifiedCache
-
-cache = UnifiedCache(CacheConfig(
-    enabled=True,
-    backend="sqlite",
-    path=".cache/insidellms.db"
-))
 ```
 
 ## Cache Backends
