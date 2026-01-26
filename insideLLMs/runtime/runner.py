@@ -78,10 +78,12 @@ import asyncio
 import hashlib
 import inspect
 import json
+import logging
 import os
 import platform
 import shutil
 import sys
+import time
 from contextlib import ExitStack
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
@@ -90,6 +92,8 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
@@ -2801,6 +2805,12 @@ class AsyncProbeRunner(_RunnerBase):
 
         # Validate prompt set before execution
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
+        
+        # Validate concurrency and batch_workers
+        if concurrency < 1:
+            raise ValueError(f"concurrency must be >= 1, got {concurrency}")
+        if batch_workers is not None and batch_workers < 1:
+            raise ValueError(f"batch_workers must be >= 1, got {batch_workers}")
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
@@ -2858,6 +2868,7 @@ class AsyncProbeRunner(_RunnerBase):
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
         errors: list[Optional[BaseException]] = [None] * len(prompt_set)
         completed = 0
+        completed_lock = asyncio.Lock()  # Protect completed counter from race conditions
         total = len(prompt_set)
         run_start_time = time.perf_counter()  # For progress tracking
 
@@ -2965,10 +2976,12 @@ class AsyncProbeRunner(_RunnerBase):
                         error_type=type(e).__name__,
                     )
                 finally:
-                    completed += 1
+                    async with completed_lock:
+                        completed += 1
+                        current_completed = completed
                     _invoke_progress_callback(
                         progress_callback,
-                        current=completed,
+                        current=current_completed,
                         total=total,
                         start_time=run_start_time,
                         current_item=item,
@@ -3487,8 +3500,16 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                         for chunk in iter(lambda: fp.read(1024 * 1024), b""):
                             hasher.update(chunk)
                     dataset["dataset_hash"] = f"sha256:{hasher.hexdigest()}"
-                except Exception:
-                    pass
+                except (IOError, OSError) as e:
+                    logger.warning(
+                        f"Failed to hash dataset file '{dataset.get('path')}': {e}. "
+                        "Run ID will not include dataset content hash."
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Unexpected error hashing dataset '{dataset.get('path')}': {e}",
+                        exc_info=True
+                    )
 
     return snapshot
 
