@@ -54,6 +54,6 @@ print(runnable.invoke("Say hello"))
 
 ## See Also
 
-- [Providers and Models](Providers-and-Models.md)
+- [Models Catalog](reference/Models-Catalog.md)
 - [Experiment Tracking](Experiment-Tracking.md)
 - [Determinism and CI](Determinism-and-CI.md)
