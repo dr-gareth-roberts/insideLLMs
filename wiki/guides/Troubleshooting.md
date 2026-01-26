@@ -6,55 +6,25 @@ nav_order: 5
 
 # Troubleshooting
 
-Solutions to common issues.
+**Quick fixes for common issues.**
 
-## Installation Issues
+## Installation
 
-### "command not found: insidellms"
-
-**Cause:** Virtual environment not activated or package not installed.
-
-**Solutions:**
+**"command not found: insidellms"**
 ```bash
-# Activate virtual environment
 source .venv/bin/activate
-
-# Or run as module
+# or
 python -m insideLLMs.cli --version
-
-# Reinstall if needed
-pip install -e ".[all]"
 ```
 
-### pip installation fails
-
-**Cause:** Outdated pip or Python version mismatch.
-
-**Solutions:**
+**pip fails**
 ```bash
-# Upgrade pip
 pip install --upgrade pip
-
-# Check Python version (needs 3.10+)
-python --version
-
-# Use specific Python version
-python3.11 -m pip install -e ".[all]"
+python --version  # Must be 3.10+
 ```
 
-### Missing optional dependencies
-
-**Cause:** Extras not installed.
-
-**Solutions:**
+**Missing dependencies**
 ```bash
-# NLP features
-pip install -e ".[nlp]"
-
-# Visualisation
-pip install -e ".[visualisation]"
-
-# Everything
 pip install -e ".[all]"
 ```
 
