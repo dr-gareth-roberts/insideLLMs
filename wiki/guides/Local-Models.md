@@ -82,7 +82,7 @@ ollama run llama3 --verbose
 
 ## llama.cpp
 
-CPU-optimized inference with GGUF models.
+CPU-optimised inference with GGUF models.
 
 ### Setup
 

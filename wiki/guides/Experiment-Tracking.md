@@ -6,7 +6,7 @@ nav_order: 3
 
 # Experiment Tracking
 
-Log runs to external tracking systems for visualization and comparison.
+Log runs to external tracking systems for visualisation and comparison.
 
 ## Supported Backends
 
@@ -160,7 +160,7 @@ mlflow ui
 
 ## TensorBoard
 
-TensorFlow's visualization toolkit.
+TensorFlow's visualisation toolkit.
 
 ### Setup
 
@@ -226,7 +226,7 @@ tracker.log_params({
 | Team sharing | Yes | Via git |
 
 **Use both:**
-- Tracking for exploration and visualization
+- Tracking for exploration and visualisation
 - Artifacts for CI diff-gating and reproducibility
 
 ---

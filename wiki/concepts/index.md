@@ -13,7 +13,7 @@ Deep dives into how insideLLMs works.
 | Concept | Description |
 |---------|-------------|
 | [Models](Models.md) | Unified interface for LLM providers |
-| [Probes](Probes.md) | Focused behavioral tests |
+| [Probes](Probes.md) | Focused behavioural tests |
 | [Runners](Runners.md) | Orchestration and execution |
 | [Datasets](Datasets.md) | Input formats and loading |
 | [Determinism](Determinism.md) | Reproducibility guarantees |
@@ -67,7 +67,7 @@ model.info()              # Provider metadata
 
 ### Probes
 
-Probes test specific behaviors:
+Probes test specific behaviours:
 
 ```python
 probe.run(model, input_data)  # Execute one test

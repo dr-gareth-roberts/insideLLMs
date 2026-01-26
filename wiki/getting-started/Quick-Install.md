@@ -59,7 +59,7 @@ Install only what you need:
 | Extra | What it includes | Install command |
 |-------|------------------|-----------------|
 | `nlp` | Text processing (nltk, spacy, scikit-learn) | `pip install -e ".[nlp]"` |
-| `visualization` | Charts and reports (matplotlib, seaborn) | `pip install -e ".[visualization]"` |
+| `visualisation` | Charts and reports (matplotlib, seaborn) | `pip install -e ".[visualisation]"` |
 | `langchain` | LangChain/LangGraph integration | `pip install -e ".[langchain]"` |
 | `dev` | Testing and linting tools | `pip install -e ".[dev]"` |
 | `all` | Everything above | `pip install -e ".[all]"` |

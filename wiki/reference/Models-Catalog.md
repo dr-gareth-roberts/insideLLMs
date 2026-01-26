@@ -297,7 +297,7 @@ models:
 
 ## llama.cpp
 
-CPU-optimized local inference.
+CPU-optimised local inference.
 
 ### Setup
 
@@ -341,7 +341,7 @@ model = DummyModel(name="test", response="Fixed response")
 
 ### Use Cases
 
-- **Testing**: Verify framework behavior without API costs
+- **Testing**: Verify framework behaviour without API costs
 - **CI/CD**: Deterministic baseline runs
 - **Development**: Build and debug probes
 

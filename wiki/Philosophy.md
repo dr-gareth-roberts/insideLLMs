@@ -17,13 +17,13 @@ Traditional LLM evaluation frameworks focus on benchmark scores: accuracy on MML
 
 But for teams shipping LLM-powered products, a different question matters more:
 
-> "Did my model's behavior change?"
+> "Did my model's behaviour change?"
 
-A model that scores 85% on a benchmark isn't inherently better than one scoring 82%. What matters is whether the behaviors your users depend on have regressed.
+A model that scores 85% on a benchmark isn't inherently better than one scoring 82%. What matters is whether the behaviours your users depend on have regressed.
 
 ---
 
-## Benchmarks vs. Behavioral Testing
+## Benchmarks vs. Behavioural Testing
 
 | Aspect | Benchmark Frameworks | insideLLMs |
 |--------|---------------------|------------|
@@ -45,7 +45,7 @@ Benchmark frameworks tell you where a model ranks on a leaderboard. insideLLMs t
 The most useful evaluation isn't "Model X scored 87%." It's "Model X's response to prompt #47 changed from A to B."
 
 insideLLMs preserves every input/output pair in `records.jsonl`, enabling:
-- Exact identification of behavioral changes
+- Exact identification of behavioural changes
 - Regression tracking to specific prompts
 - Root cause analysis when things break
 
@@ -57,7 +57,7 @@ Most evaluation frameworks treat reproducibility as a nice-to-have. insideLLMs m
 - **Timestamps** derive from run IDs, not wall clocks
 - **Artifacts** have stable JSON formatting (sorted keys, consistent separators)
 
-This isn't academic rigor for its own sake. It's what makes `git diff` work on model behavior:
+This isn't academic rigor for its own sake. It's what makes `git diff` work on model behaviour:
 
 ```bash
 # This only works if artifacts are deterministic
@@ -72,7 +72,7 @@ Benchmarks are:
 - **External**: Maintained by third parties
 
 Probes are:
-- **Focused**: Test specific behaviors (bias in salary advice, logical consistency, jailbreak resistance)
+- **Focused**: Test specific behaviours (bias in salary advice, logical consistency, jailbreak resistance)
 - **Composable**: Combine probes for your use case
 - **Extensible**: Build custom probes without forking the framework
 
@@ -102,10 +102,10 @@ graph LR
     Gate -->|Changes| Review[Human review required]
 ```
 
-This treats model behavior like code:
+This treats model behaviour like code:
 - **Testable**: Run probes on every PR
 - **Diffable**: See exactly what changed
-- **Gateable**: Block merges on behavioral regressions
+- **Gateable**: Block merges on behavioural regressions
 
 ### 5. Response-Level Granularity
 
@@ -129,7 +129,7 @@ Aggregate metrics hide important details. If a model's accuracy drops from 90% t
 
 **Not a training framework.** insideLLMs evaluates models; it doesn't train them.
 
-**Not a prompt optimization tool.** It tests behavior; it doesn't improve it.
+**Not a prompt optimisation tool.** It tests behaviour; it doesn't improve it.
 
 **Not a real-time monitoring system.** It's for pre-deployment testing, not production observability.
 
@@ -141,9 +141,9 @@ Use insideLLMs when you need to:
 
 1. **Detect regressions** before they reach users
 2. **Compare models** for a specific use case (not general capability)
-3. **Gate deployments** on behavioral tests
+3. **Gate deployments** on behavioural tests
 4. **Track changes** across model versions
-5. **Build custom evaluations** for domain-specific behaviors
+5. **Build custom evaluations** for domain-specific behaviours
 
 ---
 
@@ -197,7 +197,7 @@ This makes the entire pipeline diffable.
 
 ### insideLLMs
 
-**Focus**: Behavioral regression testing for CI
+**Focus**: Behavioural regression testing for CI
 **Strength**: Deterministic, diffable, CI-native
 **Gap**: Fewer built-in benchmarks (by design)
 

@@ -65,7 +65,7 @@ dataset:
   format: inline
   items:
     - question: "What is 2 + 2?"
-    - question: "What color is the sky?"
+    - question: "What colour is the sky?"
     - question: "Name a prime number."
 ```
 

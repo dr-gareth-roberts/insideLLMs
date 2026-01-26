@@ -23,7 +23,7 @@ Most flexible format. One JSON object per line:
 
 ```jsonl
 {"question": "What is 2 + 2?", "expected": "4"}
-{"question": "What color is the sky?", "expected": "blue"}
+{"question": "What colour is the sky?", "expected": "blue"}
 {"question": "Name a prime number", "expected": "2"}
 ```
 
@@ -50,7 +50,7 @@ For tabular data:
 ```csv
 question,expected
 "What is 2 + 2?","4"
-"What color is the sky?","blue"
+"What colour is the sky?","blue"
 ```
 
 ### Config
@@ -82,7 +82,7 @@ dataset:
   items:
     - question: "What is 2 + 2?"
       expected: "4"
-    - question: "What color is the sky?"
+    - question: "What colour is the sky?"
       expected: "blue"
 ```
 

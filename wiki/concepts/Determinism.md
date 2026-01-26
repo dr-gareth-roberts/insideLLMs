@@ -13,7 +13,7 @@ insideLLMs produces deterministic outputs for reproducibility and CI integration
 **Same inputs → Identical outputs**
 
 This enables:
-- **CI diff-gating**: Detect behavioral regressions automatically
+- **CI diff-gating**: Detect behavioural regressions automatically
 - **Reproducibility**: Re-run experiments and get the same artifacts
 - **Caching**: Skip already-computed results safely
 - **Debugging**: Compare runs to isolate changes
@@ -146,7 +146,7 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 |---------|-------|-----|
 | Different run_id | Config or dataset changed | Verify inputs match |
 | Different timestamps | Using old artifacts | Re-generate with current version |
-| Diff shows changes | Model behavior changed | Update baseline or investigate |
+| Diff shows changes | Model behaviour changed | Update baseline or investigate |
 | Flaky CI | Non-deterministic model | Use DummyModel for determinism tests |
 
 ## DummyModel for Testing

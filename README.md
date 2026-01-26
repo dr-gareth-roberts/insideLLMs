@@ -2,13 +2,13 @@
   <img src="insidellms.jpg" alt="insideLLMs" width="720">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
-    <strong>Deterministic behavioural probe harness for LLM comparison</strong>
+    <strong>Catch LLM behavioural regressions before they reach production</strong>
   </p>
   <p align="center">
-    <a href="#overview">Overview</a> &bull;
-    <a href="#workflow">Workflow</a> &bull;
+    <a href="#why-insidellms">Why</a> &bull;
+    <a href="#how-it-works">How It Works</a> &bull;
     <a href="#quickstart">Quickstart</a> &bull;
-    <a href="#docs">Docs</a>
+    <a href="https://dr-gareth-roberts.github.io/insideLLMs/">Docs</a>
   </p>
 </div>
 
@@ -21,88 +21,189 @@
 
 ---
 
-## Overview
+## Why insideLLMs
 
-insideLLMs is a Python library and CLI for comparing LLM behaviour across models using shared probes and datasets. The harness is deterministic by design, so you can store run artefacts and reliably diff behaviour in CI.
+**Traditional LLM evaluation frameworks answer:** "What's the model's score on MMLU?"
 
-Adapters cover hosted and local models (OpenAI, Anthropic, Google, Cohere, Hugging Face, Ollama, llama.cpp, vLLM), plus `DummyModel` for dry runs.
+**insideLLMs answers:** "Did my model's behaviour change between versions?"
 
-## Workflow
+When you're shipping LLM-powered products, you don't need leaderboard rankings. You need to know:
+- Did prompt #47 start returning different advice?
+- Will this model update break my users' workflows?
+- Can I safely deploy this change?
 
-The deterministic spine is records-first and CI-friendly:
+insideLLMs provides **deterministic, diffable, CI-gateable behavioural testing** for LLMs.
 
-```mermaid
-flowchart LR
-  Run[Run/Harness] --> Validate[Validate]
-  Validate --> Report[Report]
-  Report --> Diff[Diff]
-  Diff --> Decide[Decide]
+### Built for Production Teams
+
+- **Deterministic by design**: Same inputs produce byte-for-byte identical outputs
+- **CI-native**: `insidellms diff --fail-on-changes` blocks bad deploys
+- **Response-level granularity**: See exactly which prompts changed, not just aggregate metrics
+- **Provider-agnostic**: OpenAI, Anthropic, local models (Ollama, llama.cpp), all through one interface
+
+## How It Works
+
+### 1. Define Behavioural Tests (Probes)
+
+```python
+from insideLLMs import LogicProbe, BiasProbe, SafetyProbe
+
+# Test specific behaviours, not broad benchmarks
+probes = [LogicProbe(), BiasProbe(), SafetyProbe()]
 ```
 
-## Outputs
+### 2. Run Across Models
 
-- `records.jsonl`: one row per example per model per probe (canonical)
-- `summary.json`: aggregates and uncertainty estimates (where available)
-- `report.html`: human-readable comparison
-- `diff.json`: machine-readable diff (`DiffReport` schema)
+```bash
+insidellms harness config.yaml --run-dir ./baseline
+```
 
-For backwards compatibility, `results.jsonl` is kept alongside `records.jsonl`.
+Produces deterministic artefacts:
+- `records.jsonl` - Every input/output pair (canonical)
+- `summary.json` - Aggregated metrics
+- `report.html` - Human-readable comparison
+
+### 3. Detect Changes in CI
+
+```bash
+insidellms diff ./baseline ./candidate --fail-on-changes
+```
+
+Blocks the deploy if behaviour changed:
+```
+Changes detected:
+  example_id: 47
+  field: output
+  baseline: "Consult a doctor for medical advice."
+  candidate: "Here's what you should do..."
+```
 
 ## Quickstart
 
-Not published on PyPI yet. Install from source:
+### Install
 
 ```bash
 git clone https://github.com/dr-gareth-roberts/insideLLMs.git
 cd insideLLMs
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -e ".[all]"
 ```
 
-Offline golden path (no API keys required): `docs/GOLDEN_PATH.md`
-
-Run a harness and produce reports:
+### 5-Minute Test (No API Keys)
 
 ```bash
-insidellms harness harness.yaml --run-dir ./runs/candidate
-insidellms report ./runs/candidate
-insidellms diff ./runs/baseline ./runs/candidate --fail-on-regressions
+# Quick test with DummyModel
+insidellms quicktest "What is 2 + 2?" --model dummy
+
+# Run offline golden path
+python examples/example_cli_golden_path.py
 ```
 
-## CI Diff-Gating
+### First Real Comparison
 
-For PRs, you can gate on any behavioural drift by running a small deterministic harness on the
-base SHA and on the PR, then diffing the outputs:
+```yaml
+# harness.yaml
+models:
+  - type: openai
+    args: {model_name: gpt-4o}
+  - type: anthropic
+    args: {model_name: claude-3-5-sonnet-20241022}
+
+probes:
+  - type: logic
+  - type: bias
+
+dataset:
+  format: jsonl
+  path: data/test.jsonl
+```
 
 ```bash
-insidellms harness ci/harness.yaml --run-dir .tmp/runs/head --skip-report
-insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+insidellms harness harness.yaml --run-dir ./baseline
+insidellms report ./baseline
 ```
 
-## Determinism Scope
+### Add to CI
 
-- The harness spine (run -> records -> report -> diff) is deterministic, including run IDs and timestamps.
-- Canonical artifacts intentionally omit volatile runtime fields (e.g., `latency_ms`, `manifest.json:command`) to keep diffs stable.
-- Local file datasets are content-addressed (`dataset_hash=sha256:<...>`) and included in the deterministic run ID.
-- Other modules remain pragmatic unless they become part of the CI gating surface.
+```yaml
+# .github/workflows/behavioural-tests.yml
+- name: Run candidate
+  run: insidellms harness config.yaml --run-dir ./candidate
 
-## Docs
+- name: Diff against baseline
+  run: insidellms diff ./baseline ./candidate --fail-on-changes
+```
 
-- [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
-- [Docs Source](wiki/)
-- [Documentation Index](DOCUMENTATION_INDEX.md)
-- [API Reference](API_REFERENCE.md)
-- [Quick Reference](QUICK_REFERENCE.md)
-- [Architecture](ARCHITECTURE.md)
-- [Examples](examples/)
-- [Plugins](docs/PLUGINS.md)
-- [Determinism](docs/DETERMINISM.md)
-- [Stability & Versioning](docs/STABILITY.md)
-- [Experiment Tracking](wiki/Experiment-Tracking.md)
-- [Performance & Caching](wiki/Performance-and-Caching.md)
-- [Tracing & Fingerprinting](wiki/Tracing-and-Fingerprinting.md)
+## Key Features
 
-## Licence
+### Deterministic Artefacts
 
-MIT. See `LICENSE`.
+- Run IDs are SHA-256 hashes of inputs (config + dataset)
+- Timestamps derive from run IDs, not wall clocks
+- JSON output has stable formatting (sorted keys, consistent separators)
+- Result: `git diff` works on model behaviour
+
+### Response-Level Granularity
+
+`records.jsonl` preserves every input/output pair:
+```jsonl
+{"example_id": "47", "input": {...}, "output": "...", "status": "success"}
+{"example_id": "48", "input": {...}, "output": "...", "status": "success"}
+```
+
+No more debugging aggregate metrics. See exactly what changed.
+
+### Extensible Probes
+
+```python
+from insideLLMs.probes import Probe
+
+class MedicalSafetyProbe(Probe):
+    def run(self, model, data, **kwargs):
+        response = model.generate(data["symptom_query"])
+        return {
+            "response": response,
+            "has_disclaimer": "consult a doctor" in response.lower()
+        }
+```
+
+Build domain-specific tests without forking the framework.
+
+## Documentation
+
+- **[Documentation Site](https://dr-gareth-roberts.github.io/insideLLMs/)** - Complete guides and reference
+- **[Philosophy](https://dr-gareth-roberts.github.io/insideLLMs/Philosophy.html)** - Why insideLLMs exists
+- **[Getting Started](https://dr-gareth-roberts.github.io/insideLLMs/getting-started/)** - Install and first run
+- **[Tutorials](https://dr-gareth-roberts.github.io/insideLLMs/tutorials/)** - Bias testing, CI integration, custom probes
+- **[API Reference](API_REFERENCE.md)** - Complete Python API
+- **[Examples](examples/)** - Runnable code samples
+
+## Use Cases
+
+| Scenario | Solution |
+|----------|----------|
+| Model upgrade breaks production | Catch it in CI with `--fail-on-changes` |
+| Need to compare GPT-4 vs Claude | Run harness, get side-by-side report |
+| Detect bias in salary advice | Use BiasProbe with paired prompts |
+| Test jailbreak resistance | Use SafetyProbe with attack patterns |
+| Custom domain evaluation | Extend Probe base class |
+
+## Comparison with Other Frameworks
+
+| Framework | Focus | insideLLMs Difference |
+|-----------|-------|----------------------|
+| Eleuther lm-evaluation-harness | Benchmark scores | Behavioural regression detection |
+| HELM | Holistic evaluation | CI-native, deterministic diffing |
+| OpenAI Evals | Conversational tasks | Response-level granularity, provider-agnostic |
+
+**insideLLMs is for teams shipping LLM products who need to know what changed, not just what scored well.**
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

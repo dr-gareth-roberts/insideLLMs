@@ -84,7 +84,7 @@ class WordCountProbe(Probe[dict]):
         # Get model response
         response = model.generate(full_prompt, **kwargs)
         
-        # Analyze
+        # Analyse
         word_count = len(response.split())
         meets_constraint = min_words <= word_count <= max_words
         

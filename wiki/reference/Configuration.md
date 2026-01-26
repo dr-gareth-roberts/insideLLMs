@@ -112,7 +112,7 @@ dataset:
 File format:
 ```jsonl
 {"question": "What is 2 + 2?", "expected": "4"}
-{"question": "What color is the sky?", "expected": "blue"}
+{"question": "What colour is the sky?", "expected": "blue"}
 ```
 
 ### CSV
@@ -134,7 +134,7 @@ dataset:
   items:
     - question: "What is 2 + 2?"
       expected: "4"
-    - question: "What color is the sky?"
+    - question: "What colour is the sky?"
       expected: "blue"
 ```
 

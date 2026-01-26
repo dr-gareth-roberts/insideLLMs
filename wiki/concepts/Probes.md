@@ -6,7 +6,7 @@ nav_order: 2
 
 # Probes
 
-Probes are focused behavioral tests for LLMs.
+Probes are focused behavioural tests for LLMs.
 
 ## What is a Probe?
 

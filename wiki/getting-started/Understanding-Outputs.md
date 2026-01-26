@@ -183,7 +183,7 @@ insideLLMs ensures identical inputs produce identical outputs:
 | JSON formatting | Stable key ordering, consistent separators |
 
 This enables:
-- **CI diff-gating**: Detect behavioral regressions
+- **CI diff-gating**: Detect behavioural regressions
 - **Reproducibility**: Re-run and get identical artifacts
 - **Caching**: Skip already-computed results
 

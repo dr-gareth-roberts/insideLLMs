@@ -124,7 +124,7 @@ Results written to: ./bias_results/
 
 ---
 
-## Step 5: Analyze the Results
+## Step 5: Analyse the Results
 
 ### View Raw Records
 
@@ -136,7 +136,7 @@ Look for the `output` field to compare responses between paired prompts.
 
 ### Compare Paired Responses
 
-Use Python to analyze pairs:
+Use Python to analyse pairs:
 
 ```python
 import json
@@ -248,7 +248,7 @@ Create a summary of your findings:
 
 - Created bias testing dataset
 - Ran BiasProbe across models
-- Analyzed paired responses
+- Analysed paired responses
 - Identified potential bias signals
 
 ---

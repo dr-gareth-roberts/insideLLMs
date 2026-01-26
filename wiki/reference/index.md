@@ -42,7 +42,7 @@ insidellms doctor      # Check environment
 | `GOOGLE_API_KEY` | Google/Gemini API access |
 | `CO_API_KEY` | Cohere API access |
 | `INSIDELLMS_RUN_ROOT` | Default output directory |
-| `NO_COLOR` | Disable colored output |
+| `NO_COLOR` | Disable coloured output |
 
 ### Python API
 
