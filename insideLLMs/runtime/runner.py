@@ -629,6 +629,7 @@ class ProbeRunner(_RunnerBase):
                 _prepare_run_dir_for_resume(resolved_run_dir, run_root=root)
             else:
                 _prepare_run_dir(resolved_run_dir, overwrite=overwrite, run_root=root)
+            logger.debug(f"Prepared run directory: {resolved_run_dir}")
             self.last_run_dir = resolved_run_dir
             _ensure_run_sentinel(resolved_run_dir)
 
@@ -2840,6 +2841,16 @@ class AsyncProbeRunner(_RunnerBase):
             resolved_run_id = run_id
 
         self.last_run_id = resolved_run_id
+        logger.info(
+            "Starting async probe run",
+            extra={
+                "run_id": resolved_run_id,
+                "model": model_spec.get("model_id"),
+                "probe": probe_spec.get("probe_id"),
+                "examples": len(prompt_set),
+                "concurrency": concurrency
+            }
+        )
         run_base_time = _deterministic_base_time(resolved_run_id)
         run_started_at, _ = _deterministic_run_times(run_base_time, len(prompt_set))
 
@@ -2854,6 +2865,7 @@ class AsyncProbeRunner(_RunnerBase):
                 _prepare_run_dir_for_resume(resolved_run_dir, run_root=root)
             else:
                 _prepare_run_dir(resolved_run_dir, overwrite=overwrite, run_root=root)
+            logger.debug(f"Prepared run directory: {resolved_run_dir}")
             self.last_run_dir = resolved_run_dir
             _ensure_run_sentinel(resolved_run_dir)
             if config_snapshot is not None:
