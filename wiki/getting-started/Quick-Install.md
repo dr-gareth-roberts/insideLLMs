@@ -6,14 +6,9 @@ nav_order: 1
 
 # Quick Install
 
-Install insideLLMs in under 2 minutes.
+**2 minutes to working installation.**
 
-## Requirements
-
-- Python 3.10+
-- Git
-
-## Standard Installation
+## Install
 
 ```bash
 # Clone the repository
@@ -28,41 +23,22 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[all]"
 ```
 
-## Using uv (Faster)
+**Using uv?** Replace `pip install` with `uv pip install` above.
 
-If you use [uv](https://github.com/astral-sh/uv):
-
-```bash
-git clone https://github.com/dr-gareth-roberts/insideLLMs.git
-cd insideLLMs
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[all]"
-```
-
-## Verify Installation
+## Verify
 
 ```bash
 insidellms --version
+# insidellms 0.1.0
 ```
 
-You should see output like:
+## Extras (Optional)
 
+```bash
+pip install -e ".[nlp]"           # Text processing
+pip install -e ".[visualisation]" # Charts
+pip install -e ".[dev]"           # Development tools
 ```
-insidellms 0.1.0
-```
-
-## Optional Extras
-
-Install only what you need:
-
-| Extra | What it includes | Install command |
-|-------|------------------|-----------------|
-| `nlp` | Text processing (nltk, spacy, scikit-learn) | `pip install -e ".[nlp]"` |
-| `visualisation` | Charts and reports (matplotlib, seaborn) | `pip install -e ".[visualisation]"` |
-| `langchain` | LangChain/LangGraph integration | `pip install -e ".[langchain]"` |
-| `dev` | Testing and linting tools | `pip install -e ".[dev]"` |
-| `all` | Everything above | `pip install -e ".[all]"` |
 
 ## Troubleshooting
 

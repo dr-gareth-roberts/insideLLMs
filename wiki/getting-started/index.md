@@ -6,36 +6,21 @@ has_children: true
 
 # Getting Started
 
-Get up and running with insideLLMs in minutes. Choose your path:
+**Goal:** Catch your first regression in 15 minutes.
 
-## Quick Paths
+## Your Path
 
-| Time | Goal | Start Here |
-|------|------|------------|
-| **2 min** | Install the library | [Quick Install](Quick-Install.md) |
-| **5 min** | Run your first test | [First Run](First-Run.md) |
-| **15 min** | Compare two models | [First Harness](First-Harness.md) |
-| **10 min** | Understand the outputs | [Understanding Outputs](Understanding-Outputs.md) |
+| Step | What You'll Do | Time |
+|------|----------------|------|
+| 1. [Quick Install](Quick-Install.md) | Clone, install, verify | 2 min |
+| 2. [First Run](First-Run.md) | Test with DummyModel | 3 min |
+| 3. [First Harness](First-Harness.md) | Compare two models | 10 min |
+| 4. [Understanding Outputs](Understanding-Outputs.md) | Read the artefacts | 5 min |
 
-## Prerequisites
+**Prerequisites:** Python 3.10+, git. API keys optional (DummyModel works offline).
 
-- Python 3.10 or higher
-- pip or uv package manager
-- (Optional) API keys for hosted models (OpenAI, Anthropic, etc.)
+## After This
 
-## What You'll Learn
-
-By the end of this section, you'll be able to:
-
-1. Install insideLLMs from source
-2. Run a quick test with the DummyModel (no API keys needed)
-3. Configure and run a harness comparing multiple models
-4. Interpret the output artifacts (records.jsonl, summary.json, report.html)
-
-## Next Steps
-
-After completing the Getting Started guides, explore:
-
-- [Tutorials](../tutorials/index.md) - Step-by-step walkthroughs for common tasks
-- [Concepts](../concepts/index.md) - Deep dives into how insideLLMs works
-- [Reference](../reference/index.md) - Complete API and CLI documentation
+- **Block regressions:** [CI Integration Tutorial](../tutorials/CI-Integration.md)
+- **Understand the approach:** [Philosophy](../Philosophy.md)
+- **Go deeper:** [Concepts](../concepts/index.md)
