@@ -88,7 +88,8 @@ pytest -m "not slow and not integration"
 
 ### Documentation
 
-We use the GitHub Wiki for guides and how-to content. If you update a user-facing workflow, please update the Wiki and link the relevant page from `README.md`.
+User-facing guides live on the Docs Site (GitHub Pages), with Markdown source in `wiki/`. If you
+update a user-facing workflow, please update the relevant page and link it from `README.md`.
 
 Local contributor-facing policies and extension guidance:
 - `docs/STABILITY.md`

@@ -2,7 +2,7 @@
 
 A condensed reference for the most commonly used APIs in insideLLMs.
 
-For guides and workflows, see the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki).
+For guides and workflows, see the [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/).
 For full API detail, see [API_REFERENCE.md](API_REFERENCE.md).
 For system diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
 

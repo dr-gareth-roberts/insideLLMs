@@ -3,11 +3,11 @@
 **Version:** 0.1.0  
 **Last Updated:** January 17, 2026
 
-This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the GitHub Wiki.
+This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the Docs Site.
 
 ---
 
-For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md). For living documentation, see the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki).
+For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTURE.md). For living documentation, see the [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/).
 
 ---
 

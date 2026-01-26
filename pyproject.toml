@@ -84,7 +84,7 @@ insidellms = "insideLLMs.cli:main"
 [project.urls]
 Homepage = "https://github.com/dr-gareth-roberts/insideLLMs"
 Repository = "https://github.com/dr-gareth-roberts/insideLLMs"
-Documentation = "https://github.com/dr-gareth-roberts/insideLLMs/wiki"
+Documentation = "https://dr-gareth-roberts.github.io/insideLLMs/"
 "Changelog" = "https://github.com/dr-gareth-roberts/insideLLMs/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/dr-gareth-roberts/insideLLMs/issues"
 

@@ -89,7 +89,8 @@ insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 
 ## Docs
 
-- [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+- [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
+- [Docs Source](wiki/)
 - [Documentation Index](DOCUMENTATION_INDEX.md)
 - [API Reference](API_REFERENCE.md)
 - [Quick Reference](QUICK_REFERENCE.md)
