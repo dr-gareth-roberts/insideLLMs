@@ -1,12 +1,13 @@
 # insideLLMs Documentation Index
 
-Welcome to the insideLLMs documentation. Start with the GitHub Wiki for the latest guides and then use this index for local references.
+Welcome to the insideLLMs documentation. Start with the Docs Site for guides and then use this
+index for local references.
 
-[GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+[Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
 ```mermaid
 flowchart LR
-  W[GitHub Wiki] --> R[README]
+  W[Docs Site] --> R[README]
   R --> Q[Quick Reference]
   R --> A[Architecture]
   R --> API[API Reference]
@@ -143,7 +144,7 @@ flowchart LR
 → [API_REFERENCE.md - Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution)
 
 #### **Run a cross-model behavioural harness**
-→ [README.md](README.md#behavioural-harness), [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+→ [README.md](README.md#behavioural-harness), [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
 #### **Track runs in W&B / MLflow / TensorBoard**
 → [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
@@ -244,7 +245,7 @@ flowchart LR
 
 ### Use Case 5: Run a cross-model behavioural harness
 1. Read [README.md](README.md#behavioural-harness)
-2. See the runner guide in the [GitHub Wiki](https://github.com/dr-gareth-roberts/insideLLMs/wiki)
+2. See the runner guide in the [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
 ---
 
