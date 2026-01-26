@@ -51,8 +51,8 @@ python3.11 -m pip install -e ".[all]"
 # NLP features
 pip install -e ".[nlp]"
 
-# Visualization
-pip install -e ".[visualization]"
+# Visualisation
+pip install -e ".[visualisation]"
 
 # Everything
 pip install -e ".[all]"

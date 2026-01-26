@@ -22,8 +22,8 @@ The goal is **high signal, low ambiguity** documentation with consistent structu
 - Use consistent term casing:
   - `insideLLMs` (library/package)
   - `insidellms` (CLI)
-  - “run directory”, “run artifacts”, “records.jsonl”, “manifest.json”, “diff.json”
-- Avoid ambiguous pronouns (“it”, “this”) when referring to artifacts or commands.
+  - “run directory”, “run artefacts”, “records.jsonl”, “manifest.json”, “diff.json”
+- Avoid ambiguous pronouns (“it”, “this”) when referring to artefacts or commands.
 
 ## 3) Docs site page requirements (`wiki/*.md`)
 
@@ -43,7 +43,7 @@ nav_order: <integer>
 
 Use Mermaid diagrams for:
 
-- Execution flows (CLI → runner → artifacts)
+- Execution flows (CLI → runner → artefacts)
 - Data flow (records → report → diff)
 - Component relationships (registries/models/probes/datasets)
 
@@ -54,9 +54,9 @@ Rules:
 - Keep diagrams small; if a diagram exceeds ~25 nodes, split it.
 - Use explicit labels on nodes/edges.
 
-## 5) Artifact contract documentation
+## 5) Artefact contract documentation
 
-Docs that describe artifacts must:
+Docs that describe artefacts must:
 
 - Link to the relevant schema name (e.g., `ResultRecord`, `RunManifest`, `DiffReport`).
 - Include at least one minimal example.

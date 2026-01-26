@@ -325,7 +325,7 @@ insidellms doctor [options]
 
 - Python version
 - Required dependencies
-- Optional dependencies (nlp, visualization)
+- Optional dependencies (nlp, visualisation)
 - API key environment variables
 - Write permissions for run root
 
@@ -351,7 +351,7 @@ insidellms doctor --verbose
 | `CO_API_KEY` | Cohere API key |
 | `HUGGINGFACEHUB_API_TOKEN` | HuggingFace token |
 | `INSIDELLMS_RUN_ROOT` | Default run root directory |
-| `NO_COLOR` | Disable colored output |
+| `NO_COLOR` | Disable coloured output |
 
 ---
 

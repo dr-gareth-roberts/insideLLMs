@@ -16,7 +16,7 @@ Optional extras:
 
 ```bash
 pip install -e ".[nlp]"
-pip install -e ".[visualization]"
+pip install -e ".[visualisation]"
 ```
 
 ## Checks

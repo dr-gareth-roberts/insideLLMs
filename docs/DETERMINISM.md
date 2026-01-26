@@ -3,7 +3,7 @@
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI diff-gating.
 For the same inputs and configuration, run directories are intended to be byte-for-byte identical.
 
-### Canonical run artifacts
+### Canonical run artefacts
 
 A run directory contains (at minimum):
 
@@ -17,7 +17,7 @@ A run directory contains (at minimum):
 
 - **Canonical JSON emission**: on-disk JSON/JSONL is written with a stable key order and separators.
 - **Deterministic time spine**: run/item timestamps are derived from `run_id` (not wall-clock).
-- **Stable ordering**: any ordering that could affect artifacts (e.g., plugin discovery, filesystem listings)
+- **Stable ordering**: any ordering that could affect artefacts (e.g., plugin discovery, filesystem listings)
   is sorted.
 - **Content-address datasets**: for local file datasets (`format: csv|jsonl`), if a hash is not provided,
   insideLLMs computes `dataset_hash=sha256:<file-bytes>` and includes it in `manifest.json`. Dataset
@@ -31,7 +31,7 @@ To keep the diff surface stable:
 - `ResultRecord.latency_ms` is persisted as `null`.
 - `manifest.json:command` is persisted as `null`.
 
-If you need timing/host details, use tracing/telemetry rather than the canonical CI artifacts.
+If you need timing/host details, use tracing/telemetry rather than the canonical CI artefacts.
 
 ### Verifying determinism locally
 

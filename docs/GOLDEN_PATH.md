@@ -1,7 +1,7 @@
 ## Golden Path (Offline, 5 minutes)
 
 This walkthrough runs end-to-end without API keys (uses `DummyModel`) and produces
-the same artifacts you would diff-gate in CI.
+the same artefacts you would diff-gate in CI.
 
 ### 1) Install (minimal)
 
@@ -26,7 +26,7 @@ insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite
 insidellms report .tmp/runs/baseline
 ```
 
-Artifacts:
+Artefacts:
 - `.tmp/runs/baseline/manifest.json`
 - `.tmp/runs/baseline/records.jsonl` (canonical)
 - `.tmp/runs/baseline/summary.json`

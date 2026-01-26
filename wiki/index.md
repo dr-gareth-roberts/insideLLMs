@@ -1,12 +1,12 @@
 ---
 title: Home
 nav_order: 1
-description: Deterministic behavioral probe harness for LLM comparison and CI integration
+description: Deterministic behavioural probe harness for LLM comparison and CI integration
 ---
 
 # insideLLMs
 
-**Deterministic behavioral testing for LLMs.** Compare models, detect regressions, gate your CI.
+**Deterministic behavioural testing for LLMs.** Compare models, detect regressions, gate your CI.
 
 ```mermaid
 graph LR
@@ -40,7 +40,7 @@ Choose your path based on what you want to do:
 ### Unified Model Interface
 Run the same tests across OpenAI, Anthropic, local models (Ollama, llama.cpp), and more.
 
-### Behavioral Probes
+### Behavioural Probes
 Test for logic, bias, safety, factuality, code generation, and instruction following.
 
 ### Deterministic Outputs
@@ -87,7 +87,7 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 | Concept | What it is |
 |---------|------------|
 | **Models** | Unified interface for all LLM providers |
-| **Probes** | Focused tests for specific behaviors |
+| **Probes** | Focused tests for specific behaviours |
 | **Harness** | Run probes across models and datasets |
 | **Artifacts** | Deterministic outputs: records, summary, report, diff |
 | **Determinism** | Same inputs → identical outputs (for CI) |

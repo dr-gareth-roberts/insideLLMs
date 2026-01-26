@@ -6,7 +6,7 @@ nav_order: 3
 
 # CI Integration Tutorial
 
-Add behavioral regression testing to your CI pipeline using insideLLMs diff-gating.
+Add behavioural regression testing to your CI pipeline using insideLLMs diff-gating.
 
 **Time:** 30 minutes  
 **Prerequisites:** Git basics, GitHub Actions familiarity
@@ -17,7 +17,7 @@ Add behavioral regression testing to your CI pipeline using insideLLMs diff-gati
 
 By the end of this tutorial, you'll have:
 - A baseline run stored in your repository
-- A GitHub Actions workflow that detects behavioral changes
+- A GitHub Actions workflow that detects behavioural changes
 - CI that fails when model outputs change unexpectedly
 
 ---
@@ -74,15 +74,15 @@ Status: IDENTICAL
 
 ```bash
 git add ci/
-git commit -m "Add CI baseline for behavioral testing"
+git commit -m "Add CI baseline for behavioural testing"
 ```
 
 ## Step 4: Create GitHub Actions Workflow
 
-Create `.github/workflows/behavioral-test.yml`:
+Create `.github/workflows/behavioural-test.yml`:
 
 ```yaml
-name: Behavioral Tests
+name: Behavioural Tests
 
 on:
   push:
@@ -91,7 +91,7 @@ on:
     branches: [main]
 
 jobs:
-  behavioral-diff:
+  behavioural-diff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +121,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: behavioral-diff
+          name: behavioural-diff
           path: ci/diff-report.json
 ```
 
@@ -131,7 +131,7 @@ Push to trigger the workflow:
 
 ```bash
 git add .github/
-git commit -m "Add behavioral testing workflow"
+git commit -m "Add behavioural testing workflow"
 git push
 ```
 
@@ -198,7 +198,7 @@ insidellms harness ci/harness.yaml --run-dir ci/baseline --overwrite --skip-repo
 
 # Commit the update
 git add ci/baseline
-git commit -m "Update behavioral baseline: [describe changes]"
+git commit -m "Update behavioural baseline: [describe changes]"
 ```
 
 ---
@@ -206,7 +206,7 @@ git commit -m "Update behavioral baseline: [describe changes]"
 ## Complete Workflow Example
 
 ```yaml
-name: Behavioral Tests
+name: Behavioural Tests
 
 on:
   push:
@@ -217,7 +217,7 @@ env:
   INSIDELLMS_RUN_ROOT: .tmp/runs
 
 jobs:
-  behavioral-diff:
+  behavioural-diff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -247,7 +247,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: behavioral-diff-${{ github.sha }}
+          name: behavioural-diff-${{ github.sha }}
           path: diff-report.json
           retention-days: 7
 ```

@@ -32,7 +32,7 @@ Decide which models to compare. Common comparisons:
 | OpenAI generations | gpt-4o vs gpt-4o-mini |
 | Cross-provider | gpt-4o vs claude-3-5-sonnet |
 | Local vs hosted | ollama/llama3 vs gpt-4o |
-| Cost optimization | gpt-4o-mini vs claude-3-haiku |
+| Cost optimisation | gpt-4o-mini vs claude-3-haiku |
 
 ---
 
@@ -122,7 +122,7 @@ Results written to: ./comparison_results/
 
 ---
 
-## Step 6: Analyze Results
+## Step 6: Analyse Results
 
 ### View Summary Statistics
 
@@ -157,7 +157,7 @@ Open `comparison_results/report.html` for:
 - Individual response inspection
 - Filter by category
 
-### Analyze by Category
+### Analyse by Category
 
 ```python
 import json
@@ -248,7 +248,7 @@ insidellms diff ./gpt4o_only ./claude_only --output model_diff.json
 
  Configured multi-model harness  
  Ran comparison across models and probes  
- Analyzed success rates by model  
+ Analysed success rates by model  
  Compared response quality  
  Generated comparison report  
 

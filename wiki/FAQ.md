@@ -31,7 +31,7 @@ python --version
 
 ```bash
 pip install -e ".[nlp]"           # NLP features
-pip install -e ".[visualization]" # Charts and reports
+pip install -e ".[visualisation]" # Charts and reports
 pip install -e ".[all]"           # Everything
 ```
 
@@ -194,7 +194,7 @@ insidellms report ./my_run
 
 ## CI Integration
 
-### How do I detect behavioral changes in CI?
+### How do I detect behavioural changes in CI?
 
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
@@ -241,7 +241,7 @@ Or run as module: `python -m insideLLMs.cli`
 2. Verify key in provider dashboard
 3. Ensure env var is set: `echo $OPENAI_API_KEY`
 
-### How do I turn off colored output?
+### How do I turn off coloured output?
 
 ```bash
 export NO_COLOR=1
