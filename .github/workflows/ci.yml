@@ -33,6 +33,12 @@ jobs:
       - name: Wiki link check
         run: python scripts/check_wiki_links.py
 
+      - name: Docs site build (Jekyll)
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./wiki
+          destination: ./_site
+
       - name: Mypy
         run: |
           pip install -e .[nlp]

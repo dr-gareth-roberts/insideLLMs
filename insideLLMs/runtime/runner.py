@@ -1377,14 +1377,14 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
         _truncate_incomplete_jsonl(path)
     records: list[dict[str, Any]] = []
     with open(path, "r", encoding="utf-8") as handle:
-        for line in handle:
+        for line_no, line in enumerate(handle, start=1):
             stripped = line.strip()
             if not stripped:
                 continue
             try:
                 record = json.loads(stripped)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSONL record in {path}") from exc
+                raise ValueError(f"Invalid JSONL record on line {line_no} in {path}") from exc
             if isinstance(record, dict):
                 records.append(record)
     return records
@@ -2436,13 +2436,7 @@ def _build_result_record(
     messages_hash = None
     if normalized_messages is not None:
         try:
-            messages_hash = hashlib.sha256(
-                json.dumps(
-                    normalized_messages,
-                    sort_keys=True,
-                    default=_serialize_value,
-                ).encode("utf-8")
-            ).hexdigest()
+            messages_hash = hashlib.sha256(_stable_json_dumps(normalized_messages).encode("utf-8")).hexdigest()
         except Exception:
             messages_hash = None
 
@@ -3173,7 +3167,12 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
             raise ValueError(f"Refusing to overwrite high-risk short path: '{resolved}'")
 
         # Sentinel requirement: only overwrite if this looks like an insideLLMs run dir.
-        sentinel_ok = (path / "manifest.json").exists() or (path / ".insidellms_run").exists()
+        sentinel_ok = (
+            (path / "manifest.json").exists()
+            or (path / ".insidellms_run").exists()
+            or (path / "records.jsonl").exists()
+            or (path / "config.resolved.yaml").exists()
+        )
         if not sentinel_ok:
             raise ValueError(
                 f"Refusing to overwrite '{resolved}': directory is not empty and does not look like an "

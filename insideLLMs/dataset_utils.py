@@ -204,8 +204,18 @@ def load_jsonl_dataset(path: str) -> list[dict[str, Any]]:
         load_csv_dataset: For loading CSV formatted files
         load_hf_dataset: For loading HuggingFace Datasets
     """
-    with open(path) as f:
-        return [json.loads(line) for line in f]
+    items: list[dict[str, Any]] = []
+    with open(path, encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            try:
+                items.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                raise json.JSONDecodeError(
+                    f"{e.msg} (line {line_no} in {path})",
+                    e.doc,
+                    e.pos,
+                ) from e
+    return items
 
 
 def load_hf_dataset(
