@@ -1,12 +1,12 @@
 ---
 title: Home
 nav_order: 1
-description: Deterministic behavioural probe harness for LLM comparison and CI integration
+description: Stop shipping LLM regressions. Deterministic behavioural testing for production teams.
 ---
 
 # insideLLMs
 
-**Deterministic behavioural testing for LLMs.** Compare models, detect regressions, gate your CI.
+**Stop shipping LLM regressions.** Deterministic behavioural testing that catches breaking changes before they reach production.
 
 ```mermaid
 graph LR
@@ -21,51 +21,73 @@ graph LR
 
 ---
 
-## Start Here
+## The Problem
 
-Choose your path based on what you want to do:
+You update your LLM. Prompt #47 now gives dangerous medical advice. Prompt #103 starts hallucinating. Your users notice before you do.
 
-| I want to... | Start here | Time |
-|--------------|------------|------|
-| **Try it out** | [Quick Install](getting-started/Quick-Install.md) | 5 min |
-| **Evaluate a model** | [First Harness](getting-started/First-Harness.md) | 15 min |
-| **Detect bias** | [Bias Testing Tutorial](tutorials/Bias-Testing.md) | 20 min |
-| **Compare models** | [Model Comparison Tutorial](tutorials/Model-Comparison.md) | 20 min |
-| **Add to CI** | [CI Integration Tutorial](tutorials/CI-Integration.md) | 30 min |
+**Traditional eval frameworks can't help.** They tell you the model scored 87% on MMLU. They don't tell you *what changed*.
 
----
+## The Solution
 
-## What insideLLMs Does
-
-### Unified Model Interface
-Run the same tests across OpenAI, Anthropic, local models (Ollama, llama.cpp), and more.
-
-### Behavioural Probes
-Test for logic, bias, safety, factuality, code generation, and instruction following.
-
-### Deterministic Outputs
-Same inputs always produce identical artifacts — perfect for CI diff-gating.
-
-### Rich Comparison Reports
-HTML reports, JSON summaries, and machine-readable diffs.
-
----
-
-## Quick Example
+insideLLMs treats model behaviour like code: testable, diffable, gateable.
 
 ```bash
-# Install
-pip install -e ".[all]"
-
-# Quick test (no API keys needed)
-insidellms quicktest "What is 2 + 2?" --model dummy
-
-# Run a comparison harness
-insidellms harness examples/harness.yaml --run-dir ./results
-
-# Diff two runs for CI gating
 insidellms diff ./baseline ./candidate --fail-on-changes
 ```
+
+If behaviour changed, the deploy blocks. Simple.
+
+---
+
+## Start Here
+
+| Goal | Path | Time |
+|------|------|------|
+| **See it work** | [Quick Install](getting-started/Quick-Install.md) → [First Run](getting-started/First-Run.md) | 5 min |
+| **Compare models** | [First Harness](getting-started/First-Harness.md) | 15 min |
+| **Block regressions** | [CI Integration](tutorials/CI-Integration.md) | 30 min |
+| **Understand the approach** | [Philosophy](Philosophy.md) | 10 min |
+
+---
+
+## Why Teams Choose insideLLMs
+
+### Catch Regressions Before Production
+Know exactly which prompts changed behaviour. No more debugging aggregate metrics.
+
+### CI-Native Design
+Built for `git diff` on model behaviour. Deterministic artefacts. Stable diffs. Automated gates.
+
+### Response-Level Visibility
+`records.jsonl` preserves every input/output pair. See what changed, not just that something changed.
+
+### Provider-Agnostic
+OpenAI, Anthropic, Cohere, Google, local models (Ollama, llama.cpp, vLLM). One interface.
+
+---
+
+## How It Works
+
+**1. Define behavioural tests**
+```yaml
+probes:
+  - type: logic      # Reasoning consistency
+  - type: bias       # Fairness across demographics
+  - type: safety     # Jailbreak resistance
+```
+
+**2. Run across models**
+```bash
+insidellms harness config.yaml --run-dir ./baseline
+```
+
+**3. Catch changes in CI**
+```bash
+insidellms diff ./baseline ./candidate --fail-on-changes
+# Exit code 1 if behaviour changed
+```
+
+**Result:** Breaking changes blocked. Users protected.
 
 ---
 
@@ -82,15 +104,15 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 
 ---
 
-## Core Concepts at a Glance
+## Real-World Impact
 
-| Concept | What it is |
-|---------|------------|
-| **Models** | Unified interface for all LLM providers |
-| **Probes** | Focused tests for specific behaviours |
-| **Harness** | Run probes across models and datasets |
-| **Artifacts** | Deterministic outputs: records, summary, report, diff |
-| **Determinism** | Same inputs → identical outputs (for CI) |
+| Before insideLLMs | After insideLLMs |
+|-------------------|------------------|
+| Model update breaks production | Caught in CI, deploy blocked |
+| Users report bias in responses | Detected pre-deployment with BiasProbe |
+| Debugging "accuracy dropped 2%" | See exact prompts that regressed |
+| Manual testing before each deploy | Automated behavioural gates |
+| Hope nothing broke | Know nothing broke |
 
 ---
 
