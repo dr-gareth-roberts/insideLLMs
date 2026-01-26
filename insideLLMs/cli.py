@@ -110,8 +110,12 @@ from typing import Any, Optional
 
 from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
+)
+from insideLLMs._serialization import (
     serialize_value as _serialize_value,
-    stable_json_dumps as _stable_json_dumps,
+)
+from insideLLMs._serialization import (
+    stable_json_dumps as _stable_json_dumps,  # noqa: F401
 )
 from insideLLMs.registry import (
     ensure_builtins_registered,
@@ -153,10 +157,16 @@ __all__ = [
 ]
 
 # CLI output routing:
-# - "status" output (headers, warnings, progress) is routed via _CLI_STATUS_STREAM
+# - "status" output (headers, warnings, progress) is routed via _CLI_STATUS_TO_STDERR
 # - machine-readable payloads (e.g., --format json) should go to stdout only
 _CLI_QUIET = False
-_CLI_STATUS_STREAM = sys.stdout
+_CLI_STATUS_TO_STDERR = False
+
+
+def _status_stream():
+    # Avoid capturing a fixed sys.stdout/sys.stderr at import time. This ensures
+    # pytest's capsys and other stdout/stderr redirection works as expected.
+    return sys.stderr if _CLI_STATUS_TO_STDERR else sys.stdout
 
 
 def _cli_version_string() -> str:
@@ -527,10 +537,13 @@ def print_header(title: str) -> None:
         return
     width = 70
     line = "═" * width
-    print(file=_CLI_STATUS_STREAM)
-    print(colorize(line, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
-    print(colorize(f"  {title}".center(width), Colors.BOLD, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
-    print(colorize(line, Colors.BRIGHT_CYAN), file=_CLI_STATUS_STREAM)
+    print(file=_status_stream())
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream())
+    print(
+        colorize(f"  {title}".center(width), Colors.BOLD, Colors.BRIGHT_CYAN),
+        file=_status_stream(),
+    )
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream())
 
 
 def print_subheader(title: str) -> None:
@@ -568,10 +581,10 @@ def print_subheader(title: str) -> None:
     """
     if _CLI_QUIET:
         return
-    print(file=_CLI_STATUS_STREAM)
+    print(file=_status_stream())
     print(
         colorize(f"── {title} ", Colors.CYAN) + colorize("─" * (50 - len(title)), Colors.DIM),
-        file=_CLI_STATUS_STREAM,
+        file=_status_stream(),
     )
 
 
@@ -614,7 +627,7 @@ def print_success(message: str) -> None:
     """
     if _CLI_QUIET:
         return
-    print(colorize("OK ", Colors.BRIGHT_GREEN) + message, file=_CLI_STATUS_STREAM)
+    print(colorize("OK ", Colors.BRIGHT_GREEN) + message, file=_status_stream())
 
 
 def print_error(message: str) -> None:
@@ -710,7 +723,7 @@ def print_warning(message: str) -> None:
         return
     print(
         colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW),
-        file=_CLI_STATUS_STREAM,
+        file=_status_stream(),
     )
 
 
@@ -758,7 +771,7 @@ def print_info(message: str) -> None:
     """
     if _CLI_QUIET:
         return
-    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message, file=_CLI_STATUS_STREAM)
+    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message, file=_status_stream())
 
 
 def print_key_value(key: str, value: Any, indent: int = 2) -> None:
@@ -811,7 +824,7 @@ def print_key_value(key: str, value: Any, indent: int = 2) -> None:
     if _CLI_QUIET:
         return
     spaces = " " * indent
-    print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}", file=_CLI_STATUS_STREAM)
+    print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}", file=_status_stream())
 
 
 def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
@@ -1892,7 +1905,7 @@ class ProgressBar:
             f"\r{self.prefix}: {colorize(bar, Colors.CYAN)} "
             f"{pct:5.1f}% ({self.current}/{self.total}){eta_str}"
         )
-        print(line, end="", flush=True, file=_CLI_STATUS_STREAM)
+        print(line, end="", flush=True, file=_status_stream())
 
     def finish(self) -> None:
         """Complete the progress bar and print final status.
@@ -1914,7 +1927,7 @@ class ProgressBar:
         elapsed = time.time() - self.start_time
         print(
             f" {colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}",
-            file=_CLI_STATUS_STREAM,
+            file=_status_stream(),
         )
 
 
@@ -1937,7 +1950,7 @@ class Spinner:
             f"\r{colorize(frame, Colors.CYAN)} {self.message}...",
             end="",
             flush=True,
-            file=_CLI_STATUS_STREAM,
+            file=_status_stream(),
         )
         self.frame_idx += 1
 
@@ -1948,12 +1961,12 @@ class Spinner:
         if success:
             print(
                 f"\r{colorize('OK', Colors.GREEN)} {self.message}... done",
-                file=_CLI_STATUS_STREAM,
+                file=_status_stream(),
             )
         else:
             print(
                 f"\r{colorize('FAIL', Colors.RED)} {self.message}... failed",
-                file=_CLI_STATUS_STREAM,
+                file=_status_stream(),
             )
 
 
@@ -1965,11 +1978,25 @@ def create_parser() -> argparse.ArgumentParser:
         def __init__(self, prog):
             super().__init__(prog, max_help_position=40, width=100)
 
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output",
+    )
+    common_parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Minimal output (errors only)",
+    )
+
     parser = argparse.ArgumentParser(
         prog="insidellms",
         description=colorize("insideLLMs", Colors.BOLD, Colors.CYAN)
         + " - A world-class toolkit for probing, evaluating, and testing large language models",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
         epilog=f"""
 {colorize("Examples:", Colors.BOLD)}
 
@@ -2001,19 +2028,6 @@ def create_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {_cli_version_string()}",
     )
 
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output",
-    )
-
-    parser.add_argument(
-        "--quiet",
-        "-q",
-        action="store_true",
-        help="Minimal output (errors only)",
-    )
-
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # =========================================================================
@@ -2023,6 +2037,7 @@ def create_parser() -> argparse.ArgumentParser:
         "run",
         help="Run an experiment from a configuration file",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     run_parser.add_argument(
         "config",
@@ -2122,6 +2137,7 @@ def create_parser() -> argparse.ArgumentParser:
         "harness",
         help="Run a cross-model probe harness",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     harness_parser.add_argument(
         "config",
@@ -2204,6 +2220,7 @@ def create_parser() -> argparse.ArgumentParser:
         "report",
         help="Rebuild summary.json and report.html from records.jsonl",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     report_parser.add_argument(
         "run_dir",
@@ -2223,6 +2240,7 @@ def create_parser() -> argparse.ArgumentParser:
         "diff",
         help="Compare two run directories and show behavioural regressions",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     diff_parser.add_argument(
         "run_dir_a",
@@ -2297,6 +2315,7 @@ def create_parser() -> argparse.ArgumentParser:
         "schema",
         help="Inspect and validate versioned output schemas",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     schema_parser.add_argument(
         "op",
@@ -2341,6 +2360,7 @@ def create_parser() -> argparse.ArgumentParser:
         "doctor",
         help="Diagnose environment and optional dependencies",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     doctor_parser.add_argument(
         "--format",
@@ -2361,6 +2381,7 @@ def create_parser() -> argparse.ArgumentParser:
         "quicktest",
         help="Quickly test a prompt against a model",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     quicktest_parser.add_argument(
         "prompt",
@@ -2407,6 +2428,7 @@ def create_parser() -> argparse.ArgumentParser:
         "benchmark",
         help="Run comprehensive benchmarks across models and probes",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     benchmark_parser.add_argument(
         "--models",
@@ -2460,6 +2482,7 @@ def create_parser() -> argparse.ArgumentParser:
         "compare",
         help="Compare multiple models on the same inputs",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     compare_parser.add_argument(
         "--models",
@@ -2500,6 +2523,7 @@ def create_parser() -> argparse.ArgumentParser:
         "list",
         help="List available models, probes, or datasets",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     list_parser.add_argument(
         "type",
@@ -2525,6 +2549,7 @@ def create_parser() -> argparse.ArgumentParser:
         "init",
         help="Generate a sample configuration file",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     init_parser.add_argument(
         "output",
@@ -2562,6 +2587,7 @@ def create_parser() -> argparse.ArgumentParser:
         "info",
         help="Show detailed information about a model, probe, or dataset",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     info_parser.add_argument(
         "type",
@@ -2581,6 +2607,7 @@ def create_parser() -> argparse.ArgumentParser:
         "interactive",
         help="Start an interactive exploration session",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     interactive_parser.add_argument(
         "--model",
@@ -2603,6 +2630,7 @@ def create_parser() -> argparse.ArgumentParser:
         "validate",
         help="Validate a configuration file or a run directory (manifest + records.jsonl)",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     validate_parser.add_argument(
         "config",
@@ -2629,6 +2657,7 @@ def create_parser() -> argparse.ArgumentParser:
         "export",
         help="Export results to various formats",
         formatter_class=CustomFormatter,
+        parents=[common_parser],
     )
     export_parser.add_argument(
         "input",
@@ -4561,7 +4590,9 @@ def cmd_compare(args: argparse.Namespace) -> int:
                         data = json.load(f)
                     if isinstance(data, list):
                         inputs = [
-                            d.get("input", d.get("question", str(d))) if isinstance(d, dict) else str(d)
+                            d.get("input", d.get("question", str(d)))
+                            if isinstance(d, dict)
+                            else str(d)
                             for d in data
                         ]
                     elif isinstance(data, dict):
@@ -4643,12 +4674,8 @@ def cmd_compare(args: argparse.Namespace) -> int:
                     if output_format == "table":
                         print(f"\n  {colorize(model_name, Colors.CYAN)}:")
                         preview = str(response)
-                        print(
-                            f"    {preview[:100]}{'...' if len(preview) > 100 else ''}"
-                        )
-                        print(
-                            f"    {colorize(f'({elapsed * 1000:.1f}ms)', Colors.DIM)}"
-                        )
+                        print(f"    {preview[:100]}{'...' if len(preview) > 100 else ''}")
+                        print(f"    {colorize(f'({elapsed * 1000:.1f}ms)', Colors.DIM)}")
                 except Exception as e:
                     item["models"].append(
                         {
@@ -5101,7 +5128,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point for the CLI."""
-    global USE_COLOR, _CLI_QUIET, _CLI_STATUS_STREAM
+    global USE_COLOR, _CLI_QUIET, _CLI_STATUS_TO_STDERR
 
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -5111,15 +5138,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         USE_COLOR = False
 
     prev_quiet = _CLI_QUIET
-    prev_stream = _CLI_STATUS_STREAM
+    prev_to_stderr = _CLI_STATUS_TO_STDERR
     try:
         _CLI_QUIET = bool(getattr(args, "quiet", False))
-        _CLI_STATUS_STREAM = sys.stderr if getattr(args, "format", None) == "json" else sys.stdout
+        _CLI_STATUS_TO_STDERR = bool(getattr(args, "format", None) == "json")
 
         if not args.command:
             # Show a nice welcome message instead of just help
             print_header("insideLLMs")
-            print(colorize("  A world-class toolkit for LLM evaluation and exploration", Colors.DIM))
+            print(
+                colorize("  A world-class toolkit for LLM evaluation and exploration", Colors.DIM)
+            )
             print()
             parser.print_help()
             print()
@@ -5155,7 +5184,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
     finally:
         _CLI_QUIET = prev_quiet
-        _CLI_STATUS_STREAM = prev_stream
+        _CLI_STATUS_TO_STDERR = prev_to_stderr
 
 
 if __name__ == "__main__":
