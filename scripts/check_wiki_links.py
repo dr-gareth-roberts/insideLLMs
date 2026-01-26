@@ -128,9 +128,7 @@ def main(argv: list[str]) -> int:
                     f"{md_file.relative_to(repo_root)}:{line_no}: contains a tab character"
                 )
             if line.rstrip("\n") != line.rstrip("\n").rstrip(" "):
-                failures.append(
-                    f"{md_file.relative_to(repo_root)}:{line_no}: trailing whitespace"
-                )
+                failures.append(f"{md_file.relative_to(repo_root)}:{line_no}: trailing whitespace")
 
         front_matter = _extract_front_matter(text)
         if front_matter is None:
@@ -198,9 +196,7 @@ def main(argv: list[str]) -> int:
                     except OSError:
                         continue
                     target_anchors = {
-                        _slugify_anchor(h)
-                        for h in _iter_markdown_headings(target_text)
-                        if h
+                        _slugify_anchor(h) for h in _iter_markdown_headings(target_text) if h
                     }
                     if _slugify_anchor(anchor) not in target_anchors:
                         failures.append(
