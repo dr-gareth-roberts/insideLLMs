@@ -1,6 +1,6 @@
 ---
 title: Harness
-nav_order: 3
+nav_order: 20
 ---
 
 The harness runs a cross-model, cross-probe sweep over a shared dataset.

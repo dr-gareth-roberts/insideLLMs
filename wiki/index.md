@@ -10,13 +10,13 @@ description: Deterministic behavioral probe harness for LLM comparison and CI in
 
 ```mermaid
 graph LR
-    Dataset[📄 Dataset] --> Runner[⚙️ Runner]
-    Model[🤖 Models] --> Runner
-    Probe[🔬 Probes] --> Runner
-    Runner --> Records[📊 records.jsonl]
-    Records --> Summary[📈 summary.json]
-    Records --> Report[📑 report.html]
-    Records --> Diff[🔍 diff.json]
+    Dataset[Dataset] --> Runner[Runner]
+    Model[Models] --> Runner
+    Probe[Probes] --> Runner
+    Runner --> Records[records.jsonl]
+    Records --> Summary[summary.json]
+    Records --> Report[report.html]
+    Records --> Diff[diff.json]
 ```
 
 ---
@@ -27,11 +27,11 @@ Choose your path based on what you want to do:
 
 | I want to... | Start here | Time |
 |--------------|------------|------|
-| 🚀 **Try it out** | [Quick Install](getting-started/Quick-Install.md) → [First Run](getting-started/First-Run.md) | 5 min |
-| 🔬 **Evaluate a model** | [First Harness](getting-started/First-Harness.md) | 15 min |
-| ⚖️ **Detect bias** | [Bias Testing Tutorial](tutorials/Bias-Testing.md) | 20 min |
-| 🔄 **Compare models** | [Model Comparison Tutorial](tutorials/Model-Comparison.md) | 20 min |
-| 🔧 **Add to CI** | [CI Integration Tutorial](tutorials/CI-Integration.md) | 30 min |
+| **Try it out** | [Quick Install](getting-started/Quick-Install.md) | 5 min |
+| **Evaluate a model** | [First Harness](getting-started/First-Harness.md) | 15 min |
+| **Detect bias** | [Bias Testing Tutorial](tutorials/Bias-Testing.md) | 20 min |
+| **Compare models** | [Model Comparison Tutorial](tutorials/Model-Comparison.md) | 20 min |
+| **Add to CI** | [CI Integration Tutorial](tutorials/CI-Integration.md) | 30 min |
 
 ---
 

@@ -208,17 +208,17 @@ Check [Probes Catalog](../reference/Probes-Catalog.md) for each probe's expected
 
 ### Do
 
-- ✅ Use JSONL for structured data
-- ✅ Include `expected` for evaluation
-- ✅ Use meaningful field names
-- ✅ Keep datasets version-controlled
+-  Use JSONL for structured data
+-  Include `expected` for evaluation
+-  Use meaningful field names
+-  Keep datasets version-controlled
 
 ### Don't
 
-- ❌ Include sensitive data
-- ❌ Use very large inline datasets
-- ❌ Rely on file modification times
-- ❌ Use absolute paths in configs
+-  Include sensitive data
+-  Use very large inline datasets
+-  Rely on file modification times
+-  Use absolute paths in configs
 
 ## See Also
 

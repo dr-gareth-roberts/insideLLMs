@@ -146,16 +146,16 @@ print(f"Hit rate: {stats['hit_rate']:.1%}")
 
 ### Do
 
-- ✅ Enable caching during development
-- ✅ Use SQLite for persistence
-- ✅ Set appropriate TTL for time-sensitive data
-- ✅ Clear cache when changing model behavior
+-  Enable caching during development
+-  Use SQLite for persistence
+-  Set appropriate TTL for time-sensitive data
+-  Clear cache when changing model behavior
 
 ### Don't
 
-- ❌ Cache in production benchmarks
-- ❌ Share cache between different model versions
-- ❌ Forget to invalidate after model updates
+-  Cache in production benchmarks
+-  Share cache between different model versions
+-  Forget to invalidate after model updates
 
 ## Determinism Note
 

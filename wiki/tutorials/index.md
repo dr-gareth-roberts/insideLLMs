@@ -35,7 +35,7 @@ graph TD
     Q1 --> A2[Compare models]
     Q1 --> A3[Automate testing]
     Q1 --> A4[Extend the framework]
-    
+
     A1 --> T1[Bias Testing Tutorial]
     A2 --> T2[Model Comparison Tutorial]
     A3 --> T3[CI Integration Tutorial]
@@ -46,6 +46,6 @@ graph TD
 
 Make sure you've completed [Getting Started](../getting-started/index.md):
 
-- ✅ insideLLMs installed
-- ✅ First run completed
-- ✅ Understand basic concepts (models, probes, harness)
+- insideLLMs installed
+- First run completed
+- Understand basic concepts (models, probes, harness)

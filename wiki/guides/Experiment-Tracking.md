@@ -235,16 +235,16 @@ tracker.log_params({
 
 ### Do
 
-- ✅ Tag experiments meaningfully
-- ✅ Log hyperparameters consistently
-- ✅ Use project/experiment hierarchy
-- ✅ Include model and dataset info
+-  Tag experiments meaningfully
+-  Log hyperparameters consistently
+-  Use project/experiment hierarchy
+-  Include model and dataset info
 
 ### Don't
 
-- ❌ Rely on tracking for determinism
-- ❌ Log sensitive data (API keys, PII)
-- ❌ Skip local testing before logging
+-  Rely on tracking for determinism
+-  Log sensitive data (API keys, PII)
+-  Skip local testing before logging
 
 ---
 

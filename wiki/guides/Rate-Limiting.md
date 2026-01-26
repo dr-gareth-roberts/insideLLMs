@@ -172,16 +172,16 @@ except RateLimitError as e:
 
 ### Do
 
-- ✅ Start conservative, increase gradually
-- ✅ Enable caching to reduce load
-- ✅ Monitor provider dashboards
-- ✅ Use appropriate tier for workload
+-  Start conservative, increase gradually
+-  Enable caching to reduce load
+-  Monitor provider dashboards
+-  Use appropriate tier for workload
 
 ### Don't
 
-- ❌ Ignore rate limit errors
-- ❌ Set limits higher than your tier
-- ❌ Run parallel jobs without coordination
+-  Ignore rate limit errors
+-  Set limits higher than your tier
+-  Run parallel jobs without coordination
 
 ## Troubleshooting
 

@@ -324,11 +324,11 @@ class ConversationProbe(Probe[dict]):
 
 ## Verification
 
-✅ Created custom probe class  
-✅ Implemented run method  
-✅ Added scoring logic  
-✅ Registered probe  
-✅ Used in harness config  
+ Created custom probe class  
+ Implemented run method  
+ Added scoring logic  
+ Registered probe  
+ Used in harness config  
 
 ---
 

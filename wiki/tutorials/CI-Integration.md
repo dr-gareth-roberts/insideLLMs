@@ -256,10 +256,10 @@ jobs:
 
 ## Verification
 
-✅ Baseline committed to repository  
-✅ GitHub Actions workflow created  
-✅ CI passes with no changes  
-✅ CI fails when outputs change  
+ Baseline committed to repository  
+ GitHub Actions workflow created  
+ CI passes with no changes  
+ CI fails when outputs change  
 
 ---
 

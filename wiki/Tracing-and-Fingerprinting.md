@@ -1,6 +1,6 @@
 ---
 title: Tracing and Fingerprinting
-nav_order: 12
+nav_order: 27
 ---
 
 This page explains how trace bundles and output fingerprinting appear in `records.jsonl` and how

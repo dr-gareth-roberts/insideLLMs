@@ -1,6 +1,6 @@
 ---
 title: LangChain and LangGraph
-nav_order: 14
+nav_order: 29
 ---
 
 This integration lets you use insideLLMs models inside the LangChain / LangGraph ecosystem.

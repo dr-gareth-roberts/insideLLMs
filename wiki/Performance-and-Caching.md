@@ -1,6 +1,6 @@
 ---
 title: Performance and Caching
-nav_order: 11
+nav_order: 26
 ---
 
 This page collects the knobs that affect throughput, latency, cost, and determinism. It covers the

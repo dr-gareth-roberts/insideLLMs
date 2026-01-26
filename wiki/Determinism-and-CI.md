@@ -1,6 +1,6 @@
 ---
 title: Determinism and CI
-nav_order: 13
+nav_order: 28
 ---
 
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI
