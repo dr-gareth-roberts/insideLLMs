@@ -198,7 +198,7 @@ class RunConfig:
     validation_mode : {"strict", "lenient"}, default="strict"
         Controls validation strictness:
         - "strict": Raise ValidationError on any schema violation
-        - "lenient": Log warnings but continue execution
+        - "lenient": Log warnings but continue execution (alias: "warn")
 
     emit_run_artifacts : bool, default=True
         If True, write run artifacts to disk including:
@@ -243,6 +243,10 @@ class RunConfig:
         Maximum number of concurrent probe executions for async runners.
         Higher values increase throughput but may hit rate limits.
         Ignored by synchronous runners.
+
+    timeout : float, optional
+        Timeout in seconds for each probe execution when using async runners.
+        If None, no timeout is applied.
 
     resume : bool, default=False
         If True, attempt to resume from existing ``records.jsonl``.
@@ -289,6 +293,8 @@ class RunConfig:
         Configuration snapshot.
     concurrency : int
         Maximum concurrent executions.
+    timeout : float or None
+        Per-item timeout in seconds for async runs.
     resume : bool
         Whether to resume from existing artifacts.
     use_probe_batch : bool
@@ -421,6 +427,7 @@ class RunConfig:
 
     # Async-specific
     concurrency: int = 5
+    timeout: Optional[float] = None  # Timeout in seconds for each probe execution
 
     # Resume/batch/output controls
     resume: bool = False
@@ -485,6 +492,9 @@ class RunConfig:
             >>> config = RunConfig(batch_workers=None)
             >>> # No error raised
         """
+        if self.validation_mode == "warn":
+            # Normalize CLI/validator terminology to RunConfig's "lenient" value.
+            self.validation_mode = "lenient"
         if self.validation_mode not in ("strict", "lenient"):
             raise ValueError(
                 f"validation_mode must be 'strict' or 'lenient', got {self.validation_mode!r}"
@@ -493,6 +503,8 @@ class RunConfig:
             raise ValueError(f"concurrency must be >= 1, got {self.concurrency}")
         if self.batch_workers is not None and self.batch_workers < 1:
             raise ValueError(f"batch_workers must be >= 1, got {self.batch_workers}")
+        if self.timeout is not None and self.timeout <= 0:
+            raise ValueError(f"timeout must be > 0, got {self.timeout}")
 
     @classmethod
     def from_kwargs(cls, **kwargs: Any) -> "RunConfig":
@@ -512,7 +524,7 @@ class RunConfig:
             Keyword arguments matching RunConfig field names. Valid fields are:
             stop_on_error, validate_output, schema_version, validation_mode,
             emit_run_artifacts, run_dir, run_root, run_id, overwrite,
-            store_messages, dataset_info, config_snapshot, concurrency,
+            store_messages, dataset_info, config_snapshot, concurrency, timeout,
             resume, use_probe_batch, batch_workers, return_experiment.
 
         Returns
@@ -834,7 +846,7 @@ class RunConfigBuilder:
             Validation strictness level. If not provided, keeps the
             current value (default: "strict").
             - "strict": Raise ValidationError on schema violations
-            - "lenient": Log warnings but continue execution
+            - "lenient": Log warnings but continue execution (alias: "warn")
 
         Returns
         -------
