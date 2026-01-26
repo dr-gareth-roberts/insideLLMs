@@ -148,13 +148,13 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import json
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Mapping, Optional
 
 from insideLLMs._serialization import serialize_value, stable_json_dumps
+
 
 class TraceEventKind(str, Enum):
     """Standard trace event kinds for common LLM operations.
@@ -928,7 +928,9 @@ class TraceRecorder:
             except Exception:
                 # Fall back to a JSON-safe snapshot to avoid mutability leaks.
                 normalized = serialize_value(payload)
-                payload_snapshot = normalized if isinstance(normalized, dict) else {"value": normalized}
+                payload_snapshot = (
+                    normalized if isinstance(normalized, dict) else {"value": normalized}
+                )
 
         with self._lock:
             event = TraceEvent(

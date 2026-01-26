@@ -141,7 +141,6 @@ def test_cache_middleware_lru_eviction():
     assert cache.misses == 4  # prompt1, prompt2, prompt3, prompt2 (evicted)
 
 
-
 def test_cache_hit_rate():
     """Test cache hit rate calculation."""
     model = DummyModel()

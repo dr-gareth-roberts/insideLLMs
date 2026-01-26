@@ -1998,7 +1998,9 @@ class DataArchiver:
                 for file_path in files:
                     path = Path(file_path)
                     arcname_path = (
-                        path.relative_to(base_path_path) if base_path_path is not None else Path(path.name)
+                        path.relative_to(base_path_path)
+                        if base_path_path is not None
+                        else Path(path.name)
                     )
                     entries.append((arcname_path.as_posix(), path))
 

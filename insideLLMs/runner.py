@@ -192,14 +192,13 @@ import directly from ``insideLLMs.runtime.runner``.
 
 import warnings
 
+from insideLLMs.runtime import runner as _runner
+
 warnings.warn(
-    "insideLLMs.runner is deprecated. "
-    "Import from insideLLMs.runtime.runner instead.",
+    "insideLLMs.runner is deprecated. Import from insideLLMs.runtime.runner instead.",
     DeprecationWarning,
     stacklevel=2,
 )
-
-from insideLLMs.runtime import runner as _runner
 
 # Re-export all public + private symbols to preserve legacy imports.
 # This dynamic approach ensures any new symbols added to the runtime

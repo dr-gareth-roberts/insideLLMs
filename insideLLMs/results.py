@@ -1246,6 +1246,7 @@ def experiment_to_html(
     experiment_to_markdown : Markdown version of this report
     save_results_html : Save HTML to file
     """
+
     def _esc(value: object) -> str:
         text = str(value)
         return _html_escape(text) if escape_html else text
