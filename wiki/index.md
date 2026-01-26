@@ -126,4 +126,4 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 
 - [GitHub Repository](https://github.com/dr-gareth-roberts/insideLLMs)
 - [Report an Issue](https://github.com/dr-gareth-roberts/insideLLMs/issues)
-- [Contributing Guide](CONTRIBUTING.md)
+- [Contributing Guide](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/CONTRIBUTING.md)
