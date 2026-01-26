@@ -179,3 +179,4 @@ bench_run/
 /repo_summary.txt
 .DS_Store
 web/
+/docs/plans/2026-01-25-repo-deep-walk.md
