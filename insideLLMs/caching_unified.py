@@ -119,7 +119,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
@@ -274,6 +274,10 @@ class CacheStatus(Enum):
         evicted
         warming
     """
+
+    # Backward-compatible lookup statuses (used by older tests/consumers).
+    HIT = "hit"
+    MISS = "miss"
 
     ACTIVE = "active"
     EXPIRED = "expired"
@@ -707,7 +711,7 @@ class CacheStats:
         }
 
 
-@dataclass
+@dataclass(init=False)
 class CacheLookupResult:
     """Result of a cache lookup operation.
 
@@ -766,10 +770,43 @@ class CacheLookupResult:
     """
 
     hit: bool
+    status: CacheStatus
     value: Optional[Any]
     key: str
     entry: Optional[CacheEntry] = None
     lookup_time_ms: float = 0.0
+
+    def __init__(
+        self,
+        hit: Optional[bool] = None,
+        value: Optional[Any] = None,
+        key: str = "",
+        entry: Optional[CacheEntry] = None,
+        lookup_time_ms: float = 0.0,
+        *,
+        status: Optional[CacheStatus] = None,
+    ) -> None:
+        if status is None and hit is None:
+            raise TypeError("CacheLookupResult requires either 'hit' or 'status'")
+
+        if status is None:
+            status = CacheStatus.HIT if hit else CacheStatus.MISS
+
+        status_implies_hit = status in {CacheStatus.HIT, CacheStatus.ACTIVE, CacheStatus.WARMING}
+        if hit is None:
+            hit = status_implies_hit
+
+        if bool(hit) != status_implies_hit:
+            raise ValueError(
+                f"CacheLookupResult hit/status mismatch: hit={hit!r} status={status.value!r}"
+            )
+
+        self.hit = bool(hit)
+        self.status = status
+        self.value = value
+        self.key = key
+        self.entry = entry
+        self.lookup_time_ms = float(lookup_time_ms)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary representation.
@@ -789,6 +826,7 @@ class CacheLookupResult:
         """
         return {
             "hit": self.hit,
+            "status": self.status.value,
             "value": self.value,
             "key": self.key,
             "entry": self.entry.to_dict() if self.entry else None,
@@ -1617,7 +1655,13 @@ class StrategyCache:
     PromptCache : Specialized cache for LLM prompts.
     """
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(
+        self,
+        config: Optional[CacheConfig] = None,
+        *,
+        strategy: Optional[CacheStrategy] = None,
+        max_size: Optional[int] = None,
+    ):
         """Initialize cache with configuration.
 
         Parameters
@@ -1625,7 +1669,14 @@ class StrategyCache:
         config : Optional[CacheConfig]
             Cache configuration. Uses defaults if None.
         """
-        self.config = config or CacheConfig()
+        resolved = config or CacheConfig()
+        if strategy is not None or max_size is not None:
+            resolved = replace(
+                resolved,
+                strategy=strategy if strategy is not None else resolved.strategy,
+                max_size=max_size if max_size is not None else resolved.max_size,
+            )
+        self.config = resolved
         self._entries: OrderedDict[str, CacheEntry] = OrderedDict()
         self._stats = CacheStats()
         self._lock = threading.RLock()
