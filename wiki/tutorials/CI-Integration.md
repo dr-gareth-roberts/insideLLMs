@@ -6,19 +6,10 @@ nav_order: 3
 
 # CI Integration Tutorial
 
-Add behavioural regression testing to your CI pipeline using insideLLMs diff-gating.
+**Block regressions automatically.**
 
-**Time:** 30 minutes  
-**Prerequisites:** Git basics, GitHub Actions familiarity
-
----
-
-## Goal
-
-By the end of this tutorial, you'll have:
-- A baseline run stored in your repository
-- A GitHub Actions workflow that detects behavioural changes
-- CI that fails when model outputs change unexpectedly
+**Time:** 30 minutes
+**Prerequisites:** Git, GitHub Actions
 
 ---
 
@@ -256,10 +247,10 @@ jobs:
 
 ## Verification
 
- Baseline committed to repository  
- GitHub Actions workflow created  
- CI passes with no changes  
- CI fails when outputs change  
+ Baseline committed to repository
+ GitHub Actions workflow created
+ CI passes with no changes
+ CI fails when outputs change
 
 ---
 

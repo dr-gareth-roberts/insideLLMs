@@ -1,6 +1,6 @@
 ---
 title: Concepts
-nav_order: 4
+nav_order: 5
 has_children: true
 ---
 
@@ -28,20 +28,20 @@ graph TB
         Dataset[Dataset]
         APIKeys[API Keys]
     end
-    
+
     subgraph Framework
         Registry[Registry]
         Runner[Runner]
         Model[Model]
         Probe[Probe]
     end
-    
+
     subgraph Outputs
         Records[records.jsonl]
         Summary[summary.json]
         Report[report.html]
     end
-    
+
     Config --> Registry
     APIKeys --> Model
     Registry --> Runner
