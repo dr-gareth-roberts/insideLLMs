@@ -10,6 +10,50 @@ _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*]\(([^)]+)\)")
 _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
 
+def _extract_front_matter(markdown: str) -> dict[str, str] | None:
+    lines = markdown.splitlines()
+    idx = 0
+    while idx < len(lines) and not lines[idx].strip():
+        idx += 1
+    if idx >= len(lines) or lines[idx].strip() != "---":
+        return None
+    idx += 1
+    data: dict[str, str] = {}
+    while idx < len(lines):
+        line = lines[idx].rstrip("\n")
+        if line.strip() == "---":
+            return data
+        if ":" in line:
+            key, value = line.split(":", 1)
+            data[key.strip()] = value.strip().strip('"').strip("'")
+        idx += 1
+    return None
+
+
+def _iter_markdown_headings(markdown: str) -> list[str]:
+    headings: list[str] = []
+    for raw_line in markdown.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("#"):
+            continue
+        if line.startswith("####"):
+            title = line.lstrip("#").strip()
+        else:
+            title = line.lstrip("#").strip()
+        if title:
+            headings.append(title)
+    return headings
+
+
+def _slugify_anchor(text: str) -> str:
+    slug = text.strip().lower()
+    slug = re.sub(r"`(.+?)`", r"\\1", slug)
+    slug = re.sub(r"[^a-z0-9\s\-]", "", slug)
+    slug = re.sub(r"\s+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-")
+
+
 def _iter_wiki_markdown_files(wiki_dir: Path) -> Iterable[Path]:
     return sorted(p for p in wiki_dir.glob("*.md") if p.is_file())
 
@@ -73,11 +117,52 @@ def main(argv: list[str]) -> int:
 
     page_names = _wiki_page_targets(wiki_dir)
     failures: list[str] = []
+    seen_titles: dict[str, Path] = {}
 
     for md_file in _iter_wiki_markdown_files(wiki_dir):
         text = md_file.read_text(encoding="utf-8")
+
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if "\t" in line:
+                failures.append(
+                    f"{md_file.relative_to(repo_root)}:{line_no}: contains a tab character"
+                )
+            if line.rstrip("\n") != line.rstrip("\n").rstrip(" "):
+                failures.append(
+                    f"{md_file.relative_to(repo_root)}:{line_no}: trailing whitespace"
+                )
+
+        front_matter = _extract_front_matter(text)
+        if front_matter is None:
+            failures.append(f"{md_file.relative_to(repo_root)}: missing YAML front matter")
+        else:
+            if not front_matter.get("title"):
+                failures.append(f"{md_file.relative_to(repo_root)}: missing front matter 'title'")
+            title = front_matter.get("title")
+            if title:
+                existing = seen_titles.get(title)
+                if existing is not None:
+                    failures.append(
+                        f"{md_file.relative_to(repo_root)}: duplicate title {title!r} (also in {existing.relative_to(repo_root)})"
+                    )
+                else:
+                    seen_titles[title] = md_file
+
+            nav_order = front_matter.get("nav_order")
+            if not nav_order:
+                failures.append(
+                    f"{md_file.relative_to(repo_root)}: missing front matter 'nav_order'"
+                )
+            elif not str(nav_order).isdigit():
+                failures.append(
+                    f"{md_file.relative_to(repo_root)}: non-numeric front matter 'nav_order'"
+                )
+
+        headings = _iter_markdown_headings(text)
+        anchors = {_slugify_anchor(h) for h in headings if h}
+
         for raw_target in _extract_link_targets(text):
-            path_part, _anchor = _normalize_target(raw_target)
+            path_part, anchor = _normalize_target(raw_target)
             if _is_external_target(path_part):
                 continue
 
@@ -95,9 +180,35 @@ def main(argv: list[str]) -> int:
 
             if not resolved.exists():
                 failures.append(f"{md_file.relative_to(repo_root)}: broken link: {raw_target}")
+                continue
+
+            if anchor:
+                # Anchor-only links within the current page.
+                if not path_part or path_part.startswith("#"):
+                    if _slugify_anchor(anchor) not in anchors:
+                        failures.append(
+                            f"{md_file.relative_to(repo_root)}: broken anchor: {raw_target}"
+                        )
+                    continue
+
+                # Anchors into other markdown files (best-effort).
+                if resolved.suffix == ".md":
+                    try:
+                        target_text = resolved.read_text(encoding="utf-8")
+                    except OSError:
+                        continue
+                    target_anchors = {
+                        _slugify_anchor(h)
+                        for h in _iter_markdown_headings(target_text)
+                        if h
+                    }
+                    if _slugify_anchor(anchor) not in target_anchors:
+                        failures.append(
+                            f"{md_file.relative_to(repo_root)}: broken anchor: {raw_target}"
+                        )
 
     if failures:
-        print("Broken wiki links detected:", file=sys.stderr)
+        print("Wiki documentation issues detected:", file=sys.stderr)
         for line in failures:
             print(f"- {line}", file=sys.stderr)
         return 1

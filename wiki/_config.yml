@@ -16,6 +16,12 @@ plugins:
 search_enabled: true
 color_scheme: light
 
+heading_anchors: true
+
+mermaid:
+  enabled: true
+  version: "10.9.1"
+
 # Make Markdown links to other .md files work on the built site.
 relative_links:
   enabled: true

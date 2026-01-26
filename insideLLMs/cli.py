@@ -4045,7 +4045,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
     }
 
     if output_format == "json":
-        payload = json.dumps(diff_report, indent=2, default=_json_default)
+        payload = json.dumps(diff_report, indent=2, default=_json_default, sort_keys=True)
         if output_path:
             Path(output_path).write_text(payload, encoding="utf-8")
         else:

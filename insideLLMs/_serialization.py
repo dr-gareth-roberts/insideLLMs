@@ -10,6 +10,7 @@ This is an internal module - external code should not import from here directly.
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from enum import Enum
@@ -74,7 +75,8 @@ def serialize_value(value: Any) -> Any:
     if is_dataclass(value) and not isinstance(value, type):
         return asdict(value)
     if isinstance(value, dict):
-        return {k: serialize_value(v) for k, v in value.items()}
+        # JSON object keys must be strings; coerce for determinism and robustness.
+        return {str(k): serialize_value(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [serialize_value(v) for v in value]
     if isinstance(value, (set, frozenset)):
@@ -86,7 +88,13 @@ def serialize_value(value: Any) -> Any:
                 normalized,
                 key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
             )
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if isinstance(value, float):
+        # Ensure emitted JSON is standards-compliant; Python's json.dumps can emit
+        # NaN/Infinity which is not valid JSON.
+        if not math.isfinite(value):
+            return None
+        return value
+    if value is None or isinstance(value, (str, int, bool)):
         return value
     return str(value)
 
@@ -127,6 +135,7 @@ def stable_json_dumps(data: Any) -> str:
         sort_keys=True,
         separators=(",", ":"),
         default=serialize_value,
+        allow_nan=False,
     )
 
 
