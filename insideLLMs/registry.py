@@ -1488,7 +1488,7 @@ def _call_plugin_register(fn: Callable[..., Any]) -> None:
     sig: Signature
     try:
         sig = signature(fn)
-    except Exception:
+    except (ValueError, TypeError):
         fn()
         return
 
@@ -1615,7 +1615,7 @@ def load_entrypoint_plugins(
             selected = list(eps.select(group=group))
         else:  # pragma: no cover (older Python)
             selected = list(eps.get(group, []))  # type: ignore[attr-defined]
-    except Exception:
+    except (ImportError, AttributeError):
         return {}
 
     # Deterministic plugin load order: entry point iteration order is not guaranteed.
