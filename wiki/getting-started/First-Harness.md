@@ -150,9 +150,9 @@ insidellms harness real_harness.yaml
 ## What's Next?
 
 You've successfully:
-- ✅ Created a harness configuration
-- ✅ Compared multiple models
-- ✅ Generated comparison reports
+- Created a harness configuration
+- Compared multiple models
+- Generated comparison reports
 
 **Next steps:**
 

@@ -121,10 +121,10 @@ If everything is working, the diff will report **0 changes**.
 ## What's Next?
 
 You've successfully:
-- ✅ Installed insideLLMs
-- ✅ Run a quick test
-- ✅ Created a config-driven run
-- ✅ Verified determinism
+- Installed insideLLMs
+- Run a quick test
+- Created a config-driven run
+- Verified determinism
 
 **Next steps:**
 

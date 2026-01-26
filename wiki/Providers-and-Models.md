@@ -1,6 +1,6 @@
 ---
 title: Providers and Models
-nav_order: 6
+nav_order: 21
 ---
 
 insideLLMs uses a single `Model` interface (`generate`, `chat`, `stream`) across hosted providers and

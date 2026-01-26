@@ -1,6 +1,6 @@
 ---
 title: Experiment Tracking
-nav_order: 10
+nav_order: 25
 ---
 
 Experiment tracking logs metrics, params, and artifacts to a backend (local or hosted).

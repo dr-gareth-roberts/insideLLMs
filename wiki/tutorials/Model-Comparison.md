@@ -246,11 +246,11 @@ insidellms diff ./gpt4o_only ./claude_only --output model_diff.json
 
 ## Verification
 
-✅ Configured multi-model harness  
-✅ Ran comparison across models and probes  
-✅ Analyzed success rates by model  
-✅ Compared response quality  
-✅ Generated comparison report  
+ Configured multi-model harness  
+ Ran comparison across models and probes  
+ Analyzed success rates by model  
+ Compared response quality  
+ Generated comparison report  
 
 ---
 

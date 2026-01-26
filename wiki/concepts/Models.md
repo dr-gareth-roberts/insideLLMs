@@ -117,14 +117,14 @@ This info is included in run artifacts for reproducibility.
 
 | Provider | Local | Streaming | Chat |
 |----------|-------|-----------|------|
-| OpenAI | ❌ | ✅ | ✅ |
-| Anthropic | ❌ | ✅ | ✅ |
-| Google/Gemini | ❌ | ✅ | ✅ |
-| Cohere | ❌ | ✅ | ✅ |
-| HuggingFace | ✅/❌ | ✅ | ✅ |
-| Ollama | ✅ | ✅ | ✅ |
-| vLLM | ✅ | ✅ | ✅ |
-| llama.cpp | ✅ | ✅ | ❌ |
+| OpenAI |  |  |  |
+| Anthropic |  |  |  |
+| Google/Gemini |  |  |  |
+| Cohere |  |  |  |
+| HuggingFace | / |  |  |
+| Ollama |  |  |  |
+| vLLM |  |  |  |
+| llama.cpp |  |  |  |
 
 ## Custom Models
 

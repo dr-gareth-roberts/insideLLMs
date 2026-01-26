@@ -22,13 +22,13 @@ This enables:
 
 | Artifact | Deterministic? | How |
 |----------|----------------|-----|
-| `run_id` | ✅ | SHA-256 of config + dataset |
-| `started_at` / `completed_at` | ✅ | Derived from run_id |
-| `records.jsonl` | ✅ | Stable JSON, sorted keys |
-| `manifest.json` | ✅ | Stable JSON, sorted keys |
-| `diff.json` | ✅ | Stable JSON, sorted keys |
-| Model responses | ❌ | API-dependent |
-| Actual latency | ❌ | Runtime-dependent |
+| `run_id` | Yes | SHA-256 of config + dataset |
+| `started_at` / `completed_at` | Yes | Derived from run_id |
+| `records.jsonl` | Yes | Stable JSON, sorted keys |
+| `manifest.json` | Yes | Stable JSON, sorted keys |
+| `diff.json` | Yes | Stable JSON, sorted keys |
+| Model responses | No | API-dependent |
+| Actual latency | No | Runtime-dependent |
 
 ## How It Works
 
@@ -114,8 +114,8 @@ graph TD
     Candidate --> Diff[insidellms diff]
     Store --> Diff
     Diff --> Decision{Changes?}
-    Decision -->|No| Pass[✅ Pass]
-    Decision -->|Yes| Fail[❌ Fail]
+    Decision -->|No| Pass[Pass]
+    Decision -->|Yes| Fail[Fail]
 ```
 
 ```bash
@@ -128,17 +128,17 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 
 ### Do
 
-- ✅ Store baselines in version control
-- ✅ Use content-addressed datasets
-- ✅ Fix random seeds when possible
-- ✅ Use `--fail-on-changes` in CI
+- Store baselines in version control
+- Use content-addressed datasets
+- Fix random seeds when possible
+- Use `--fail-on-changes` in CI
 
 ### Don't
 
-- ❌ Rely on wall-clock timestamps
-- ❌ Include latency in comparisons
-- ❌ Change config between baseline and candidate
-- ❌ Modify datasets without updating baseline
+- Rely on wall-clock timestamps
+- Include latency in comparisons
+- Change config between baseline and candidate
+- Modify datasets without updating baseline
 
 ## When Determinism Breaks
 
