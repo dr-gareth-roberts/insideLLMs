@@ -2243,9 +2243,7 @@ def validate_with_config(
     if toggles.get("stream_boundaries", True):
         stream_violations = validate_stream_boundaries(normalized_events)
         if not sb_cfg.require_end:
-            stream_violations = [
-                v for v in stream_violations if v.code != "STREAM_NO_END"
-            ]
+            stream_violations = [v for v in stream_violations if v.code != "STREAM_NO_END"]
         if not sb_cfg.require_monotonic_chunks:
             stream_violations = [
                 v for v in stream_violations if v.code != "STREAM_CHUNK_INDEX_MISMATCH"

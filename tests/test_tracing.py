@@ -434,7 +434,10 @@ class TestTraceFingerprint:
             TraceEvent(
                 seq=0,
                 kind=TraceEventKind.GENERATE_START.value,
-                payload={"when": datetime(2026, 1, 25, tzinfo=timezone.utc), "path": Path("/tmp/x")},
+                payload={
+                    "when": datetime(2026, 1, 25, tzinfo=timezone.utc),
+                    "path": Path("/tmp/x"),
+                },
             )
         ]
         fp = trace_fingerprint(events)

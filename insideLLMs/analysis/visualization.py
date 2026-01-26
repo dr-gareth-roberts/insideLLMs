@@ -150,8 +150,8 @@ insideLLMs.analysis.statistics : Statistical analysis functions
 insideLLMs.export : Functions for exporting results to various formats
 """
 
-import html
 import hashlib
+import html
 import re
 from datetime import datetime
 from enum import Enum
@@ -166,6 +166,7 @@ def _escape_html_text(value: object) -> str:
 
 def _escape_html_attr(value: object) -> str:
     return html.escape(str(value), quote=True)
+
 
 try:
     import matplotlib.pyplot as plt
@@ -3447,7 +3448,7 @@ def create_interactive_html_report(
         active = "active" if i == 0 else ""
         html += (
             f'                <button class="chart-tab {active}" '
-            f'onclick="showChart(\'{chart_id}\')">{_escape_html_text(chart_title)}</button>\n'
+            f"onclick=\"showChart('{chart_id}')\">{_escape_html_text(chart_title)}</button>\n"
         )
 
     html += """            </div>
