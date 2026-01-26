@@ -5,89 +5,89 @@ nav_order: 8
 
 # Philosophy
 
-Why insideLLMs exists and how it differs from existing evaluation frameworks.
+## The Question That Actually Matters
+
+Benchmark frameworks answer: **"How good is this model?"**
+
+Production teams need to know: **"What changed?"**
+
+Your model scored 87% on MMLU. Great. Did prompt #47 start giving dangerous advice? Benchmarks won't tell you.
+
+## Why Existing Frameworks Fall Short
+
+**Eleuther, HELM, OpenAI Evals** — excellent for research. Inadequate for production.
+
+They give you:
+- Aggregate scores ("accuracy: 0.87")
+- Leaderboard rankings
+- Point-in-time snapshots
+
+They don't give you:
+- Which specific prompts regressed
+- Deterministic diffs for CI gating
+- Response-level change tracking
+- Confidence that nothing broke
 
 ---
 
-## The Problem
+## What insideLLMs Does Differently
 
-Traditional LLM evaluation frameworks focus on benchmark scores: accuracy on MMLU, F1 on SQuAD, pass rates on HumanEval. These metrics answer the question:
+### 1. Differential Analysis, Not Scores
 
-> "How good is this model?"
+**Benchmark approach:** "Model accuracy dropped from 87% to 85%."
 
-But for teams shipping LLM-powered products, a different question matters more:
+**insideLLMs approach:** "Prompt #47 changed from 'Consult a doctor' to 'Here's what you should do'. Prompt #103 started hallucinating. Deploy blocked."
 
-> "Did my model's behaviour change?"
-
-A model that scores 85% on a benchmark isn't inherently better than one scoring 82%. What matters is whether the behaviours your users depend on have regressed.
+You can't debug a 2% drop. You can debug specific prompt regressions.
 
 ---
 
-## Benchmarks vs. Behavioural Testing
+### 2. Determinism Enables CI Gating
 
-| Aspect | Benchmark Frameworks | insideLLMs |
-|--------|---------------------|------------|
-| **Primary question** | "What's the score?" | "What changed?" |
-| **Output** | Aggregate metrics | Individual responses |
-| **Reproducibility** | Often inconsistent | Byte-for-byte deterministic |
-| **CI integration** | Afterthought | First-class design goal |
-| **Granularity** | Dataset-level | Response-level |
-| **Extensibility** | Fork to customize | Compose probes |
+Most frameworks: "Run it twice, get different timestamps, diffs are noisy."
 
-Benchmark frameworks tell you where a model ranks on a leaderboard. insideLLMs tells you whether your deployment is safe to ship.
+insideLLMs: Same inputs → byte-for-byte identical outputs.
 
----
+- Run IDs: SHA-256 of config + dataset
+- Timestamps: Derived from run ID, not wall clock
+- JSON: Stable formatting (sorted keys, consistent separators)
 
-## Core Principles
-
-### 1. Differential Analysis Over Absolute Scores
-
-The most useful evaluation isn't "Model X scored 87%." It's "Model X's response to prompt #47 changed from A to B."
-
-insideLLMs preserves every input/output pair in `records.jsonl`, enabling:
-- Exact identification of behavioural changes
-- Regression tracking to specific prompts
-- Root cause analysis when things break
-
-### 2. Determinism as Foundation
-
-Most evaluation frameworks treat reproducibility as a nice-to-have. insideLLMs makes it fundamental:
-
-- **Run IDs** are SHA-256 hashes of inputs
-- **Timestamps** derive from run IDs, not wall clocks
-- **Artifacts** have stable JSON formatting (sorted keys, consistent separators)
-
-This isn't academic rigor for its own sake. It's what makes `git diff` work on model behaviour:
+Result: `git diff` works on model behaviour.
 
 ```bash
-# This only works if artifacts are deterministic
 insidellms diff ./baseline ./candidate --fail-on-changes
+# Exit code 1 = behaviour changed = deploy blocked
 ```
 
-### 3. Probes Over Benchmarks
+### 3. Response-Level Granularity
 
-Benchmarks are:
-- **Broad**: Cover many capabilities at once
-- **Static**: Fixed datasets, frozen in time
-- **External**: Maintained by third parties
+**Benchmark frameworks:** "Here's your aggregate score."
 
-Probes are:
-- **Focused**: Test specific behaviours (bias in salary advice, logical consistency, jailbreak resistance)
-- **Composable**: Combine probes for your use case
-- **Extensible**: Build custom probes without forking the framework
+**insideLLMs:** "Here's every input/output pair in `records.jsonl`. Filter, analyse, debug."
+
+No more guessing which prompts failed. You see them.
+
+### 4. Probes, Not Benchmarks
+
+**Benchmarks:** Broad, static, external. Good for research.
+
+**Probes:** Focused, composable, extensible. Good for production.
 
 ```python
-# Your domain-specific probe
 class MedicalSafetyProbe(Probe):
     def run(self, model, data, **kwargs):
         response = model.generate(data["symptom_query"])
         return {
             "response": response,
-            "contains_disclaimer": "consult a doctor" in response.lower()
+            "has_disclaimer": "consult a doctor" in response.lower()
         }
 ```
 
-### 4. CI-Native Architecture
+Build domain-specific tests. No forking required.
+
+---
+
+### 5. CI-Native Architecture
 
 The entire design serves one workflow:
 
@@ -107,109 +107,37 @@ This treats model behaviour like code:
 - **Diffable**: See exactly what changed
 - **Gateable**: Block merges on behavioural regressions
 
-### 5. Response-Level Granularity
-
-Aggregate metrics hide important details. If a model's accuracy drops from 90% to 88%, you need to know:
-- Which specific prompts failed?
-- Did new failures appear, or did old ones get worse?
-- Are the failures in critical areas or edge cases?
-
-`records.jsonl` answers these questions:
-
-```jsonl
-{"example_id": "47", "input": {...}, "output": "...", "status": "success"}
-{"example_id": "48", "input": {...}, "output": "...", "status": "error"}
-```
-
----
-
-## What insideLLMs Is Not
-
-**Not a leaderboard generator.** If you want to rank models on public benchmarks, use Eleuther's lm-evaluation-harness or HELM.
-
-**Not a training framework.** insideLLMs evaluates models; it doesn't train them.
-
-**Not a prompt optimisation tool.** It tests behaviour; it doesn't improve it.
-
-**Not a real-time monitoring system.** It's for pre-deployment testing, not production observability.
 
 ---
 
 ## When to Use insideLLMs
 
-Use insideLLMs when you need to:
-
-1. **Detect regressions** before they reach users
-2. **Compare models** for a specific use case (not general capability)
-3. **Gate deployments** on behavioural tests
-4. **Track changes** across model versions
-5. **Build custom evaluations** for domain-specific behaviours
-
----
-
-## The Deterministic Spine
-
-The "run -> records -> report -> diff" pipeline is the core abstraction:
-
-```
-Config + Dataset
-      |
-      v
-   Runner (ProbeRunner / AsyncProbeRunner)
-      |
-      v
-records.jsonl (canonical, deterministic)
-      |
-      +---> summary.json (aggregates)
-      +---> report.html (human-readable)
-      +---> diff.json (via insidellms diff)
-```
-
-Every component is designed for determinism:
-- Configs resolve to stable snapshots
-- Datasets are content-hashed
-- Timestamps derive from content, not time
-- JSON uses stable formatting
-
-This makes the entire pipeline diffable.
+| Use Case | Why insideLLMs |
+|----------|----------------|
+| Model upgrade | Catch breaking changes before deploy |
+| Provider switch | Compare GPT-4 vs Claude on your prompts |
+| Bias detection | Test fairness across demographics |
+| Safety testing | Verify jailbreak resistance |
+| Custom evaluation | Build domain-specific probes |
 
 ---
 
-## Comparison with Existing Frameworks
+## Framework Comparison
 
-### Eleuther lm-evaluation-harness
+| Framework | Best For | insideLLMs Difference |
+|-----------|----------|----------------------|
+| **Eleuther lm-evaluation-harness** | Academic benchmarks | CI-native, deterministic diffs |
+| **HELM** | Multi-dimensional scoring | Response-level granularity |
+| **OpenAI Evals** | Conversational tasks | Provider-agnostic, regression detection |
 
-**Focus**: Broad benchmark coverage (300+ tasks)
-**Strength**: Comprehensive academic benchmarks
-**Gap**: No CI integration, limited reproducibility, aggregate-only outputs
-
-### HELM (Stanford)
-
-**Focus**: Holistic evaluation with multiple metrics
-**Strength**: Multi-dimensional assessment
-**Gap**: Heavy infrastructure, not designed for CI gating
-
-### OpenAI Evals
-
-**Focus**: Conversational and instruction-following tasks
-**Strength**: Good prompt templates
-**Gap**: OpenAI-centric, limited determinism guarantees
-
-### insideLLMs
-
-**Focus**: Behavioural regression testing for CI
-**Strength**: Deterministic, diffable, CI-native
-**Gap**: Fewer built-in benchmarks (by design)
+**Bottom line:** Use benchmark frameworks for research. Use insideLLMs for production.
 
 ---
 
-## Summary
+## The Bottom Line
 
-insideLLMs exists because shipping LLM-powered products requires:
+**Benchmark frameworks:** Tell you how good your model is.
 
-1. **Knowing what changed**, not just what scored well
-2. **Trusting that tests are reproducible**, not hoping they are
-3. **Blocking bad deploys automatically**, not catching them in production
-4. **Understanding individual failures**, not just aggregate metrics
+**insideLLMs:** Tells you if it's safe to ship.
 
-If your goal is a leaderboard position, use benchmark frameworks. If your goal is shipping reliable LLM products, use insideLLMs.
+One is for research. One is for production. Choose accordingly.
