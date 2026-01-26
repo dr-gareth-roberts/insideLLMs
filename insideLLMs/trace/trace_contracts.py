@@ -1102,10 +1102,7 @@ def validate_tool_payloads(
             continue
 
         tool_name = event.payload.get("tool_name")
-        arguments = event.payload.get("arguments", {})
-
-        if arguments is None:
-            arguments = {}
+        arguments = event.payload.get("arguments") if "arguments" in event.payload else {}
         if not isinstance(arguments, dict):
             violations.append(
                 Violation(
