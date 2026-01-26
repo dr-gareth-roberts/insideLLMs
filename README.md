@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="insideLLMs.jpg" alt="insideLLMs" width="720">
+  <img src="insidellms.jpg" alt="insideLLMs" width="720">
   <h1 align="center">insideLLMs</h1>
   <p align="center">
     <strong>Deterministic behavioural probe harness for LLM comparison</strong>
