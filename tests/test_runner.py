@@ -509,6 +509,33 @@ class TestRunnerResume:
         assert len(results) == len(prompt_set)
         assert len(records_path.read_text().splitlines()) == len(prompt_set)
 
+    def test_proberunner_resume_mismatch_raises(self, tmp_path):
+        """Resume should fail if existing records don't match prompt_set."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import ProbeRunner
+
+        prompt_set = ["Q1?", "Q2?"]
+        run_dir = tmp_path / "resume_mismatch_run"
+        run_id = "resume-mismatch-test"
+
+        runner = ProbeRunner(DummyModel(), LogicProbe())
+        runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+        )
+
+        with pytest.raises(ValueError, match="input mismatch"):
+            runner.run(
+                ["Q1_CHANGED?", "Q2?"],
+                emit_run_artifacts=True,
+                run_dir=run_dir,
+                run_id=run_id,
+                resume=True,
+            )
+
     @pytest.mark.asyncio
     async def test_asyncrunner_resume_appends(self, tmp_path):
         """Test AsyncProbeRunner resumes and appends remaining records."""
@@ -541,6 +568,34 @@ class TestRunnerResume:
         )
         assert len(results) == len(prompt_set)
         assert len(records_path.read_text().splitlines()) == len(prompt_set)
+
+    @pytest.mark.asyncio
+    async def test_asyncrunner_resume_mismatch_raises(self, tmp_path):
+        """Async resume should fail if existing records don't match prompt_set."""
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes import LogicProbe
+        from insideLLMs.runner import AsyncProbeRunner
+
+        prompt_set = ["Q1?", "Q2?"]
+        run_dir = tmp_path / "resume_async_mismatch_run"
+        run_id = "resume-async-mismatch-test"
+
+        runner = AsyncProbeRunner(DummyModel(), LogicProbe())
+        await runner.run(
+            prompt_set,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+        )
+
+        with pytest.raises(ValueError, match="input mismatch"):
+            await runner.run(
+                ["Q1_CHANGED?", "Q2?"],
+                emit_run_artifacts=True,
+                run_dir=run_dir,
+                run_id=run_id,
+                resume=True,
+            )
 
 
 class TestPipelineConfig:

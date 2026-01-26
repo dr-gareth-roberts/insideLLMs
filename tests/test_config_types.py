@@ -68,6 +68,10 @@ class TestRunConfig:
         config = RunConfig(validation_mode="lenient")
         assert config.validation_mode == "lenient"
 
+    def test_validation_mode_warn_alias(self):
+        config = RunConfig(validation_mode="warn")
+        assert config.validation_mode == "lenient"
+
 
 class TestRunConfigBuilder:
     """Tests for RunConfigBuilder fluent API."""

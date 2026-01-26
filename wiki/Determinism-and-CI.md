@@ -33,6 +33,8 @@ The deterministic contract is *byte-for-byte* for the same inputs/config:
 - Canonical JSON emission for on-disk artifacts (stable key ordering and separators).
 - Stable ordering for plugin discovery and filesystem listings where relevant.
 - Idempotent reporting (`insidellms report` over the same run dir does not drift).
+- Resume safety: resumable runs validate the stored input fingerprint against the current prompt set,
+  preventing mixed artifacts.
 
 ## Volatile Fields (Intentionally Omitted)
 

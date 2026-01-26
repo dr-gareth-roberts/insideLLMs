@@ -22,6 +22,8 @@ A run directory contains (at minimum):
 - **Content-address datasets**: for local file datasets (`format: csv|jsonl`), if a hash is not provided,
   insideLLMs computes `dataset_hash=sha256:<file-bytes>` and includes it in `manifest.json`. Dataset
   changes therefore change `run_id`.
+- **Resume safety**: resumable runs validate that existing records match the current prompt inputs
+  (run_id + input fingerprint), preventing mixed artefacts.
 
 ### Volatile fields (intentionally omitted)
 
@@ -42,4 +44,3 @@ insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --overwrite --skip-r
 insidellms harness ci/harness.yaml --run-dir .tmp/runs/head --overwrite --skip-report
 insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 ```
-

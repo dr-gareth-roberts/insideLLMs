@@ -179,6 +179,21 @@ def _invoke_progress_callback(
         callback(info)  # type: ignore
 
 
+def _normalize_validation_mode(mode: Optional[str]) -> str:
+    """Normalize validation mode to the validator's accepted values.
+
+    The schema validator accepts "strict" or "warn". Historically, runner
+    configuration exposes "lenient" to mean "warn". This helper preserves
+    backward compatibility while keeping validator behavior explicit.
+    """
+    if mode is None:
+        return "strict"
+    normalized = str(mode).strip().lower()
+    if normalized in {"lenient", "warn"}:
+        return "warn"
+    return normalized
+
+
 class _RunnerBase:
     """Base class for ProbeRunner and AsyncProbeRunner with shared functionality.
 
@@ -455,7 +470,7 @@ class ProbeRunner(_RunnerBase):
         schema_version : Optional[str], default None
             Schema version for validation (e.g., "1.0.0").
         validation_mode : Optional[str], default None
-            Validation mode: "strict" or "lenient".
+            Validation mode: "strict" or "lenient" (alias: "warn").
         emit_run_artifacts : Optional[bool], default None
             If True, write records.jsonl and manifest.json to run_dir.
         run_dir : Optional[Union[str, Path]], default None
@@ -567,6 +582,7 @@ class ProbeRunner(_RunnerBase):
         validate_output = validate_output if validate_output is not None else config.validate_output
         schema_version = schema_version if schema_version is not None else config.schema_version
         validation_mode = validation_mode if validation_mode is not None else config.validation_mode
+        validator_mode = _normalize_validation_mode(validation_mode)
         emit_run_artifacts = (
             emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
         )
@@ -615,6 +631,15 @@ class ProbeRunner(_RunnerBase):
             resolved_run_id = run_id
 
         self.last_run_id = resolved_run_id
+        logger.info(
+            "Starting sync probe run",
+            extra={
+                "run_id": resolved_run_id,
+                "prompt_count": len(prompt_set),
+                "emit_artifacts": emit_run_artifacts,
+                "stop_on_error": stop_on_error,
+            },
+        )
         run_base_time = _deterministic_base_time(resolved_run_id)
         run_started_at, _ = _deterministic_run_times(run_base_time, len(prompt_set))
 
@@ -657,11 +682,12 @@ class ProbeRunner(_RunnerBase):
                         "Existing records.jsonl has more entries than the current prompt_set."
                     )
                 for line_index, record in enumerate(existing_records):
-                    record_index = _record_index_from_record(record, default=line_index)
-                    if record_index != line_index:
-                        raise ValueError(
-                            "Existing records are not a contiguous prefix; cannot resume safely."
-                        )
+                    _validate_resume_record(
+                        record,
+                        expected_index=line_index,
+                        expected_item=prompt_set[line_index],
+                        run_id=resolved_run_id,
+                    )
                     results[line_index] = _result_dict_from_record(
                         record,
                         schema_version=schema_version,
@@ -738,7 +764,7 @@ class ProbeRunner(_RunnerBase):
                                     registry.RESULT_RECORD,
                                     record,
                                     schema_version=schema_version,
-                                    mode=validation_mode,
+                                    mode=validator_mode,
                                 )
                             records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
@@ -815,12 +841,22 @@ class ProbeRunner(_RunnerBase):
                                     registry.RESULT_RECORD,
                                     record,
                                     schema_version=schema_version,
-                                    mode=validation_mode,
+                                    mode=validator_mode,
                                 )
                             records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
 
                     except Exception as e:
+                        logger.warning(
+                            "Probe execution failed",
+                            extra={
+                                "run_id": resolved_run_id,
+                                "index": i,
+                                "error_type": type(e).__name__,
+                                "error": str(e),
+                            },
+                            exc_info=True,
+                        )
                         probe_result = ProbeResult(
                             input=item,
                             status=ResultStatus.ERROR,
@@ -857,7 +893,7 @@ class ProbeRunner(_RunnerBase):
                                     registry.RESULT_RECORD,
                                     record,
                                     schema_version=schema_version,
-                                    mode=validation_mode,
+                                    mode=validator_mode,
                                 )
                             records_fp.write(_stable_json_dumps(record) + "\n")
                             records_fp.flush()
@@ -941,7 +977,7 @@ class ProbeRunner(_RunnerBase):
                     registry.RUN_MANIFEST,
                     manifest,
                     schema_version=schema_version,
-                    mode=validation_mode,
+                    mode=validator_mode,
                 )
 
             _atomic_write_text(
@@ -959,7 +995,7 @@ class ProbeRunner(_RunnerBase):
                 registry.RUNNER_OUTPUT,
                 {"schema_version": schema_version, "results": final_results},
                 schema_version=schema_version,
-                mode=validation_mode,
+                mode=validator_mode,
             )
 
         self.last_experiment = create_experiment_result(
@@ -970,6 +1006,19 @@ class ProbeRunner(_RunnerBase):
             experiment_id=resolved_run_id,
             started_at=run_started_at,
             completed_at=run_completed_at,
+        )
+
+        success_count = sum(1 for r in final_results if r.get("status") == "success")
+        error_count = len(final_results) - success_count
+        logger.info(
+            "Sync probe run completed",
+            extra={
+                "run_id": resolved_run_id,
+                "total_items": len(final_results),
+                "success_count": success_count,
+                "error_count": error_count,
+                "success_rate": success_count / len(final_results) if final_results else 0,
+            },
         )
 
         return self.last_experiment if return_experiment else final_results
@@ -1397,6 +1446,40 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     return records
 
 
+def _validate_resume_record(
+    record: dict[str, Any],
+    *,
+    expected_index: int,
+    expected_item: Any,
+    run_id: Optional[str],
+) -> None:
+    """Validate a stored record matches the expected prompt item.
+
+    Ensures resume only proceeds when the existing records are a contiguous
+    prefix and inputs match the current prompt_set. This prevents silently
+    mixing results from different inputs.
+    """
+    record_index = _record_index_from_record(record, default=expected_index)
+    if record_index != expected_index:
+        raise ValueError(
+            "Existing records are not a contiguous prefix; cannot resume safely."
+        )
+
+    if run_id is not None:
+        record_run_id = record.get("run_id")
+        if record_run_id is not None and record_run_id != run_id:
+            raise ValueError(
+                f"Existing record run_id '{record_run_id}' does not match current run_id '{run_id}'."
+            )
+
+    expected_fp = _fingerprint_value(expected_item)
+    record_fp = _fingerprint_value(record.get("input"))
+    if expected_fp != record_fp:
+        raise ValueError(
+            f"Existing record input mismatch at index {expected_index}; cannot resume safely."
+        )
+
+
 # Module-level constants for deterministic timestamp generation.
 # These are used to produce reproducible timestamps from run IDs,
 # ensuring that the same configuration always produces the same
@@ -1715,13 +1798,13 @@ def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
         # pydantic v1 compatibility
         try:
             return info_obj.dict()
-        except (AttributeError, TypeError):
+        except Exception:
             return {}
     if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
         # pydantic v2 compatibility
         try:
             return info_obj.model_dump()
-        except (AttributeError, TypeError):
+        except Exception:
             return {}
     return {}
 
@@ -2342,7 +2425,7 @@ def _coerce_model_info(model: Model) -> ModelInfo:
     info_obj: Any = {}
     try:
         info_obj = model.info() or {}
-    except (AttributeError, TypeError):
+    except Exception:
         info_obj = {}
 
     # If it's already the canonical type, keep it.
@@ -2619,7 +2702,9 @@ class AsyncProbeRunner(_RunnerBase):
         prompt_set: list[Any],
         *,
         config: Optional[RunConfig] = None,
+        stop_on_error: Optional[bool] = None,
         concurrency: Optional[int] = None,
+        timeout: Optional[float] = None,
         progress_callback: Optional[ProgressCallback] = None,
         validate_output: Optional[bool] = None,
         schema_version: Optional[str] = None,
@@ -2651,9 +2736,14 @@ class AsyncProbeRunner(_RunnerBase):
         config : Optional[RunConfig], default None
             RunConfig with all run settings. Individual kwargs override config
             values if both are provided.
+        stop_on_error : Optional[bool], default None
+            If True, stop execution on first error. For determinism, async
+            runs will enforce concurrency=1 when stop_on_error is enabled.
         concurrency : Optional[int], default None
             Maximum number of concurrent executions. Higher values speed up
             execution but may hit API rate limits.
+        timeout : Optional[float], default None
+            Per-item timeout in seconds. If None, no timeout is applied.
         progress_callback : Optional[ProgressCallback], default None
             Callback for progress updates. Called after each item completes.
             Supports both legacy and rich ProgressInfo signatures.
@@ -2662,7 +2752,7 @@ class AsyncProbeRunner(_RunnerBase):
         schema_version : Optional[str], default None
             Schema version for validation.
         validation_mode : Optional[str], default None
-            Validation mode: "strict" or "lenient".
+            Validation mode: "strict" or "lenient" (alias: "warn").
         emit_run_artifacts : Optional[bool], default None
             If True, write records.jsonl and manifest.json to run_dir.
         run_dir : Optional[Union[str, Path]], default None
@@ -2785,10 +2875,13 @@ class AsyncProbeRunner(_RunnerBase):
             config = RunConfig()
 
         # Override config with explicit kwargs (backward compatibility)
+        stop_on_error = stop_on_error if stop_on_error is not None else config.stop_on_error
         concurrency = concurrency if concurrency is not None else config.concurrency
+        timeout = timeout if timeout is not None else config.timeout
         validate_output = validate_output if validate_output is not None else config.validate_output
         schema_version = schema_version if schema_version is not None else config.schema_version
         validation_mode = validation_mode if validation_mode is not None else config.validation_mode
+        validator_mode = _normalize_validation_mode(validation_mode)
         emit_run_artifacts = (
             emit_run_artifacts if emit_run_artifacts is not None else config.emit_run_artifacts
         )
@@ -2808,12 +2901,18 @@ class AsyncProbeRunner(_RunnerBase):
 
         # Validate prompt set before execution
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
-        
+
         # Validate concurrency and batch_workers
         if concurrency < 1:
             raise ValueError(f"concurrency must be >= 1, got {concurrency}")
         if batch_workers is not None and batch_workers < 1:
             raise ValueError(f"batch_workers must be >= 1, got {batch_workers}")
+
+        if stop_on_error and concurrency > 1:
+            logger.warning(
+                "stop_on_error with concurrency>1 is non-deterministic; forcing concurrency=1"
+            )
+            concurrency = 1
 
         registry = SchemaRegistry()
         validator = OutputValidator(registry)
@@ -2881,6 +2980,8 @@ class AsyncProbeRunner(_RunnerBase):
         semaphore = asyncio.Semaphore(concurrency)
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
         errors: list[Optional[BaseException]] = [None] * len(prompt_set)
+        stop_event = asyncio.Event()
+        stop_error: Optional[RunnerExecutionError] = None
         completed = 0
         completed_lock = asyncio.Lock()  # Protect completed counter from race conditions
         total = len(prompt_set)
@@ -2894,11 +2995,12 @@ class AsyncProbeRunner(_RunnerBase):
                         "Existing records.jsonl has more entries than the current prompt_set."
                     )
                 for line_index, record in enumerate(existing_records):
-                    record_index = _record_index_from_record(record, default=line_index)
-                    if record_index != line_index:
-                        raise ValueError(
-                            "Existing records are not a contiguous prefix; cannot resume safely."
-                        )
+                    _validate_resume_record(
+                        record,
+                        expected_index=line_index,
+                        expected_item=prompt_set[line_index],
+                        run_id=resolved_run_id,
+                    )
                     results[line_index] = _result_dict_from_record(
                         record,
                         schema_version=schema_version,
@@ -2948,21 +3050,36 @@ class AsyncProbeRunner(_RunnerBase):
                             registry.RESULT_RECORD,
                             record,
                             schema_version=schema_version,
-                            mode=validation_mode,
+                            mode=validator_mode,
                         )
-                    records_fp.write(_stable_json_dumps(record) + "\n")
-                    records_fp.flush()
+                    # Use executor to avoid blocking event loop on file I/O
+                    record_line = _stable_json_dumps(record) + "\n"
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(
+                        None,
+                        lambda line=record_line: (records_fp.write(line), records_fp.flush()),
+                    )
                     next_write_index += 1
 
         async def run_single(index: int, item: Any) -> None:
-            nonlocal completed
+            nonlocal completed, stop_error
             async with semaphore:
+                if stop_event.is_set():
+                    return
                 try:
-                    # Run in thread pool for sync models
+                    # Run in thread pool for sync models with optional timeout
                     loop = asyncio.get_running_loop()
-                    output = await loop.run_in_executor(
-                        None,
-                        lambda: self.probe.run(self.model, item, **probe_kwargs),
+
+                    async def execute_probe() -> Any:
+                        return await loop.run_in_executor(
+                            None,
+                            lambda: self.probe.run(self.model, item, **probe_kwargs),
+                        )
+
+                    output = await run_with_timeout(
+                        execute_probe,
+                        timeout=timeout,
+                        context={"index": index, "item_type": type(item).__name__},
                     )
                     probe_result = ProbeResult(
                         input=item,
@@ -2976,6 +3093,16 @@ class AsyncProbeRunner(_RunnerBase):
                         schema_version=schema_version,
                     )
                 except Exception as e:
+                    logger.warning(
+                        "Async probe execution failed",
+                        extra={
+                            "run_id": resolved_run_id,
+                            "index": index,
+                            "error_type": type(e).__name__,
+                            "error": str(e),
+                        },
+                        exc_info=True,
+                    )
                     errors[index] = e
                     probe_result = ProbeResult(
                         input=item,
@@ -2989,6 +3116,24 @@ class AsyncProbeRunner(_RunnerBase):
                         schema_version=schema_version,
                         error_type=type(e).__name__,
                     )
+                    if stop_on_error and stop_error is None:
+                        prompt_str = str(item) if not isinstance(item, str) else item
+                        stop_error = RunnerExecutionError(
+                            reason=str(e),
+                            model_id=model_spec.get("model_id"),
+                            probe_id=probe_spec.get("probe_id"),
+                            prompt=prompt_str,
+                            prompt_index=index,
+                            run_id=resolved_run_id,
+                            elapsed_seconds=None,
+                            original_error=e,
+                            suggestions=[
+                                "Check the model API credentials and connectivity",
+                                "Verify the prompt format is valid for this model",
+                                "Review the original error message above",
+                            ],
+                        )
+                        stop_event.set()
                 finally:
                     async with completed_lock:
                         completed += 1
@@ -3056,6 +3201,9 @@ class AsyncProbeRunner(_RunnerBase):
                     await asyncio.gather(*tasks)
                 await write_ready_records()
 
+        if stop_error is not None:
+            raise stop_error
+
         if any(result is None for result in results):
             raise RuntimeError("Runner did not produce results for all items.")
         final_results = [result for result in results if result is not None]
@@ -3105,7 +3253,7 @@ class AsyncProbeRunner(_RunnerBase):
                     registry.RUN_MANIFEST,
                     manifest,
                     schema_version=schema_version,
-                    mode=validation_mode,
+                    mode=validator_mode,
                 )
 
             _atomic_write_text(
@@ -3123,7 +3271,7 @@ class AsyncProbeRunner(_RunnerBase):
                 registry.RUNNER_OUTPUT,
                 {"schema_version": schema_version, "results": final_results},
                 schema_version=schema_version,
-                mode=validation_mode,
+                mode=validator_mode,
             )
 
         self.last_experiment = create_experiment_result(
@@ -3463,12 +3611,16 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
 
     if path.suffix in (".yaml", ".yml"):
         with open(path) as f:
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f)
     elif path.suffix == ".json":
         with open(path) as f:
-            return json.load(f)
+            data = json.load(f)
     else:
         raise ValueError(f"Unsupported config file format: {path.suffix}")
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid config format in {path}: expected a mapping at top level.")
+    return data
 
 
 def _resolve_path(path: str, base_dir: Path) -> Path:
@@ -3801,7 +3953,7 @@ def run_experiment_from_config(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version for validation.
     validation_mode : str, default "strict"
-        Validation mode: "strict" or "lenient".
+        Validation mode: "strict" or "lenient" (alias: "warn").
     emit_run_artifacts : bool, default True
         If True, write records.jsonl and manifest.json to run directory.
     run_dir : Optional[Union[str, Path]], default None
@@ -3977,7 +4129,7 @@ def run_harness_from_config(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version for validation.
     validation_mode : str, default "strict"
-        Validation mode: "strict" or "lenient".
+        Validation mode: "strict" or "lenient" (alias: "warn").
 
     Returns
     -------
@@ -4058,6 +4210,7 @@ def run_harness_from_config(
     run_experiment_from_config : Run single model/probe experiment.
     run_experiment_from_config_async : Async version of single experiment.
     """
+    validator_mode = _normalize_validation_mode(validation_mode)
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
@@ -4277,7 +4430,7 @@ def run_harness_from_config(
                 registry.RESULT_RECORD,
                 record,
                 schema_version=schema_version,
-                mode=validation_mode,
+                mode=validator_mode,
             )
 
     return {
@@ -4326,7 +4479,7 @@ async def run_experiment_from_config_async(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version for validation.
     validation_mode : str, default "strict"
-        Validation mode: "strict" or "lenient".
+        Validation mode: "strict" or "lenient" (alias: "warn").
     emit_run_artifacts : bool, default True
         If True, write records.jsonl and manifest.json to run directory.
     run_dir : Optional[Union[str, Path]], default None
