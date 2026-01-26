@@ -10,6 +10,7 @@ diffs.
 ## Quick Links
 
 - [Getting Started](Getting-Started.md)
+- [Architecture](Architecture.md)
 - [Harness](Harness.md)
 - [CLI](CLI.md)
 - [Configuration](Configuration.md)

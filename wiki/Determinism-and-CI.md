@@ -6,6 +6,16 @@ nav_order: 13
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI
 diff-gating.
 
+```mermaid
+flowchart LR
+  Config[Resolved config + dataset identity] --> Run[Run / Harness]
+  Run --> Records[records.jsonl]
+  Records --> Validate[Validate]
+  Validate --> Report[report.html]
+  Records --> Diff[diff.json]
+  Report --> Diff
+```
+
 ## What’s Deterministic?
 
 When you run via `insidellms run` or `insidellms harness`, insideLLMs writes:
@@ -39,6 +49,14 @@ If you need timing/host details, use tracing/telemetry rather than the canonical
 For local file datasets (`format: csv|jsonl`), if a hash is not provided in the config, insideLLMs
 computes a deterministic `dataset_hash=sha256:<file-bytes>` and includes it in `manifest.json`.
 This makes `run_id` sensitive to dataset content changes.
+
+```mermaid
+flowchart TD
+  Dataset[Dataset file bytes] --> Hash[dataset_hash = sha256(file_bytes)]
+  Hash --> RunId[run_id derived from resolved config]
+  RunId --> Time[Deterministic timestamps]
+  RunId --> Dir[Run directory identity]
+```
 
 ## CI Diff-Gating Pattern
 

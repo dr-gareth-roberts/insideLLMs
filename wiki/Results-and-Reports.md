@@ -11,6 +11,14 @@ flowchart LR
   Diff --> Decide[Decide]
 ```
 
+```mermaid
+flowchart TD
+  Records[records.jsonl] --> Summary[summary.json]
+  Records --> ReportHtml[report.html]
+  Records --> DiffJson[diff.json]
+  Summary --> ReportHtml
+```
+
 ## records.jsonl
 
 Canonical run log: one JSON object per line, per example per model per probe.
