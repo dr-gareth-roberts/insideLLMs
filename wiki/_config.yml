@@ -14,7 +14,7 @@ plugins:
   - jekyll-sitemap
 
 search_enabled: true
-color_scheme: dark
+color_scheme: light
 
 # Make Markdown links to other .md files work on the built site.
 relative_links:
@@ -30,4 +30,3 @@ gh_edit_repository: https://github.com/dr-gareth-roberts/insideLLMs
 gh_edit_branch: main
 gh_edit_source: wiki
 gh_edit_view_mode: tree
-
