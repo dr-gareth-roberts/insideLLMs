@@ -178,12 +178,12 @@ def _cli_version_string() -> str:
 
     try:
         return importlib.metadata.version("insideLLMs")
-    except Exception:
+    except (ImportError, AttributeError):
         try:
             import insideLLMs
 
             return str(getattr(insideLLMs, "__version__", "unknown"))
-        except Exception:
+        except (ImportError, AttributeError):
             return "unknown"
 
 
@@ -432,7 +432,7 @@ def _supports_color() -> bool:
             kernel32 = ctypes.windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
             return True
-        except Exception:
+        except (OSError, AttributeError):
             return os.environ.get("ANSICON") is not None
 
     return True
@@ -994,7 +994,7 @@ def _status_from_record(value: Any) -> ResultStatus:
         return value
     try:
         return ResultStatus(str(value))
-    except Exception:
+    except (ValueError, TypeError):
         return ResultStatus.ERROR
 
 
@@ -2684,7 +2684,7 @@ def create_parser() -> argparse.ArgumentParser:
 def _module_version(dist_name: str) -> Optional[str]:
     try:
         return importlib.metadata.version(dist_name)
-    except Exception:
+    except (ImportError, AttributeError):
         return None
 
 
@@ -2698,7 +2698,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except Exception:
+    except (LookupError, OSError):
         return False
 
 
@@ -2960,7 +2960,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         if "tracker" in locals() and tracker is not None:
             try:
                 tracker.end_run(status="failed")
-            except Exception:
+            except (AttributeError, RuntimeError):
                 pass
         print_error(f"Error running experiment: {e}")
         if args.verbose:
@@ -3130,7 +3130,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             if not marker.exists():
                 try:
                     marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-                except Exception:
+                except (IOError, OSError):
                     pass
 
         # Prepare run dir with the same safety policy as `insidellms run`.
@@ -3155,10 +3155,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
         legacy_results_path = output_dir / "results.jsonl"
         try:
             os.symlink("records.jsonl", legacy_results_path)
-        except Exception:
+        except (OSError, NotImplementedError):
             try:
                 os.link(records_path, legacy_results_path)
-            except Exception:
+            except (OSError, IOError):
                 shutil.copyfile(records_path, legacy_results_path)
 
         ds_cfg = result.get("config", {}).get("dataset")
@@ -3241,7 +3241,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             import insideLLMs
 
             manifest["library_version"] = getattr(insideLLMs, "__version__", None)
-        except Exception:
+        except (ImportError, AttributeError):
             pass
 
         if args.validate_output:
@@ -3364,7 +3364,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
         if tracker is not None:
             try:
                 tracker.end_run(status="failed")
-            except Exception:
+            except (AttributeError, RuntimeError):
                 pass
         print_error(f"Error running harness: {e}")
         if args.verbose:
@@ -3656,7 +3656,7 @@ def cmd_report(args: argparse.Namespace) -> int:
 
             base_time = _deterministic_base_time(str(run_id))
             _, generated_at = _deterministic_run_times(base_time, len(records))
-        except Exception:
+        except (ValueError, KeyError):
             generated_at = None
 
     if generated_at is None:
@@ -4502,7 +4502,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                     try:
                         result = runner.run_single(inp)
                         probe_results.append(result)
-                    except Exception:
+                    except (ProbeExecutionError, RuntimeError):
                         pass
                     progress.update(i + 1)
 
