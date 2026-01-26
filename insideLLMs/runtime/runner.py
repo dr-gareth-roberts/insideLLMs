@@ -93,15 +93,9 @@ from typing import Any, Callable, Optional, Union
 
 import yaml
 
-logger = logging.getLogger(__name__)
-
 from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
-)
-from insideLLMs._serialization import (
     serialize_value as _serialize_value,
-)
-from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,
 )
 from insideLLMs.config_types import ProgressInfo, RunConfig
@@ -116,7 +110,6 @@ from insideLLMs.registry import (
     probe_registry,
 )
 from insideLLMs.runtime.timeout_wrapper import run_with_timeout
-from insideLLMs.runtime.async_io import async_write_text
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.statistics import generate_summary_report
 from insideLLMs.types import (
@@ -128,6 +121,8 @@ from insideLLMs.types import (
     ResultStatus,
 )
 from insideLLMs.validation import validate_prompt_set
+
+logger = logging.getLogger(__name__)
 
 # Type alias for progress callbacks - supports both simple (current, total) and rich ProgressInfo
 ProgressCallback = Union[Callable[[int, int], None], Callable[["ProgressInfo"], None]]
@@ -569,8 +564,6 @@ class ProbeRunner(_RunnerBase):
         AsyncProbeRunner.run : Async version with concurrency support.
         run_probe : Convenience function wrapping ProbeRunner.
         """
-        import time
-
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
         # Resolve config: use provided config or create default
@@ -2866,8 +2859,6 @@ class AsyncProbeRunner(_RunnerBase):
         ProbeRunner.run : Synchronous version for sequential execution.
         run_probe_async : Convenience function wrapping this method.
         """
-        import time
-
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
         # Resolve config: use provided config or create default

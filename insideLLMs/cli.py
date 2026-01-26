@@ -117,6 +117,7 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,  # noqa: F401
 )
+from insideLLMs.exceptions import ProbeExecutionError
 from insideLLMs.registry import (
     ensure_builtins_registered,
     model_registry,

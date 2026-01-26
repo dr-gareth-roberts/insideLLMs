@@ -7,7 +7,6 @@ blocking the event loop during record writing.
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ async def async_write_text(
     encoding: str = "utf-8",
 ) -> None:
     """Write text to file asynchronously using executor.
-    
+
     Args:
         filepath: Path to file
         content: Content to write
@@ -27,12 +26,12 @@ async def async_write_text(
         encoding: Text encoding
     """
     loop = asyncio.get_running_loop()
-    
+
     def _write():
         with open(filepath, mode, encoding=encoding) as f:
             f.write(content)
             f.flush()
-    
+
     try:
         await loop.run_in_executor(None, _write)
     except (IOError, OSError) as e:
@@ -47,7 +46,7 @@ async def async_write_lines(
     encoding: str = "utf-8",
 ) -> None:
     """Write multiple lines to file asynchronously.
-    
+
     Args:
         filepath: Path to file
         lines: Lines to write (will add newlines)
@@ -55,7 +54,7 @@ async def async_write_lines(
         encoding: Text encoding
     """
     loop = asyncio.get_running_loop()
-    
+
     def _write():
         with open(filepath, mode, encoding=encoding) as f:
             for line in lines:
@@ -63,7 +62,7 @@ async def async_write_lines(
                 if not line.endswith("\n"):
                     f.write("\n")
             f.flush()
-    
+
     try:
         await loop.run_in_executor(None, _write)
     except (IOError, OSError) as e:
