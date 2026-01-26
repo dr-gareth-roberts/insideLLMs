@@ -39,10 +39,8 @@ async def run_with_timeout(
     except asyncio.TimeoutError:
         context_str = f" (context: {context})" if context else ""
         logger.error(
-            f"Probe execution timed out after {timeout}s{context_str}",
-            extra=context or {}
+            f"Probe execution timed out after {timeout}s{context_str}", extra=context or {}
         )
         raise ProbeExecutionError(
-            f"Probe execution timed out after {timeout}s",
-            details=context or {}
+            f"Probe execution timed out after {timeout}s", details=context or {}
         )

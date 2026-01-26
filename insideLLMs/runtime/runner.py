@@ -1458,9 +1458,7 @@ def _validate_resume_record(
     """
     record_index = _record_index_from_record(record, default=expected_index)
     if record_index != expected_index:
-        raise ValueError(
-            "Existing records are not a contiguous prefix; cannot resume safely."
-        )
+        raise ValueError("Existing records are not a contiguous prefix; cannot resume safely.")
 
     if run_id is not None:
         record_run_id = record.get("run_id")
@@ -2523,7 +2521,9 @@ def _build_result_record(
     messages_hash = None
     if normalized_messages is not None:
         try:
-            messages_hash = hashlib.sha256(_stable_json_dumps(normalized_messages).encode("utf-8")).hexdigest()
+            messages_hash = hashlib.sha256(
+                _stable_json_dumps(normalized_messages).encode("utf-8")
+            ).hexdigest()
         except (ValueError, TypeError):
             messages_hash = None
 
@@ -2944,8 +2944,8 @@ class AsyncProbeRunner(_RunnerBase):
                 "model": model_spec.get("model_id"),
                 "probe": probe_spec.get("probe_id"),
                 "examples": len(prompt_set),
-                "concurrency": concurrency
-            }
+                "concurrency": concurrency,
+            },
         )
         run_base_time = _deterministic_base_time(resolved_run_id)
         run_started_at, _ = _deterministic_run_times(run_base_time, len(prompt_set))
@@ -3669,7 +3669,7 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                 except Exception as e:
                     logger.error(
                         f"Unexpected error hashing dataset '{dataset.get('path')}': {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
 
     return snapshot
