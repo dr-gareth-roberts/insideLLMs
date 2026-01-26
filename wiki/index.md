@@ -78,6 +78,7 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 | [Concepts](concepts/index.md) | Deep dives into how things work |
 | [Reference](reference/index.md) | Complete CLI and API documentation |
 | [Guides](guides/index.md) | How-tos for specific integrations |
+| [Philosophy](Philosophy.md) | Why insideLLMs exists and how it differs |
 
 ---
 
