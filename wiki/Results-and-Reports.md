@@ -1,4 +1,7 @@
-# Results and Reports
+---
+title: Results and Reports
+nav_order: 9
+---
 
 ```mermaid
 flowchart LR
@@ -53,12 +56,14 @@ otherwise a basic HTML report is generated.
 comparison with regressions, improvements, and change metadata. Use
 `insidellms schema DiffReport` to inspect the JSON Schema.
 
-For CI usage patterns, see [Determinism and CI](Determinism-and-CI).
+For CI usage patterns, see [Determinism and CI](Determinism-and-CI.md).
 
 ## Tips
 
 - Treat outputs as sensitive. Do not store PII or secrets in results.
 - Use `max_examples` to control cost and runtime.
-- For experiment tracking (W&B/MLflow/TensorBoard/local logs), see (Experiment-Tracking).
-- For caching/concurrency/rate limiting guidance, see (Performance-and-Caching).
-- For trace-aware diffing and structured output fingerprints, see (Tracing-and-Fingerprinting).
+- For experiment tracking (W&B/MLflow/TensorBoard/local logs), see
+  [Experiment Tracking](Experiment-Tracking.md).
+- For caching/concurrency/rate limiting guidance, see [Performance and Caching](Performance-and-Caching.md).
+- For trace-aware diffing and structured output fingerprints, see
+  [Tracing and Fingerprinting](Tracing-and-Fingerprinting.md).

@@ -1,4 +1,7 @@
-# Experiment Tracking
+---
+title: Experiment Tracking
+nav_order: 10
+---
 
 Experiment tracking logs metrics, params, and artifacts to a backend (local or hosted).
 It complements insideLLMs' deterministic run artifacts (`records.jsonl`, `manifest.json`,

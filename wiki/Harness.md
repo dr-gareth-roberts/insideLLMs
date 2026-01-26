@@ -1,4 +1,7 @@
-# Harness
+---
+title: Harness
+nav_order: 3
+---
 
 The harness runs a cross-model, cross-probe sweep over a shared dataset.
 It produces three outputs:
@@ -36,7 +39,7 @@ report_title: Behavioural Probe Report
 Notes:
 
 - Relative dataset paths are resolved relative to the config file location. If your config lives in
-  `examples/`, you’ll typically want `../data/...` paths. See [Configuration](Configuration).
+  `examples/`, you’ll typically want `../data/...` paths. See [Configuration](Configuration.md).
 - If you pass `--run-dir`, it overrides `output_dir` and writes artifacts exactly there.
 - Optional `generation` (or `probe_kwargs`) is passed through to `probe.run(...)` and typically ends
   up in `model.generate(...)` as `temperature`, `max_tokens`, `seed`, etc.

@@ -1,4 +1,7 @@
-# FAQ
+---
+title: FAQ
+nav_order: 18
+---
 
 ## Do I need API keys?
 
@@ -7,7 +10,7 @@ Only for hosted providers. You can use `DummyModel` for offline tests.
 ## Why can’t it find my dataset file?
 
 Relative dataset paths are resolved relative to the config file’s directory (not the current
-working directory). See [Configuration](Configuration).
+working directory). See [Configuration](Configuration.md).
 
 ## Why does `--overwrite` refuse to overwrite my run directory?
 

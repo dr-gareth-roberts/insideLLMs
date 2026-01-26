@@ -1,4 +1,7 @@
-# Tracing and Fingerprinting
+---
+title: Tracing and Fingerprinting
+nav_order: 12
+---
 
 This page explains how trace bundles and output fingerprinting appear in `records.jsonl` and how
 `insidellms diff` uses them for CI gating.

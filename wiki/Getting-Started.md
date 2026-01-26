@@ -1,4 +1,7 @@
-# Getting Started
+---
+title: Getting Started
+nav_order: 2
+---
 
 ## Requirements
 
@@ -31,7 +34,7 @@ insidellms validate ./my_run
 ```
 
 Tip: relative paths in configs are resolved relative to the config file’s directory. See
-[Configuration](Configuration).
+[Configuration](Configuration.md).
 
 Optional extras:
 
@@ -108,5 +111,5 @@ Set the provider keys for hosted models:
 
 ## Next
 
-- [Examples](Examples)
-- [Determinism and CI](Determinism-and-CI)
+- [Examples](Examples.md)
+- [Determinism and CI](Determinism-and-CI.md)

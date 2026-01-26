@@ -1,4 +1,7 @@
-# Troubleshooting
+---
+title: Troubleshooting
+nav_order: 17
+---
 
 ## Quick Diagnostics
 
@@ -23,7 +26,7 @@ If you see model initialization failures for hosted providers, check env vars:
 - Google/Gemini: `GOOGLE_API_KEY`
 - Cohere: `CO_API_KEY` (or `COHERE_API_KEY`)
 
-See [Providers and Models](Providers-and-Models).
+See [Providers and Models](Providers-and-Models.md).
 
 ## “Run directory is not empty”
 
@@ -40,7 +43,7 @@ Fixes:
 Relative dataset paths are resolved relative to the config file’s directory.
 If you run from `examples/`, `../data/...` is often what you want.
 
-See [Configuration](Configuration) and [Datasets and Harness](Datasets-and-Harness).
+See [Configuration](Configuration.md) and [Datasets and Harness](Datasets-and-Harness.md).
 
 ## Schema Validation Errors
 
@@ -60,7 +63,7 @@ prints a warning.
 
 Use `--track local` for a no-dependency option.
 
-See [Experiment Tracking](Experiment-Tracking).
+See [Experiment Tracking](Experiment-Tracking.md).
 
 ## Report Generation Issues
 
@@ -92,6 +95,6 @@ pytest
 
 ## See Also
 
-- [CLI](CLI)
-- [Getting Started](Getting-Started)
-- [Determinism and CI](Determinism-and-CI)
+- [CLI](CLI.md)
+- [Getting Started](Getting-Started.md)
+- [Determinism and CI](Determinism-and-CI.md)

@@ -1,4 +1,7 @@
-# Development
+---
+title: Development
+nav_order: 16
+---
 
 ## Setup
 
@@ -56,4 +59,4 @@ INSIDELLMS_RUN_ROOT=.tmp/insidellms_runs insidellms run examples/experiment.yaml
 ```
 
 Note: experiment tracking backends (W&B/MLflow/TensorBoard/local tracking logs) write to separate
-locations from the deterministic run artifacts. See (Experiment-Tracking).
+locations from the deterministic run artifacts. See [Experiment Tracking](Experiment-Tracking.md).

@@ -1,4 +1,7 @@
-# Datasets and Harness
+---
+title: Datasets and Harness
+nav_order: 8
+---
 
 This page covers:
 
@@ -6,7 +9,7 @@ This page covers:
 - How fields map into probes (especially for `harness`)
 - How to structure a `harness.yaml`
 
-For the full config shapes, see [Configuration](Configuration).
+For the full config shapes, see [Configuration](Configuration.md).
 
 ## Dataset Formats
 
@@ -135,6 +138,6 @@ probes:
 
 ## See Also
 
-- [Harness](Harness)
-- [Determinism and CI](Determinism-and-CI)
-- [Results and Reports](Results-and-Reports)
+- [Harness](Harness.md)
+- [Determinism and CI](Determinism-and-CI.md)
+- [Results and Reports](Results-and-Reports.md)

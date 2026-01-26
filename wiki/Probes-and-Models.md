@@ -1,4 +1,7 @@
-# Probes and Models
+---
+title: Probes and Models
+nav_order: 7
+---
 
 ## Models
 
@@ -8,7 +11,7 @@ All models share a single interface (`generate`, `chat`, `stream`). You can use:
 - Local runners (Ollama, llama.cpp, vLLM)
 - DummyModel for offline testing
 
-For provider setup (API keys, local runners), see [Providers and Models](Providers-and-Models).
+For provider setup (API keys, local runners), see [Providers and Models](Providers-and-Models.md).
 
 Example:
 
@@ -69,6 +72,6 @@ class MyProbe(Probe[str]):
 
 ## See Also
 
-- [Providers and Models](Providers-and-Models)
-- [Configuration](Configuration)
-- [Examples](Examples)
+- [Providers and Models](Providers-and-Models.md)
+- [Configuration](Configuration.md)
+- [Examples](Examples.md)
