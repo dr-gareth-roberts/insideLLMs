@@ -930,7 +930,7 @@ class ProbeRunner(_RunnerBase):
                 import insideLLMs
 
                 manifest["library_version"] = getattr(insideLLMs, "__version__", None)
-            except Exception:
+            except (ImportError, AttributeError):
                 pass
 
             if validate_output:
@@ -1645,7 +1645,7 @@ def _ensure_run_sentinel(run_dir_path: Path) -> None:
     if not marker.exists():
         try:
             marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:
+        except (IOError, OSError):
             # Don't fail the run due to marker write issues.
             pass
 
@@ -1712,13 +1712,13 @@ def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
         # pydantic v1 compatibility
         try:
             return info_obj.dict()
-        except Exception:
+        except (AttributeError, TypeError):
             return {}
     if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
         # pydantic v2 compatibility
         try:
             return info_obj.model_dump()
-        except Exception:
+        except (AttributeError, TypeError):
             return {}
     return {}
 
@@ -1772,7 +1772,7 @@ def _build_model_spec(model: Any) -> dict[str, Any]:
     info_obj: Any = {}
     try:
         info_obj = model.info() if hasattr(model, "info") else {}
-    except Exception:
+    except (AttributeError, TypeError):
         info_obj = {}
 
     info = _normalize_info_obj_to_dict(info_obj)
@@ -2339,7 +2339,7 @@ def _coerce_model_info(model: Model) -> ModelInfo:
     info_obj: Any = {}
     try:
         info_obj = model.info() or {}
-    except Exception:
+    except (AttributeError, TypeError):
         info_obj = {}
 
     # If it's already the canonical type, keep it.
@@ -2441,7 +2441,7 @@ def _build_result_record(
     if normalized_messages is not None:
         try:
             messages_hash = hashlib.sha256(_stable_json_dumps(normalized_messages).encode("utf-8")).hexdigest()
-        except Exception:
+        except (ValueError, TypeError):
             messages_hash = None
 
     input_fingerprint = _fingerprint_value(item)
@@ -3083,7 +3083,7 @@ class AsyncProbeRunner(_RunnerBase):
                 import insideLLMs
 
                 manifest["library_version"] = getattr(insideLLMs, "__version__", None)
-            except Exception:
+            except (ImportError, AttributeError):
                 pass
 
             if validate_output:
@@ -3141,7 +3141,7 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
 
         try:
             is_empty = not any(path.iterdir())
-        except Exception:
+        except (OSError, PermissionError):
             is_empty = False
 
         if is_empty:
@@ -3170,7 +3170,7 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
         if run_root is not None:
             try:
                 run_root_resolved = run_root.resolve()
-            except Exception:
+            except (OSError, ValueError):
                 run_root_resolved = run_root
             if resolved == run_root_resolved:
                 raise ValueError(f"Refusing to overwrite run_root directory itself: '{resolved}'")
@@ -3211,7 +3211,7 @@ def _prepare_run_dir_for_resume(path: Path, *, run_root: Optional[Path] = None) 
 
         try:
             is_empty = not any(path.iterdir())
-        except Exception:
+        except (OSError, PermissionError):
             is_empty = False
 
         if is_empty:
@@ -4085,7 +4085,7 @@ def run_harness_from_config(
         info_obj: Any = {}
         try:
             info_obj = getattr(model_obj, "info", lambda: {})() or {}
-        except Exception:
+        except (AttributeError, TypeError):
             info_obj = {}
         info = _normalize_info_obj_to_dict(info_obj)
         model_id = (
