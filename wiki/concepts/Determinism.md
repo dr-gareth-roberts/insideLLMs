@@ -6,17 +6,13 @@ nav_order: 5
 
 # Determinism
 
-insideLLMs produces deterministic outputs for reproducibility and CI integration.
+**Same inputs → byte-for-byte identical outputs.**
 
-## Why Determinism?
-
-**Same inputs → Identical outputs**
-
-This enables:
-- **CI diff-gating**: Detect behavioural regressions automatically
-- **Reproducibility**: Re-run experiments and get the same artifacts
-- **Caching**: Skip already-computed results safely
-- **Debugging**: Compare runs to isolate changes
+Enables:
+- CI diff-gating (block regressions)
+- Reproducibility (re-run = same artefacts)
+- Caching (skip computed results)
+- Debugging (isolate changes)
 
 ## What's Deterministic
 

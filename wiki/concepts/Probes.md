@@ -6,22 +6,9 @@ nav_order: 2
 
 # Probes
 
-Probes are focused behavioural tests for LLMs.
+**Focused behavioural tests for specific capabilities.**
 
-## What is a Probe?
-
-A probe:
-1. Takes a **model** and **input data**
-2. Sends a test to the model
-3. Returns the **output** (and optionally a **score**)
-
-```mermaid
-graph LR
-    Input[📥 Input] --> Probe[🔬 Probe]
-    Model[🤖 Model] --> Probe
-    Probe --> Output[📤 Output]
-    Probe --> Score[📊 Score]
-```
+A probe takes a model and input, runs a test, returns output (and optional score).
 
 ## The Probe Interface
 
@@ -29,13 +16,13 @@ graph LR
 class Probe:
     name: str                    # Unique identifier
     category: ProbeCategory      # LOGIC, BIAS, SAFETY, etc.
-    
+
     def run(self, model, data, **kwargs) -> Any:
         """Execute the probe on a single input."""
-        
+
     def run_batch(self, model, dataset, **kwargs) -> list:
         """Execute on multiple inputs."""
-        
+
     def score(self, results) -> ProbeScore:
         """Aggregate results into a score."""
 ```
@@ -125,7 +112,7 @@ class MyScoredProbe(ScoredProbe):
     def evaluate_single(self, output, reference, input_data):
         is_correct = reference.lower() in output.lower()
         return {"correct": is_correct, "confidence": 0.9}
-    
+
     def score(self, results):
         correct = sum(1 for r in results if r.output.get("correct"))
         return ProbeScore(value=correct / len(results))
@@ -138,7 +125,7 @@ sequenceDiagram
     participant R as Runner
     participant P as Probe
     participant M as Model
-    
+
     loop For each input
         R->>P: run(model, input)
         P->>P: Format prompt
@@ -176,7 +163,7 @@ from insideLLMs.types import ProbeCategory
 class MyProbe(Probe[dict]):
     name = "my_probe"
     default_category = ProbeCategory.CUSTOM
-    
+
     def run(self, model, data, **kwargs) -> dict:
         prompt = data.get("prompt", str(data))
         response = model.generate(prompt)
