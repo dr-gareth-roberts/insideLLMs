@@ -91,28 +91,34 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 
 ---
 
-## Documentation Sections
+## Documentation
 
 | Section | Description |
 |---------|-------------|
-| [Getting Started](getting-started/index.md) | Install and run your first test |
-| [Tutorials](tutorials/index.md) | Step-by-step guides for common tasks |
-| [Concepts](concepts/index.md) | Deep dives into how things work |
-| [Reference](reference/index.md) | Complete CLI and API documentation |
-| [Guides](guides/index.md) | How-tos for specific integrations |
 | [Philosophy](Philosophy.md) | Why insideLLMs exists and how it differs |
+| [Getting Started](getting-started/index.md) | Install and run your first test |
+| [Tutorials](tutorials/index.md) | Bias testing, CI integration, custom probes |
+| [Concepts](concepts/index.md) | Models, probes, runners, determinism |
+| [Advanced Features](advanced/index.md) | Pipeline, cost tracking, structured outputs |
+| [Reference](reference/index.md) | Complete CLI and API documentation |
+| [Guides](guides/index.md) | Caching, rate limiting, local models |
+| [FAQ](FAQ.md) | Common questions and troubleshooting |
 
 ---
 
-## Real-World Impact
+## What You Get That Others Don't
 
-| Before insideLLMs | After insideLLMs |
-|-------------------|------------------|
-| Model update breaks production | Caught in CI, deploy blocked |
-| Users report bias in responses | Detected pre-deployment with BiasProbe |
-| Debugging "accuracy dropped 2%" | See exact prompts that regressed |
-| Manual testing before each deploy | Automated behavioural gates |
-| Hope nothing broke | Know nothing broke |
+| Feature | Eleuther | HELM | OpenAI Evals | insideLLMs |
+|---------|----------|------|--------------|------------|
+| CI diff-gating | No | No | No | **Yes** |
+| Deterministic artefacts | No | No | No | **Yes** |
+| Response-level granularity | No | Partial | No | **Yes** |
+| Pipeline middleware | No | No | No | **Yes** |
+| Cost tracking & budgets | No | No | No | **Yes** |
+| Structured output parsing | No | No | No | **Yes** |
+| Agent evaluation | No | No | No | **Yes** |
+
+**Not just benchmarks. Production infrastructure.**
 
 ---
 
