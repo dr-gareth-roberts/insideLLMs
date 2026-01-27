@@ -18,6 +18,7 @@ from insideLLMs.config import (
     load_config,
     load_config_from_json,
     save_config_to_json,
+    save_config_to_yaml,
     validate_config,
 )
 
@@ -621,3 +622,20 @@ class TestExperimentConfigOptionalFields:
             dataset=DatasetConfig(source="inline", data=[{}]),
         )
         assert config.description == "A test experiment"
+
+
+class TestSaveConfigDeterminism:
+    """Determinism checks for config serialization helpers."""
+
+    def test_save_config_to_yaml_sorts_keys(self, tmp_path: Path):
+        """YAML output should be stable across runs."""
+        config = create_example_config()
+        out_path = tmp_path / "config.yaml"
+
+        save_config_to_yaml(config, out_path)
+        content = out_path.read_text(encoding="utf-8")
+
+        # Spot-check ordering to catch accidental non-determinism.
+        assert "dataset:" in content
+        assert "model:" in content
+        assert content.index("dataset:") < content.index("model:")

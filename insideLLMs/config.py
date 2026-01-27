@@ -110,6 +110,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
 
+from insideLLMs._serialization import serialize_value as _serialize_value
+
 try:
     from pydantic import (
         BaseModel,
@@ -1596,9 +1598,12 @@ def save_config_to_yaml(config: ExperimentConfig, path: Union[str, Path]) -> Non
     path.parent.mkdir(parents=True, exist_ok=True)
 
     data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
+    # Normalize complex types (e.g., Enum) before dumping with SafeDumper.
+    data = _serialize_value(data)
 
-    with open(path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    # Use safe_dump with sorted keys for stable, review-friendly YAML output.
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, sort_keys=True, allow_unicode=True)
 
 
 def save_config_to_json(config: ExperimentConfig, path: Union[str, Path]) -> None:
