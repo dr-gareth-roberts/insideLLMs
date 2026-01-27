@@ -35,6 +35,39 @@ To keep the diff surface stable:
 
 If you need timing/host details, use tracing/telemetry rather than the canonical CI artefacts.
 
+### Determinism controls (strict mode)
+
+For the tightest possible diff surface, enable strict determinism controls.
+
+Config (`config.yaml` / `harness.yaml`):
+
+```yaml
+determinism:
+  strict_serialization: true
+  deterministic_artifacts: true
+```
+
+CLI equivalents:
+
+```bash
+insidellms run config.yaml --strict-serialization --deterministic-artifacts
+insidellms harness harness.yaml --strict-serialization --deterministic-artifacts
+```
+
+What these do:
+
+- `strict_serialization`: fail fast when hashing/fingerprinting would fall back to
+  non-deterministic stringification (for example, exotic objects or ambiguous dict keys).
+- `deterministic_artifacts`: neutralize host-dependent manifest fields like
+  `python_version` and `platform` by persisting them as `null`.
+
+Notes:
+
+- If `deterministic_artifacts` is omitted, it defaults to the value of
+  `strict_serialization`.
+- Determinism config values must be booleans (or null/omitted). Strings like
+  `"true"` are rejected to avoid silent truthiness bugs.
+
 ### Verifying determinism locally
 
 Run the same harness twice and diff the run dirs:
