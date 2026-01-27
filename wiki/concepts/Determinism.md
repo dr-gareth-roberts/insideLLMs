@@ -85,6 +85,36 @@ JSON is emitted with:
 json.dumps(data, sort_keys=True, separators=(",", ":"))
 ```
 
+## Determinism Controls (Strict Mode)
+
+Enable strict determinism controls to make hashing and artefacts fail fast
+instead of silently degrading.
+
+Config:
+
+```yaml
+determinism:
+  strict_serialization: true
+  deterministic_artifacts: true
+```
+
+CLI:
+
+```bash
+insidellms run config.yaml --strict-serialization --deterministic-artifacts
+insidellms harness harness.yaml --strict-serialization --deterministic-artifacts
+```
+
+Behavior:
+
+- `strict_serialization`: rejects non-deterministic hashing/fingerprinting inputs
+  (for example, exotic objects or dict key collisions like `1` vs `"1"`).
+- `deterministic_artifacts`: neutralizes host-dependent manifest fields by
+  persisting `python_version` and `platform` as `null`.
+
+If `deterministic_artifacts` is omitted, it defaults to the value of
+`strict_serialization`.
+
 ## Volatile Fields
 
 Some fields are intentionally excluded from determinism:
@@ -94,7 +124,7 @@ Some fields are intentionally excluded from determinism:
 | `latency_ms` | Runtime-dependent |
 | Actual wall-clock time | Not reproducible |
 | `library_version` | May change |
-| `platform` | Environment-dependent |
+| `platform` | Environment-dependent (or `null` in deterministic artifacts mode) |
 | `command` | CLI invocation varies |
 
 These are stored as `null` or excluded from diff comparisons.

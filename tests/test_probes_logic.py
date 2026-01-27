@@ -129,6 +129,41 @@ class TestLogicProbeEvaluateSingle:
 
         assert result["has_reasoning"] is True
 
+    def test_evaluate_output_shape_and_types(self):
+        """Evaluation should return a stable metric surface."""
+        probe = LogicProbe()
+        result = probe.evaluate_single(
+            model_output="Step 1: Analyze. Therefore: YES",
+            reference=" yes ",
+            input_data="Problem",
+        )
+
+        expected_keys = {
+            "is_correct",
+            "extracted_answer",
+            "reference_answer",
+            "response_length",
+            "has_reasoning",
+        }
+        assert set(result.keys()) == expected_keys
+        assert isinstance(result["is_correct"], bool)
+        assert isinstance(result["has_reasoning"], bool)
+        assert isinstance(result["response_length"], int)
+        # Answers are normalized for consistent downstream metrics.
+        assert result["extracted_answer"] == "yes"
+        assert result["reference_answer"] == "yes"
+
+    def test_evaluate_without_reference_is_minimal(self):
+        """No-reference evaluation should stay intentionally small."""
+        probe = LogicProbe(extract_answer=False)
+        result = probe.evaluate_single(
+            model_output="The answer is 42",
+            reference=None,
+            input_data="Problem",
+        )
+
+        assert result == {"evaluated": False}
+
 
 class TestLogicProbeExtractFinalAnswer:
     """Tests for LogicProbe._extract_final_answer method."""
