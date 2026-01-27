@@ -184,6 +184,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs._serialization import serialize_value as _serialize_value
+from insideLLMs._serialization import stable_json_dumps as _stable_json_dumps
+
 
 class SnapshotFormat(Enum):
     """Enumeration of supported snapshot file formats.
@@ -1123,17 +1126,24 @@ class ExperimentSnapshot:
 
     def save(self, path: str, format: SnapshotFormat = SnapshotFormat.JSON) -> None:
         """Save snapshot to file."""
-        data = self.to_dict()
+        # Normalize complex types (e.g., Enum/datetime) before emitting artifacts.
+        data = _serialize_value(self.to_dict())
 
         if format == SnapshotFormat.JSON:
-            with open(path, "w") as f:
-                json.dump(data, f, indent=2, default=str)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(_stable_json_dumps(data))
         elif format == SnapshotFormat.YAML:
             try:
                 import yaml
 
-                with open(path, "w") as f:
-                    yaml.dump(data, f, default_flow_style=False)
+                with open(path, "w", encoding="utf-8") as f:
+                    yaml.safe_dump(
+                        data,
+                        f,
+                        default_flow_style=False,
+                        sort_keys=True,
+                        allow_unicode=True,
+                    )
             except ImportError:
                 raise RuntimeError("PyYAML not installed for YAML format")
 
