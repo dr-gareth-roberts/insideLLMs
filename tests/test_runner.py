@@ -3,6 +3,7 @@
 import json
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -1513,6 +1514,36 @@ class TestSerializeValue:
         result = _serialize_value(obj)
         assert result == "custom_str"
 
+    def test_strict_serialize_exotic_object_raises(self):
+        """Strict mode should reject unknown object types."""
+        from insideLLMs._serialization import StrictSerializationError
+        from insideLLMs.runner import _serialize_value
+
+        class CustomObject:
+            pass
+
+        with pytest.raises(StrictSerializationError):
+            _serialize_value(CustomObject(), strict=True)
+
+    def test_strict_serialize_non_string_key_raises(self):
+        """Strict mode should reject non-deterministic dict keys."""
+        from insideLLMs._serialization import StrictSerializationError
+        from insideLLMs.runner import _serialize_value
+
+        class BadKey:
+            pass
+
+        with pytest.raises(StrictSerializationError):
+            _serialize_value({BadKey(): 1}, strict=True)
+
+    def test_strict_serialize_key_collision_raises(self):
+        """Strict mode should reject dict key collisions after coercion."""
+        from insideLLMs._serialization import StrictSerializationError
+        from insideLLMs.runner import _serialize_value
+
+        with pytest.raises(StrictSerializationError, match="Dict key collision"):
+            _serialize_value({1: "a", "1": "b"}, strict=True)
+
 
 class TestSemverTuple:
     """Tests for _semver_tuple helper function."""
@@ -2136,6 +2167,73 @@ class TestDeterministicFunctions:
 
         # Should treat negative as 0
         assert completed > started
+
+
+class TestStrictDeterminism:
+    """Determinism hardening controls should fail fast and neutralize host fields."""
+
+    @staticmethod
+    def _make_runner():
+        from insideLLMs.models import DummyModel
+        from insideLLMs.runner import ProbeRunner
+
+        class MinimalProbe:
+            name = "minimal"
+
+            def run(self, model: Any, item: Any, **kwargs: Any) -> str:
+                return "ok"
+
+        return ProbeRunner(DummyModel(), MinimalProbe())
+
+    def test_strict_serialization_rejects_non_serializable_prompt(self):
+        runner = self._make_runner()
+
+        class NonSerializable:
+            pass
+
+        bad_prompt = {"messages": [{"role": "user", "content": NonSerializable()}]}
+
+        with pytest.raises(ValueError, match="strict_serialization"):
+            runner.run(
+                [bad_prompt],
+                emit_run_artifacts=False,
+                strict_serialization=True,
+            )
+
+    def test_strict_mode_neutralizes_manifest_host_fields(self, tmp_path: Path):
+        runner = self._make_runner()
+        run_dir = tmp_path / "strict-run"
+
+        runner.run(
+            ["hello"],
+            run_dir=run_dir,
+            run_id="strict-run",
+            emit_run_artifacts=True,
+            strict_serialization=True,
+        )
+
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["python_version"] is None
+        assert manifest["platform"] is None
+
+    def test_determinism_config_requires_bool_values(self):
+        from insideLLMs.runner import _resolve_determinism_options
+
+        bad_config = {"determinism": {"strict_serialization": "yes"}}
+        with pytest.raises(ValueError, match="determinism.strict_serialization"):
+            _resolve_determinism_options(
+                bad_config,
+                strict_override=None,
+                deterministic_artifacts_override=None,
+            )
+
+        bad_config = {"determinism": {"deterministic_artifacts": "no"}}
+        with pytest.raises(ValueError, match="determinism.deterministic_artifacts"):
+            _resolve_determinism_options(
+                bad_config,
+                strict_override=None,
+                deterministic_artifacts_override=None,
+            )
 
 
 class TestResolvePath:

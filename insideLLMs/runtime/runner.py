@@ -94,6 +94,9 @@ from typing import Any, Callable, Optional, Union
 import yaml
 
 from insideLLMs._serialization import (
+    StrictSerializationError,
+)
+from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
 )
 from insideLLMs._serialization import (
@@ -438,6 +441,8 @@ class ProbeRunner(_RunnerBase):
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
         store_messages: Optional[bool] = None,
+        strict_serialization: Optional[bool] = None,
+        deterministic_artifacts: Optional[bool] = None,
         resume: Optional[bool] = None,
         use_probe_batch: Optional[bool] = None,
         batch_workers: Optional[int] = None,
@@ -486,6 +491,10 @@ class ProbeRunner(_RunnerBase):
             Configuration snapshot for reproducibility.
         store_messages : Optional[bool], default None
             If True, store full message content in records.
+        strict_serialization : Optional[bool], default None
+            If True, fail fast on non-deterministic values during hashing.
+        deterministic_artifacts : Optional[bool], default None
+            If True, omit host-dependent manifest fields (platform/python).
         resume : Optional[bool], default None
             If True, resume from existing records.jsonl, skipping completed items.
         use_probe_batch : Optional[bool], default None
@@ -590,6 +599,18 @@ class ProbeRunner(_RunnerBase):
         dataset_info = dataset_info if dataset_info is not None else config.dataset_info
         config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
         store_messages = store_messages if store_messages is not None else config.store_messages
+        strict_serialization = (
+            strict_serialization
+            if strict_serialization is not None
+            else config.strict_serialization
+        )
+        deterministic_artifacts = (
+            deterministic_artifacts
+            if deterministic_artifacts is not None
+            else config.deterministic_artifacts
+        )
+        if deterministic_artifacts is None:
+            deterministic_artifacts = strict_serialization
         resume = resume if resume is not None else config.resume
         use_probe_batch = use_probe_batch if use_probe_batch is not None else config.use_probe_batch
         batch_workers = batch_workers if batch_workers is not None else config.batch_workers
@@ -610,20 +631,27 @@ class ProbeRunner(_RunnerBase):
         dataset_spec["params"] = dataset_info or {}
 
         if run_id is None:
-            if config_snapshot is not None:
-                resolved_run_id = _deterministic_run_id_from_config_snapshot(
-                    config_snapshot,
-                    schema_version=schema_version,
-                )
-            else:
-                resolved_run_id = _deterministic_run_id_from_inputs(
-                    schema_version=schema_version,
-                    model_spec=model_spec,
-                    probe_spec=probe_spec,
-                    dataset_spec=dataset_spec,
-                    prompt_set=prompt_set,
-                    probe_kwargs=probe_kwargs,
-                )
+            try:
+                if config_snapshot is not None:
+                    resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                        config_snapshot,
+                        schema_version=schema_version,
+                        strict_serialization=strict_serialization,
+                    )
+                else:
+                    resolved_run_id = _deterministic_run_id_from_inputs(
+                        schema_version=schema_version,
+                        model_spec=model_spec,
+                        probe_spec=probe_spec,
+                        dataset_spec=dataset_spec,
+                        prompt_set=prompt_set,
+                        probe_kwargs=probe_kwargs,
+                        strict_serialization=strict_serialization,
+                    )
+            except StrictSerializationError as exc:
+                raise ValueError(
+                    "strict_serialization requires JSON-stable values for run_id derivation."
+                ) from exc
         else:
             resolved_run_id = run_id
 
@@ -659,7 +687,11 @@ class ProbeRunner(_RunnerBase):
 
             # Snapshot of the fully resolved config (best-effort) for reproducibility.
             if config_snapshot is not None:
-                _atomic_write_yaml(resolved_run_dir / "config.resolved.yaml", config_snapshot)
+                _atomic_write_yaml(
+                    resolved_run_dir / "config.resolved.yaml",
+                    config_snapshot,
+                    strict_serialization=strict_serialization,
+                )
         else:
             self.last_run_dir = None
 
@@ -684,6 +716,7 @@ class ProbeRunner(_RunnerBase):
                         expected_index=line_index,
                         expected_item=prompt_set[line_index],
                         run_id=resolved_run_id,
+                        strict_serialization=strict_serialization,
                     )
                     results[line_index] = _result_dict_from_record(
                         record,
@@ -755,6 +788,7 @@ class ProbeRunner(_RunnerBase):
                                 status=_normalize_status(probe_result.status),
                                 error=probe_result.error,
                                 error_type=error_type,
+                                strict_serialization=strict_serialization,
                             )
                             if validate_output:
                                 validator.validate(
@@ -763,7 +797,9 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validator_mode,
                                 )
-                            records_fp.write(_stable_json_dumps(record) + "\n")
+                            records_fp.write(
+                                _stable_json_dumps(record, strict=strict_serialization) + "\n"
+                            )
                             records_fp.flush()
 
                         if stop_on_error and stop_error is None:
@@ -832,6 +868,7 @@ class ProbeRunner(_RunnerBase):
                                 index=i,
                                 status="success",
                                 error=None,
+                                strict_serialization=strict_serialization,
                             )
                             if validate_output:
                                 validator.validate(
@@ -840,7 +877,9 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validator_mode,
                                 )
-                            records_fp.write(_stable_json_dumps(record) + "\n")
+                            records_fp.write(
+                                _stable_json_dumps(record, strict=strict_serialization) + "\n"
+                            )
                             records_fp.flush()
 
                     except Exception as e:
@@ -884,6 +923,7 @@ class ProbeRunner(_RunnerBase):
                                 index=i,
                                 status="error",
                                 error=e,
+                                strict_serialization=strict_serialization,
                             )
                             if validate_output:
                                 validator.validate(
@@ -892,7 +932,9 @@ class ProbeRunner(_RunnerBase):
                                     schema_version=schema_version,
                                     mode=validator_mode,
                                 )
-                            records_fp.write(_stable_json_dumps(record) + "\n")
+                            records_fp.write(
+                                _stable_json_dumps(record, strict=strict_serialization) + "\n"
+                            )
                             records_fp.flush()
 
                         if stop_on_error:
@@ -932,6 +974,12 @@ class ProbeRunner(_RunnerBase):
         _, run_completed_at = _deterministic_run_times(run_base_time, len(final_results))
 
         if emit_run_artifacts:
+            python_version = None if deterministic_artifacts else sys.version.split()[0]
+            platform_info = None if deterministic_artifacts else platform.platform()
+
+            def _serialize_manifest(value: Any) -> Any:
+                return _serialize_value(value, strict=strict_serialization)
+
             manifest = {
                 "schema_version": schema_version,
                 "run_id": resolved_run_id,
@@ -939,8 +987,8 @@ class ProbeRunner(_RunnerBase):
                 "started_at": run_started_at,
                 "completed_at": run_completed_at,
                 "library_version": None,
-                "python_version": sys.version.split()[0],
-                "platform": platform.platform(),
+                "python_version": python_version,
+                "platform": platform_info,
                 "command": None,
                 "model": model_spec,
                 "probe": probe_spec,
@@ -980,10 +1028,10 @@ class ProbeRunner(_RunnerBase):
             _atomic_write_text(
                 manifest_path,
                 json.dumps(
-                    _serialize_value(manifest),
+                    _serialize_manifest(manifest),
                     sort_keys=True,
                     indent=2,
-                    default=_serialize_value,
+                    default=_serialize_manifest,
                 ),
             )
 
@@ -1003,6 +1051,7 @@ class ProbeRunner(_RunnerBase):
             experiment_id=resolved_run_id,
             started_at=run_started_at,
             completed_at=run_completed_at,
+            strict_serialization=strict_serialization,
         )
 
         success_count = sum(1 for r in final_results if r.get("status") == "success")
@@ -1449,6 +1498,7 @@ def _validate_resume_record(
     expected_index: int,
     expected_item: Any,
     run_id: Optional[str],
+    strict_serialization: bool = False,
 ) -> None:
     """Validate a stored record matches the expected prompt item.
 
@@ -1467,8 +1517,13 @@ def _validate_resume_record(
                 f"Existing record run_id '{record_run_id}' does not match current run_id '{run_id}'."
             )
 
-    expected_fp = _fingerprint_value(expected_item)
-    record_fp = _fingerprint_value(record.get("input"))
+    try:
+        expected_fp = _fingerprint_value(expected_item, strict=strict_serialization)
+        record_fp = _fingerprint_value(record.get("input"), strict=strict_serialization)
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable prompts when validating resume records."
+        ) from exc
     if expected_fp != record_fp:
         raise ValueError(
             f"Existing record input mismatch at index {expected_index}; cannot resume safely."
@@ -1483,7 +1538,7 @@ _DETERMINISTIC_TIME_BASE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 _DETERMINISTIC_TIME_RANGE_SECONDS = 10 * 365 * 24 * 60 * 60  # 10 years in seconds
 
 
-def _deterministic_hash(payload: Any) -> str:
+def _deterministic_hash(payload: Any, *, strict: bool = False) -> str:
     """Generate a deterministic SHA-256 hash of any payload.
 
     Produces a consistent hash for equivalent data structures by using
@@ -1522,7 +1577,7 @@ def _deterministic_hash(payload: Any) -> str:
     _stable_json_dumps : Stable JSON serialization.
     _deterministic_run_id_from_inputs : Generate run IDs using this hash.
     """
-    return hashlib.sha256(_stable_json_dumps(payload).encode("utf-8")).hexdigest()
+    return hashlib.sha256(_stable_json_dumps(payload, strict=strict).encode("utf-8")).hexdigest()
 
 
 def _default_run_root() -> Path:
@@ -1647,7 +1702,7 @@ def _atomic_write_text(path: Path, text: str) -> None:
     atomic_write_text(path, text)
 
 
-def _atomic_write_yaml(path: Path, data: Any) -> None:
+def _atomic_write_yaml(path: Path, data: Any, *, strict_serialization: bool = False) -> None:
     """Write data to a YAML file atomically.
 
     Serializes data to YAML format and writes it atomically to ensure
@@ -1680,7 +1735,7 @@ def _atomic_write_yaml(path: Path, data: Any) -> None:
     _serialize_value : Value serialization for YAML compatibility.
     """
     content = yaml.safe_dump(
-        _serialize_value(data),
+        _serialize_value(data, strict=strict_serialization),
         sort_keys=True,
         default_flow_style=False,
         allow_unicode=True,
@@ -1991,7 +2046,7 @@ def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any
     }
 
 
-def _hash_prompt_set(prompt_set: list[Any]) -> str:
+def _hash_prompt_set(prompt_set: list[Any], *, strict: bool = False) -> str:
     """Generate a deterministic hash of a prompt set.
 
     Creates a content-based hash of all prompts in a set, used for
@@ -2034,8 +2089,13 @@ def _hash_prompt_set(prompt_set: list[Any]) -> str:
     _deterministic_run_id_from_inputs : Uses this for run ID generation.
     """
     hasher = hashlib.sha256()
-    for item in prompt_set:
-        hasher.update(_stable_json_dumps(item).encode("utf-8"))
+    for index, item in enumerate(prompt_set):
+        try:
+            hasher.update(_stable_json_dumps(item, strict=strict).encode("utf-8"))
+        except StrictSerializationError as exc:
+            raise StrictSerializationError(
+                f"Non-deterministic prompt at index {index}: {exc}"
+            ) from exc
         hasher.update(b"\n")
     return hasher.hexdigest()
 
@@ -2048,6 +2108,7 @@ def _replicate_key(
     example_id: str,
     record_index: int,
     input_hash: Optional[str],
+    strict_serialization: bool = False,
 ) -> str:
     """Generate a unique replicate key for a result record.
 
@@ -2108,13 +2169,14 @@ def _replicate_key(
         "record_index": record_index,
         "input_hash": input_hash,
     }
-    return _deterministic_hash(payload)[:16]
+    return _deterministic_hash(payload, strict=strict_serialization)[:16]
 
 
 def _deterministic_run_id_from_config_snapshot(
     config_snapshot: dict[str, Any],
     *,
     schema_version: str,
+    strict_serialization: bool = False,
 ) -> str:
     """Generate a deterministic run ID from a configuration snapshot.
 
@@ -2163,7 +2225,7 @@ def _deterministic_run_id_from_config_snapshot(
     _deterministic_hash : Hash generation.
     """
     payload = {"schema_version": schema_version, "config": config_snapshot}
-    return _deterministic_hash(payload)[:32]
+    return _deterministic_hash(payload, strict=strict_serialization)[:32]
 
 
 def _deterministic_run_id_from_inputs(
@@ -2174,6 +2236,7 @@ def _deterministic_run_id_from_inputs(
     dataset_spec: dict[str, Any],
     prompt_set: list[Any],
     probe_kwargs: dict[str, Any],
+    strict_serialization: bool = False,
 ) -> str:
     """Generate a deterministic run ID from individual input components.
 
@@ -2225,10 +2288,10 @@ def _deterministic_run_id_from_inputs(
         "model": model_spec,
         "probe": probe_spec,
         "dataset": dataset_spec,
-        "prompt_set_hash": _hash_prompt_set(prompt_set),
+        "prompt_set_hash": _hash_prompt_set(prompt_set, strict=strict_serialization),
         "probe_kwargs": probe_kwargs,
     }
-    return _deterministic_hash(payload)[:32]
+    return _deterministic_hash(payload, strict=strict_serialization)[:32]
 
 
 def _deterministic_base_time(run_id: str) -> datetime:
@@ -2488,6 +2551,7 @@ def _build_result_record(
     status: str,
     error: Optional[Union[BaseException, str]],
     error_type: Optional[str] = None,
+    strict_serialization: bool = False,
 ) -> dict[str, Any]:
     """Build a ResultRecord-shaped dict for JSONL emission.
 
@@ -2522,12 +2586,23 @@ def _build_result_record(
     if normalized_messages is not None:
         try:
             messages_hash = hashlib.sha256(
-                _stable_json_dumps(normalized_messages).encode("utf-8")
+                _stable_json_dumps(normalized_messages, strict=strict_serialization).encode("utf-8")
             ).hexdigest()
+        except StrictSerializationError as exc:
+            if strict_serialization:
+                raise ValueError(
+                    "strict_serialization requires JSON-stable message content."
+                ) from exc
+            messages_hash = None
         except (ValueError, TypeError):
             messages_hash = None
 
-    input_fingerprint = _fingerprint_value(item)
+    try:
+        input_fingerprint = _fingerprint_value(item, strict=strict_serialization)
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable inputs for fingerprinting."
+        ) from exc
     replicate_key = _replicate_key(
         model_spec=model,
         probe_spec=probe,
@@ -2535,6 +2610,7 @@ def _build_result_record(
         example_id=example_id,
         record_index=index,
         input_hash=messages_hash or input_fingerprint,
+        strict_serialization=strict_serialization,
     )
 
     # Derive output_text / scoring fields (best-effort)
@@ -2546,7 +2622,12 @@ def _build_result_record(
 
     output_fingerprint = None
     if output is not None and not isinstance(output, str):
-        output_fingerprint = _fingerprint_value(output)
+        try:
+            output_fingerprint = _fingerprint_value(output, strict=strict_serialization)
+        except StrictSerializationError as exc:
+            raise ValueError(
+                "strict_serialization requires JSON-stable structured outputs."
+            ) from exc
 
     scores: dict[str, Any] = {}
     usage: dict[str, Any] = {}
@@ -2714,6 +2795,8 @@ class AsyncProbeRunner(_RunnerBase):
         dataset_info: Optional[dict[str, Any]] = None,
         config_snapshot: Optional[dict[str, Any]] = None,
         store_messages: Optional[bool] = None,
+        strict_serialization: Optional[bool] = None,
+        deterministic_artifacts: Optional[bool] = None,
         resume: Optional[bool] = None,
         use_probe_batch: Optional[bool] = None,
         batch_workers: Optional[int] = None,
@@ -2766,6 +2849,10 @@ class AsyncProbeRunner(_RunnerBase):
             Configuration snapshot for reproducibility.
         store_messages : Optional[bool], default None
             If True, store full message content in records.
+        strict_serialization : Optional[bool], default None
+            If True, fail fast on non-deterministic values during hashing.
+        deterministic_artifacts : Optional[bool], default None
+            If True, omit host-dependent manifest fields (platform/python).
         resume : Optional[bool], default None
             If True, resume from existing records.jsonl.
         use_probe_batch : Optional[bool], default None
@@ -2887,6 +2974,18 @@ class AsyncProbeRunner(_RunnerBase):
         dataset_info = dataset_info if dataset_info is not None else config.dataset_info
         config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
         store_messages = store_messages if store_messages is not None else config.store_messages
+        strict_serialization = (
+            strict_serialization
+            if strict_serialization is not None
+            else config.strict_serialization
+        )
+        deterministic_artifacts = (
+            deterministic_artifacts
+            if deterministic_artifacts is not None
+            else config.deterministic_artifacts
+        )
+        if deterministic_artifacts is None:
+            deterministic_artifacts = strict_serialization
         resume = resume if resume is not None else config.resume
         use_probe_batch = use_probe_batch if use_probe_batch is not None else config.use_probe_batch
         batch_workers = batch_workers if batch_workers is not None else config.batch_workers
@@ -2919,20 +3018,27 @@ class AsyncProbeRunner(_RunnerBase):
         dataset_spec["params"] = dataset_info or {}
 
         if run_id is None:
-            if config_snapshot is not None:
-                resolved_run_id = _deterministic_run_id_from_config_snapshot(
-                    config_snapshot,
-                    schema_version=schema_version,
-                )
-            else:
-                resolved_run_id = _deterministic_run_id_from_inputs(
-                    schema_version=schema_version,
-                    model_spec=model_spec,
-                    probe_spec=probe_spec,
-                    dataset_spec=dataset_spec,
-                    prompt_set=prompt_set,
-                    probe_kwargs=probe_kwargs,
-                )
+            try:
+                if config_snapshot is not None:
+                    resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                        config_snapshot,
+                        schema_version=schema_version,
+                        strict_serialization=strict_serialization,
+                    )
+                else:
+                    resolved_run_id = _deterministic_run_id_from_inputs(
+                        schema_version=schema_version,
+                        model_spec=model_spec,
+                        probe_spec=probe_spec,
+                        dataset_spec=dataset_spec,
+                        prompt_set=prompt_set,
+                        probe_kwargs=probe_kwargs,
+                        strict_serialization=strict_serialization,
+                    )
+            except StrictSerializationError as exc:
+                raise ValueError(
+                    "strict_serialization requires JSON-stable values for run_id derivation."
+                ) from exc
         else:
             resolved_run_id = run_id
 
@@ -2965,7 +3071,11 @@ class AsyncProbeRunner(_RunnerBase):
             self.last_run_dir = resolved_run_dir
             _ensure_run_sentinel(resolved_run_dir)
             if config_snapshot is not None:
-                _atomic_write_yaml(resolved_run_dir / "config.resolved.yaml", config_snapshot)
+                _atomic_write_yaml(
+                    resolved_run_dir / "config.resolved.yaml",
+                    config_snapshot,
+                    strict_serialization=strict_serialization,
+                )
         else:
             self.last_run_dir = None
 
@@ -2995,6 +3105,7 @@ class AsyncProbeRunner(_RunnerBase):
                         expected_index=line_index,
                         expected_item=prompt_set[line_index],
                         run_id=resolved_run_id,
+                        strict_serialization=strict_serialization,
                     )
                     results[line_index] = _result_dict_from_record(
                         record,
@@ -3039,6 +3150,7 @@ class AsyncProbeRunner(_RunnerBase):
                         status=str(result_obj.get("status") or "error"),
                         error=error_value,
                         error_type=error_type,
+                        strict_serialization=strict_serialization,
                     )
                     if validate_output:
                         validator.validate(
@@ -3048,7 +3160,7 @@ class AsyncProbeRunner(_RunnerBase):
                             mode=validator_mode,
                         )
                     # Use executor to avoid blocking event loop on file I/O
-                    record_line = _stable_json_dumps(record) + "\n"
+                    record_line = _stable_json_dumps(record, strict=strict_serialization) + "\n"
                     loop = asyncio.get_running_loop()
                     await loop.run_in_executor(
                         None,
@@ -3208,6 +3320,12 @@ class AsyncProbeRunner(_RunnerBase):
         _, run_completed_at = _deterministic_run_times(run_base_time, len(final_results))
 
         if emit_run_artifacts:
+            python_version = None if deterministic_artifacts else sys.version.split()[0]
+            platform_info = None if deterministic_artifacts else platform.platform()
+
+            def _serialize_manifest(value: Any) -> Any:
+                return _serialize_value(value, strict=strict_serialization)
+
             manifest = {
                 "schema_version": schema_version,
                 "run_id": resolved_run_id,
@@ -3215,8 +3333,8 @@ class AsyncProbeRunner(_RunnerBase):
                 "started_at": run_started_at,
                 "completed_at": run_completed_at,
                 "library_version": None,
-                "python_version": sys.version.split()[0],
-                "platform": platform.platform(),
+                "python_version": python_version,
+                "platform": platform_info,
                 "command": None,
                 "model": model_spec,
                 "probe": probe_spec,
@@ -3254,10 +3372,10 @@ class AsyncProbeRunner(_RunnerBase):
             _atomic_write_text(
                 manifest_path,
                 json.dumps(
-                    _serialize_value(manifest),
+                    _serialize_manifest(manifest),
                     sort_keys=True,
                     indent=2,
-                    default=_serialize_value,
+                    default=_serialize_manifest,
                 ),
             )
 
@@ -3277,6 +3395,7 @@ class AsyncProbeRunner(_RunnerBase):
             experiment_id=resolved_run_id,
             started_at=run_started_at,
             completed_at=run_completed_at,
+            strict_serialization=strict_serialization,
         )
 
         return self.last_experiment if return_experiment else final_results
@@ -3391,6 +3510,8 @@ def run_probe(
     prompt_set: list[Any],
     *,
     config: Optional[RunConfig] = None,
+    strict_serialization: Optional[bool] = None,
+    deterministic_artifacts: Optional[bool] = None,
     **probe_kwargs: Any,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
     """Run a probe on a model with a single function call.
@@ -3457,7 +3578,13 @@ def run_probe(
     run_probe_async : Async version with concurrency support.
     """
     runner = ProbeRunner(model, probe)
-    return runner.run(prompt_set, config=config, **probe_kwargs)
+    return runner.run(
+        prompt_set,
+        config=config,
+        strict_serialization=strict_serialization,
+        deterministic_artifacts=deterministic_artifacts,
+        **probe_kwargs,
+    )
 
 
 async def run_probe_async(
@@ -3467,6 +3594,8 @@ async def run_probe_async(
     *,
     config: Optional[RunConfig] = None,
     concurrency: Optional[int] = None,
+    strict_serialization: Optional[bool] = None,
+    deterministic_artifacts: Optional[bool] = None,
     **probe_kwargs: Any,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
     """Run a probe asynchronously with concurrent execution.
@@ -3543,7 +3672,14 @@ async def run_probe_async(
     run_probe : Synchronous version for sequential execution.
     """
     runner = AsyncProbeRunner(model, probe)
-    return await runner.run(prompt_set, config=config, concurrency=concurrency, **probe_kwargs)
+    return await runner.run(
+        prompt_set,
+        config=config,
+        concurrency=concurrency,
+        strict_serialization=strict_serialization,
+        deterministic_artifacts=deterministic_artifacts,
+        **probe_kwargs,
+    )
 
 
 def load_config(path: Union[str, Path]) -> ConfigDict:
@@ -3673,6 +3809,48 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                     )
 
     return snapshot
+
+
+def _resolve_determinism_options(
+    config: Any,
+    *,
+    strict_override: Optional[bool],
+    deterministic_artifacts_override: Optional[bool],
+) -> tuple[bool, bool]:
+    """Resolve determinism controls from config plus explicit overrides."""
+    cfg_strict = False
+    cfg_artifacts: Optional[bool] = None
+
+    if isinstance(config, dict):
+        det = config.get("determinism")
+        if isinstance(det, dict):
+            if "strict_serialization" in det:
+                raw_strict = det.get("strict_serialization")
+                if raw_strict is not None and not isinstance(raw_strict, bool):
+                    raise ValueError(
+                        "determinism.strict_serialization must be a bool or null/None, "
+                        f"got {type(raw_strict).__name__}"
+                    )
+                if isinstance(raw_strict, bool):
+                    cfg_strict = raw_strict
+            if "deterministic_artifacts" in det:
+                raw_artifacts = det.get("deterministic_artifacts")
+                if raw_artifacts is not None and not isinstance(raw_artifacts, bool):
+                    raise ValueError(
+                        "determinism.deterministic_artifacts must be a bool or null/None, "
+                        f"got {type(raw_artifacts).__name__}"
+                    )
+                cfg_artifacts = raw_artifacts
+
+    strict_serialization = strict_override if strict_override is not None else cfg_strict
+    deterministic_artifacts = (
+        deterministic_artifacts_override
+        if deterministic_artifacts_override is not None
+        else cfg_artifacts
+    )
+    if deterministic_artifacts is None:
+        deterministic_artifacts = strict_serialization
+    return strict_serialization, deterministic_artifacts
 
 
 def _extract_probe_kwargs_from_config(config: Any) -> dict[str, Any]:
@@ -3921,6 +4099,8 @@ def run_experiment_from_config(
     run_id: Optional[str] = None,
     overwrite: bool = False,
     resume: bool = False,
+    strict_serialization: Optional[bool] = None,
+    deterministic_artifacts: Optional[bool] = None,
     use_probe_batch: bool = False,
     batch_workers: Optional[int] = None,
     return_experiment: bool = False,
@@ -3961,6 +4141,10 @@ def run_experiment_from_config(
         If True, overwrite existing run directory.
     resume : bool, default False
         If True, resume from existing records.jsonl.
+    strict_serialization : Optional[bool], default None
+        If True, fail fast on non-deterministic values during hashing.
+    deterministic_artifacts : Optional[bool], default None
+        If True, omit host-dependent manifest fields (platform/python).
     use_probe_batch : bool, default False
         If True, use Probe.run_batch for potentially faster execution.
     batch_workers : Optional[int], default None
@@ -4057,10 +4241,21 @@ def run_experiment_from_config(
     base_dir = config_path.parent
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
-    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+    strict_serialization, deterministic_artifacts = _resolve_determinism_options(
         config_snapshot,
-        schema_version=schema_version,
+        strict_override=strict_serialization,
+        deterministic_artifacts_override=deterministic_artifacts,
     )
+    try:
+        resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+            config_snapshot,
+            schema_version=schema_version,
+            strict_serialization=strict_serialization,
+        )
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable values in the resolved config snapshot."
+        ) from exc
 
     model = _create_model_from_config(config["model"], prefer_async_pipeline=True)
     probe = _create_probe_from_config(config["probe"])
@@ -4084,6 +4279,8 @@ def run_experiment_from_config(
         dataset_info=config_snapshot.get("dataset"),
         config_snapshot=config_snapshot,
         resume=resume,
+        strict_serialization=strict_serialization,
+        deterministic_artifacts=deterministic_artifacts,
         use_probe_batch=use_probe_batch,
         batch_workers=batch_workers,
         return_experiment=return_experiment,
@@ -4098,6 +4295,8 @@ def run_harness_from_config(
     validate_output: bool = False,
     schema_version: str = DEFAULT_SCHEMA_VERSION,
     validation_mode: str = "strict",
+    strict_serialization: Optional[bool] = None,
+    deterministic_artifacts: Optional[bool] = None,
 ) -> dict[str, Any]:
     """Run a cross-model probe harness from a configuration file.
 
@@ -4125,6 +4324,10 @@ def run_harness_from_config(
         Schema version for validation.
     validation_mode : str, default "strict"
         Validation mode: "strict" or "lenient" (alias: "warn").
+    strict_serialization : Optional[bool], default None
+        If True, fail fast on non-deterministic values during hashing.
+    deterministic_artifacts : Optional[bool], default None
+        If True, omit host-dependent manifest fields (platform/python).
 
     Returns
     -------
@@ -4211,10 +4414,21 @@ def run_harness_from_config(
     base_dir = config_path.parent
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
-    harness_run_id = _deterministic_run_id_from_config_snapshot(
+    strict_serialization, deterministic_artifacts = _resolve_determinism_options(
         config_snapshot,
-        schema_version=schema_version,
+        strict_override=strict_serialization,
+        deterministic_artifacts_override=deterministic_artifacts,
     )
+    try:
+        harness_run_id = _deterministic_run_id_from_config_snapshot(
+            config_snapshot,
+            schema_version=schema_version,
+            strict_serialization=strict_serialization,
+        )
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable values in the resolved harness config."
+        ) from exc
     harness_base_time = _deterministic_base_time(harness_run_id)
     harness_generated_at, _ = _deterministic_run_times(harness_base_time, 0)
 
@@ -4315,6 +4529,7 @@ def run_harness_from_config(
                 max_examples=max_examples,
                 schema_version=schema_version,
                 harness_run_id=harness_run_id,
+                strict_serialization=strict_serialization,
             )
             experiment_base_time = _deterministic_base_time(experiment_id)
             experiment_started_at, experiment_completed_at = _deterministic_run_times(
@@ -4337,6 +4552,8 @@ def run_harness_from_config(
                 validation_mode=validation_mode,
                 emit_run_artifacts=False,
                 run_id=experiment_id,
+                strict_serialization=strict_serialization,
+                deterministic_artifacts=deterministic_artifacts,
                 **probe_kwargs,
             )
 
@@ -4354,6 +4571,7 @@ def run_harness_from_config(
                 experiment_id=experiment_id,
                 started_at=experiment_started_at,
                 completed_at=experiment_completed_at,
+                strict_serialization=strict_serialization,
             )
             experiments.append(experiment)
 
@@ -4383,6 +4601,7 @@ def run_harness_from_config(
                     index=example_index,
                     status=str(result.get("status")),
                     error=None,
+                    strict_serialization=strict_serialization,
                 )
 
                 # Preserve any error details coming from ProbeRunner.run()'s raw results.
@@ -4433,8 +4652,11 @@ def run_harness_from_config(
         "experiments": experiments,
         "summary": summary,
         "config": config,
+        "config_snapshot": config_snapshot,
         "run_id": harness_run_id,
         "generated_at": harness_generated_at,
+        "strict_serialization": strict_serialization,
+        "deterministic_artifacts": deterministic_artifacts,
     }
 
 
@@ -4452,6 +4674,8 @@ async def run_experiment_from_config_async(
     run_id: Optional[str] = None,
     overwrite: bool = False,
     resume: bool = False,
+    strict_serialization: Optional[bool] = None,
+    deterministic_artifacts: Optional[bool] = None,
     use_probe_batch: bool = False,
     batch_workers: Optional[int] = None,
     return_experiment: bool = False,
@@ -4487,6 +4711,10 @@ async def run_experiment_from_config_async(
         If True, overwrite existing run directory.
     resume : bool, default False
         If True, resume from existing records.jsonl.
+    strict_serialization : Optional[bool], default None
+        If True, fail fast on non-deterministic values during hashing.
+    deterministic_artifacts : Optional[bool], default None
+        If True, omit host-dependent manifest fields (platform/python).
     use_probe_batch : bool, default False
         If True, use Probe.run_batch (runs in thread pool).
     batch_workers : Optional[int], default None
@@ -4577,10 +4805,21 @@ async def run_experiment_from_config_async(
     base_dir = config_path.parent
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
-    resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+    strict_serialization, deterministic_artifacts = _resolve_determinism_options(
         config_snapshot,
-        schema_version=schema_version,
+        strict_override=strict_serialization,
+        deterministic_artifacts_override=deterministic_artifacts,
     )
+    try:
+        resolved_run_id = run_id or _deterministic_run_id_from_config_snapshot(
+            config_snapshot,
+            schema_version=schema_version,
+            strict_serialization=strict_serialization,
+        )
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable values in the resolved config snapshot."
+        ) from exc
 
     model = _create_model_from_config(config["model"])
     probe = _create_probe_from_config(config["probe"])
@@ -4605,6 +4844,8 @@ async def run_experiment_from_config_async(
         dataset_info=config_snapshot.get("dataset"),
         config_snapshot=config_snapshot,
         resume=resume,
+        strict_serialization=strict_serialization,
+        deterministic_artifacts=deterministic_artifacts,
         use_probe_batch=use_probe_batch,
         batch_workers=batch_workers,
         return_experiment=return_experiment,
@@ -4621,6 +4862,7 @@ def create_experiment_result(
     experiment_id: Optional[str] = None,
     started_at: Optional[datetime] = None,
     completed_at: Optional[datetime] = None,
+    strict_serialization: bool = False,
 ) -> ExperimentResult:
     """Create a structured ExperimentResult from raw results.
 
@@ -4756,16 +4998,25 @@ def create_experiment_result(
             inputs = [r.input for r in probe_results]
         else:
             inputs = []
-        resolved_experiment_id = _deterministic_hash(
-            {
-                "model": _serialize_value(_coerce_model_info(model)),
-                "probe": {
-                    "name": probe.name,
-                    "version": getattr(probe, "version", None),
+        try:
+            resolved_experiment_id = _deterministic_hash(
+                {
+                    "model": _serialize_value(
+                        _coerce_model_info(model),
+                        strict=strict_serialization,
+                    ),
+                    "probe": {
+                        "name": probe.name,
+                        "version": getattr(probe, "version", None),
+                    },
+                    "inputs_hash": _hash_prompt_set(inputs, strict=strict_serialization),
                 },
-                "inputs_hash": _hash_prompt_set(inputs),
-            }
-        )[:12]
+                strict=strict_serialization,
+            )[:12]
+        except StrictSerializationError as exc:
+            raise ValueError(
+                "strict_serialization requires JSON-stable inputs for experiment_id derivation."
+            ) from exc
 
     if started_at is None or completed_at is None:
         base_time = _deterministic_base_time(resolved_experiment_id)
@@ -4801,6 +5052,7 @@ def _deterministic_harness_experiment_id(
     max_examples: Optional[int],
     schema_version: str,
     harness_run_id: str,
+    strict_serialization: bool = False,
 ) -> str:
     payload = {
         "schema_version": schema_version,
@@ -4812,13 +5064,14 @@ def _deterministic_harness_experiment_id(
         "model_index": model_index,
         "probe_index": probe_index,
     }
-    return _deterministic_hash(payload)[:16]
+    return _deterministic_hash(payload, strict=strict_serialization)[:16]
 
 
 def derive_run_id_from_config_path(
     config_path: Union[str, Path],
     *,
     schema_version: str = DEFAULT_SCHEMA_VERSION,
+    strict_serialization: Optional[bool] = None,
 ) -> str:
     """Derive a deterministic run ID from a configuration file.
 
@@ -4875,7 +5128,18 @@ def derive_run_id_from_config_path(
     config_path = Path(config_path)
     config = load_config(config_path)
     config_snapshot = _build_resolved_config_snapshot(config, config_path.parent)
-    return _deterministic_run_id_from_config_snapshot(
+    strict_mode, _ = _resolve_determinism_options(
         config_snapshot,
-        schema_version=schema_version,
+        strict_override=strict_serialization,
+        deterministic_artifacts_override=None,
     )
+    try:
+        return _deterministic_run_id_from_config_snapshot(
+            config_snapshot,
+            schema_version=schema_version,
+            strict_serialization=strict_mode,
+        )
+    except StrictSerializationError as exc:
+        raise ValueError(
+            "strict_serialization requires JSON-stable values in the config snapshot."
+        ) from exc
