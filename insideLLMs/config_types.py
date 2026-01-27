@@ -421,6 +421,10 @@ class RunConfig:
     overwrite: bool = False
     store_messages: bool = True
 
+    # Determinism controls
+    strict_serialization: bool = False
+    deterministic_artifacts: Optional[bool] = None
+
     # Metadata
     dataset_info: Optional[dict[str, Any]] = None
     config_snapshot: Optional[dict[str, Any]] = None
@@ -505,6 +509,17 @@ class RunConfig:
             raise ValueError(f"batch_workers must be >= 1, got {self.batch_workers}")
         if self.timeout is not None and self.timeout <= 0:
             raise ValueError(f"timeout must be > 0, got {self.timeout}")
+        if not isinstance(self.strict_serialization, bool):
+            raise ValueError(
+                f"strict_serialization must be a bool, got {type(self.strict_serialization).__name__}"
+            )
+        if self.deterministic_artifacts is not None and not isinstance(
+            self.deterministic_artifacts, bool
+        ):
+            raise ValueError(
+                "deterministic_artifacts must be a bool or None, "
+                f"got {type(self.deterministic_artifacts).__name__}"
+            )
 
     @classmethod
     def from_kwargs(cls, **kwargs: Any) -> "RunConfig":
@@ -524,8 +539,9 @@ class RunConfig:
             Keyword arguments matching RunConfig field names. Valid fields are:
             stop_on_error, validate_output, schema_version, validation_mode,
             emit_run_artifacts, run_dir, run_root, run_id, overwrite,
-            store_messages, dataset_info, config_snapshot, concurrency, timeout,
-            resume, use_probe_batch, batch_workers, return_experiment.
+            store_messages, strict_serialization, deterministic_artifacts,
+            dataset_info, config_snapshot, concurrency, timeout, resume,
+            use_probe_batch, batch_workers, return_experiment.
 
         Returns
         -------
@@ -811,6 +827,8 @@ class RunConfigBuilder:
         self._run_id: Optional[str] = None
         self._overwrite: bool = False
         self._store_messages: bool = True
+        self._strict_serialization: bool = False
+        self._deterministic_artifacts: Optional[bool] = None
         self._dataset_info: Optional[dict[str, Any]] = None
         self._config_snapshot: Optional[dict[str, Any]] = None
         self._concurrency: int = 5
@@ -1369,6 +1387,27 @@ class RunConfigBuilder:
         self._store_messages = enabled
         return self
 
+    def with_determinism(
+        self,
+        *,
+        strict_serialization: bool = True,
+        deterministic_artifacts: Optional[bool] = None,
+    ) -> "RunConfigBuilder":
+        """Configure determinism hardening controls.
+
+        Parameters
+        ----------
+        strict_serialization : bool, default=True
+            If True, hashing/fingerprinting fails fast on values that would
+            otherwise fall back to ``str(value)``.
+        deterministic_artifacts : Optional[bool], default=None
+            If True, omit host-dependent manifest fields (platform/python).
+            If None, follows ``strict_serialization`` at runtime.
+        """
+        self._strict_serialization = strict_serialization
+        self._deterministic_artifacts = deterministic_artifacts
+        return self
+
     def with_resume(self, enabled: bool = True) -> "RunConfigBuilder":
         """Enable resumable runs.
 
@@ -1689,6 +1728,8 @@ class RunConfigBuilder:
             run_id=self._run_id,
             overwrite=self._overwrite,
             store_messages=self._store_messages,
+            strict_serialization=self._strict_serialization,
+            deterministic_artifacts=self._deterministic_artifacts,
             dataset_info=self._dataset_info,
             config_snapshot=self._config_snapshot,
             concurrency=self._concurrency,

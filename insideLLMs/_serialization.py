@@ -18,7 +18,43 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-def serialize_value(value: Any) -> Any:
+class StrictSerializationError(TypeError):
+    """Raised when strict serialization encounters a non-deterministic value."""
+
+
+def _path_label(path: tuple[str, ...]) -> str:
+    if not path:
+        return "<root>"
+    return ".".join(path)
+
+
+def _serialize_dict_key(key: Any, *, strict: bool, path: tuple[str, ...]) -> str:
+    if isinstance(key, str):
+        return key
+    if isinstance(key, Enum):
+        return str(key.value)
+    if isinstance(key, Path):
+        return str(key)
+    if isinstance(key, datetime):
+        return key.isoformat()
+    if isinstance(key, (int, bool)):
+        return str(key)
+    if isinstance(key, float):
+        if not math.isfinite(key):
+            if strict:
+                raise StrictSerializationError(
+                    f"Non-finite float key at {_path_label(path)} is not allowed in strict mode."
+                )
+            return "null"
+        return str(key)
+    if strict:
+        raise StrictSerializationError(
+            f"Non-string dict key of type {type(key).__name__} at {_path_label(path)}."
+        )
+    return str(key)
+
+
+def serialize_value(value: Any, *, strict: bool = False, _path: tuple[str, ...] = ()) -> Any:
     """Recursively serialize a value to JSON-compatible types.
 
     Handles conversion of complex Python types (datetime, Path, Enum, dataclass,
@@ -29,6 +65,9 @@ def serialize_value(value: Any) -> Any:
     value : Any
         The value to serialize. Can be any Python type including nested
         structures like dicts, lists, dataclasses, etc.
+    strict : bool, default False
+        If True, raise StrictSerializationError when encountering values that
+        would fall back to ``str(value)``.
 
     Returns
     -------
@@ -42,7 +81,7 @@ def serialize_value(value: Any) -> Any:
         - dict/list/tuple -> recursively serialized
         - set/frozenset -> sorted list
         - None/str/int/float/bool -> unchanged
-        - Other types -> str(value)
+        - Other types -> str(value) (or error in strict mode)
 
     Examples
     --------
@@ -73,20 +112,37 @@ def serialize_value(value: Any) -> Any:
     if isinstance(value, Enum):
         return value.value
     if is_dataclass(value) and not isinstance(value, type):
-        return asdict(value)
+        return serialize_value(asdict(value), strict=strict, _path=_path)
     if isinstance(value, dict):
         # JSON object keys must be strings; coerce for determinism and robustness.
-        return {str(k): serialize_value(v) for k, v in value.items()}
+        result: dict[str, Any] = {}
+        seen_keys: dict[str, Any] = {}
+        for k, v in value.items():
+            key = _serialize_dict_key(k, strict=strict, path=_path)
+            if strict and key in seen_keys and k != seen_keys[key]:
+                raise StrictSerializationError(
+                    f"Dict key collision at {_path_label(_path)}: "
+                    f"{seen_keys[key]!r} and {k!r} -> {key!r}."
+                )
+            seen_keys.setdefault(key, k)
+            child_path = (*_path, key)
+            result[key] = serialize_value(v, strict=strict, _path=child_path)
+        return result
     if isinstance(value, (list, tuple)):
-        return [serialize_value(v) for v in value]
+        return [
+            serialize_value(v, strict=strict, _path=(*_path, str(i))) for i, v in enumerate(value)
+        ]
     if isinstance(value, (set, frozenset)):
-        normalized = [serialize_value(v) for v in value]
+        normalized = [
+            serialize_value(v, strict=strict, _path=(*_path, f"set[{i}]"))
+            for i, v in enumerate(value)
+        ]
         try:
             return sorted(normalized)
         except TypeError:
             return sorted(
                 normalized,
-                key=lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"), default=str),
+                key=lambda v: stable_json_dumps(v, strict=strict),
             )
     if isinstance(value, float):
         # Ensure emitted JSON is standards-compliant; Python's json.dumps can emit
@@ -96,10 +152,14 @@ def serialize_value(value: Any) -> Any:
         return value
     if value is None or isinstance(value, (str, int, bool)):
         return value
+    if strict:
+        raise StrictSerializationError(
+            f"Unsupported value type {type(value).__name__} at {_path_label(_path)}."
+        )
     return str(value)
 
 
-def stable_json_dumps(data: Any) -> str:
+def stable_json_dumps(data: Any, *, strict: bool = False) -> str:
     """Serialize data to a stable, deterministic JSON string.
 
     Produces identical JSON output for equivalent data structures regardless
@@ -110,6 +170,9 @@ def stable_json_dumps(data: Any) -> str:
     ----------
     data : Any
         Data to serialize. Passed through serialize_value for type conversion.
+    strict : bool, default False
+        If True, raise StrictSerializationError when serialization would
+        otherwise fall back to ``str(value)``.
 
     Returns
     -------
@@ -130,16 +193,17 @@ def stable_json_dumps(data: Any) -> str:
         >>> stable_json_dumps({"outer": {"z": 3, "y": 2}})
         '{"outer":{"y":2,"z":3}}'
     """
+    serialized = serialize_value(data, strict=strict)
     return json.dumps(
-        serialize_value(data),
+        serialized,
         sort_keys=True,
         separators=(",", ":"),
-        default=serialize_value,
+        default=lambda v: serialize_value(v, strict=strict),
         allow_nan=False,
     )
 
 
-def fingerprint_value(value: Any) -> Optional[str]:
+def fingerprint_value(value: Any, *, strict: bool = False) -> Optional[str]:
     """Generate a short fingerprint hash of a value.
 
     Produces a 12-character hash suitable for use as a compact identifier
@@ -149,6 +213,9 @@ def fingerprint_value(value: Any) -> Optional[str]:
     ----------
     value : Any
         Value to fingerprint. Can be any JSON-serializable type.
+    strict : bool, default False
+        If True, raise StrictSerializationError when serialization would
+        otherwise fall back to ``str(value)``.
 
     Returns
     -------
@@ -177,4 +244,4 @@ def fingerprint_value(value: Any) -> Optional[str]:
     """
     if value is None:
         return None
-    return hashlib.sha256(stable_json_dumps(value).encode("utf-8")).hexdigest()[:12]
+    return hashlib.sha256(stable_json_dumps(value, strict=strict).encode("utf-8")).hexdigest()[:12]

@@ -1580,6 +1580,20 @@ class TestWriteJsonl:
             assert json.loads(lines[0]) == {"id": 1, "name": "test1"}
             assert json.loads(lines[1]) == {"id": 2, "name": "test2"}
 
+    def test_write_jsonl_strict_rejects_non_serializable(self):
+        """Strict mode should reject non-deterministic values."""
+        from insideLLMs.cli import _write_jsonl
+
+        class CustomObject:
+            pass
+
+        records = [{"bad": CustomObject()}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "output.jsonl"
+            with pytest.raises(ValueError, match="strict_serialization"):
+                _write_jsonl(records, output_path, strict_serialization=True)
+
 
 class TestCmdCompareJson:
     """Ensure compare JSON output is pipe-friendly."""

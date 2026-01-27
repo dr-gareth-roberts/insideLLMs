@@ -109,13 +109,16 @@ from pathlib import Path
 from typing import Any, Optional
 
 from insideLLMs._serialization import (
+    StrictSerializationError,
+)
+from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
 )
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
 from insideLLMs._serialization import (
-    stable_json_dumps as _stable_json_dumps,  # noqa: F401
+    stable_json_dumps as _stable_json_dumps,
 )
 from insideLLMs.exceptions import ProbeExecutionError
 from insideLLMs.registry import (
@@ -828,26 +831,31 @@ def print_key_value(key: str, value: Any, indent: int = 2) -> None:
     print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}", file=_status_stream())
 
 
-def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
+def _write_jsonl(
+    records: list[dict[str, Any]],
+    output_path: Path,
+    *,
+    strict_serialization: bool = False,
+) -> None:
     """Write a list of dictionaries to a JSON Lines file.
 
     Serializes each dictionary as a single JSON line and writes to the
-    specified file. Uses the custom _json_default handler for non-standard
-    types like datetime, Enum, Path, etc.
+    specified file using stable deterministic JSON serialization.
 
     Args:
         records: List of dictionaries to write. Each dictionary becomes
             one line in the output file.
         output_path: Path object specifying where to write the file.
             Parent directories must already exist.
+        strict_serialization: If True, fail fast on non-deterministic values.
 
     Returns:
         None. File is written to disk.
 
     Raises:
         OSError: If the file cannot be opened for writing.
-        TypeError: If a record contains a non-serializable type that
-            _json_default cannot handle.
+        ValueError: If strict_serialization is enabled and a record contains
+            non-deterministic values.
 
     Examples:
         Writing experiment records:
@@ -867,7 +875,7 @@ def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
     Notes:
         - Uses UTF-8 encoding for Unicode support
         - Each record is written on its own line with a trailing newline
-        - The _json_default function handles datetime, Enum, Path, set, and dataclass types
+        - Uses the shared stable serializer to keep JSONL deterministic
 
     See Also:
         _read_jsonl_records : The inverse operation for reading JSONL files
@@ -875,15 +883,13 @@ def _write_jsonl(records: list[dict[str, Any]], output_path: Path) -> None:
     """
     with open(output_path, "w", encoding="utf-8") as f:
         for record in records:
-            f.write(
-                json.dumps(
-                    record,
-                    default=_json_default,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                )
-                + "\n"
-            )
+            try:
+                line = _stable_json_dumps(record, strict=strict_serialization)
+            except StrictSerializationError as exc:
+                raise ValueError(
+                    "strict_serialization requires JSON-stable values in records.jsonl emission."
+                ) from exc
+            f.write(line + "\n")
 
 
 def _format_percent(value: Optional[float]) -> str:
@@ -2098,6 +2104,18 @@ def create_parser() -> argparse.ArgumentParser:
         help="Resume from an existing run directory if records.jsonl is present.",
     )
     run_parser.add_argument(
+        "--strict-serialization",
+        action="store_true",
+        default=None,
+        help="Fail fast on non-deterministic values during hashing/fingerprinting.",
+    )
+    run_parser.add_argument(
+        "--deterministic-artifacts",
+        action="store_true",
+        default=None,
+        help="Omit host-dependent manifest fields (platform/python version).",
+    )
+    run_parser.add_argument(
         "--async",
         dest="use_async",
         action="store_true",
@@ -2183,6 +2201,18 @@ def create_parser() -> argparse.ArgumentParser:
         "--overwrite",
         action="store_true",
         help="Allow overwriting an existing non-empty run directory (DANGEROUS).",
+    )
+    harness_parser.add_argument(
+        "--strict-serialization",
+        action="store_true",
+        default=None,
+        help="Fail fast on non-deterministic values during hashing/fingerprinting.",
+    )
+    harness_parser.add_argument(
+        "--deterministic-artifacts",
+        action="store_true",
+        default=None,
+        help="Omit host-dependent manifest fields (platform/python version).",
     )
     harness_parser.add_argument(
         "--report-title",
@@ -2741,6 +2771,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             resolved_run_id = derive_run_id_from_config_path(
                 config_path,
                 schema_version=args.schema_version,
+                strict_serialization=args.strict_serialization,
             )
         # Use absolute paths to reduce surprise when users provide relative paths.
         effective_run_root = (
@@ -2802,6 +2833,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                     run_id=resolved_run_id,
                     overwrite=bool(args.overwrite),
                     resume=bool(args.resume),
+                    strict_serialization=args.strict_serialization,
+                    deterministic_artifacts=args.deterministic_artifacts,
                 )
             )
         else:
@@ -2817,6 +2850,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                 run_id=resolved_run_id,
                 overwrite=bool(args.overwrite),
                 resume=bool(args.resume),
+                strict_serialization=args.strict_serialization,
+                deterministic_artifacts=args.deterministic_artifacts,
             )
 
         elapsed = time.time() - start_time
@@ -2997,7 +3032,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
     try:
         start_time = time.time()
         resolved_run_id = args.run_id or derive_run_id_from_config_path(
-            config_path, schema_version=args.schema_version
+            config_path,
+            schema_version=args.schema_version,
+            strict_serialization=args.strict_serialization,
         )
 
         # Precompute output_dir for tracking. Must match the precedence used later when emitting
@@ -3058,6 +3095,8 @@ def cmd_harness(args: argparse.Namespace) -> int:
             validate_output=args.validate_output,
             schema_version=args.schema_version,
             validation_mode=args.validation_mode,
+            strict_serialization=args.strict_serialization,
+            deterministic_artifacts=args.deterministic_artifacts,
         )
         elapsed = time.time() - start_time
 
@@ -3074,20 +3113,40 @@ def cmd_harness(args: argparse.Namespace) -> int:
             _deterministic_run_id_from_config_snapshot,
             _deterministic_run_times,
             _prepare_run_dir,
+            _resolve_determinism_options,
             _serialize_value,
         )
 
-        config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
+        config_snapshot = result.get("config_snapshot")
+        if not isinstance(config_snapshot, dict):
+            config_snapshot = _build_resolved_config_snapshot(result["config"], config_path.parent)
+
+        strict_serialization = result.get("strict_serialization")
+        deterministic_artifacts = result.get("deterministic_artifacts")
+        if not isinstance(strict_serialization, bool) or not isinstance(
+            deterministic_artifacts, bool
+        ):
+            strict_serialization, deterministic_artifacts = _resolve_determinism_options(
+                config_snapshot,
+                strict_override=args.strict_serialization,
+                deterministic_artifacts_override=args.deterministic_artifacts,
+            )
 
         if args.run_id:
             resolved_run_id = args.run_id
         else:
             resolved_run_id = result.get("run_id") or resolved_run_id
             if not resolved_run_id:
-                resolved_run_id = _deterministic_run_id_from_config_snapshot(
-                    config_snapshot,
-                    schema_version=args.schema_version,
-                )
+                try:
+                    resolved_run_id = _deterministic_run_id_from_config_snapshot(
+                        config_snapshot,
+                        schema_version=args.schema_version,
+                        strict_serialization=strict_serialization,
+                    )
+                except StrictSerializationError as exc:
+                    raise ValueError(
+                        "strict_serialization requires JSON-stable values in the resolved harness config."
+                    ) from exc
 
         # Absolute paths reduce surprise when users pass relative paths.
         effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
@@ -3119,7 +3178,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             import yaml
 
             content = yaml.safe_dump(
-                _serialize_value(data),
+                _serialize_value(data, strict=strict_serialization),
                 sort_keys=True,
                 default_flow_style=False,
                 allow_unicode=True,
@@ -3149,7 +3208,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             if isinstance(record, dict):
                 record["run_id"] = resolved_run_id
 
-        _write_jsonl(result["records"], records_path)
+        _write_jsonl(result["records"], records_path, strict_serialization=strict_serialization)
         print_success(f"Records written to: {records_path}")
 
         # Backward compatibility: keep results.jsonl alongside records.jsonl.
@@ -3197,6 +3256,12 @@ def cmd_harness(args: argparse.Namespace) -> int:
         started_at, completed_at = _deterministic_run_times(run_base_time, record_count)
         created_at = started_at
 
+        python_version = None if deterministic_artifacts else sys.version.split()[0]
+        platform_info = None if deterministic_artifacts else platform.platform()
+
+        def _serialize_manifest(value: Any) -> Any:
+            return _serialize_value(value, strict=strict_serialization)
+
         manifest: dict[str, Any] = {
             "schema_version": args.schema_version,
             "run_id": resolved_run_id,
@@ -3204,8 +3269,8 @@ def cmd_harness(args: argparse.Namespace) -> int:
             "started_at": started_at,
             "completed_at": completed_at,
             "library_version": None,
-            "python_version": sys.version.split()[0],
-            "platform": platform.platform(),
+            "python_version": python_version,
+            "platform": platform_info,
             "command": None,
             "model": {
                 "model_id": "harness",
@@ -3231,7 +3296,11 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     "max_examples": result.get("config", {}).get("max_examples"),
                     "experiment_count": len(result.get("experiments", [])),
                     "legacy_results_file": "results.jsonl",
-                }
+                },
+                "determinism": {
+                    "strict_serialization": strict_serialization,
+                    "deterministic_artifacts": deterministic_artifacts,
+                },
             },
         }
 
@@ -3260,10 +3329,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
         _atomic_write_text(
             manifest_path,
             json.dumps(
-                _serialize_value(manifest),
+                _serialize_manifest(manifest),
                 sort_keys=True,
                 indent=2,
-                default=_serialize_value,
+                default=_serialize_manifest,
             ),
         )
         print_success(f"Manifest written to: {manifest_path}")
@@ -3288,8 +3357,14 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 schema_version=args.schema_version,
                 mode=args.validation_mode,
             )
-        with open(summary_path, "w") as f:
-            json.dump(summary_payload, f, indent=2, default=_json_default, sort_keys=True)
+        with open(summary_path, "w", encoding="utf-8") as f:
+            json.dump(
+                _serialize_manifest(summary_payload),
+                f,
+                indent=2,
+                default=_serialize_manifest,
+                sort_keys=True,
+            )
         print_success(f"Summary written to: {summary_path}")
 
         if not args.skip_report:

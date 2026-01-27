@@ -40,6 +40,14 @@ class TestRunConfig:
         config = RunConfig()
         assert config.store_messages is True
 
+    def test_default_strict_serialization(self):
+        config = RunConfig()
+        assert config.strict_serialization is False
+
+    def test_default_deterministic_artifacts(self):
+        config = RunConfig()
+        assert config.deterministic_artifacts is None
+
     def test_default_concurrency(self):
         config = RunConfig()
         assert config.concurrency == 5
@@ -72,6 +80,14 @@ class TestRunConfig:
         config = RunConfig(validation_mode="warn")
         assert config.validation_mode == "lenient"
 
+    def test_invalid_strict_serialization_type(self):
+        with pytest.raises(ValueError, match="strict_serialization must be a bool"):
+            RunConfig(strict_serialization="yes")  # type: ignore[arg-type]
+
+    def test_invalid_deterministic_artifacts_type(self):
+        with pytest.raises(ValueError, match="deterministic_artifacts must be a bool or None"):
+            RunConfig(deterministic_artifacts="no")  # type: ignore[arg-type]
+
 
 class TestRunConfigBuilder:
     """Tests for RunConfigBuilder fluent API."""
@@ -103,6 +119,18 @@ class TestRunConfigBuilder:
         assert config.concurrency == 15
         assert config.stop_on_error is True
         assert config.validate_output is True
+
+    def test_builder_with_determinism(self):
+        config = (
+            RunConfigBuilder()
+            .with_determinism(
+                strict_serialization=True,
+                deterministic_artifacts=True,
+            )
+            .build()
+        )
+        assert config.strict_serialization is True
+        assert config.deterministic_artifacts is True
 
 
 class TestRunContext:
