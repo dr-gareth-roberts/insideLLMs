@@ -42,7 +42,7 @@ class TestRunConfig:
 
     def test_default_strict_serialization(self):
         config = RunConfig()
-        assert config.strict_serialization is False
+        assert config.strict_serialization is True
 
     def test_default_deterministic_artifacts(self):
         config = RunConfig()

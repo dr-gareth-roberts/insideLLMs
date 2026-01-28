@@ -109,6 +109,17 @@ class TestLogicProbeEvaluateSingle:
 
         assert result["is_correct"] is False
 
+    def test_evaluate_word_boundary_avoids_substring_false_positive(self):
+        """Word-boundary containment should avoid substring false positives."""
+        probe = LogicProbe()
+        result = probe.evaluate_single(
+            model_output="I don't know.",
+            reference="no",
+            input_data="Problem",
+        )
+
+        assert result["is_correct"] is False
+
     def test_evaluate_no_reference(self):
         """Test evaluation without reference."""
         probe = LogicProbe()

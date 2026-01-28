@@ -835,7 +835,7 @@ def _write_jsonl(
     records: list[dict[str, Any]],
     output_path: Path,
     *,
-    strict_serialization: bool = False,
+    strict_serialization: bool = True,
 ) -> None:
     """Write a list of dictionaries to a JSON Lines file.
 
@@ -2105,13 +2105,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument(
         "--strict-serialization",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=None,
         help="Fail fast on non-deterministic values during hashing/fingerprinting.",
     )
     run_parser.add_argument(
         "--deterministic-artifacts",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=None,
         help="Omit host-dependent manifest fields (platform/python version).",
     )
@@ -2204,13 +2204,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
     harness_parser.add_argument(
         "--strict-serialization",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=None,
         help="Fail fast on non-deterministic values during hashing/fingerprinting.",
     )
     harness_parser.add_argument(
         "--deterministic-artifacts",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=None,
         help="Omit host-dependent manifest fields (platform/python version).",
     )

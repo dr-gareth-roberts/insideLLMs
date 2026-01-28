@@ -3818,7 +3818,7 @@ def _resolve_determinism_options(
     deterministic_artifacts_override: Optional[bool],
 ) -> tuple[bool, bool]:
     """Resolve determinism controls from config plus explicit overrides."""
-    cfg_strict = False
+    cfg_strict = True
     cfg_artifacts: Optional[bool] = None
 
     if isinstance(config, dict):

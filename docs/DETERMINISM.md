@@ -37,21 +37,22 @@ If you need timing/host details, use tracing/telemetry rather than the canonical
 
 ### Determinism controls (strict mode)
 
-For the tightest possible diff surface, enable strict determinism controls.
+insideLLMs defaults to strict determinism controls when emitting canonical run artefacts.
+If you want a more permissive mode (or want host metadata persisted), you can disable them.
 
 Config (`config.yaml` / `harness.yaml`):
 
 ```yaml
 determinism:
-  strict_serialization: true
-  deterministic_artifacts: true
+  strict_serialization: false
+  deterministic_artifacts: false
 ```
 
 CLI equivalents:
 
 ```bash
-insidellms run config.yaml --strict-serialization --deterministic-artifacts
-insidellms harness harness.yaml --strict-serialization --deterministic-artifacts
+insidellms run config.yaml --no-strict-serialization --no-deterministic-artifacts
+insidellms harness harness.yaml --no-strict-serialization --no-deterministic-artifacts
 ```
 
 What these do:
