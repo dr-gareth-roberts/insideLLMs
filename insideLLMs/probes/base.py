@@ -606,7 +606,22 @@ class Probe(ABC, Generic[T]):
                 }
                 for future in as_completed(futures):
                     index = futures[future]
-                    results[index] = future.result()
+                    try:
+                        results[index] = future.result()
+                    except Exception as e:
+                        error_type = type(e).__name__
+                        if "rate" in str(e).lower() or "429" in str(e):
+                            status = ResultStatus.RATE_LIMITED
+                        elif isinstance(e, TimeoutError):
+                            status = ResultStatus.TIMEOUT
+                        else:
+                            status = ResultStatus.ERROR
+                        results[index] = ProbeResult(
+                            input=dataset[index],
+                            status=status,
+                            error=f"{error_type}: {str(e)}",
+                            metadata={"error_type": error_type},
+                        )
                     completed += 1
                     if progress_callback:
                         progress_callback(completed, total)

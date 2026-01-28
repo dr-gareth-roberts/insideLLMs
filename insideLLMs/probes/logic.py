@@ -650,8 +650,8 @@ class LogicProbe(ScoredProbe[str]):
         The comparison is case-insensitive and supports three matching modes:
 
         1. Exact match (after lowercasing and stripping whitespace)
-        2. Reference contained in extracted answer
-        3. Extracted answer contained in reference
+        2. Reference contained in extracted answer (word-boundary match)
+        3. Extracted answer contained in reference (word-boundary match)
 
         Parameters
         ----------
@@ -700,9 +700,10 @@ class LogicProbe(ScoredProbe[str]):
         - "yes" matches "The answer is yes"
         - "A > C" matches "A is greater than C" (via containment)
 
-        However, this flexibility can cause false positives. For example,
-        "no" would incorrectly match "I don't know" because "no" is contained
-        in "know". Consider subclassing and overriding for stricter matching.
+        Word-boundary containment helps avoid substring false positives
+        (e.g., "no" no longer matches "know"), but it is still intentionally
+        permissive. Consider subclassing and overriding for domain-specific
+        matching.
 
         **Answer Extraction:**
 
@@ -822,8 +823,22 @@ class LogicProbe(ScoredProbe[str]):
         ref_answer = str(reference).lower().strip()
         extracted = self._extract_final_answer(model_output).lower().strip()
 
-        # Check for exact match or containment
-        is_correct = ref_answer == extracted or ref_answer in extracted or extracted in ref_answer
+        def _contains_at_word_boundary(needle: str, haystack: str) -> bool:
+            """Return True if needle appears in haystack at word boundaries.
+
+            This avoids substring false positives like "no" matching "know".
+            """
+            if not needle or not haystack:
+                return False
+            pattern = r"(?<!\w)" + re.escape(needle) + r"(?!\w)"
+            return re.search(pattern, haystack) is not None
+
+        # Check for exact match or word-boundary containment.
+        is_correct = (
+            ref_answer == extracted
+            or _contains_at_word_boundary(ref_answer, extracted)
+            or _contains_at_word_boundary(extracted, ref_answer)
+        )
 
         return {
             "is_correct": is_correct,

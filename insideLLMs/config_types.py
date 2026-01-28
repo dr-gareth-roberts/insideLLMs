@@ -422,7 +422,7 @@ class RunConfig:
     store_messages: bool = True
 
     # Determinism controls
-    strict_serialization: bool = False
+    strict_serialization: bool = True
     deterministic_artifacts: Optional[bool] = None
 
     # Metadata
@@ -827,7 +827,7 @@ class RunConfigBuilder:
         self._run_id: Optional[str] = None
         self._overwrite: bool = False
         self._store_messages: bool = True
-        self._strict_serialization: bool = False
+        self._strict_serialization: bool = True
         self._deterministic_artifacts: Optional[bool] = None
         self._dataset_info: Optional[dict[str, Any]] = None
         self._config_snapshot: Optional[dict[str, Any]] = None

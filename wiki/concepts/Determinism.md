@@ -87,22 +87,23 @@ json.dumps(data, sort_keys=True, separators=(",", ":"))
 
 ## Determinism Controls (Strict Mode)
 
-Enable strict determinism controls to make hashing and artefacts fail fast
-instead of silently degrading.
+insideLLMs defaults to strict determinism controls for hashing and artefact
+emission. If you want a more permissive mode (or want host metadata persisted),
+you can disable them.
 
 Config:
 
 ```yaml
 determinism:
-  strict_serialization: true
-  deterministic_artifacts: true
+  strict_serialization: false
+  deterministic_artifacts: false
 ```
 
 CLI:
 
 ```bash
-insidellms run config.yaml --strict-serialization --deterministic-artifacts
-insidellms harness harness.yaml --strict-serialization --deterministic-artifacts
+insidellms run config.yaml --no-strict-serialization --no-deterministic-artifacts
+insidellms harness harness.yaml --no-strict-serialization --no-deterministic-artifacts
 ```
 
 Behavior:
