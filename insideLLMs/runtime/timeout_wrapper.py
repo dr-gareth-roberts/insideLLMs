@@ -41,6 +41,8 @@ async def run_with_timeout(
         logger.error(
             f"Probe execution timed out after {timeout}s{context_str}", extra=context or {}
         )
+        probe_type = (context or {}).get("probe", "unknown")
         raise ProbeExecutionError(
-            f"Probe execution timed out after {timeout}s", details=context or {}
+            probe_type=probe_type,
+            reason=f"Probe execution timed out after {timeout}s",
         )
