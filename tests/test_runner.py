@@ -1818,10 +1818,9 @@ class TestPrepareRunDir:
         import inspect
         from pathlib import Path
 
-        from insideLLMs import runner
         from insideLLMs.runtime.runner import _prepare_run_dir
 
-        source = inspect.getsource(runner._prepare_run_dir)
+        source = inspect.getsource(_prepare_run_dir)
         assert "len(resolved.parts) <= 2" in source
 
 
@@ -2114,7 +2113,7 @@ class TestLoadDatasetFromConfig:
 
     def test_load_hf_dataset_filters_metadata(self, tmp_path, monkeypatch):
         """HF dataset loader should not receive metadata-only config keys."""
-        from insideLLMs import runner as runner_module
+        from insideLLMs.runtime import runner as runner_module
 
         captured: dict[str, Any] = {}
 
