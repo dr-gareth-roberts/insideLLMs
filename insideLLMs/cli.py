@@ -86,7 +86,7 @@ All run artifacts are written to a structured directory containing:
 
 See Also
 --------
-insideLLMs.runner : Core experiment execution logic
+insideLLMs.runtime.runner : Core experiment execution logic
 insideLLMs.registry : Model and probe registration
 insideLLMs.schemas : Output schema validation
 insideLLMs.visualization : Report generation utilities
@@ -127,7 +127,7 @@ from insideLLMs.registry import (
     probe_registry,
 )
 from insideLLMs.results import results_to_markdown, save_results_json
-from insideLLMs.runner import (
+from insideLLMs.runtime.runner import (
     derive_run_id_from_config_path,
     load_config,
     run_experiment_from_config,
@@ -3107,7 +3107,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
         # Determine harness run directory and emit standardized run artifacts
         # (manifest.json + records.jsonl + config.resolved.yaml + .insidellms_run)
         # -----------------------------------------------------------------
-        from insideLLMs.runner import (
+        from insideLLMs.runtime.runner import (
             _build_resolved_config_snapshot,
             _deterministic_base_time,
             _deterministic_run_id_from_config_snapshot,
@@ -3728,7 +3728,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     generated_at = None
     if run_id:
         try:
-            from insideLLMs.runner import _deterministic_base_time, _deterministic_run_times
+            from insideLLMs.runtime.runner import _deterministic_base_time, _deterministic_run_times
 
             base_time = _deterministic_base_time(str(run_id))
             _, generated_at = _deterministic_run_times(base_time, len(records))
@@ -4566,7 +4566,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                     continue
 
                 # Create runner and run
-                from insideLLMs.runner import ProbeRunner
+                from insideLLMs.runtime.runner import ProbeRunner
 
                 runner = ProbeRunner(model, probe)
 

@@ -146,7 +146,7 @@ Notes:
       to persist them to disk.
 
 See Also:
-    insideLLMs.runner: The underlying probe execution engine.
+    insideLLMs.runtime.runner: The underlying probe execution engine.
     insideLLMs.probes.base: Base classes for creating custom probes.
     insideLLMs.models.base: Model interfaces and protocols.
     insideLLMs.schemas.constants: Schema version constants for validation.
@@ -159,7 +159,7 @@ from typing import Any
 
 from insideLLMs.models import Model
 from insideLLMs.probes import Probe
-from insideLLMs.runner import run_probe
+from insideLLMs.runtime.runner import run_probe
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
 
@@ -371,7 +371,7 @@ class ModelBenchmark:
 
     See Also:
         ProbeBenchmark: For comparing multiple probes on a single model.
-        insideLLMs.runner.run_probe: The underlying probe execution function.
+        insideLLMs.runtime.runner.run_probe: The underlying probe execution function.
     """
 
     def __init__(self, models: list[Model], probe: Probe, name: str = "Model Benchmark"):
@@ -1002,7 +1002,7 @@ class ProbeBenchmark:
 
     See Also:
         ModelBenchmark: For comparing multiple models on a single probe.
-        insideLLMs.runner.run_probe: The underlying probe execution function.
+        insideLLMs.runtime.runner.run_probe: The underlying probe execution function.
     """
 
     def __init__(self, model: Model, probes: list[Probe], name: str = "Probe Benchmark"):

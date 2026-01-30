@@ -101,7 +101,7 @@ See Also
 insideLLMs.types : Data structures for experiment results
 insideLLMs.schemas : JSON schema validation utilities
 insideLLMs.statistics : Statistical analysis functions
-insideLLMs.runner : Experiment execution utilities
+insideLLMs.runtime.runner : Experiment execution utilities
 """
 
 import csv

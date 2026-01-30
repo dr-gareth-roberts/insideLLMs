@@ -9,7 +9,7 @@ import json
 import pytest
 import yaml
 
-from insideLLMs.runner import run_harness_from_config
+from insideLLMs.runtime.runner import run_harness_from_config
 
 
 class TestRunHarnessFromConfig:

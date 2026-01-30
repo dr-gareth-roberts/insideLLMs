@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from insideLLMs.results import results_to_markdown
-from insideLLMs.runner import run_experiment_from_config
+from insideLLMs.runtime.runner import run_experiment_from_config
 from insideLLMs.visualization import create_html_report
 
 

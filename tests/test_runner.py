@@ -15,7 +15,7 @@ class TestProbeRunner:
         """Test creating a ProbeRunner."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -29,7 +29,7 @@ class TestProbeRunner:
         """Test running with a single input."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -44,7 +44,7 @@ class TestProbeRunner:
         """Test running multiple probes."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -57,7 +57,7 @@ class TestProbeRunner:
         """Test that results have the correct structure."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -78,7 +78,7 @@ class TestProbeRunner:
         """Test returning ExperimentResult from runner."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
         from insideLLMs.types import ExperimentResult
 
         model = DummyModel()
@@ -97,7 +97,7 @@ class TestRunExperimentFromConfig:
         """Test running from YAML config."""
         import yaml
 
-        from insideLLMs.runner import run_experiment_from_config
+        from insideLLMs.runtime.runner import run_experiment_from_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create data file
@@ -125,7 +125,7 @@ class TestRunExperimentFromConfig:
 
     def test_run_from_json_config(self):
         """Test running from JSON config."""
-        from insideLLMs.runner import run_experiment_from_config
+        from insideLLMs.runtime.runner import run_experiment_from_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create data file
@@ -158,7 +158,7 @@ class TestCreateExperimentResult:
         """Test creating an experiment result."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import create_experiment_result
+        from insideLLMs.runtime.runner import create_experiment_result
 
         model = DummyModel()
         probe = LogicProbe()
@@ -189,7 +189,7 @@ class TestCreateExperimentResult:
         """Test creating an experiment result with errors."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import create_experiment_result
+        from insideLLMs.runtime.runner import create_experiment_result
         from insideLLMs.types import ResultStatus
 
         model = DummyModel()
@@ -216,7 +216,7 @@ class TestLoadConfig:
         """Test loading YAML config."""
         import yaml
 
-        from insideLLMs.runner import load_config
+        from insideLLMs.runtime.runner import load_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
@@ -233,7 +233,7 @@ class TestLoadConfig:
 
     def test_load_json_config(self):
         """Test loading JSON config."""
-        from insideLLMs.runner import load_config
+        from insideLLMs.runtime.runner import load_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.json"
@@ -256,7 +256,7 @@ class TestProgressCallback:
         """Test that progress callback is called."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -286,7 +286,7 @@ class TestAsyncRunner:
         """Test async experiment execution."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -301,7 +301,7 @@ class TestAsyncRunner:
         from insideLLMs.exceptions import RunnerExecutionError
         from insideLLMs.models import DummyModel
         from insideLLMs.probes.base import Probe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
         from insideLLMs.types import ProbeResult, ResultStatus
 
         class FailingBatchProbe(Probe[str]):
@@ -348,7 +348,7 @@ class TestRunProbe:
         """Test basic run_probe usage."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import run_probe
+        from insideLLMs.runtime.runner import run_probe
 
         model = DummyModel()
         probe = LogicProbe()
@@ -361,7 +361,7 @@ class TestRunProbe:
         """Test run_probe with multiple inputs."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import run_probe
+        from insideLLMs.runtime.runner import run_probe
 
         model = DummyModel()
         probe = LogicProbe()
@@ -377,7 +377,7 @@ class TestEdgeCases:
         """Test running with empty inputs."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
         from insideLLMs.validation import ValidationError
 
         model = DummyModel()
@@ -392,7 +392,7 @@ class TestEdgeCases:
         """Test running with Unicode inputs."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -405,7 +405,7 @@ class TestEdgeCases:
         """Test running with very long input."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -423,7 +423,7 @@ class TestAsyncProbeRunner:
         """Test creating an AsyncProbeRunner."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -438,7 +438,7 @@ class TestAsyncProbeRunner:
         """Test async runner returns proper results."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -457,7 +457,7 @@ class TestResourceCleanup:
         """Test that ProbeRunner closes file handles after successful run."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -480,7 +480,7 @@ class TestResourceCleanup:
         """Test that ProbeRunner closes file handles even when probe raises."""
         from insideLLMs.models.base import Model
         from insideLLMs.probes.base import Probe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         class FailingModel(Model):
             """Model that always fails."""
@@ -527,7 +527,7 @@ class TestRunnerResume:
         """Test ProbeRunner resumes and appends remaining records."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         prompt_set = ["Q1?", "Q2?", "Q3?"]
         run_dir = tmp_path / "resume_run"
@@ -559,7 +559,7 @@ class TestRunnerResume:
         """Resume should fail if existing records don't match prompt_set."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         prompt_set = ["Q1?", "Q2?"]
         run_dir = tmp_path / "resume_mismatch_run"
@@ -587,7 +587,7 @@ class TestRunnerResume:
         """Test AsyncProbeRunner resumes and appends remaining records."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         prompt_set = ["Q1?", "Q2?", "Q3?"]
         run_dir = tmp_path / "resume_async_run"
@@ -620,7 +620,7 @@ class TestRunnerResume:
         """Async resume should fail if existing records don't match prompt_set."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         prompt_set = ["Q1?", "Q2?"]
         run_dir = tmp_path / "resume_async_mismatch_run"
@@ -650,7 +650,7 @@ class TestPipelineConfig:
     def test_create_model_with_pipeline(self):
         """Test pipeline middleware wrapping."""
         from insideLLMs.pipeline import ModelPipeline
-        from insideLLMs.runner import _create_model_from_config
+        from insideLLMs.runtime.runner import _create_model_from_config
 
         config = {
             "type": "dummy",
@@ -666,7 +666,7 @@ class TestPipelineConfig:
     def test_create_model_with_async_pipeline(self):
         """Test async pipeline wrapping."""
         from insideLLMs.pipeline import AsyncModelPipeline
-        from insideLLMs.runner import _create_model_from_config
+        from insideLLMs.runtime.runner import _create_model_from_config
 
         config = {
             "type": "dummy",
@@ -683,7 +683,7 @@ class TestPipelineConfig:
         """Test that AsyncProbeRunner closes file handles after successful run."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -707,7 +707,7 @@ class TestPipelineConfig:
         """Test that AsyncProbeRunner closes file handles even when probe raises."""
         from insideLLMs.models.base import Model
         from insideLLMs.probes.base import Probe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         class FailingModel(Model):
             """Model that always fails."""
@@ -829,7 +829,7 @@ class TestRunConfig:
         from insideLLMs.config_types import RunConfig
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         config = RunConfig(
             emit_run_artifacts=True,
@@ -849,7 +849,7 @@ class TestRunConfig:
         from insideLLMs.config_types import RunConfig
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         config = RunConfig(
             emit_run_artifacts=False,  # Config says no artifacts
@@ -876,7 +876,7 @@ class TestRunConfig:
         from insideLLMs.config_types import RunConfig
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
 
         config = RunConfig(
             emit_run_artifacts=True,
@@ -1124,7 +1124,7 @@ class TestValidation:
         """Test ProbeRunner validates prompt set before execution."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
         from insideLLMs.validation import ValidationError
 
         model = DummyModel()
@@ -1144,7 +1144,7 @@ class TestValidation:
         """Test AsyncProbeRunner validates prompt set before execution."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.runtime.runner import AsyncProbeRunner
         from insideLLMs.validation import ValidationError
 
         model = DummyModel()
@@ -1239,7 +1239,7 @@ class TestProgressInfo:
         from insideLLMs.config_types import ProgressInfo
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -1267,7 +1267,7 @@ class TestProgressInfo:
         """Test that runner still accepts legacy (current, total) callback."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -1346,7 +1346,7 @@ class TestRunnerExecutionError:
         from insideLLMs.exceptions import RunnerExecutionError
         from insideLLMs.models.base import Model
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         class FailingModel(Model):
             def __init__(self):
@@ -1379,7 +1379,7 @@ class TestRunnerExecutionError:
         """Test that stop_on_error=False collects errors without raising."""
         from insideLLMs.models.base import Model
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         class FailingModel(Model):
             def __init__(self):
@@ -1413,7 +1413,7 @@ class TestRunnerBaseProperties:
         """Test success_rate property with mixed success/error results."""
         from insideLLMs.models.base import Model
         from insideLLMs.probes.base import Probe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         class AlternatingModel(Model):
             """Model that alternates success/failure."""
@@ -1449,7 +1449,7 @@ class TestRunnerBaseProperties:
         """Test success_rate with no results (before any run)."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         model = DummyModel()
         probe = LogicProbe()
@@ -1467,7 +1467,7 @@ class TestSerializeValue:
         """Test serializing datetime objects."""
         from datetime import datetime
 
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         dt = datetime(2024, 1, 15, 10, 30, 45)
         result = _serialize_value(dt)
@@ -1477,7 +1477,7 @@ class TestSerializeValue:
         """Test serializing Path objects."""
         from pathlib import Path
 
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         p = Path("/some/test/path")
         result = _serialize_value(p)
@@ -1487,7 +1487,7 @@ class TestSerializeValue:
         """Test serializing Enum values."""
         from enum import Enum
 
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         class Color(Enum):
             RED = "red"
@@ -1500,7 +1500,7 @@ class TestSerializeValue:
         """Test serializing dataclass instances."""
         from dataclasses import dataclass
 
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         @dataclass
         class Person:
@@ -1513,7 +1513,7 @@ class TestSerializeValue:
 
     def test_serialize_set_and_frozenset(self):
         """Test serializing sets."""
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         s = {3, 1, 2}
         result = _serialize_value(s)
@@ -1525,7 +1525,7 @@ class TestSerializeValue:
 
     def test_serialize_set_with_unsortable_items(self):
         """Test serializing sets with non-comparable items."""
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         # Sets containing dicts (cannot be directly compared)
         s = {frozenset([("a", 1)]), frozenset([("b", 2)])}
@@ -1536,7 +1536,7 @@ class TestSerializeValue:
         """Test serializing nested dicts and lists."""
         from pathlib import Path
 
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         data = {
             "path": Path("/test"),
@@ -1549,7 +1549,7 @@ class TestSerializeValue:
 
     def test_serialize_exotic_object(self):
         """Test serializing unknown object types falls back to str."""
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         class CustomObject:
             def __str__(self):
@@ -1562,7 +1562,7 @@ class TestSerializeValue:
     def test_strict_serialize_exotic_object_raises(self):
         """Strict mode should reject unknown object types."""
         from insideLLMs._serialization import StrictSerializationError
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         class CustomObject:
             pass
@@ -1573,7 +1573,7 @@ class TestSerializeValue:
     def test_strict_serialize_non_string_key_raises(self):
         """Strict mode should reject non-deterministic dict keys."""
         from insideLLMs._serialization import StrictSerializationError
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         class BadKey:
             pass
@@ -1584,7 +1584,7 @@ class TestSerializeValue:
     def test_strict_serialize_key_collision_raises(self):
         """Strict mode should reject dict key collisions after coercion."""
         from insideLLMs._serialization import StrictSerializationError
-        from insideLLMs.runner import _serialize_value
+        from insideLLMs.runtime.runner import _serialize_value
 
         with pytest.raises(StrictSerializationError, match="Dict key collision"):
             _serialize_value({1: "a", "1": "b"}, strict=True)
@@ -1595,14 +1595,14 @@ class TestSemverTuple:
 
     def test_valid_semver(self):
         """Test parsing valid semver strings."""
-        from insideLLMs.runner import _semver_tuple
+        from insideLLMs.runtime.runner import _semver_tuple
 
         assert _semver_tuple("1.0.0") == (1, 0, 0)
         assert _semver_tuple("2.3.4") == (2, 3, 4)
 
     def test_invalid_semver(self):
         """Test parsing invalid semver returns (0, 0, 0)."""
-        from insideLLMs.runner import _semver_tuple
+        from insideLLMs.runtime.runner import _semver_tuple
 
         assert _semver_tuple("invalid") == (0, 0, 0)
         assert _semver_tuple("") == (0, 0, 0)
@@ -1613,7 +1613,7 @@ class TestDefaultRunRoot:
 
     def test_default_run_root_env_var(self, monkeypatch, tmp_path):
         """Test _default_run_root respects INSIDELLMS_RUN_ROOT env var."""
-        from insideLLMs.runner import _default_run_root
+        from insideLLMs.runtime.runner import _default_run_root
 
         custom_root = str(tmp_path / "custom_runs")
         monkeypatch.setenv("INSIDELLMS_RUN_ROOT", custom_root)
@@ -1624,7 +1624,7 @@ class TestDefaultRunRoot:
         """Test _default_run_root falls back to home directory."""
         from pathlib import Path
 
-        from insideLLMs.runner import _default_run_root
+        from insideLLMs.runtime.runner import _default_run_root
 
         monkeypatch.delenv("INSIDELLMS_RUN_ROOT", raising=False)
         result = _default_run_root()
@@ -1636,14 +1636,14 @@ class TestFingerprintValue:
 
     def test_fingerprint_none(self):
         """Test _fingerprint_value returns None for None input."""
-        from insideLLMs.runner import _fingerprint_value
+        from insideLLMs.runtime.runner import _fingerprint_value
 
         result = _fingerprint_value(None)
         assert result is None
 
     def test_fingerprint_dict(self):
         """Test _fingerprint_value for dict input."""
-        from insideLLMs.runner import _fingerprint_value
+        from insideLLMs.runtime.runner import _fingerprint_value
 
         result = _fingerprint_value({"key": "value"})
         assert result is not None
@@ -1655,7 +1655,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_dict(self):
         """Test normalizing a dict returns it unchanged."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         d = {"key": "value"}
         result = _normalize_info_obj_to_dict(d)
@@ -1663,7 +1663,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_none(self):
         """Test normalizing None returns empty dict."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         result = _normalize_info_obj_to_dict(None)
         assert result == {}
@@ -1672,7 +1672,7 @@ class TestNormalizeInfoObjToDict:
         """Test normalizing a dataclass."""
         from dataclasses import dataclass
 
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         @dataclass
         class Info:
@@ -1685,7 +1685,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_pydantic_v1_style(self):
         """Test normalizing object with .dict() method (pydantic v1 style)."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         class FakePydanticV1:
             def dict(self):
@@ -1697,7 +1697,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_pydantic_v2_style(self):
         """Test normalizing object with .model_dump() method (pydantic v2 style)."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         class FakePydanticV2:
             def model_dump(self):
@@ -1709,7 +1709,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_pydantic_dict_raises(self):
         """Test normalizing object whose .dict() raises returns empty dict."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         class BrokenPydantic:
             def dict(self):
@@ -1721,7 +1721,7 @@ class TestNormalizeInfoObjToDict:
 
     def test_normalize_pydantic_model_dump_raises(self):
         """Test normalizing object whose .model_dump() raises returns empty dict."""
-        from insideLLMs.runner import _normalize_info_obj_to_dict
+        from insideLLMs.runtime.runner import _normalize_info_obj_to_dict
 
         class BrokenPydanticV2:
             def model_dump(self):
@@ -1737,7 +1737,7 @@ class TestPrepareRunDir:
 
     def test_create_new_directory(self, tmp_path):
         """Test creating a new run directory."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "new_run"
         _prepare_run_dir(run_dir, overwrite=False)
@@ -1745,7 +1745,7 @@ class TestPrepareRunDir:
 
     def test_use_existing_empty_directory(self, tmp_path):
         """Test using an existing empty directory."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "empty_run"
         run_dir.mkdir()
@@ -1754,7 +1754,7 @@ class TestPrepareRunDir:
 
     def test_fail_on_non_empty_directory(self, tmp_path):
         """Test failure when directory is non-empty and overwrite=False."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "non_empty"
         run_dir.mkdir()
@@ -1765,7 +1765,7 @@ class TestPrepareRunDir:
 
     def test_fail_on_existing_file_not_dir(self, tmp_path):
         """Test failure when path exists but is a file."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         file_path = tmp_path / "is_a_file"
         file_path.write_text("I am a file")
@@ -1775,7 +1775,7 @@ class TestPrepareRunDir:
 
     def test_overwrite_with_sentinel(self, tmp_path):
         """Test overwriting a directory with manifest.json sentinel."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "run_to_overwrite"
         run_dir.mkdir()
@@ -1788,7 +1788,7 @@ class TestPrepareRunDir:
 
     def test_overwrite_with_insidellms_sentinel(self, tmp_path):
         """Test overwriting a directory with .insidellms_run sentinel."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "run_with_marker"
         run_dir.mkdir()
@@ -1801,7 +1801,7 @@ class TestPrepareRunDir:
 
     def test_refuse_overwrite_without_sentinel(self, tmp_path):
         """Test refusing to overwrite directory without sentinel."""
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         run_dir = tmp_path / "no_sentinel"
         run_dir.mkdir()
@@ -1819,7 +1819,7 @@ class TestPrepareRunDir:
         from pathlib import Path
 
         from insideLLMs import runner
-        from insideLLMs.runner import _prepare_run_dir
+        from insideLLMs.runtime.runner import _prepare_run_dir
 
         source = inspect.getsource(runner._prepare_run_dir)
         assert "len(resolved.parts) <= 2" in source
@@ -1831,7 +1831,7 @@ class TestCoerceModelInfo:
     def test_coerce_from_dict_info(self):
         """Test coercing model info from dict."""
         from insideLLMs.models.base import Model
-        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.runtime.runner import _coerce_model_info
         from insideLLMs.types import ModelInfo
 
         class DictInfoModel(Model):
@@ -1860,7 +1860,7 @@ class TestCoerceModelInfo:
     def test_coerce_preserves_model_info(self):
         """Test that existing ModelInfo is returned unchanged."""
         from insideLLMs.models.base import Model
-        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.runtime.runner import _coerce_model_info
         from insideLLMs.types import ModelInfo
 
         original_info = ModelInfo(
@@ -1887,7 +1887,7 @@ class TestCoerceModelInfo:
     def test_coerce_with_exception_in_info(self):
         """Test coercing when model.info() raises an exception."""
         from insideLLMs.models.base import Model
-        from insideLLMs.runner import _coerce_model_info
+        from insideLLMs.runtime.runner import _coerce_model_info
         from insideLLMs.types import ModelInfo
 
         class BrokenInfoModel(Model):
@@ -1914,7 +1914,7 @@ class TestBuildResultRecord:
         """Test building a record with string output."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _build_result_record
+        from insideLLMs.runtime.runner import _build_result_record
 
         record = _build_result_record(
             schema_version="1.0.0",
@@ -1941,7 +1941,7 @@ class TestBuildResultRecord:
         """Test building a record with dict output containing scores."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _build_result_record
+        from insideLLMs.runtime.runner import _build_result_record
 
         record = _build_result_record(
             schema_version="1.0.0",
@@ -1974,7 +1974,7 @@ class TestBuildResultRecord:
         """Test building a record with messages-style input."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _build_result_record
+        from insideLLMs.runtime.runner import _build_result_record
 
         item = {
             "messages": [
@@ -2010,7 +2010,7 @@ class TestBuildResultRecord:
         """Test building a record with an error."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _build_result_record
+        from insideLLMs.runtime.runner import _build_result_record
 
         record = _build_result_record(
             schema_version="1.0.0",
@@ -2039,14 +2039,14 @@ class TestLoadConfigErrors:
 
     def test_load_config_file_not_found(self):
         """Test load_config raises FileNotFoundError for missing file."""
-        from insideLLMs.runner import load_config
+        from insideLLMs.runtime.runner import load_config
 
         with pytest.raises(FileNotFoundError, match="Config file not found"):
             load_config("/nonexistent/config.yaml")
 
     def test_load_config_unsupported_format(self, tmp_path):
         """Test load_config raises ValueError for unsupported format."""
-        from insideLLMs.runner import load_config
+        from insideLLMs.runtime.runner import load_config
 
         config_path = tmp_path / "config.txt"
         config_path.write_text("some content")
@@ -2060,7 +2060,7 @@ class TestCreateModelFromConfigFallback:
 
     def test_create_unknown_model_type(self):
         """Test creating model with unknown type raises ValueError."""
-        from insideLLMs.runner import _create_model_from_config
+        from insideLLMs.runtime.runner import _create_model_from_config
 
         with pytest.raises(ValueError, match="Unknown model type"):
             _create_model_from_config({"type": "nonexistent_model_xyz"})
@@ -2071,7 +2071,7 @@ class TestCreateProbeFromConfigFallback:
 
     def test_create_unknown_probe_type(self):
         """Test creating probe with unknown type raises ValueError."""
-        from insideLLMs.runner import _create_probe_from_config
+        from insideLLMs.runtime.runner import _create_probe_from_config
 
         with pytest.raises(ValueError, match="Unknown probe type"):
             _create_probe_from_config({"type": "nonexistent_probe_xyz"})
@@ -2084,7 +2084,7 @@ class TestLoadDatasetFromConfig:
         """Test loading CSV dataset from config."""
         import csv
 
-        from insideLLMs.runner import _load_dataset_from_config
+        from insideLLMs.runtime.runner import _load_dataset_from_config
 
         csv_path = tmp_path / "data.csv"
         with open(csv_path, "w", newline="") as f:
@@ -2101,7 +2101,7 @@ class TestLoadDatasetFromConfig:
         """Test loading JSONL dataset from config."""
         import json
 
-        from insideLLMs.runner import _load_dataset_from_config
+        from insideLLMs.runtime.runner import _load_dataset_from_config
 
         jsonl_path = tmp_path / "data.jsonl"
         with open(jsonl_path, "w") as f:
@@ -2155,7 +2155,7 @@ class TestLoadDatasetFromConfig:
 
     def test_load_unknown_format(self, tmp_path):
         """Test loading unknown format raises ValueError."""
-        from insideLLMs.runner import _load_dataset_from_config
+        from insideLLMs.runtime.runner import _load_dataset_from_config
 
         config = {"format": "unknown_format"}
 
@@ -2168,7 +2168,7 @@ class TestAtomicWrite:
 
     def test_atomic_write_text(self, tmp_path):
         """Test _atomic_write_text creates file correctly."""
-        from insideLLMs.runner import _atomic_write_text
+        from insideLLMs.runtime.runner import _atomic_write_text
 
         file_path = tmp_path / "test.txt"
         _atomic_write_text(file_path, "Hello, World!")
@@ -2180,7 +2180,7 @@ class TestAtomicWrite:
         """Test _atomic_write_yaml creates file correctly."""
         import yaml
 
-        from insideLLMs.runner import _atomic_write_yaml
+        from insideLLMs.runtime.runner import _atomic_write_yaml
 
         file_path = tmp_path / "test.yaml"
         _atomic_write_yaml(file_path, {"key": "value", "number": 42})
@@ -2196,7 +2196,7 @@ class TestDeterministicFunctions:
 
     def test_deterministic_run_id_from_inputs(self):
         """Test deterministic run ID generation from inputs."""
-        from insideLLMs.runner import _deterministic_run_id_from_inputs
+        from insideLLMs.runtime.runner import _deterministic_run_id_from_inputs
 
         run_id = _deterministic_run_id_from_inputs(
             schema_version="1.0.0",
@@ -2221,7 +2221,7 @@ class TestDeterministicFunctions:
 
     def test_deterministic_base_time(self):
         """Test deterministic base time generation."""
-        from insideLLMs.runner import _deterministic_base_time
+        from insideLLMs.runtime.runner import _deterministic_base_time
 
         time1 = _deterministic_base_time("run-123")
         time2 = _deterministic_base_time("run-123")
@@ -2234,7 +2234,7 @@ class TestDeterministicFunctions:
         """Test deterministic item times."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _deterministic_item_times
+        from insideLLMs.runtime.runner import _deterministic_item_times
 
         base = datetime(2024, 1, 1, tzinfo=timezone.utc)
         started, completed = _deterministic_item_times(base, 5)
@@ -2246,7 +2246,7 @@ class TestDeterministicFunctions:
         """Test _deterministic_run_times handles negative total."""
         from datetime import datetime, timezone
 
-        from insideLLMs.runner import _deterministic_run_times
+        from insideLLMs.runtime.runner import _deterministic_run_times
 
         base = datetime(2024, 1, 1, tzinfo=timezone.utc)
         started, completed = _deterministic_run_times(base, -5)
@@ -2261,7 +2261,7 @@ class TestStrictDeterminism:
     @staticmethod
     def _make_runner():
         from insideLLMs.models import DummyModel
-        from insideLLMs.runner import ProbeRunner
+        from insideLLMs.runtime.runner import ProbeRunner
 
         class MinimalProbe:
             name = "minimal"
@@ -2303,7 +2303,7 @@ class TestStrictDeterminism:
         assert manifest["platform"] is None
 
     def test_determinism_config_requires_bool_values(self):
-        from insideLLMs.runner import _resolve_determinism_options
+        from insideLLMs.runtime.runner import _resolve_determinism_options
 
         bad_config = {"determinism": {"strict_serialization": "yes"}}
         with pytest.raises(ValueError, match="determinism.strict_serialization"):
@@ -2329,7 +2329,7 @@ class TestResolvePath:
         """Test resolving absolute path returns it unchanged."""
         from pathlib import Path
 
-        from insideLLMs.runner import _resolve_path
+        from insideLLMs.runtime.runner import _resolve_path
 
         abs_path = "/absolute/path/to/file.txt"
         result = _resolve_path(abs_path, Path("/base"))
@@ -2339,7 +2339,7 @@ class TestResolvePath:
         """Test resolving relative path uses base directory."""
         from pathlib import Path
 
-        from insideLLMs.runner import _resolve_path
+        from insideLLMs.runtime.runner import _resolve_path
 
         result = _resolve_path("relative/file.txt", Path("/base/dir"))
         assert result == Path("/base/dir/relative/file.txt")
@@ -2350,7 +2350,7 @@ class TestBuildResolvedConfigSnapshot:
 
     def test_resolve_dataset_path(self, tmp_path):
         """Test that dataset path is normalized for determinism."""
-        from insideLLMs.runner import _build_resolved_config_snapshot
+        from insideLLMs.runtime.runner import _build_resolved_config_snapshot
 
         config = {
             "model": {"type": "dummy"},
@@ -2368,7 +2368,7 @@ class TestBuildResolvedConfigSnapshot:
 
     def test_preserves_non_path_configs(self, tmp_path):
         """Test that non-path configs are preserved."""
-        from insideLLMs.runner import _build_resolved_config_snapshot
+        from insideLLMs.runtime.runner import _build_resolved_config_snapshot
 
         config = {
             "model": {"type": "dummy", "args": {"setting": "value"}},
@@ -2387,7 +2387,7 @@ class TestEnsureRunSentinel:
 
     def test_creates_sentinel(self, tmp_path):
         """Test sentinel file is created."""
-        from insideLLMs.runner import _ensure_run_sentinel
+        from insideLLMs.runtime.runner import _ensure_run_sentinel
 
         run_dir = tmp_path / "run"
         run_dir.mkdir()
@@ -2398,7 +2398,7 @@ class TestEnsureRunSentinel:
 
     def test_does_not_overwrite_existing(self, tmp_path):
         """Test existing sentinel is not overwritten."""
-        from insideLLMs.runner import _ensure_run_sentinel
+        from insideLLMs.runtime.runner import _ensure_run_sentinel
 
         run_dir = tmp_path / "run"
         run_dir.mkdir()
@@ -2419,7 +2419,7 @@ class TestRunProbeAsync:
         """Test basic run_probe_async usage."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import run_probe_async
+        from insideLLMs.runtime.runner import run_probe_async
 
         model = DummyModel()
         probe = LogicProbe()
@@ -2432,7 +2432,7 @@ class TestRunProbeAsync:
         """Test run_probe_async with custom concurrency."""
         from insideLLMs.models import DummyModel
         from insideLLMs.probes import LogicProbe
-        from insideLLMs.runner import run_probe_async
+        from insideLLMs.runtime.runner import run_probe_async
 
         model = DummyModel()
         probe = LogicProbe()

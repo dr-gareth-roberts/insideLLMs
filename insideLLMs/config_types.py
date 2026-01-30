@@ -121,8 +121,8 @@ Notes
 
 See Also
 --------
-insideLLMs.runner.ProbeRunner : Synchronous probe runner
-insideLLMs.runner.AsyncProbeRunner : Asynchronous probe runner
+insideLLMs.runtime.runner.ProbeRunner : Synchronous probe runner
+insideLLMs.runtime.runner.AsyncProbeRunner : Asynchronous probe runner
 insideLLMs.schemas.constants : Schema version constants
 
 Examples
@@ -131,7 +131,7 @@ Complete example with async runner:
 
     >>> import asyncio
     >>> from insideLLMs.config_types import RunConfig, RunConfigBuilder
-    >>> from insideLLMs.runner import AsyncProbeRunner
+    >>> from insideLLMs.runtime.runner import AsyncProbeRunner
     >>>
     >>> async def run_experiment():
     ...     config = (
