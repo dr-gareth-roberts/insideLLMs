@@ -1873,9 +1873,7 @@ def generate_statistical_report(
     if output_path:
         output_path_obj = Path(output_path)
         if not output_path_obj.parent.exists():
-            raise FileNotFoundError(
-                f"Parent directory does not exist: {output_path_obj.parent}"
-            )
+            raise FileNotFoundError(f"Parent directory does not exist: {output_path_obj.parent}")
         from insideLLMs.resources import atomic_write_text
 
         atomic_write_text(output_path_obj, report)
