@@ -106,9 +106,11 @@ insideLLMs.runner : Experiment execution utilities
 
 import csv
 import json
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from datetime import datetime
+from enum import Enum
 from html import escape as _html_escape
+from pathlib import Path
 from typing import Any, Optional, Union
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
@@ -296,18 +298,18 @@ def _serialize_for_json(obj: Any) -> Any:
     This function is used internally by ``save_results_json`` to prepare
     complex experiment results for JSON serialization.
     """
-    if hasattr(obj, "__dict__"):
-        if hasattr(obj, "__dataclass_fields__"):
-            return asdict(obj)
-        return obj.__dict__
-    elif isinstance(obj, datetime):
+    if isinstance(obj, datetime):
         return obj.isoformat()
-    elif isinstance(obj, (list, tuple)):
-        return [_serialize_for_json(item) for item in obj]
-    elif isinstance(obj, dict):
-        return {k: _serialize_for_json(v) for k, v in obj.items()}
-    elif hasattr(obj, "value"):  # Enum
+    if isinstance(obj, Enum):
         return obj.value
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return _serialize_for_json(asdict(obj))
+    if isinstance(obj, (list, tuple)):
+        return [_serialize_for_json(item) for item in obj]
+    if isinstance(obj, dict):
+        return {k: _serialize_for_json(v) for k, v in obj.items()}
+    if hasattr(obj, "__dict__"):
+        return {k: _serialize_for_json(v) for k, v in obj.__dict__.items()}
     return obj
 
 
@@ -422,6 +424,9 @@ def save_results_json(
     _serialize_for_json : Internal serialization helper
     """
     serializable = _serialize_for_json(results)
+    path_obj = Path(path)
+    if not path_obj.parent.exists():
+        raise FileNotFoundError(f"Parent directory does not exist: {path_obj.parent}")
 
     if validate_output:
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
@@ -458,8 +463,15 @@ def save_results_json(
                         schema_version=schema_version,
                         mode=validation_mode,  # type: ignore[arg-type]
                     )
-    with open(path, "w") as f:
-        json.dump(serializable, f, indent=indent, default=str)
+    from insideLLMs.resources import atomic_write_text
+
+    payload = json.dumps(
+        serializable,
+        indent=indent,
+        default=str,
+        sort_keys=True,
+    )
+    atomic_write_text(path_obj, payload)
 
 
 def load_results_json(path: str) -> dict[str, Any]:
@@ -534,7 +546,7 @@ def load_results_json(path: str) -> dict[str, Any]:
     --------
     save_results_json : Save results to a JSON file
     """
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -628,7 +640,10 @@ def results_to_markdown(results: list[dict[str, Any]]) -> str:
     return md
 
 
-def experiment_to_markdown(experiment: ExperimentResult) -> str:
+def experiment_to_markdown(
+    experiment: ExperimentResult,
+    generated_at: Optional[datetime] = None,
+) -> str:
     """Convert an ExperimentResult to a comprehensive Markdown report.
 
     Generates a full Markdown document including model information, probe
@@ -641,6 +656,10 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
     experiment : ExperimentResult
         The experiment result object containing all probe execution data,
         including model info, scores, and individual results.
+    generated_at : datetime or None, default=None
+        Explicit timestamp to display in the report footer. If omitted, the
+        report uses ``experiment.completed_at`` (or ``started_at``) when
+        available; otherwise the footer is omitted.
 
     Returns
     -------
@@ -727,7 +746,7 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
     Notes
     -----
     - Input and output strings are truncated to 50 characters in the table
-    - The generation timestamp uses ISO format
+    - The generation timestamp uses ISO format when available
     - Scores section only appears if ``experiment.score`` is not None
     - Timing section only appears if ``experiment.duration_seconds`` is set
 
@@ -760,7 +779,7 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
     if experiment.score:
         lines.extend(_score_to_markdown_lines(experiment.score))
 
-    if experiment.duration_seconds:
+    if experiment.duration_seconds is not None:
         lines.extend(
             [
                 "## Timing",
@@ -777,13 +796,19 @@ def experiment_to_markdown(experiment: ExperimentResult) -> str:
 
     for i, result in enumerate(experiment.results, 1):
         input_str = _escape_markdown_cell(str(result.input)[:50])
-        output_str = _escape_markdown_cell(str(result.output)[:50] if result.output else "")
+        output_str = (
+            _escape_markdown_cell(str(result.output)[:50]) if result.output is not None else ""
+        )
         status = result.status.value
         latency = _format_number(result.latency_ms, 1)
         lines.append(f"| {i} | {input_str} | {output_str} | {status} | {latency} |")
 
-    lines.append("")
-    lines.append(f"_Generated at {datetime.now().isoformat()}_")
+    generated_at_value = generated_at
+    if generated_at_value is None:
+        generated_at_value = experiment.completed_at or experiment.started_at
+    if generated_at_value is not None:
+        lines.append("")
+        lines.append(f"_Generated at {generated_at_value.isoformat()}_")
 
     return "\n".join(lines)
 
@@ -872,7 +897,8 @@ def _score_to_markdown_lines(score: ProbeScore) -> list[str]:
     if score.custom_metrics:
         lines.append("")
         lines.append("### Custom Metrics")
-        for name, value in score.custom_metrics.items():
+        for name in sorted(score.custom_metrics):
+            value = score.custom_metrics[name]
             lines.append(f"- **{name}:** {_format_number(value, 4)}")
 
     lines.append("")
@@ -961,8 +987,12 @@ def save_results_markdown(
     else:
         md = results_to_markdown(results)
 
-    with open(path, "w") as f:
-        f.write(md)
+    path_obj = Path(path)
+    if not path_obj.parent.exists():
+        raise FileNotFoundError(f"Parent directory does not exist: {path_obj.parent}")
+    from insideLLMs.resources import atomic_write_text
+
+    atomic_write_text(path_obj, md)
 
 
 # CSV Export Functions
@@ -1038,6 +1068,7 @@ def results_to_csv(
     Notes
     -----
     - Uses Python's csv.DictWriter with default dialect (excel)
+    - When fields is None, columns are derived from the first row and sorted for determinism
     - Fields not in the field list are ignored (via ``extrasaction='ignore'``)
     - Values containing commas, quotes, or newlines are properly quoted
     - Output uses CRLF line endings (CSV standard)
@@ -1050,7 +1081,7 @@ def results_to_csv(
         return ""
 
     if fields is None:
-        fields = list(results[0].keys())
+        fields = sorted(results[0].keys())
 
     import io
 
@@ -1130,8 +1161,12 @@ def save_results_csv(
     results_to_csv : Convert to CSV string without file I/O
     """
     csv_content = results_to_csv(results, fields)
-    with open(path, "w") as f:
-        f.write(csv_content)
+    path_obj = Path(path)
+    if not path_obj.parent.exists():
+        raise FileNotFoundError(f"Parent directory does not exist: {path_obj.parent}")
+    from insideLLMs.resources import atomic_write_text
+
+    atomic_write_text(path_obj, csv_content)
 
 
 # HTML Export Functions
@@ -1142,7 +1177,7 @@ def experiment_to_html(
     include_statistics: bool = True,
     *,
     escape_html: bool = True,
-    generated_at: Optional[str] = None,
+    generated_at: Optional[Union[str, datetime]] = None,
 ) -> str:
     """Convert an ExperimentResult to a styled HTML report.
 
@@ -1157,6 +1192,11 @@ def experiment_to_html(
     include_statistics : bool, default=True
         Whether to include statistical analysis sections. Currently reserved
         for future use; the parameter is accepted but does not change output.
+    escape_html : bool, default=True
+        If True, HTML-escape model inputs/outputs to prevent injection.
+    generated_at : datetime or str or None, default=None
+        Footer timestamp to display. If omitted, the report uses
+        ``experiment.completed_at`` (or ``started_at``) when available.
 
     Returns
     -------
@@ -1335,17 +1375,27 @@ def experiment_to_html(
     for i, result in enumerate(experiment.results, 1):
         status_class = "success" if result.status.value == "success" else "error"
         input_str = _esc(str(result.input)[:100])
-        output_str = _esc(str(result.output)[:100]) if result.output else ""
-        latency = f"{result.latency_ms:.1f}" if result.latency_ms else "N/A"
+        output_str = _esc(str(result.output)[:100]) if result.output is not None else ""
+        latency = f"{result.latency_ms:.1f}" if result.latency_ms is not None else "N/A"
         html_parts.append(
             f"<tr><td>{i}</td><td>{input_str}</td><td>{output_str}</td>"
             f"<td class='{status_class}'>{result.status.value}</td><td>{latency}</td></tr>"
         )
 
+    generated_at_value = generated_at
+    if generated_at_value is None:
+        generated_at_value = experiment.completed_at or experiment.started_at
+    if isinstance(generated_at_value, datetime):
+        generated_at_text = generated_at_value.isoformat()
+    elif generated_at_value is not None:
+        generated_at_text = str(generated_at_value)
+    else:
+        generated_at_text = None
+
     html_parts.extend(
         [
             "</table>",
-            f"<p><em>Generated at {_esc(generated_at)}</em></p>" if generated_at else "",
+            f"<p><em>Generated at {_esc(generated_at_text)}</em></p>" if generated_at_text else "",
             "</body>",
             "</html>",
         ]
@@ -1425,8 +1475,12 @@ def save_results_html(experiment: ExperimentResult, path: str) -> None:
     save_results_markdown : Save as Markdown instead
     """
     html = experiment_to_html(experiment)
-    with open(path, "w") as f:
-        f.write(html)
+    path_obj = Path(path)
+    if not path_obj.parent.exists():
+        raise FileNotFoundError(f"Parent directory does not exist: {path_obj.parent}")
+    from insideLLMs.resources import atomic_write_text
+
+    atomic_write_text(path_obj, html)
 
 
 # Comparison Reports
@@ -1553,10 +1607,14 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
 
     for exp in comparison.experiments:
         success_rate = f"{exp.success_rate * 100:.1f}%"
-        accuracy = f"{exp.score.accuracy * 100:.1f}%" if exp.score and exp.score.accuracy else "N/A"
+        accuracy = (
+            f"{exp.score.accuracy * 100:.1f}%"
+            if exp.score and exp.score.accuracy is not None
+            else "N/A"
+        )
         latency = (
             f"{exp.score.mean_latency_ms:.1f} ms"
-            if exp.score and exp.score.mean_latency_ms
+            if exp.score and exp.score.mean_latency_ms is not None
             else "N/A"
         )
         lines.append(
@@ -1569,7 +1627,8 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
     if comparison.rankings:
         lines.append("## Rankings")
         lines.append("")
-        for metric, ranking in comparison.rankings.items():
+        for metric in sorted(comparison.rankings):
+            ranking = comparison.rankings[metric]
             lines.append(f"### {metric}")
             for i, name in enumerate(ranking, 1):
                 lines.append(f"{i}. {name}")
@@ -1579,7 +1638,8 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
     if comparison.summary:
         lines.append("## Summary")
         lines.append("")
-        for key, value in comparison.summary.items():
+        for key in sorted(comparison.summary):
+            value = comparison.summary[key]
             lines.append(f"- **{key}:** {value}")
         lines.append("")
 
@@ -1646,8 +1706,12 @@ def save_comparison_markdown(comparison: BenchmarkComparison, path: str) -> None
     comparison_to_markdown : Convert comparison to Markdown string
     """
     md = comparison_to_markdown(comparison)
-    with open(path, "w") as f:
-        f.write(md)
+    path_obj = Path(path)
+    if not path_obj.parent.exists():
+        raise FileNotFoundError(f"Parent directory does not exist: {path_obj.parent}")
+    from insideLLMs.resources import atomic_write_text
+
+    atomic_write_text(path_obj, md)
 
 
 # Statistical Report Generation
@@ -1658,6 +1722,7 @@ def generate_statistical_report(
     output_path: Optional[str] = None,
     format: str = "markdown",
     confidence_level: float = 0.95,
+    generated_at: Optional[datetime] = None,
 ) -> str:
     """Generate a comprehensive statistical analysis report.
 
@@ -1681,6 +1746,9 @@ def generate_statistical_report(
     confidence_level : float, default=0.95
         Confidence level for statistical intervals (e.g., 0.95 for 95% CI).
         Must be between 0 and 1.
+    generated_at : datetime or None, default=None
+        Optional timestamp for report footers. If None, uses the latest
+        experiment completion time when available.
 
     Returns
     -------
@@ -1789,16 +1857,28 @@ def generate_statistical_report(
     # Generate the summary
     summary = generate_summary_report(experiments, True, confidence_level)
 
+    if generated_at is None:
+        generated_at = max(
+            (exp.completed_at for exp in experiments if exp.completed_at),
+            default=None,
+        )
+
     if format == "json":
-        report = json.dumps(summary, indent=2, default=str)
+        report = json.dumps(summary, indent=2, default=str, sort_keys=True)
     elif format == "html":
-        report = _statistical_report_to_html(summary, confidence_level)
+        report = _statistical_report_to_html(summary, confidence_level, generated_at)
     else:  # markdown
-        report = _statistical_report_to_markdown(summary, confidence_level)
+        report = _statistical_report_to_markdown(summary, confidence_level, generated_at)
 
     if output_path:
-        with open(output_path, "w") as f:
-            f.write(report)
+        output_path_obj = Path(output_path)
+        if not output_path_obj.parent.exists():
+            raise FileNotFoundError(
+                f"Parent directory does not exist: {output_path_obj.parent}"
+            )
+        from insideLLMs.resources import atomic_write_text
+
+        atomic_write_text(output_path_obj, report)
 
     return report
 
@@ -1806,6 +1886,7 @@ def generate_statistical_report(
 def _statistical_report_to_markdown(
     summary: dict[str, Any],
     confidence_level: float,
+    generated_at: Optional[datetime],
 ) -> str:
     """Convert a statistical summary dictionary to a Markdown report.
 
@@ -1824,6 +1905,8 @@ def _statistical_report_to_markdown(
         - ``by_probe``: Per-probe breakdowns
     confidence_level : float
         Confidence level used for intervals, displayed in the report header.
+    generated_at : datetime or None
+        Optional timestamp to render in the footer.
 
     Returns
     -------
@@ -1851,7 +1934,7 @@ def _statistical_report_to_markdown(
     ...         },
     ...     },
     ... }
-    >>> md = _statistical_report_to_markdown(summary, 0.95)
+    >>> md = _statistical_report_to_markdown(summary, 0.95, None)
     >>> "# Statistical Analysis Report" in md
     True
     >>> "**Confidence Level:** 95%" in md
@@ -1905,7 +1988,8 @@ def _statistical_report_to_markdown(
             ]
         )
 
-        for model_name, model_data in summary["by_model"].items():
+        for model_name in sorted(summary["by_model"]):
+            model_data = summary["by_model"][model_name]
             n = model_data["n_experiments"]
             sr = model_data["success_rate"]["mean"] * 100
             sr_ci = model_data.get("success_rate_ci", {})
@@ -1931,7 +2015,8 @@ def _statistical_report_to_markdown(
             ]
         )
 
-        for probe_name, probe_data in summary["by_probe"].items():
+        for probe_name in sorted(summary["by_probe"]):
+            probe_data = summary["by_probe"][probe_name]
             n = probe_data["n_experiments"]
             sr = probe_data["success_rate"]["mean"] * 100
             acc = probe_data.get("accuracy", {}).get("mean")
@@ -1946,7 +2031,8 @@ def _statistical_report_to_markdown(
 
         lines.append("")
 
-    lines.append(f"_Report generated at {datetime.now().isoformat()}_")
+    if generated_at is not None:
+        lines.append(f"_Report generated at {generated_at.isoformat()}_")
 
     return "\n".join(lines)
 
@@ -1954,6 +2040,7 @@ def _statistical_report_to_markdown(
 def _statistical_report_to_html(
     summary: dict[str, Any],
     confidence_level: float,
+    generated_at: Optional[datetime],
 ) -> str:
     """Convert a statistical summary dictionary to a styled HTML report.
 
@@ -1970,6 +2057,8 @@ def _statistical_report_to_html(
         - ``by_model``: Per-model breakdowns with success rates and CIs
     confidence_level : float
         Confidence level used for intervals, displayed in the header cards.
+    generated_at : datetime or None
+        Optional timestamp to render in the footer.
 
     Returns
     -------
@@ -1992,7 +2081,7 @@ def _statistical_report_to_html(
     ...         },
     ...     },
     ... }
-    >>> html = _statistical_report_to_html(summary, 0.95)
+    >>> html = _statistical_report_to_html(summary, 0.95, None)
     >>> "<!DOCTYPE html>" in html
     True
     >>> "Statistical Analysis Report" in html
@@ -2057,7 +2146,8 @@ def _statistical_report_to_html(
             ]
         )
 
-        for model_name, model_data in summary["by_model"].items():
+        for model_name in sorted(summary["by_model"]):
+            model_data = summary["by_model"][model_name]
             n = model_data["n_experiments"]
             sr = model_data["success_rate"]["mean"] * 100
             sr_ci = model_data.get("success_rate_ci", {})
@@ -2072,12 +2162,8 @@ def _statistical_report_to_html(
 
         html.extend(["</table>", "</div>"])
 
-    html.extend(
-        [
-            f"<p><em>Report generated at {datetime.now().isoformat()}</em></p>",
-            "</body>",
-            "</html>",
-        ]
-    )
+    if generated_at is not None:
+        html.append(f"<p><em>Report generated at {generated_at.isoformat()}</em></p>")
+    html.extend(["</body>", "</html>"])
 
     return "\n".join(html)

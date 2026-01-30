@@ -1802,15 +1802,16 @@ def generate_summary_report(
 
     report = {
         "total_experiments": len(results),
-        "unique_models": list(by_model.keys()),
-        "unique_probes": list(by_probe.keys()),
+        "unique_models": sorted(by_model.keys()),
+        "unique_probes": sorted(by_probe.keys()),
         "by_model": {},
         "by_probe": {},
         "overall": {},
     }
 
     # Analyze by model
-    for model_name, model_results in by_model.items():
+    for model_name in sorted(by_model):
+        model_results = by_model[model_name]
         success_rates = extract_success_rates(model_results)
         latencies = extract_latencies(model_results)
 
@@ -1834,7 +1835,8 @@ def generate_summary_report(
         report["by_model"][model_name] = model_report
 
     # Analyze by probe
-    for probe_name, probe_results in by_probe.items():
+    for probe_name in sorted(by_probe):
+        probe_results = by_probe[probe_name]
         success_rates = extract_success_rates(probe_results)
 
         probe_report = {

@@ -318,6 +318,31 @@ class TestSaveAndLoadFunctions:
         finally:
             Path(path).unlink()
 
+    def test_save_results_json_serializes_enums_and_datetimes(self, tmp_path: Path):
+        """Enums and datetimes should serialize to stable JSON values."""
+        experiment = ExperimentResult(
+            experiment_id="exp-001",
+            model_info=ModelInfo(name="Model", provider="Provider", model_id="model-1"),
+            probe_name="probe",
+            probe_category=ProbeCategory.LOGIC,
+            results=[
+                ProbeResult(
+                    input="q",
+                    output="a",
+                    status=ResultStatus.SUCCESS,
+                )
+            ],
+            started_at=datetime(2024, 1, 1, 0, 0, 0),
+            completed_at=datetime(2024, 1, 1, 0, 0, 1),
+        )
+
+        path = tmp_path / "experiment.json"
+        save_results_json(experiment, str(path))
+
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        assert payload["started_at"] == "2024-01-01T00:00:00"
+        assert payload["results"][0]["status"] == "success"
+
     def test_save_markdown(self):
         """Test saving markdown results."""
         results = [{"input": "test", "output": "result", "error": ""}]

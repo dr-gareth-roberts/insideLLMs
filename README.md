@@ -36,7 +36,7 @@ insideLLMs provides **deterministic, diffable, CI-gateable behavioural testing**
 
 ### Built for Production Teams
 
-- **Deterministic by design**: Same inputs produce byte-for-byte identical outputs
+- **Deterministic by design**: Same inputs (and model responses) produce byte-for-byte identical artefacts
 - **CI-native**: `insidellms diff --fail-on-changes` blocks bad deploys
 - **Response-level granularity**: See exactly which prompts changed, not just aggregate metrics
 - **Provider-agnostic**: OpenAI, Anthropic, local models (Ollama, llama.cpp), all through one interface
@@ -60,6 +60,8 @@ insidellms harness config.yaml --run-dir ./baseline
 
 Produces deterministic artefacts:
 - `records.jsonl` - Every input/output pair (canonical)
+- `manifest.json` - Run metadata (deterministic fields only)
+- `config.resolved.yaml` - Normalized config snapshot used for the run
 - `summary.json` - Aggregated metrics
 - `report.html` - Human-readable comparison
 
@@ -140,7 +142,7 @@ insidellms report ./baseline
 
 ### Deterministic Artefacts
 
-- Run IDs are SHA-256 hashes of inputs (config + dataset)
+- Run IDs are SHA-256 hashes of inputs (config + dataset), with local file datasets content-hashed
 - Timestamps derive from run IDs, not wall clocks
 - JSON output has stable formatting (sorted keys, consistent separators)
 - Result: `git diff` works on model behaviour

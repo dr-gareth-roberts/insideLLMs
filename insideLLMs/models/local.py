@@ -651,6 +651,8 @@ class OllamaModel(Model):
         The Ollama model identifier (e.g., "llama3.2", "mistral", "codellama").
     base_url : str
         Base URL for the Ollama API server.
+    headers : dict[str, str] or None
+        Optional HTTP headers to pass to the Ollama client (e.g., Authorization).
     timeout : int
         Request timeout in seconds.
 
@@ -704,6 +706,14 @@ class OllamaModel(Model):
         ...     timeout=300
         ... )
 
+    Ollama Cloud usage with an API key:
+
+        >>> model = OllamaModel(
+        ...     model_name="deepseek-v3.2:cloud",
+        ...     base_url="https://ollama.com",
+        ...     api_key=os.environ.get("OLLAMA_API_KEY"),
+        ... )
+
     See Also
     --------
     LlamaCppModel : Direct GGUF model loading without Ollama.
@@ -719,6 +729,8 @@ class OllamaModel(Model):
         name: str = "OllamaModel",
         base_url: str = "http://localhost:11434",
         timeout: int = 120,
+        headers: Optional[dict[str, str]] = None,
+        api_key: Optional[str] = None,
     ):
         """Initialize the Ollama model.
 
@@ -740,6 +752,13 @@ class OllamaModel(Model):
         timeout : int, optional
             Request timeout in seconds. Increase for large models or
             slow hardware. Defaults to 120.
+        headers : dict[str, str] or None, optional
+            Optional HTTP headers to pass to the Ollama client (e.g.,
+            ``{"Authorization": "Bearer ... "}``).
+        api_key : str or None, optional
+            Convenience API key for Ollama Cloud. If provided (or available via
+            the ``OLLAMA_API_KEY`` environment variable), it is used to set the
+            Authorization header unless already present in ``headers``.
 
         Raises
         ------
@@ -782,6 +801,11 @@ class OllamaModel(Model):
         self.model_name = model_name
         self.base_url = base_url
         self.timeout = timeout
+        resolved_headers = dict(headers) if headers else {}
+        resolved_api_key = api_key or os.environ.get("OLLAMA_API_KEY")
+        if resolved_api_key and "Authorization" not in resolved_headers:
+            resolved_headers["Authorization"] = f"Bearer {resolved_api_key}"
+        self.headers = resolved_headers or None
         self._client = None
 
     def _get_client(self):
@@ -823,7 +847,10 @@ class OllamaModel(Model):
             except ImportError:
                 raise ImportError("ollama package required. Install with: pip install ollama")
 
-            self._client = ollama.Client(host=self.base_url, timeout=self.timeout)
+            client_kwargs = {"host": self.base_url, "timeout": self.timeout}
+            if self.headers:
+                client_kwargs["headers"] = self.headers
+            self._client = ollama.Client(**client_kwargs)
         return self._client
 
     def generate(self, prompt: str, **kwargs: Any) -> str:

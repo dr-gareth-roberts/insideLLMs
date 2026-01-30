@@ -295,6 +295,51 @@ class TestAsyncRunner:
         results = await runner.run(["Test?", "Another?"])
         assert len(results) == 2
 
+    @pytest.mark.asyncio
+    async def test_async_batch_stop_on_error(self):
+        """Batch mode should honor stop_on_error in async runner."""
+        from insideLLMs.exceptions import RunnerExecutionError
+        from insideLLMs.models import DummyModel
+        from insideLLMs.probes.base import Probe
+        from insideLLMs.runner import AsyncProbeRunner
+        from insideLLMs.types import ProbeResult, ResultStatus
+
+        class FailingBatchProbe(Probe[str]):
+            def run(self, model, data, **kwargs):  # pragma: no cover - unused in this test
+                return "ok"
+
+            def run_batch(self, model, dataset, **kwargs):
+                results = []
+                for idx, item in enumerate(dataset):
+                    if idx == 1:
+                        results.append(
+                            ProbeResult(
+                                input=item,
+                                status=ResultStatus.ERROR,
+                                error="boom",
+                                metadata={"error_type": "ValueError"},
+                            )
+                        )
+                    else:
+                        results.append(
+                            ProbeResult(
+                                input=item,
+                                output="ok",
+                                status=ResultStatus.SUCCESS,
+                            )
+                        )
+                return results
+
+        runner = AsyncProbeRunner(DummyModel(), FailingBatchProbe(name="batch"))
+
+        with pytest.raises(RunnerExecutionError):
+            await runner.run(
+                ["a", "b"],
+                use_probe_batch=True,
+                stop_on_error=True,
+                emit_run_artifacts=False,
+            )
+
 
 class TestRunProbe:
     """Test the run_probe convenience function."""
@@ -2066,6 +2111,47 @@ class TestLoadDatasetFromConfig:
         config = {"format": "jsonl", "path": str(jsonl_path)}
         result = _load_dataset_from_config(config, tmp_path)
         assert len(result) == 2
+
+    def test_load_hf_dataset_filters_metadata(self, tmp_path, monkeypatch):
+        """HF dataset loader should not receive metadata-only config keys."""
+        from insideLLMs import runner as runner_module
+
+        captured: dict[str, Any] = {}
+
+        def fake_loader(name: str, split: str = "test", **kwargs: Any):
+            captured["name"] = name
+            captured["split"] = split
+            captured["kwargs"] = kwargs
+            return [{"ok": True}]
+
+        monkeypatch.setattr(runner_module.dataset_registry, "get_factory", lambda _: fake_loader)
+
+        config = {
+            "format": "hf",
+            "name": "test-dataset",
+            "split": "train",
+            "revision": "main",
+            "data_dir": "data",
+            "dataset_hash": "sha256:deadbeef",
+            "hash": "sha256:badc0ffee",
+            "dataset_version": "1.0.0",
+            "version": "1.0.0",
+            "provenance": "hf",
+            "source": "huggingface",
+        }
+
+        result = runner_module._load_dataset_from_config(config, tmp_path)
+        assert result == [{"ok": True}]
+        assert captured["name"] == "test-dataset"
+        assert captured["split"] == "train"
+        assert captured["kwargs"]["revision"] == "main"
+        assert captured["kwargs"]["data_dir"] == "data"
+        assert "dataset_hash" not in captured["kwargs"]
+        assert "hash" not in captured["kwargs"]
+        assert "dataset_version" not in captured["kwargs"]
+        assert "version" not in captured["kwargs"]
+        assert "provenance" not in captured["kwargs"]
+        assert "source" not in captured["kwargs"]
 
     def test_load_unknown_format(self, tmp_path):
         """Test loading unknown format raises ValueError."""

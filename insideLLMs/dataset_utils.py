@@ -71,7 +71,7 @@ except ImportError:
     HF_DATASETS_AVAILABLE = False
 
 
-def load_csv_dataset(path: str) -> list[dict[str, Any]]:
+def load_csv_dataset(path: str, *, encoding: str = "utf-8") -> list[dict[str, Any]]:
     """Load a dataset from a CSV file into a list of dictionaries.
 
     Reads a CSV file where the first row contains column headers and each
@@ -81,6 +81,8 @@ def load_csv_dataset(path: str) -> list[dict[str, Any]]:
     Args:
         path: Path to the CSV file. Can be absolute or relative to the
             current working directory.
+        encoding: File encoding to use. Defaults to "utf-8" for deterministic
+            cross-platform behavior.
 
     Returns:
         A list of dictionaries where each dictionary represents a row
@@ -133,7 +135,7 @@ def load_csv_dataset(path: str) -> list[dict[str, Any]]:
         load_jsonl_dataset: For loading JSON Lines formatted files
         load_hf_dataset: For loading HuggingFace Datasets
     """
-    with open(path, newline="") as csvfile:
+    with open(path, newline="", encoding=encoding) as csvfile:
         reader = csv.DictReader(csvfile)
         return list(reader)
 

@@ -2,6 +2,8 @@
 
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI diff-gating.
 For the same inputs and configuration, run directories are intended to be byte-for-byte identical.
+This assumes the model responses themselves are identical (e.g., deterministic sampling settings,
+cached responses, or provider-side determinism).
 
 ### Canonical run artefacts
 
@@ -22,6 +24,8 @@ A run directory contains (at minimum):
 - **Content-address datasets**: for local file datasets (`format: csv|jsonl`), if a hash is not provided,
   insideLLMs computes `dataset_hash=sha256:<file-bytes>` and includes it in `manifest.json`. Dataset
   changes therefore change `run_id`.
+- **Pinned remote datasets**: for HuggingFace datasets (`format: hf`), include a `revision` or
+  explicit `dataset_hash` to keep run IDs stable when upstream datasets change.
 - **Resume safety**: resumable runs validate that existing records match the current prompt inputs
   (run_id + input fingerprint), preventing mixed artefacts.
 
@@ -66,6 +70,7 @@ Notes:
 
 - If `deterministic_artifacts` is omitted, it defaults to the value of
   `strict_serialization`.
+- Defaults: `strict_serialization=true`, `deterministic_artifacts=None` (follows strict).
 - Determinism config values must be booleans (or null/omitted). Strings like
   `"true"` are rejected to avoid silent truthiness bugs.
 
@@ -78,3 +83,8 @@ insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --overwrite --skip-r
 insidellms harness ci/harness.yaml --run-dir .tmp/runs/head --overwrite --skip-report
 insidellms diff .tmp/runs/base .tmp/runs/head --fail-on-changes
 ```
+
+Notes:
+
+- `report.html` is deterministic when generated from deterministic records; `--skip-report` is
+  optional and is mainly for speed in CI runs.

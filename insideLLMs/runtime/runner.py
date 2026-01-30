@@ -161,24 +161,33 @@ def _invoke_progress_callback(
     if callback is None:
         return
 
-    # Check callback signature to determine which style to use
-    sig = inspect.signature(callback)
-    params = list(sig.parameters.values())
+    callback_style = getattr(callback, "_insidellms_progress_style", None)
+    if callback_style not in {"legacy", "info"}:
+        try:
+            sig = inspect.signature(callback)
+            params = list(sig.parameters.values())
+            callback_style = "legacy" if len(params) == 2 else "info"
+        except (TypeError, ValueError):
+            callback_style = "legacy"
+        try:
+            setattr(callback, "_insidellms_progress_style", callback_style)
+        except Exception:
+            pass
 
-    # If callback takes 2 positional args, use legacy (current, total) style
-    if len(params) == 2:
+    if callback_style == "legacy":
         callback(current, total)  # type: ignore
-    else:
-        # Use new ProgressInfo style
-        info = ProgressInfo.create(
-            current=current,
-            total=total,
-            start_time=start_time,
-            current_item=current_item,
-            current_index=current_index,
-            status=status,
-        )
-        callback(info)  # type: ignore
+        return
+
+    # Use new ProgressInfo style
+    info = ProgressInfo.create(
+        current=current,
+        total=total,
+        start_time=start_time,
+        current_item=current_item,
+        current_index=current_index,
+        status=status,
+    )
+    callback(info)  # type: ignore
 
 
 def _normalize_validation_mode(mode: Optional[str]) -> str:
@@ -2036,6 +2045,16 @@ def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any
     di = dataset_info or {}
     dataset_id = di.get("name") or di.get("dataset") or di.get("path")
     dataset_version = di.get("version") or di.get("dataset_version")
+    if di.get("revision"):
+        if dataset_version:
+            dataset_version = f"{dataset_version}@{di.get('revision')}"
+        else:
+            dataset_version = str(di.get("revision"))
+    if di.get("split"):
+        if dataset_version:
+            dataset_version = f"{dataset_version}::{di.get('split')}"
+        else:
+            dataset_version = str(di.get("split"))
     dataset_hash = di.get("hash") or di.get("dataset_hash")
     provenance = di.get("provenance") or di.get("source") or di.get("format")
     return {
@@ -3301,6 +3320,25 @@ class AsyncProbeRunner(_RunnerBase):
                         )
                         result_obj["latency_ms"] = None
                         results[index] = result_obj
+                        if stop_on_error and stop_error is None:
+                            status = _normalize_status(probe_result.status)
+                            if status != "success":
+                                prompt_str = str(remaining_items[offset])
+                                stop_error = RunnerExecutionError(
+                                    reason=probe_result.error or status,
+                                    model_id=model_spec.get("model_id"),
+                                    probe_id=probe_spec.get("probe_id"),
+                                    prompt=prompt_str,
+                                    prompt_index=index,
+                                    run_id=resolved_run_id,
+                                    elapsed_seconds=None,
+                                    suggestions=[
+                                        "Check the model API credentials and connectivity",
+                                        "Verify the prompt format is valid for this model",
+                                        "Review the original error message above",
+                                    ],
+                                )
+                    completed += len(remaining_items)
                     await write_ready_records()
             else:
                 tasks = [run_single(i, item) for i, item in enumerate(prompt_set) if i >= completed]
@@ -3310,6 +3348,14 @@ class AsyncProbeRunner(_RunnerBase):
 
         if stop_error is not None:
             raise stop_error
+
+        _invoke_progress_callback(
+            progress_callback,
+            current=total,
+            total=total,
+            start_time=run_start_time,
+            status="complete",
+        )
 
         if any(result is None for result in results):
             raise RuntimeError("Runner did not produce results for all items.")
@@ -3756,7 +3802,8 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
 
 def _resolve_path(path: str, base_dir: Path) -> Path:
     """Resolve a path relative to a base directory."""
-    p = Path(path)
+    expanded = os.path.expandvars(os.path.expanduser(path))
+    p = Path(expanded)
     if p.is_absolute():
         return p
     return base_dir / p
@@ -3781,17 +3828,16 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
         if fmt in ("csv", "jsonl") and isinstance(dataset.get("path"), str):
             # Keep paths deterministic and portable: avoid baking absolute checkout paths
             # into the snapshot (and therefore the run_id). Only normalize relative paths
-            # to a canonical posix form.
+            # to a canonical posix form unless content hashing succeeds.
             raw_path = dataset["path"]
-            normalized = str(raw_path).replace("\\", "/")
-            dataset["path"] = posixpath.normpath(normalized)
+            normalized = posixpath.normpath(str(raw_path).replace("\\", "/"))
+            resolved_path = _resolve_path(normalized, base_dir)
 
             # Prefer content-addressing over path-addressing for run_id stability.
             # If the user didn't provide an explicit hash, compute a deterministic
             # SHA-256 over the dataset file bytes.
             if dataset.get("hash") is None and dataset.get("dataset_hash") is None:
                 try:
-                    resolved_path = _resolve_path(dataset["path"], base_dir)
                     hasher = hashlib.sha256()
                     with open(resolved_path, "rb") as fp:
                         for chunk in iter(lambda: fp.read(1024 * 1024), b""):
@@ -3807,6 +3853,27 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                         f"Unexpected error hashing dataset '{dataset.get('path')}': {e}",
                         exc_info=True,
                     )
+
+            dataset_hash = dataset.get("hash") or dataset.get("dataset_hash")
+            path_value = normalized
+            if Path(normalized).is_absolute():
+                try:
+                    rel = resolved_path.resolve().relative_to(base_dir.resolve())
+                    path_value = rel.as_posix()
+                except Exception:
+                    if dataset_hash:
+                        path_value = Path(normalized).name
+            dataset["path"] = posixpath.normpath(path_value)
+        elif fmt == "hf":
+            if (
+                dataset.get("dataset_hash") is None
+                and dataset.get("hash") is None
+                and dataset.get("revision") is None
+            ):
+                logger.warning(
+                    "HuggingFace dataset config missing revision or dataset_hash; "
+                    "run_id may not be stable if the dataset changes."
+                )
 
     return snapshot
 
@@ -4074,13 +4141,27 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
                 return load_jsonl_dataset(str(path))
 
     elif format_type == "hf":
+        excluded_keys = {
+            "format",
+            "name",
+            "split",
+            "path",
+            "dataset",
+            "hash",
+            "dataset_hash",
+            "version",
+            "dataset_version",
+            "provenance",
+            "source",
+        }
+        extra_kwargs = {k: v for k, v in config.items() if k not in excluded_keys}
         try:
             loader = dataset_registry.get_factory("hf")
-            return loader(config["name"], split=config.get("split", "test"))
+            return loader(config["name"], split=config.get("split", "test"), **extra_kwargs)
         except NotFoundError:
             from insideLLMs.dataset_utils import load_hf_dataset
 
-            return load_hf_dataset(config["name"], split=config.get("split", "test"))
+            return load_hf_dataset(config["name"], split=config.get("split", "test"), **extra_kwargs)
 
     else:
         raise ValueError(f"Unknown dataset format: {format_type}")
@@ -4498,6 +4579,16 @@ def run_harness_from_config(
             dataset_cfg.get("name") or dataset_cfg.get("dataset") or dataset_cfg.get("path")
         )
         dataset_version = dataset_cfg.get("version") or dataset_cfg.get("dataset_version")
+        if dataset_cfg.get("revision"):
+            if dataset_version:
+                dataset_version = f"{dataset_version}@{dataset_cfg.get('revision')}"
+            else:
+                dataset_version = str(dataset_cfg.get("revision"))
+        if dataset_cfg.get("split"):
+            if dataset_version:
+                dataset_version = f"{dataset_version}::{dataset_cfg.get('split')}"
+            else:
+                dataset_version = str(dataset_cfg.get("split"))
         dataset_hash = dataset_cfg.get("hash") or dataset_cfg.get("dataset_hash")
         provenance = (
             dataset_cfg.get("provenance") or dataset_cfg.get("source") or dataset_cfg.get("format")
@@ -4989,8 +5080,11 @@ def create_experiment_result(
 
     # Determine category
     category = getattr(probe, "category", ProbeCategory.CUSTOM)
-    if isinstance(category, str):
-        category = ProbeCategory(category)
+    if not isinstance(category, ProbeCategory):
+        try:
+            category = ProbeCategory(str(category))
+        except Exception:
+            category = ProbeCategory.CUSTOM
 
     resolved_experiment_id = experiment_id
     if resolved_experiment_id is None:
