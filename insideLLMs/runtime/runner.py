@@ -4161,7 +4161,9 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
         except NotFoundError:
             from insideLLMs.dataset_utils import load_hf_dataset
 
-            return load_hf_dataset(config["name"], split=config.get("split", "test"), **extra_kwargs)
+            return load_hf_dataset(
+                config["name"], split=config.get("split", "test"), **extra_kwargs
+            )
 
     else:
         raise ValueError(f"Unknown dataset format: {format_type}")
