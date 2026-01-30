@@ -1,7 +1,7 @@
 # Run a single Ollama model across a battery of probes.
 #
 # Intended for Ollama Cloud usage:
-#   export OLLAMA_API_KEY="..."
+#   export OLLAMA_API_KEY="..."  # or set `api_key` in args below
 #   # Then set `base_url` below to your Ollama Cloud endpoint.
 #
 # Run:
@@ -9,8 +9,8 @@
 models:
   - type: ollama
     args:
-      model_name: deepseek-v3.2
-      base_url: https://YOUR_OLLAMA_ENDPOINT
+      model_name: deepseek-v3.2:cloud
+      base_url: https://ollama.com
       timeout: 600
 probes:
   - type: logic
