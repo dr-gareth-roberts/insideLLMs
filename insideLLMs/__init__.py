@@ -425,7 +425,7 @@ from insideLLMs.results import (
 # =============================================================================
 # Runner and Execution (Essential for running experiments)
 # =============================================================================
-from insideLLMs.runner import (
+from insideLLMs.runtime.runner import (
     AsyncProbeRunner,
     ProbeRunner,
     create_experiment_result,

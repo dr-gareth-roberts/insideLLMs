@@ -72,6 +72,7 @@ Full executor with all protections:
 """
 
 import asyncio
+import inspect
 import random
 import threading
 import time
@@ -1664,7 +1665,7 @@ class RetryHandler:
 
         for attempt in range(self.config.max_retries + 1):
             try:
-                if asyncio.iscoroutinefunction(func):
+                if inspect.iscoroutinefunction(func):
                     result = await func()
                 else:
                     result = func()
@@ -2045,7 +2046,7 @@ class RateLimitCircuitBreaker:
             raise CircuitOpenError("Circuit breaker is open")
 
         try:
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 result = await func()
             else:
                 result = func()
@@ -2322,7 +2323,7 @@ class RequestQueue:
         await self.rate_limiter.acquire_async(block=True)
 
         try:
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 result = await func()
             else:
                 result = func()
@@ -2888,7 +2889,7 @@ class RateLimitedExecutor:
                 return result.result
             else:
                 try:
-                    if asyncio.iscoroutinefunction(func):
+                    if inspect.iscoroutinefunction(func):
                         result = await func()
                     else:
                         result = func()
@@ -2963,7 +2964,7 @@ def rate_limited(
             await limiter.acquire_async()
             return await func(*args, **kwargs)
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return wrapper
 
@@ -3046,7 +3047,7 @@ def with_retry(
                 return result.result
             raise Exception(result.final_error)
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return wrapper
 
@@ -3122,7 +3123,7 @@ def circuit_protected(
         async def async_wrapper(*args, **kwargs):
             return await breaker.execute_async(lambda: func(*args, **kwargs))
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return wrapper
 

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from insideLLMs.runner import (
+from insideLLMs.runtime.runner import (
     _deterministic_base_time,
     _deterministic_item_times,
     _fingerprint_value,
