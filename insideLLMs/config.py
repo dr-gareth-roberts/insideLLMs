@@ -1656,6 +1656,8 @@ def save_config_to_json(config: ExperimentConfig, path: Union[str, Path]) -> Non
     path.parent.mkdir(parents=True, exist_ok=True)
 
     data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
+    # Normalize complex types (e.g., Enum, nested objects) before JSON dump.
+    data = _serialize_value(data)
 
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
@@ -1690,15 +1692,27 @@ def _config_to_dict(config: Any) -> dict[str, Any]:
     This is an internal function. For serialization, use save_config_to_yaml
     or save_config_to_json which handle both Pydantic and fallback cases.
     """
-    if hasattr(config, "model_dump"):
+    # Use Pydantic's model_dump if available (returns fully serialized dict)
+    if PYDANTIC_AVAILABLE and hasattr(config, "model_dump"):
         return config.model_dump()
 
+    # Fallback: recursively convert to dict
     result = {}
     for key, value in vars(config).items():
         if hasattr(value, "__dict__") and not isinstance(value, type):
             result[key] = _config_to_dict(value)
         elif isinstance(value, Enum):
             result[key] = value.value
+        elif isinstance(value, list):
+            result[key] = [
+                _config_to_dict(v) if hasattr(v, "__dict__") and not isinstance(v, type) else v
+                for v in value
+            ]
+        elif isinstance(value, dict):
+            result[key] = {
+                k: _config_to_dict(v) if hasattr(v, "__dict__") and not isinstance(v, type) else v
+                for k, v in value.items()
+            }
         else:
             result[key] = value
     return result

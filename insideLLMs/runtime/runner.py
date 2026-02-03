@@ -4021,35 +4021,71 @@ def _create_model_from_config(
     try:
         base_model = model_registry.get(model_type, **model_args)
     except NotFoundError:
-        # Fallback to direct import for backwards compatibility
-        from insideLLMs.models import (
-            AnthropicModel,
-            CohereModel,
-            DummyModel,
-            GeminiModel,
-            HuggingFaceModel,
-            LlamaCppModel,
-            OllamaModel,
-            OpenAIModel,
-            VLLMModel,
-        )
-
-        model_map = {
-            "dummy": DummyModel,
-            "openai": OpenAIModel,
-            "huggingface": HuggingFaceModel,
-            "anthropic": AnthropicModel,
-            "gemini": GeminiModel,
-            "cohere": CohereModel,
-            "llamacpp": LlamaCppModel,
-            "ollama": OllamaModel,
-            "vllm": VLLMModel,
+        # Fallback to direct import for backwards compatibility.
+        # Only import the specific model type to avoid ImportError for
+        # optional dependencies that aren't installed.
+        known_types = {
+            "dummy",
+            "openai",
+            "huggingface",
+            "anthropic",
+            "gemini",
+            "cohere",
+            "llamacpp",
+            "ollama",
+            "vllm",
         }
 
-        if model_type not in model_map:
+        if model_type not in known_types:
             raise ValueError(f"Unknown model type: {model_type}")
 
-        base_model = model_map[model_type](**model_args)
+        # Import only the requested model class to avoid triggering
+        # ImportError for other models with missing dependencies.
+        try:
+            if model_type == "dummy":
+                from insideLLMs.models.dummy import DummyModel
+
+                base_model = DummyModel(**model_args)
+            elif model_type == "openai":
+                from insideLLMs.models.openai import OpenAIModel
+
+                base_model = OpenAIModel(**model_args)
+            elif model_type == "anthropic":
+                from insideLLMs.models.anthropic import AnthropicModel
+
+                base_model = AnthropicModel(**model_args)
+            elif model_type == "huggingface":
+                from insideLLMs.models.huggingface import HuggingFaceModel
+
+                base_model = HuggingFaceModel(**model_args)
+            elif model_type == "gemini":
+                from insideLLMs.models.gemini import GeminiModel
+
+                base_model = GeminiModel(**model_args)
+            elif model_type == "cohere":
+                from insideLLMs.models.cohere import CohereModel
+
+                base_model = CohereModel(**model_args)
+            elif model_type == "llamacpp":
+                from insideLLMs.models.llamacpp import LlamaCppModel
+
+                base_model = LlamaCppModel(**model_args)
+            elif model_type == "ollama":
+                from insideLLMs.models.ollama import OllamaModel
+
+                base_model = OllamaModel(**model_args)
+            elif model_type == "vllm":
+                from insideLLMs.models.vllm import VLLMModel
+
+                base_model = VLLMModel(**model_args)
+            else:
+                raise ValueError(f"Unknown model type: {model_type}")
+        except ImportError as e:
+            raise ImportError(
+                f"Model type '{model_type}' requires additional dependencies. "
+                f"Install with: pip install insidellms[{model_type}]. "
+                f"Original error: {e}"
+            ) from e
 
     pipeline_cfg = config.get("pipeline") if isinstance(config, dict) else None
     if isinstance(pipeline_cfg, dict):

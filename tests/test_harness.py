@@ -11,6 +11,13 @@ import yaml
 
 from insideLLMs.runtime.runner import run_harness_from_config
 
+try:
+    import pydantic  # noqa: F401
+
+    PYDANTIC_AVAILABLE = True
+except ImportError:
+    PYDANTIC_AVAILABLE = False
+
 
 class TestRunHarnessFromConfig:
     """Tests for run_harness_from_config function."""
@@ -44,6 +51,7 @@ class TestRunHarnessFromConfig:
         assert "dataset" in record and isinstance(record["dataset"], dict)
         assert record.get("custom", {}).get("harness", {}).get("experiment_id")
 
+    @pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Requires Pydantic")
     def test_run_harness_from_config_validate_output(self, tmp_path):
         """Test harness with output validation enabled."""
         dataset_path = tmp_path / "data.jsonl"

@@ -5,6 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Skip all tests in this module if anthropic is not installed
+pytest.importorskip("anthropic")
+
 
 class TestAnthropicModelInit:
     """Tests for AnthropicModel initialization."""

@@ -2338,6 +2338,12 @@ def create_parser() -> argparse.ArgumentParser:
             "(even if output text stays the same)"
         ),
     )
+    diff_parser.add_argument(
+        "--html",
+        type=str,
+        metavar="PATH",
+        help="Generate an interactive HTML diff report at the specified path",
+    )
 
     # =========================================================================
     # Schema command
@@ -2609,6 +2615,17 @@ def create_parser() -> argparse.ArgumentParser:
         choices=["basic", "benchmark", "tracking", "full"],
         default="basic",
         help="Configuration template to use",
+    )
+    init_parser.add_argument(
+        "--prompts",
+        type=str,
+        metavar="FILE",
+        help="Text file with prompts (one per line) to use as the dataset",
+    )
+    init_parser.add_argument(
+        "--model-name",
+        type=str,
+        help="Specific model name to use (e.g., 'gpt-4o', 'claude-3-5-sonnet-20241022')",
     )
 
     # =========================================================================
@@ -4120,6 +4137,22 @@ def cmd_diff(args: argparse.Namespace) -> int:
         "trace_violation_increases": trace_violation_increases_json,
     }
 
+    # Generate HTML report if requested
+    html_path = getattr(args, "html", None)
+    if html_path:
+        try:
+            from insideLLMs.diff import generate_diff_html_report
+
+            generate_diff_html_report(
+                diff_report,
+                baseline_path=str(run_dir_a),
+                candidate_path=str(run_dir_b),
+                output_path=html_path,
+            )
+            print_success(f"HTML diff report written to: {html_path}")
+        except Exception as e:
+            print_error(f"Failed to generate HTML report: {e}")
+
     if output_format == "json":
         payload = json.dumps(diff_report, indent=2, default=_json_default, sort_keys=True)
         if output_path:
@@ -4136,50 +4169,96 @@ def cmd_diff(args: argparse.Namespace) -> int:
             return 4
         return 0
 
+    # Enhanced text output with colors and summary statistics
     print_header("Behavioural Diff")
-    print_key_value("Baseline", run_dir_a)
-    print_key_value("Comparison", run_dir_b)
-    print_key_value("Common keys", diff_report["counts"]["common"])
-    print_key_value("Only in baseline", diff_report["counts"]["only_baseline"])
-    print_key_value("Only in comparison", diff_report["counts"]["only_candidate"])
-    print_key_value("Regressions", diff_report["counts"]["regressions"])
-    print_key_value("Improvements", diff_report["counts"]["improvements"])
-    print_key_value("Other changes", diff_report["counts"]["other_changes"])
+    print()
+
+    # Summary box with colored counts
+    total_compared = diff_report["counts"]["common"]
+    num_regressions = diff_report["counts"]["regressions"]
+    num_improvements = diff_report["counts"]["improvements"]
+    num_changes = diff_report["counts"]["other_changes"]
+    num_only_baseline = diff_report["counts"]["only_baseline"]
+    num_only_candidate = diff_report["counts"]["only_candidate"]
+    num_unchanged = total_compared - num_regressions - num_improvements - num_changes
+
+    # Print colored summary line
+    summary_parts = []
+    summary_parts.append(f"{total_compared} compared")
+    if num_regressions > 0:
+        summary_parts.append(colorize(f"{num_regressions} regressions", Colors.RED, Colors.BOLD))
+    if num_improvements > 0:
+        summary_parts.append(
+            colorize(f"{num_improvements} improvements", Colors.GREEN, Colors.BOLD)
+        )
+    if num_changes > 0:
+        summary_parts.append(colorize(f"{num_changes} changes", Colors.YELLOW, Colors.BOLD))
+    if num_unchanged > 0:
+        summary_parts.append(colorize(f"{num_unchanged} unchanged", Colors.DIM))
+
+    print(f"  {' | '.join(summary_parts)}")
+    print()
+
+    print_key_value("Baseline", colorize(str(run_dir_a), Colors.CYAN))
+    print_key_value("Candidate", colorize(str(run_dir_b), Colors.CYAN))
+    if num_only_baseline > 0:
+        print_key_value("Only in baseline", colorize(str(num_only_baseline), Colors.YELLOW))
+    if num_only_candidate > 0:
+        print_key_value("Only in candidate", colorize(str(num_only_candidate), Colors.YELLOW))
     if trace_drifts:
-        print_key_value("Trace drifts", diff_report["counts"]["trace_drifts"])
+        print_key_value("Trace drifts", colorize(str(len(trace_drifts)), Colors.YELLOW))
     if trace_violation_increases:
         print_key_value(
-            "Trace violation increases", diff_report["counts"]["trace_violation_increases"]
+            "Trace violation increases",
+            colorize(str(len(trace_violation_increases)), Colors.RED),
         )
 
-    def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
+    def print_colored_section(
+        title: str,
+        items: list[tuple[str, str, str, str]],
+        color: Colors,
+        symbol: str,
+    ) -> None:
         if not items:
             return
-        print_subheader(title)
+        print()
+        print(colorize(f"  {symbol} {title} ({len(items)})", color, Colors.BOLD))
+        print(colorize("  " + "-" * 60, Colors.DIM))
         for model_label, probe_label, example_id, detail in items[: args.limit]:
-            print(f"  {model_label} | {probe_label} | example {example_id}: {detail}")
+            line = f"    {colorize(model_label, Colors.CYAN)} | {probe_label} | {example_id}"
+            print(f"{line}")
+            print(f"      {colorize(detail, Colors.DIM)}")
         if len(items) > args.limit:
-            print(colorize(f"  ... and {len(items) - args.limit} more", Colors.DIM))
+            print(colorize(f"    ... and {len(items) - args.limit} more", Colors.DIM))
 
-    print_section("Regressions", regressions)
-    print_section("Improvements", improvements)
-    print_section("Other Changes", changes)
-    print_section("Trace Drifts", trace_drifts)
-    print_section("Trace Violation Increases", trace_violation_increases)
+    print_colored_section("Regressions", regressions, Colors.RED, "▼")
+    print_colored_section("Improvements", improvements, Colors.GREEN, "▲")
+    print_colored_section("Other Changes", changes, Colors.YELLOW, "●")
+    print_colored_section("Trace Drifts", trace_drifts, Colors.YELLOW, "◊")
+    print_colored_section("Trace Violation Increases", trace_violation_increases, Colors.RED, "!")
 
-    if only_a:
-        print_subheader("Missing in Comparison")
-        for model_label, probe_label, example_id in only_a[: args.limit]:
-            print(f"  {model_label} | {probe_label} | example {example_id}")
-        if len(only_a) > args.limit:
-            print(colorize(f"  ... and {len(only_a) - args.limit} more", Colors.DIM))
+    def print_only_section(title: str, items: list[tuple[str, str, str]], color: Colors) -> None:
+        if not items:
+            return
+        print()
+        print(colorize(f"  {title} ({len(items)})", color, Colors.BOLD))
+        print(colorize("  " + "-" * 60, Colors.DIM))
+        for model_label, probe_label, example_id in items[: args.limit]:
+            print(f"    {colorize(model_label, Colors.CYAN)} | {probe_label} | {example_id}")
+        if len(items) > args.limit:
+            print(colorize(f"    ... and {len(items) - args.limit} more", Colors.DIM))
 
-    if only_b:
-        print_subheader("New in Comparison")
-        for model_label, probe_label, example_id in only_b[: args.limit]:
-            print(f"  {model_label} | {probe_label} | example {example_id}")
-        if len(only_b) > args.limit:
-            print(colorize(f"  ... and {len(only_b) - args.limit} more", Colors.DIM))
+    print_only_section("Missing in Candidate", only_a, Colors.YELLOW)
+    print_only_section("New in Candidate", only_b, Colors.YELLOW)
+
+    # Final verdict
+    print()
+    if num_regressions == 0 and num_changes == 0 and not only_a and not only_b:
+        print_success("No behavioural differences detected")
+    elif num_regressions > 0:
+        print_error(f"Detected {num_regressions} regression(s)")
+    else:
+        print_warning(f"Detected {num_changes + len(only_a) + len(only_b)} change(s)")
 
     if args.fail_on_regressions and regressions:
         return 2
@@ -4282,6 +4361,17 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print_header("Initialize Experiment Configuration")
 
+    # Determine dataset path based on --prompts flag
+    prompts_file = getattr(args, "prompts", None)
+    if prompts_file:
+        prompts_path = Path(prompts_file)
+        if not prompts_path.exists():
+            print_error(f"Prompts file not found: {prompts_file}")
+            return 1
+        dataset_path = "data/prompts.jsonl"
+    else:
+        dataset_path = "data/questions.jsonl"
+
     # Base configuration
     config: dict[str, Any] = {
         "model": {
@@ -4294,21 +4384,26 @@ def cmd_init(args: argparse.Namespace) -> int:
         },
         "dataset": {
             "format": "jsonl",
-            "path": "data/questions.jsonl",
+            "path": dataset_path,
         },
     }
 
-    # Add model-specific args hints
+    # Add model-specific args hints (updated model names)
     model_hints = {
-        "openai": {"model_name": "gpt-4"},
-        "anthropic": {"model_name": "claude-3-opus-20240229"},
+        "openai": {"model_name": "gpt-4o"},
+        "anthropic": {"model_name": "claude-3-5-sonnet-20241022"},
         "cohere": {"model_name": "command-r-plus"},
-        "gemini": {"model_name": "gemini-pro"},
+        "gemini": {"model_name": "gemini-1.5-pro"},
         "huggingface": {"model_name": "gpt2"},
-        "ollama": {"model_name": "llama2"},
+        "ollama": {"model_name": "llama3.2"},
     }
     if args.model in model_hints:
         config["model"]["args"] = model_hints[args.model]
+
+    # Override with explicit --model-name if provided
+    model_name_override = getattr(args, "model_name", None)
+    if model_name_override:
+        config["model"]["args"]["model_name"] = model_name_override
 
     # Apply template enhancements
     if args.template == "benchmark":
@@ -4353,33 +4448,62 @@ def cmd_init(args: argparse.Namespace) -> int:
     print_success(f"Created config: {output_path}")
     print_key_value("Template", args.template)
     print_key_value("Model", args.model)
+    if model_name_override:
+        print_key_value("Model name", model_name_override)
     print_key_value("Probe", args.probe)
 
     # Create sample data directory and file
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
 
-    sample_data_path = data_dir / "questions.jsonl"
-    if not sample_data_path.exists():
-        sample_data = [
-            {"question": "What is 2+2?", "reference_answer": "4"},
-            {"question": "What is the capital of France?", "reference_answer": "Paris"},
-            {"question": "Who wrote Romeo and Juliet?", "reference_answer": "William Shakespeare"},
-            {
-                "question": "If all cats are mammals, and all mammals are animals, are all cats animals?",
-                "reference_answer": "Yes",
-            },
-            {"question": "What is the chemical symbol for water?", "reference_answer": "H2O"},
-        ]
-        with open(sample_data_path, "w") as f:
-            for item in sample_data:
-                f.write(json.dumps(item) + "\n")
-        print_success(f"Created sample data: {sample_data_path}")
+    # Handle --prompts: convert text file to JSONL
+    if prompts_file:
+        prompts_path = Path(prompts_file)
+        output_jsonl = data_dir / "prompts.jsonl"
+        prompt_count = 0
+        with open(prompts_path, "r", encoding="utf-8") as f_in, open(output_jsonl, "w") as f_out:
+            for line in f_in:
+                line = line.strip()
+                if line:  # Skip empty lines
+                    item = {"question": line}
+                    f_out.write(json.dumps(item) + "\n")
+                    prompt_count += 1
+        print_success(f"Converted {prompt_count} prompts to: {output_jsonl}")
+    else:
+        # Create default sample data if it doesn't exist
+        sample_data_path = data_dir / "questions.jsonl"
+        if not sample_data_path.exists():
+            sample_data = [
+                {"question": "What is 2+2?", "reference_answer": "4"},
+                {"question": "What is the capital of France?", "reference_answer": "Paris"},
+                {
+                    "question": "Who wrote Romeo and Juliet?",
+                    "reference_answer": "William Shakespeare",
+                },
+                {
+                    "question": (
+                        "If all cats are mammals, and all mammals are animals, "
+                        "are all cats animals?"
+                    ),
+                    "reference_answer": "Yes",
+                },
+                {"question": "What is the chemical symbol for water?", "reference_answer": "H2O"},
+            ]
+            with open(sample_data_path, "w") as f:
+                for item in sample_data:
+                    f.write(json.dumps(item) + "\n")
+            print_success(f"Created sample data: {sample_data_path}")
 
     print()
     print_info("Next steps:")
     print(f"  1. Edit {colorize(str(output_path), Colors.CYAN)} to customize your experiment")
     print(f"  2. Run: {colorize(f'insidellms run {output_path}', Colors.GREEN)}")
+    print()
+    print_info("Quick diff workflow:")
+    print(f"  {colorize(f'insidellms harness {output_path} --run-dir ./baseline', Colors.DIM)}")
+    print(f"  {colorize('# ... make changes (model, prompts, etc.) ...', Colors.DIM)}")
+    print(f"  {colorize(f'insidellms harness {output_path} --run-dir ./candidate', Colors.DIM)}")
+    print(f"  {colorize('insidellms diff ./baseline ./candidate --html diff.html', Colors.GREEN)}")
 
     return 0
 

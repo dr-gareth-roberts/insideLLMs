@@ -231,7 +231,8 @@ def test_diff_handles_replicates(tmp_path):
         repo_root,
     )
 
-    assert "Common keys: 2" in output
+    # New format shows "2 compared" in the summary line
+    assert "2 compared" in output
 
 
 def test_diff_ignores_output_keys(tmp_path):
@@ -259,7 +260,8 @@ def test_diff_ignores_output_keys(tmp_path):
         repo_root,
     )
 
-    assert "Other changes: 0" in output
+    # New format shows "unchanged" in summary and "No behavioural differences detected"
+    assert "unchanged" in output
     assert "output changed" not in output
 
 

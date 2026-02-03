@@ -16,7 +16,30 @@ from insideLLMs.exceptions import (
     TimeoutError as InsideLLMsTimeoutError,
 )
 
+# Check for optional dependencies
+try:
+    import openai  # noqa: F401
 
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+try:
+    import anthropic  # noqa: F401
+
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+
+try:
+    import transformers  # noqa: F401
+
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
+
+@pytest.mark.skipif(not OPENAI_AVAILABLE, reason="Requires openai")
 class TestOpenAIModelErrorHandling:
     """Tests for OpenAI model error handling."""
 
@@ -98,6 +121,7 @@ class TestOpenAIModelErrorHandling:
         assert "Something went wrong" in str(exc_info.value)
 
 
+@pytest.mark.skipif(not ANTHROPIC_AVAILABLE, reason="Requires anthropic")
 class TestAnthropicModelErrorHandling:
     """Tests for Anthropic model error handling."""
 
@@ -143,6 +167,7 @@ class TestAnthropicModelErrorHandling:
             model.generate("test prompt")
 
 
+@pytest.mark.skipif(not TRANSFORMERS_AVAILABLE, reason="Requires transformers")
 class TestHuggingFaceModelErrorHandling:
     """Tests for HuggingFace model error handling."""
 

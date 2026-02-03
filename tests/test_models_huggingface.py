@@ -4,6 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Skip all tests in this module if transformers is not installed
+pytest.importorskip("transformers")
+
 
 class TestHuggingFaceModelInit:
     """Tests for HuggingFaceModel initialization."""

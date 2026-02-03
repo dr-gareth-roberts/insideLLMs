@@ -5,6 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Skip all tests in this module if openai is not installed
+pytest.importorskip("openai")
+
 
 class TestOpenAIModelInit:
     """Tests for OpenAIModel initialization."""

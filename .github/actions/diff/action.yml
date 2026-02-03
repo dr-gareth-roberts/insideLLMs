@@ -1,0 +1,233 @@
+name: 'insideLLMs Diff'
+description: 'Compare LLM evaluation runs and detect behavioural regressions'
+author: 'insideLLMs'
+
+branding:
+  icon: 'git-compare'
+  color: 'purple'
+
+inputs:
+  baseline:
+    description: 'Path to baseline run directory'
+    required: true
+  candidate:
+    description: 'Path to candidate run directory'
+    required: true
+  fail-on-regressions:
+    description: 'Fail if regressions are detected'
+    required: false
+    default: 'true'
+  fail-on-changes:
+    description: 'Fail if any changes are detected (stricter than fail-on-regressions)'
+    required: false
+    default: 'false'
+  html-report:
+    description: 'Generate HTML diff report'
+    required: false
+    default: 'true'
+  html-report-path:
+    description: 'Path for HTML report output'
+    required: false
+    default: 'diff-report.html'
+  json-output:
+    description: 'Path for JSON diff output'
+    required: false
+    default: ''
+  comment-on-pr:
+    description: 'Add a summary comment on the PR'
+    required: false
+    default: 'true'
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.11'
+
+outputs:
+  regressions:
+    description: 'Number of regressions detected'
+    value: ${{ steps.diff.outputs.regressions }}
+  improvements:
+    description: 'Number of improvements detected'
+    value: ${{ steps.diff.outputs.improvements }}
+  changes:
+    description: 'Number of other changes detected'
+    value: ${{ steps.diff.outputs.changes }}
+  has-regressions:
+    description: 'Whether any regressions were detected (true/false)'
+    value: ${{ steps.diff.outputs.has_regressions }}
+  html-report-path:
+    description: 'Path to the generated HTML report'
+    value: ${{ steps.diff.outputs.html_report_path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install insideLLMs
+      shell: bash
+      run: pip install insidellms
+
+    - name: Run diff
+      id: diff
+      shell: bash
+      env:
+        BASELINE: ${{ inputs.baseline }}
+        CANDIDATE: ${{ inputs.candidate }}
+        FAIL_ON_REGRESSIONS: ${{ inputs.fail-on-regressions }}
+        FAIL_ON_CHANGES: ${{ inputs.fail-on-changes }}
+        HTML_REPORT: ${{ inputs.html-report }}
+        HTML_REPORT_PATH: ${{ inputs.html-report-path }}
+        JSON_OUTPUT: ${{ inputs.json-output }}
+      run: |
+        # Build diff command
+        DIFF_CMD="insidellms diff \"$BASELINE\" \"$CANDIDATE\""
+
+        # Add HTML report flag
+        if [ "$HTML_REPORT" = "true" ]; then
+          DIFF_CMD="$DIFF_CMD --html \"$HTML_REPORT_PATH\""
+          echo "html_report_path=$HTML_REPORT_PATH" >> $GITHUB_OUTPUT
+        fi
+
+        # Add JSON output flag
+        if [ -n "$JSON_OUTPUT" ]; then
+          DIFF_CMD="$DIFF_CMD --format json --output \"$JSON_OUTPUT\""
+        fi
+
+        # Run diff and capture JSON output for parsing
+        TEMP_JSON=$(mktemp)
+        insidellms diff "$BASELINE" "$CANDIDATE" --format json --output "$TEMP_JSON" || true
+
+        # Extract counts from JSON
+        REGRESSIONS=$(jq -r '.counts.regressions // 0' "$TEMP_JSON")
+        IMPROVEMENTS=$(jq -r '.counts.improvements // 0' "$TEMP_JSON")
+        CHANGES=$(jq -r '.counts.other_changes // 0' "$TEMP_JSON")
+        ONLY_BASELINE=$(jq -r '.counts.only_baseline // 0' "$TEMP_JSON")
+        ONLY_CANDIDATE=$(jq -r '.counts.only_candidate // 0' "$TEMP_JSON")
+        COMMON=$(jq -r '.counts.common // 0' "$TEMP_JSON")
+
+        # Set outputs
+        echo "regressions=$REGRESSIONS" >> $GITHUB_OUTPUT
+        echo "improvements=$IMPROVEMENTS" >> $GITHUB_OUTPUT
+        echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+
+        if [ "$REGRESSIONS" -gt 0 ]; then
+          echo "has_regressions=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_regressions=false" >> $GITHUB_OUTPUT
+        fi
+
+        # Generate HTML report if requested
+        if [ "$HTML_REPORT" = "true" ]; then
+          insidellms diff "$BASELINE" "$CANDIDATE" --html "$HTML_REPORT_PATH" || true
+        fi
+
+        # Create summary for GitHub Actions
+        echo "## insideLLMs Diff Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Compared | $COMMON |" >> $GITHUB_STEP_SUMMARY
+        echo "| Regressions | $REGRESSIONS |" >> $GITHUB_STEP_SUMMARY
+        echo "| Improvements | $IMPROVEMENTS |" >> $GITHUB_STEP_SUMMARY
+        echo "| Other Changes | $CHANGES |" >> $GITHUB_STEP_SUMMARY
+        echo "| Only in Baseline | $ONLY_BASELINE |" >> $GITHUB_STEP_SUMMARY
+        echo "| Only in Candidate | $ONLY_CANDIDATE |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ "$REGRESSIONS" -gt 0 ]; then
+          echo "### Regressions Detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          jq -r '.regressions[:5][] | "- **\(.label.model)** | \(.label.probe) | \(.label.example): \(.detail // .kind)"' "$TEMP_JSON" >> $GITHUB_STEP_SUMMARY || true
+          if [ "$REGRESSIONS" -gt 5 ]; then
+            echo "- ... and $((REGRESSIONS - 5)) more" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+
+        # Clean up
+        rm -f "$TEMP_JSON"
+
+        # Determine exit code
+        EXIT_CODE=0
+        if [ "$FAIL_ON_CHANGES" = "true" ]; then
+          TOTAL_CHANGES=$((REGRESSIONS + CHANGES + ONLY_BASELINE + ONLY_CANDIDATE))
+          if [ "$TOTAL_CHANGES" -gt 0 ]; then
+            echo "::error::Detected $TOTAL_CHANGES behavioural change(s)"
+            EXIT_CODE=2
+          fi
+        elif [ "$FAIL_ON_REGRESSIONS" = "true" ]; then
+          if [ "$REGRESSIONS" -gt 0 ]; then
+            echo "::error::Detected $REGRESSIONS regression(s)"
+            EXIT_CODE=2
+          fi
+        fi
+
+        exit $EXIT_CODE
+
+    - name: Comment on PR
+      if: ${{ inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const regressions = parseInt('${{ steps.diff.outputs.regressions }}') || 0;
+          const improvements = parseInt('${{ steps.diff.outputs.improvements }}') || 0;
+          const changes = parseInt('${{ steps.diff.outputs.changes }}') || 0;
+
+          let status = 'success';
+          let statusEmoji = ':white_check_mark:';
+          if (regressions > 0) {
+            status = 'failure';
+            statusEmoji = ':x:';
+          } else if (changes > 0) {
+            status = 'warning';
+            statusEmoji = ':warning:';
+          }
+
+          const body = `## ${statusEmoji} insideLLMs Behavioural Diff
+
+          | Metric | Count |
+          |--------|-------|
+          | Regressions | ${regressions} |
+          | Improvements | ${improvements} |
+          | Other Changes | ${changes} |
+
+          ${regressions > 0 ? '**Action Required:** Regressions detected. Please review the diff report.' : ''}
+          ${regressions === 0 && changes === 0 && improvements === 0 ? '**No behavioural changes detected.**' : ''}
+
+          <details>
+          <summary>View full diff report</summary>
+
+          Download the \`diff-report.html\` artifact for the complete interactive report.
+          </details>
+          `;
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('insideLLMs Behavioural Diff')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
