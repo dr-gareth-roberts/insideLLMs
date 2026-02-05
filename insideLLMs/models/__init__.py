@@ -320,6 +320,10 @@ from insideLLMs.models.base import (
     Model,
     ModelProtocol,
     ModelWrapper,
+    # Error handling utilities
+    ProviderExceptionMap,
+    handle_provider_errors,
+    translate_provider_error,
 )
 from insideLLMs.types import ModelInfo
 
@@ -516,6 +520,10 @@ __all__ = [
     "ModelProtocol",
     "ModelWrapper",
     "ChatMessage",
+    # Error handling utilities
+    "ProviderExceptionMap",
+    "handle_provider_errors",
+    "translate_provider_error",
     # API Provider implementations (lazy loaded)
     "OpenAIModel",
     "AnthropicModel",
