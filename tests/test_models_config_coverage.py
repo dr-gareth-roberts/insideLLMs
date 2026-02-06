@@ -41,7 +41,6 @@ from insideLLMs.models.base import (
 )
 from insideLLMs.types import ModelResponse
 
-
 # ---------------------------------------------------------------------------
 # Concrete subclasses for testing abstract Model / AsyncModel
 # ---------------------------------------------------------------------------
@@ -731,7 +730,7 @@ class TestConfigLoadSaveErrors:
         yaml_mod = sys.modules.get("yaml")
         sys.modules["yaml"] = None  # type: ignore[assignment]
         try:
-            from insideLLMs.config import save_config_to_yaml, create_example_config
+            from insideLLMs.config import create_example_config, save_config_to_yaml
 
             config = create_example_config()
             with pytest.raises(ImportError, match="PyYAML"):
@@ -884,8 +883,8 @@ class TestValidateConfigCoverage:
     def test_validate_config_returns_same_experiment_config(self):
         from insideLLMs.config import (
             ExperimentConfig,
-            validate_config,
             create_example_config,
+            validate_config,
         )
 
         config = create_example_config()
@@ -1019,7 +1018,7 @@ class TestConfigNoPydanticFallback:
                 saved_modules[mod_name] = sys.modules.pop(mod_name)
 
         # Also save the config module itself so we can reload it
-        saved_config = sys.modules.pop("insideLLMs.config", None)
+        sys.modules.pop("insideLLMs.config", None)
 
         # Block pydantic from being imported
         sys.modules["pydantic"] = None  # type: ignore[assignment]
