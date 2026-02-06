@@ -107,7 +107,9 @@ def as_langchain_chat_model(model: ModelProtocol):
 
         try:
             # pydantic v2
-            from pydantic import ConfigDict  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
+            from pydantic import (
+                ConfigDict,  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
+            )
         except Exception:  # pragma: no cover
             ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
 

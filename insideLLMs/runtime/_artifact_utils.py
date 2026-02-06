@@ -24,7 +24,6 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
-
 from insideLLMs.runtime._result_utils import _record_index_from_record
 
 

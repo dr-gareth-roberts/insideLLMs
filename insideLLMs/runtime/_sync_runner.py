@@ -23,13 +23,6 @@ from insideLLMs._serialization import (
 )
 from insideLLMs.config_types import RunConfig
 from insideLLMs.exceptions import RunnerExecutionError
-from insideLLMs.types import (
-    ExperimentResult,
-    ProbeResult,
-    ResultStatus,
-)
-from insideLLMs.validation import validate_prompt_set
-
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -43,9 +36,9 @@ from insideLLMs.runtime._artifact_utils import (
 )
 from insideLLMs.runtime._base import (
     ProgressCallback,
-    _RunnerBase,
     _invoke_progress_callback,
     _normalize_validation_mode,
+    _RunnerBase,
 )
 from insideLLMs.runtime._determinism import (
     _deterministic_base_time,
@@ -63,6 +56,12 @@ from insideLLMs.runtime._result_utils import (
     _result_dict_from_probe_result,
     _result_dict_from_record,
 )
+from insideLLMs.types import (
+    ExperimentResult,
+    ProbeResult,
+    ResultStatus,
+)
+from insideLLMs.validation import validate_prompt_set
 
 logger = logging.getLogger(__name__)
 
@@ -239,10 +238,9 @@ class ProbeRunner(_RunnerBase):
         Union[list[dict[str, Any]], ExperimentResult]
             List of result dicts or ExperimentResult if return_experiment=True.
         """
-        from insideLLMs.schemas import OutputValidator, SchemaRegistry
-
         # Import here to avoid circular import
         from insideLLMs.runtime._high_level import create_experiment_result
+        from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
         # Resolve config: use provided config or create default
         if config is None:

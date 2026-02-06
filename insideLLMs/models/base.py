@@ -191,8 +191,12 @@ def handle_provider_errors(
     # Lazy import to avoid circular dependency
     from insideLLMs.exceptions import (
         APIError as InsideLLMsAPIError,
+    )
+    from insideLLMs.exceptions import (
         ModelGenerationError,
         RateLimitError,
+    )
+    from insideLLMs.exceptions import (
         TimeoutError as InsideLLMsTimeoutError,
     )
 
@@ -200,9 +204,7 @@ def handle_provider_errors(
         @wraps(func)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             # Extract model metadata
-            model_id = (
-                get_model_id(self) if get_model_id else getattr(self, "model_id", "unknown")
-            )
+            model_id = get_model_id(self) if get_model_id else getattr(self, "model_id", "unknown")
             timeout = get_timeout(self) if get_timeout else getattr(self, "_timeout", 60.0)
 
             # Get prompt for error context (first positional arg after self)
@@ -229,7 +231,13 @@ def handle_provider_errors(
             except Exception as e:
                 # Avoid re-wrapping insideLLMs exceptions
                 if isinstance(
-                    e, (RateLimitError, InsideLLMsTimeoutError, InsideLLMsAPIError, ModelGenerationError)
+                    e,
+                    (
+                        RateLimitError,
+                        InsideLLMsTimeoutError,
+                        InsideLLMsAPIError,
+                        ModelGenerationError,
+                    ),
                 ):
                     raise
                 raise ModelGenerationError(
@@ -302,8 +310,12 @@ def translate_provider_error(
     """
     from insideLLMs.exceptions import (
         APIError as InsideLLMsAPIError,
+    )
+    from insideLLMs.exceptions import (
         ModelGenerationError,
         RateLimitError,
+    )
+    from insideLLMs.exceptions import (
         TimeoutError as InsideLLMsTimeoutError,
     )
 
