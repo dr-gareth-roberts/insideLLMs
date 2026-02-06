@@ -128,7 +128,9 @@ def test_response_deduplicator_non_exact_with_empty_words_is_not_duplicate():
     assert dedup._is_duplicate("", "non-empty response") is False
 
 
-def test_disk_cache_default_path_branch_uses_home_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_disk_cache_default_path_branch_uses_home_cache_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     monkeypatch.setenv("HOME", str(tmp_path))
     cache = DiskCache(path=None, max_size_mb=1)
     # Verify default location under ~/.cache/insideLLMs.

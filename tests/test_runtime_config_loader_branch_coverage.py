@@ -154,9 +154,7 @@ def test_load_dataset_from_config_fallback_branches(
         lambda name, split="test", **kwargs: [f"hf:{name}:{split}:{sorted(kwargs.items())}"],
     )
 
-    csv_data = cfg_loader._load_dataset_from_config(
-        {"format": "csv", "path": "data.csv"}, tmp_path
-    )
+    csv_data = cfg_loader._load_dataset_from_config({"format": "csv", "path": "data.csv"}, tmp_path)
     jsonl_data = cfg_loader._load_dataset_from_config(
         {"format": "jsonl", "path": "data.jsonl"}, tmp_path
     )

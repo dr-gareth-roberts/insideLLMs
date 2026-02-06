@@ -111,7 +111,13 @@ def test_lc_messages_to_insidellms_maps_roles_and_names():
 
     converted = langchain_integration._lc_messages_to_insidellms(messages)
 
-    assert [msg["role"] for msg in converted] == ["system", "user", "assistant", "assistant", "user"]
+    assert [msg["role"] for msg in converted] == [
+        "system",
+        "user",
+        "assistant",
+        "assistant",
+        "user",
+    ]
     assert converted[0]["name"] == "sys"
     assert converted[4]["content"] == "x\n9"
 
@@ -216,7 +222,10 @@ def test_as_langchain_chat_model_generate_falls_back_to_prompt_generate(monkeypa
     model = _Model()
     wrapped = langchain_integration.as_langchain_chat_model(model)
     result = wrapped._generate(
-        [SimpleNamespace(type="system", content="policy"), SimpleNamespace(type="human", content="question")],
+        [
+            SimpleNamespace(type="system", content="policy"),
+            SimpleNamespace(type="human", content="question"),
+        ],
         stop=["STOP"],
     )
 

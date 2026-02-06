@@ -41,9 +41,7 @@ from insideLLMs.deployment import (
     create_probe_endpoint,
 )
 
-requires_fastapi = pytest.mark.skipif(
-    not FASTAPI_AVAILABLE, reason="FastAPI not installed"
-)
+requires_fastapi = pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
 
 
 # =============================================================================
@@ -159,9 +157,7 @@ class TestGenerateResponseSchema:
     def test_model_dump(self):
         from insideLLMs.deployment import GenerateResponse
 
-        resp = GenerateResponse(
-            response="text", latency_ms=1.0, request_id="r"
-        )
+        resp = GenerateResponse(response="text", latency_ms=1.0, request_id="r")
         d = resp.model_dump()
         assert d["response"] == "text"
         assert "request_id" in d
@@ -431,18 +427,14 @@ class TestDeploymentAppRoutes:
 
     def test_generate_endpoint_invalid_temperature(self):
         client, _ = self._make_client()
-        resp = client.post(
-            "/generate", json={"prompt": "x", "temperature": 5.0}
-        )
+        resp = client.post("/generate", json={"prompt": "x", "temperature": 5.0})
         assert resp.status_code == 422
 
     def test_batch_endpoint_success(self):
         model = Mock(spec=["generate"])
         model.generate.side_effect = ["R1", "R2", "R3"]
         client, _ = self._make_client(model=model)
-        resp = client.post(
-            "/batch", json={"prompts": ["A", "B", "C"]}
-        )
+        resp = client.post("/batch", json={"prompts": ["A", "B", "C"]})
         assert resp.status_code == 200
         data = resp.json()
         assert data["responses"] == ["R1", "R2", "R3"]
@@ -451,22 +443,16 @@ class TestDeploymentAppRoutes:
 
     def test_batch_endpoint_exceeds_max_size(self):
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            deployment=DeploymentConfig(max_batch_size=2)
-        )
+        config = AppConfig(deployment=DeploymentConfig(max_batch_size=2))
         client, _ = self._make_client(model=model, config=config)
-        resp = client.post(
-            "/batch", json={"prompts": ["A", "B", "C"]}
-        )
+        resp = client.post("/batch", json={"prompts": ["A", "B", "C"]})
         assert resp.status_code == 400
 
     def test_batch_endpoint_model_error(self):
         model = Mock(spec=["generate"])
         model.generate.side_effect = ["R1", Exception("fail"), "R3"]
         client, _ = self._make_client(model=model)
-        resp = client.post(
-            "/batch", json={"prompts": ["A", "B", "C"]}
-        )
+        resp = client.post("/batch", json={"prompts": ["A", "B", "C"]})
         assert resp.status_code == 200
         data = resp.json()
         assert "Error" in data["responses"][1]
@@ -577,9 +563,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            generate_endpoint=EndpointConfig(path="/generate", enabled=False)
-        )
+        config = AppConfig(generate_endpoint=EndpointConfig(path="/generate", enabled=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -593,9 +577,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            batch_endpoint=EndpointConfig(path="/batch", enabled=False)
-        )
+        config = AppConfig(batch_endpoint=EndpointConfig(path="/batch", enabled=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -608,9 +590,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            probe_endpoint=EndpointConfig(path="/probe", enabled=False)
-        )
+        config = AppConfig(probe_endpoint=EndpointConfig(path="/probe", enabled=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -623,9 +603,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            deployment=DeploymentConfig(enable_health=False)
-        )
+        config = AppConfig(deployment=DeploymentConfig(enable_health=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -638,9 +616,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            deployment=DeploymentConfig(enable_metrics=False)
-        )
+        config = AppConfig(deployment=DeploymentConfig(enable_metrics=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -653,9 +629,7 @@ class TestDisabledFeatures:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            deployment=DeploymentConfig(enable_docs=False)
-        )
+        config = AppConfig(deployment=DeploymentConfig(enable_docs=False))
         deployment = DeploymentApp(model, config)
         app = deployment.build_app()
         client = TestClient(app)
@@ -678,9 +652,7 @@ class TestDeploymentAppAuth:
         from insideLLMs.deployment import DeploymentApp
 
         model = Mock(spec=["generate"])
-        config = AppConfig(
-            deployment=DeploymentConfig(api_key="my-secret-key")
-        )
+        config = AppConfig(deployment=DeploymentConfig(api_key="my-secret-key"))
         deployment = DeploymentApp(model, config)
         assert deployment._auth.validate("my-secret-key")
         assert not deployment._auth.validate("wrong-key")
@@ -986,9 +958,7 @@ class TestBatchEndpointEdgeCases:
         model = Mock(spec=["generate"])
         model.generate.return_value = "Resp"
         endpoint = BatchEndpoint(model, max_batch_size=10)
-        await endpoint.generate_batch(
-            ["P1"], temperature=0.3, max_tokens=50
-        )
+        await endpoint.generate_batch(["P1"], temperature=0.3, max_tokens=50)
         model.generate.assert_called_once()
         call_args = model.generate.call_args
         assert call_args[1]["temperature"] == 0.3
@@ -1196,9 +1166,7 @@ class TestKeyedTokenBucketRateLimiterExtended:
 
     def test_custom_burst_size(self):
         """Test custom burst_size."""
-        limiter = KeyedTokenBucketRateLimiter(
-            requests_per_minute=120, burst_size=5
-        )
+        limiter = KeyedTokenBucketRateLimiter(requests_per_minute=120, burst_size=5)
         assert limiter.burst_size == 5
 
     def test_rate_calculation(self):
@@ -1346,9 +1314,7 @@ class TestAppConfigExtended:
 
     def test_custom_deployment_config(self):
         """Test AppConfig with custom deployment config."""
-        config = AppConfig(
-            deployment=DeploymentConfig(title="Custom", port=9000)
-        )
+        config = AppConfig(deployment=DeploymentConfig(title="Custom", port=9000))
         assert config.deployment.title == "Custom"
         assert config.deployment.port == 9000
 
