@@ -31,7 +31,7 @@ jobs:
         run: ruff format --check .
 
       - name: Stability contract guardrails
-        run: pytest -q tests/test_stability_contract.py
+        run: PYTHONPATH=. pytest -q tests/test_stability_contract.py
 
       - name: Wiki link check
         run: python scripts/check_wiki_links.py
