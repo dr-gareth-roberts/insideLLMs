@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Stability contract matrix documentation (`docs/STABILITY_MATRIX.md`) defining Stable/Experimental/Internal surfaces and change policy
 - GitHub issue templates for bug reports and feature requests
 - Pull request template
 - Security policy (SECURITY.md)
