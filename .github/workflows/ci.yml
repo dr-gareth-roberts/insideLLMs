@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy types-PyYAML pytest
+          pip install ruff mypy PyYAML types-PyYAML pytest
 
       - name: Ruff lint
         run: ruff check .
