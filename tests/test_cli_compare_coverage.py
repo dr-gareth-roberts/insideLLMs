@@ -24,7 +24,6 @@ def _make_args(**kwargs):
 class TestCompareBasic:
     def test_no_models(self, capsys):
         rc = cmd_compare(_make_args(models=""))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_table_output(self, capsys):
@@ -63,7 +62,6 @@ class TestCompareBasic:
 
     def test_no_input(self, capsys):
         rc = cmd_compare(_make_args(input=None, input_file=None))
-        captured = capsys.readouterr()
         assert rc == 1
 
 
@@ -113,14 +111,12 @@ class TestCompareInputFile:
 
     def test_missing_input_file(self, capsys):
         rc = cmd_compare(_make_args(input=None, input_file="/nonexistent/file.txt"))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_jsonl_invalid_json(self, capsys, tmp_path):
         input_file = tmp_path / "bad.jsonl"
         input_file.write_text("not json\n")
         rc = cmd_compare(_make_args(input=None, input_file=str(input_file), models="dummy"))
-        captured = capsys.readouterr()
         assert rc == 1
 
 
