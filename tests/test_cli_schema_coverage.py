@@ -64,12 +64,10 @@ class TestSchemaDumpOp:
 
     def test_dump_missing_name(self, capsys):
         rc = cmd_schema(_make_args(op="dump", name=None))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_dump_invalid_schema(self, capsys):
         rc = cmd_schema(_make_args(op="dump", name="NonExistentSchema123"))
-        captured = capsys.readouterr()
         assert rc == 2
 
     def test_shortcut_ux(self, capsys):
@@ -78,26 +76,22 @@ class TestSchemaDumpOp:
         if not name:
             return
         rc = cmd_schema(_make_args(op=name))
-        captured = capsys.readouterr()
         assert rc == 0
 
 
 class TestSchemaValidateOp:
     def test_validate_missing_name(self, capsys):
         rc = cmd_schema(_make_args(op="validate", name=None))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_validate_missing_input(self, capsys):
         rc = cmd_schema(_make_args(op="validate", name="ResultRecord", input=None))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_validate_nonexistent_input(self, capsys):
         rc = cmd_schema(
             _make_args(op="validate", name="ResultRecord", input="/nonexistent/path.json")
         )
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_validate_json_file(self, capsys, tmp_path):
@@ -138,7 +132,6 @@ class TestSchemaValidateOp:
         rc = cmd_schema(
             _make_args(op="validate", name="ResultRecord", input=str(in_file), mode="warn")
         )
-        captured = capsys.readouterr()
         # Should handle gracefully in warn mode
         assert rc in (0, 1)
 
@@ -156,5 +149,4 @@ class TestSchemaUnknownOp:
     def test_unknown_op_treated_as_dump(self, capsys):
         rc = cmd_schema(_make_args(op="SomeSchema", name=None))
         # It should treat "SomeSchema" as a schema name
-        captured = capsys.readouterr()
         assert rc in (0, 2)  # Either succeeds or schema not found

@@ -11,7 +11,6 @@ import pytest
 from insideLLMs.cli.commands.diff import cmd_diff
 from insideLLMs.cli.commands.harness import cmd_harness
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
