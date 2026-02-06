@@ -29,9 +29,7 @@ class TestBenchmarkCommand:
         assert rc in (0, 1)
 
     def test_benchmark_with_datasets(self, capsys, tmp_path):
-        rc = cmd_benchmark(
-            _make_args(datasets="factuality", output=str(tmp_path / "results"))
-        )
+        rc = cmd_benchmark(_make_args(datasets="factuality", output=str(tmp_path / "results")))
         assert rc in (0, 1)
 
     def test_benchmark_error_verbose(self, capsys):
@@ -44,9 +42,7 @@ class TestBenchmarkCommand:
         assert rc in (0, 1)
 
     def test_benchmark_with_html_report(self, capsys, tmp_path):
-        rc = cmd_benchmark(
-            _make_args(output=str(tmp_path / "results"), html_report=True)
-        )
+        rc = cmd_benchmark(_make_args(output=str(tmp_path / "results"), html_report=True))
         assert rc in (0, 1)
 
     def test_benchmark_multiple_models(self, capsys):
@@ -66,18 +62,12 @@ class TestBenchmarkCommand:
         mock_runner = MagicMock()
         mock_runner.run_single.return_value = mock_result
 
-        with patch(
-            "insideLLMs.runtime.runner.ProbeRunner", return_value=mock_runner
-        ):
+        with patch("insideLLMs.runtime.runner.ProbeRunner", return_value=mock_runner):
             with patch(
                 "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
                 return_value=mock_suite,
             ):
-                with patch(
-                    "insideLLMs.benchmark_datasets.load_builtin_dataset"
-                ):
-                    rc = cmd_benchmark(
-                        _make_args(output=str(tmp_path / "results"))
-                    )
+                with patch("insideLLMs.benchmark_datasets.load_builtin_dataset"):
+                    rc = cmd_benchmark(_make_args(output=str(tmp_path / "results")))
 
         assert rc in (0, 1)

@@ -101,11 +101,23 @@ def test_run_harness_dataset_version_composition_paths(monkeypatch: pytest.Monke
     monkeypatch.setattr(hl, "_load_dataset_from_config", lambda *_args, **_kwargs: ["item"])
     monkeypatch.setattr(hl, "_build_resolved_config_snapshot", lambda config, _: config)
     monkeypatch.setattr(hl, "_resolve_determinism_options", lambda *_args, **_kwargs: (True, True))
-    monkeypatch.setattr(hl, "_deterministic_run_id_from_config_snapshot", lambda *_args, **_kwargs: "run-1")
+    monkeypatch.setattr(
+        hl, "_deterministic_run_id_from_config_snapshot", lambda *_args, **_kwargs: "run-1"
+    )
     monkeypatch.setattr(hl, "_deterministic_harness_experiment_id", lambda **_kwargs: "exp-1")
-    monkeypatch.setattr(hl, "_deterministic_base_time", lambda *_args, **_kwargs: datetime(2025, 1, 1))
-    monkeypatch.setattr(hl, "_deterministic_run_times", lambda *_args, **_kwargs: (datetime(2025, 1, 1), datetime(2025, 1, 1)))
-    monkeypatch.setattr(hl, "_deterministic_item_times", lambda *_args, **_kwargs: (datetime(2025, 1, 1), datetime(2025, 1, 1)))
+    monkeypatch.setattr(
+        hl, "_deterministic_base_time", lambda *_args, **_kwargs: datetime(2025, 1, 1)
+    )
+    monkeypatch.setattr(
+        hl,
+        "_deterministic_run_times",
+        lambda *_args, **_kwargs: (datetime(2025, 1, 1), datetime(2025, 1, 1)),
+    )
+    monkeypatch.setattr(
+        hl,
+        "_deterministic_item_times",
+        lambda *_args, **_kwargs: (datetime(2025, 1, 1), datetime(2025, 1, 1)),
+    )
     monkeypatch.setattr(hl, "generate_summary_report", lambda *args, **kwargs: {"ok": True})
     monkeypatch.setattr(
         hl,
@@ -169,7 +181,9 @@ def test_create_experiment_result_status_category_and_strict_error_paths(
     assert output.results[0].status == ResultStatus.ERROR
     assert output.probe_category.value == "custom"
 
-    probe_results = [ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS, latency_ms=1.0)]
+    probe_results = [
+        ProbeResult(input="i", output="o", status=ResultStatus.SUCCESS, latency_ms=1.0)
+    ]
     passthrough = hl.create_experiment_result(model=model, probe=probe, results=probe_results)
     assert passthrough.results == probe_results
     assert passthrough.started_at is not None

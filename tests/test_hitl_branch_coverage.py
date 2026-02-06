@@ -46,7 +46,11 @@ def test_priority_queue_add_capacity_failure_and_empty_exception_branch(monkeypa
         raise Exception("wrapped empty")
 
     # Raise stdlib queue.Empty path by delegating to get_nowait on an actually empty queue.
-    monkeypatch.setattr(queue._priority_queue, "get_nowait", lambda: (_ for _ in ()).throw(__import__("queue").Empty()))
+    monkeypatch.setattr(
+        queue._priority_queue,
+        "get_nowait",
+        lambda: (_ for _ in ()).throw(__import__("queue").Empty()),
+    )
     assert queue.get_next() is None
 
 

@@ -413,10 +413,12 @@ class TestFallbackChainGenerateChat:
             def generate_chat(self, messages, params=None, **kwargs):
                 raise RuntimeError("fail")
 
-        chain = FallbackChain([
-            FailingAdapter(AdapterConfig("f1", Provider.MOCK)),
-            FailingAdapter(AdapterConfig("f2", Provider.MOCK)),
-        ])
+        chain = FallbackChain(
+            [
+                FailingAdapter(AdapterConfig("f1", Provider.MOCK)),
+                FailingAdapter(AdapterConfig("f2", Provider.MOCK)),
+            ]
+        )
         with pytest.raises(RuntimeError, match="All adapters failed"):
             chain.generate_chat([{"role": "user", "content": "Test"}])
 

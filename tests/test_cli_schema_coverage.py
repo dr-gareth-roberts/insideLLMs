@@ -37,6 +37,7 @@ class TestSchemaListOp:
 class TestSchemaDumpOp:
     def _schema_name(self):
         from insideLLMs.schemas import SchemaRegistry
+
         registry = SchemaRegistry()
         for name in [registry.RESULT_RECORD, registry.RUNNER_ITEM, registry.RUNNER_OUTPUT]:
             if registry.available_versions(name):
@@ -112,7 +113,14 @@ class TestSchemaValidateOp:
 
     def test_validate_json_list(self, capsys, tmp_path):
         records = [
-            {"model": "test", "probe": "test", "input": "hello", "output": "world", "status": "success", "score": 1.0}
+            {
+                "model": "test",
+                "probe": "test",
+                "input": "hello",
+                "output": "world",
+                "status": "success",
+                "score": 1.0,
+            }
         ]
         in_file = tmp_path / "records.json"
         in_file.write_text(json.dumps(records))
@@ -120,7 +128,14 @@ class TestSchemaValidateOp:
         assert rc in (0, 1)
 
     def test_validate_jsonl_file(self, capsys, tmp_path):
-        record = {"model": "test", "probe": "test", "input": "hello", "output": "world", "status": "success", "score": 1.0}
+        record = {
+            "model": "test",
+            "probe": "test",
+            "input": "hello",
+            "output": "world",
+            "status": "success",
+            "score": 1.0,
+        }
         in_file = tmp_path / "records.jsonl"
         in_file.write_text(json.dumps(record) + "\n")
         rc = cmd_schema(_make_args(op="validate", name="ResultRecord", input=str(in_file)))

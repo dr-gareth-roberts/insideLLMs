@@ -109,7 +109,9 @@ async def test_async_batch_runner_failure_metrics_and_progress_paths():
     result = await runner.run([_cfg("ok1", prompt="ok"), _cfg("bad", prompt="boom")])
     assert len(result.runs) == 2
     assert result.failed == 1
-    assert any("response_len" in r.metrics for r in result.runs if r.status == ExperimentStatus.COMPLETED)
+    assert any(
+        "response_len" in r.metrics for r in result.runs if r.status == ExperimentStatus.COMPLETED
+    )
     assert progress == []
 
 

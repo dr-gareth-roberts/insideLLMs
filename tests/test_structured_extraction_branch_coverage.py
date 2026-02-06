@@ -63,7 +63,9 @@ def test_table_extractor_markdown_failure_paths():
 
 
 def test_structured_extractor_non_autodetect_and_schema_validation_error():
-    schema = ExtractionSchema(fields=[FieldSchema(name="required_name", field_type=FieldType.STRING)])
+    schema = ExtractionSchema(
+        fields=[FieldSchema(name="required_name", field_type=FieldType.STRING)]
+    )
     extractor = StructuredExtractor(schema=schema, auto_detect_format=False)
 
     result = extractor.extract('{"other":"value"}')
@@ -94,9 +96,23 @@ def test_structured_extractor_auto_extract_fallback_when_all_fail(monkeypatch: p
         raise RuntimeError("boom")
 
     monkeypatch.setattr(extractor.json_extractor, "extract", _raise)
-    monkeypatch.setattr(extractor.table_extractor, "extract", lambda _: ExtractionResult("", {}, ExtractionStatus.FAILED, ExtractionFormat.TABLE, 0.0))
-    monkeypatch.setattr(extractor.kv_extractor, "extract", lambda _: ExtractionResult("", {}, ExtractionStatus.FAILED, ExtractionFormat.KEY_VALUE, 0.0))
-    monkeypatch.setattr(extractor.list_extractor, "extract", lambda _: ExtractionResult("", {}, ExtractionStatus.FAILED, ExtractionFormat.LIST, 0.0))
+    monkeypatch.setattr(
+        extractor.table_extractor,
+        "extract",
+        lambda _: ExtractionResult("", {}, ExtractionStatus.FAILED, ExtractionFormat.TABLE, 0.0),
+    )
+    monkeypatch.setattr(
+        extractor.kv_extractor,
+        "extract",
+        lambda _: ExtractionResult(
+            "", {}, ExtractionStatus.FAILED, ExtractionFormat.KEY_VALUE, 0.0
+        ),
+    )
+    monkeypatch.setattr(
+        extractor.list_extractor,
+        "extract",
+        lambda _: ExtractionResult("", {}, ExtractionStatus.FAILED, ExtractionFormat.LIST, 0.0),
+    )
 
     fallback = extractor.extract("nothing structured here")
     assert fallback.status == ExtractionStatus.PARTIAL
