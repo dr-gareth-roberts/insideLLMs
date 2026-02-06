@@ -2,8 +2,15 @@
 
 import argparse
 import json
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 from insideLLMs.cli.commands.doctor import cmd_doctor
+
+
+# Skip all tests if nltk not available (doctor command requires it)
+pytest.importorskip("nltk")
 
 
 def _make_args(**kwargs):

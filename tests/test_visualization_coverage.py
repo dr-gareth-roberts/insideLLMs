@@ -565,10 +565,12 @@ def viz_with_plotly():
     # since the interactive functions call pd.DataFrame / pd.melt etc.
     _real_pd = getattr(viz, "pd", None) or sys.modules.get("pandas")
     if _real_pd is None:
-        # If pandas hasn't been loaded yet at all (unlikely in our test suite),
-        # we must import it outside of the coverage-instrumented module scope.
-        # Using __import__ to avoid triggering coverage-related reload issues.
-        _real_pd = __import__("pandas")
+        # If pandas hasn't been loaded yet at all, try importing it
+        # Skip this fixture if pandas is not available
+        try:
+            _real_pd = __import__("pandas")
+        except ModuleNotFoundError:
+            pytest.skip("pandas not available")
 
     # Save originals
     saved = {}
