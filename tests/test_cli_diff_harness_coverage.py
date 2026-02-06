@@ -11,10 +11,10 @@ import pytest
 from insideLLMs.cli.commands.diff import cmd_diff
 from insideLLMs.cli.commands.harness import cmd_harness
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _write_records(path: Path, records: list[dict[str, Any]]) -> None:
     """Write records as JSONL to the given file path."""
@@ -410,14 +410,9 @@ class TestCmdDiffTextFormat:
 
     def test_limit_exceeded(self, tmp_path: Path, capsys) -> None:
         """When items exceed --limit, the 'and N more' message is printed."""
-        records_a = [
-            _make_record(model_id=f"m{i}", example_id=f"e{i}")
-            for i in range(5)
-        ]
+        records_a = [_make_record(model_id=f"m{i}", example_id=f"e{i}") for i in range(5)]
         # Make all of them only-in-baseline by having an empty comparison
-        records_b = [
-            _make_record(model_id="other", example_id="other")
-        ]
+        records_b = [_make_record(model_id="other", example_id="other")]
         dir_a, dir_b = self._setup_dirs(tmp_path, records_a, records_b)
         args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b), limit=2)
         rc = cmd_diff(args)
@@ -512,11 +507,13 @@ class TestCmdDiffJsonFormat:
         """JSON report captures all types: regressions, improvements, changes, only_*."""
         records_a = [
             # Will be a regression (metric drop)
-            _make_record(model_id="m1", example_id="e1", scores={"score": 0.9},
-                         primary_metric="score"),
+            _make_record(
+                model_id="m1", example_id="e1", scores={"score": 0.9}, primary_metric="score"
+            ),
             # Will be an improvement (metric rise)
-            _make_record(model_id="m1", example_id="e2", scores={"score": 0.5},
-                         primary_metric="score"),
+            _make_record(
+                model_id="m1", example_id="e2", scores={"score": 0.5}, primary_metric="score"
+            ),
             # Will be only_a
             _make_record(model_id="m1", example_id="e3"),
             # Will be status regression
@@ -525,10 +522,12 @@ class TestCmdDiffJsonFormat:
             _make_record(model_id="m1", example_id="e5", status="error", scores={}),
         ]
         records_b = [
-            _make_record(model_id="m1", example_id="e1", scores={"score": 0.7},
-                         primary_metric="score"),
-            _make_record(model_id="m1", example_id="e2", scores={"score": 0.8},
-                         primary_metric="score"),
+            _make_record(
+                model_id="m1", example_id="e1", scores={"score": 0.7}, primary_metric="score"
+            ),
+            _make_record(
+                model_id="m1", example_id="e2", scores={"score": 0.8}, primary_metric="score"
+            ),
             # e3 missing from b -> only_a
             _make_record(model_id="m1", example_id="e4", status="error", scores={}),
             _make_record(model_id="m1", example_id="e5", status="success"),
@@ -536,9 +535,7 @@ class TestCmdDiffJsonFormat:
             _make_record(model_id="m1", example_id="e6"),
         ]
         dir_a, dir_b = self._setup_dirs(tmp_path, records_a, records_b)
-        args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json"
-        )
+        args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json")
         rc = cmd_diff(args)
         assert rc == 0
         report = json.loads(capsys.readouterr().out)
@@ -566,16 +563,20 @@ class TestCmdDiffFailFlags:
     def test_fail_on_regressions_json(self, tmp_path: Path) -> None:
         dir_a, dir_b = self._setup_regression_dirs(tmp_path)
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="json", fail_on_regressions=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="json",
+            fail_on_regressions=True,
         )
         assert cmd_diff(args) == 2
 
     def test_fail_on_regressions_text(self, tmp_path: Path) -> None:
         dir_a, dir_b = self._setup_regression_dirs(tmp_path)
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="text", fail_on_regressions=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="text",
+            fail_on_regressions=True,
         )
         assert cmd_diff(args) == 2
 
@@ -590,8 +591,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_b / "records.jsonl", [_make_record(model_id="m2", example_id="e2")])
         # JSON format
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="json", fail_on_changes=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="json",
+            fail_on_changes=True,
         )
         assert cmd_diff(args) == 2
 
@@ -606,8 +609,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="text", fail_on_changes=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="text",
+            fail_on_changes=True,
         )
         assert cmd_diff(args) == 2
 
@@ -624,8 +629,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="json", fail_on_trace_violations=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="json",
+            fail_on_trace_violations=True,
         )
         assert cmd_diff(args) == 3
 
@@ -642,8 +649,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="text", fail_on_trace_violations=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="text",
+            fail_on_trace_violations=True,
         )
         assert cmd_diff(args) == 3
 
@@ -663,8 +672,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="json", fail_on_trace_drift=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="json",
+            fail_on_trace_drift=True,
         )
         assert cmd_diff(args) == 4
 
@@ -684,8 +695,10 @@ class TestCmdDiffFailFlags:
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
         args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b),
-            fmt="text", fail_on_trace_drift=True,
+            run_dir_a=str(dir_a),
+            run_dir_b=str(dir_b),
+            fmt="text",
+            fail_on_trace_drift=True,
         )
         assert cmd_diff(args) == 4
 
@@ -716,9 +729,7 @@ class TestCmdDiffRecordIdentity:
         dir_b.mkdir()
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
-        args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json"
-        )
+        args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json")
         rc = cmd_diff(args)
         assert rc == 0
         report = json.loads(capsys.readouterr().out)
@@ -736,9 +747,7 @@ class TestCmdDiffRecordIdentity:
         dir_b.mkdir()
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
-        args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json"
-        )
+        args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json")
         # Should not crash
         rc = cmd_diff(args)
         assert rc == 0
@@ -755,9 +764,7 @@ class TestCmdDiffRecordIdentity:
         dir_b.mkdir()
         _write_records(dir_a / "records.jsonl", [rec_a])
         _write_records(dir_b / "records.jsonl", [rec_b])
-        args = _diff_namespace(
-            run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json"
-        )
+        args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b), fmt="json")
         rc = cmd_diff(args)
         assert rc == 0
 
@@ -862,15 +869,19 @@ class TestCmdHarnessErrorPaths:
         config_path = tmp_path / "config.yaml"
         config_path.write_text("models: []\nprobes: []\n", encoding="utf-8")
         args = _harness_namespace(config=str(config_path))
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="test-run-id",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value={"output_dir": str(tmp_path / "results")},
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="test-run-id",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value={"output_dir": str(tmp_path / "results")},
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 1
@@ -880,15 +891,19 @@ class TestCmdHarnessErrorPaths:
         config_path = tmp_path / "config.yaml"
         config_path.write_text("models: []\nprobes: []\n", encoding="utf-8")
         args = _harness_namespace(config=str(config_path), verbose=True)
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="test-run-id",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value={"output_dir": str(tmp_path / "results")},
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="test-run-id",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value={"output_dir": str(tmp_path / "results")},
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 1
@@ -921,9 +936,7 @@ class TestCmdHarnessSuccessPaths:
     ) -> int:
         """Helper to run cmd_harness with mocked dependencies."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         effective_run_dir = run_dir or str(tmp_path / "run_out")
         args = _harness_namespace(
             config=str(config_path),
@@ -945,15 +958,19 @@ class TestCmdHarnessSuccessPaths:
         )
         result = _minimal_harness_result(run_id=run_id)
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value=run_id,
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value=run_id,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             return cmd_harness(args)
 
@@ -1033,9 +1050,7 @@ class TestCmdHarnessSuccessPaths:
     def test_non_deterministic_artifacts(self, tmp_path: Path) -> None:
         """When deterministic_artifacts=False, python_version and platform are set."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1046,15 +1061,19 @@ class TestCmdHarnessSuccessPaths:
         result = _minimal_harness_result(run_id="nd-test")
         result["deterministic_artifacts"] = False
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="nd-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="nd-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1066,8 +1085,9 @@ class TestCmdHarnessSuccessPaths:
 class TestCmdHarnessOutputDirPrecedence:
     """Test output directory resolution precedence."""
 
-    def _run_with_dir_options(self, tmp_path, *, run_dir=None, output_dir=None,
-                              run_root=None, run_id="test-id"):
+    def _run_with_dir_options(
+        self, tmp_path, *, run_dir=None, output_dir=None, run_root=None, run_id="test-id"
+    ):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
             "models:\n- type: dummy\nprobes:\n- type: logic\noutput_dir: config_results\n",
@@ -1083,15 +1103,19 @@ class TestCmdHarnessOutputDirPrecedence:
         result = _minimal_harness_result(run_id=run_id)
         result["config"]["output_dir"] = "config_results"
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value=run_id,
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value=run_id,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         return rc
@@ -1124,9 +1148,7 @@ class TestCmdHarnessTracking:
     def test_tracking_local(self, tmp_path: Path) -> None:
         """Local tracking creates tracker and logs metrics."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1138,18 +1160,23 @@ class TestCmdHarnessTracking:
         result = _minimal_harness_result(run_id="track-local-test")
         mock_tracker = MagicMock()
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-local-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-local-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1160,9 +1187,7 @@ class TestCmdHarnessTracking:
     def test_tracking_wandb_kwargs(self, tmp_path: Path) -> None:
         """wandb tracking passes project kwarg."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1174,18 +1199,23 @@ class TestCmdHarnessTracking:
         result = _minimal_harness_result(run_id="track-wandb")
         mock_tracker = MagicMock()
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-wandb",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-wandb",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1194,9 +1224,7 @@ class TestCmdHarnessTracking:
     def test_tracking_mlflow_kwargs(self, tmp_path: Path) -> None:
         """mlflow tracking passes experiment_name kwarg."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1208,18 +1236,23 @@ class TestCmdHarnessTracking:
         result = _minimal_harness_result(run_id="track-mlflow")
         mock_tracker = MagicMock()
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-mlflow",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-mlflow",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1227,9 +1260,7 @@ class TestCmdHarnessTracking:
     def test_tracking_tensorboard_kwargs(self, tmp_path: Path) -> None:
         """tensorboard tracking passes log_dir kwarg."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1241,18 +1272,23 @@ class TestCmdHarnessTracking:
         result = _minimal_harness_result(run_id="track-tb")
         mock_tracker = MagicMock()
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-tb",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-tb",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1260,9 +1296,7 @@ class TestCmdHarnessTracking:
     def test_tracking_creation_failure(self, tmp_path: Path) -> None:
         """Tracking creation failure falls back gracefully."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1273,18 +1307,23 @@ class TestCmdHarnessTracking:
         )
         result = _minimal_harness_result(run_id="track-fail")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-fail",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            side_effect=ImportError("no tracking"),
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-fail",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                side_effect=ImportError("no tracking"),
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1292,9 +1331,7 @@ class TestCmdHarnessTracking:
     def test_tracking_log_error(self, tmp_path: Path) -> None:
         """Tracking log error during post-run logging is handled gracefully."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1307,18 +1344,23 @@ class TestCmdHarnessTracking:
         mock_tracker = MagicMock()
         mock_tracker.log_metrics.side_effect = RuntimeError("log fail")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-log-err",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-log-err",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1326,9 +1368,7 @@ class TestCmdHarnessTracking:
     def test_tracker_cleanup_on_error(self, tmp_path: Path) -> None:
         """Tracker.end_run(status='failed') is called on run exception."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1339,18 +1379,23 @@ class TestCmdHarnessTracking:
         )
         mock_tracker = MagicMock()
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="track-cleanup",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value={"output_dir": str(tmp_path / "results")},
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="track-cleanup",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value={"output_dir": str(tmp_path / "results")},
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 1
@@ -1363,9 +1408,7 @@ class TestCmdHarnessConfigSnapshot:
     def test_fallback_config_snapshot(self, tmp_path: Path) -> None:
         """When config_snapshot not in result, it's built from config."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1375,15 +1418,19 @@ class TestCmdHarnessConfigSnapshot:
         result = _minimal_harness_result(run_id="snap-test")
         result["config_snapshot"] = None  # Force fallback path
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="snap-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="snap-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1391,9 +1438,7 @@ class TestCmdHarnessConfigSnapshot:
     def test_fallback_determinism_options(self, tmp_path: Path) -> None:
         """When strict_serialization/deterministic_artifacts missing, resolved from config."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1405,15 +1450,19 @@ class TestCmdHarnessConfigSnapshot:
         result["strict_serialization"] = "not a bool"
         result["deterministic_artifacts"] = "not a bool"
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="determ-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="determ-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1421,9 +1470,7 @@ class TestCmdHarnessConfigSnapshot:
     def test_run_id_from_result(self, tmp_path: Path) -> None:
         """When no --run-id, uses result['run_id']."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1432,15 +1479,19 @@ class TestCmdHarnessConfigSnapshot:
         )
         result = _minimal_harness_result(run_id="result-derived-id")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="derived-from-config",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="derived-from-config",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1450,9 +1501,7 @@ class TestCmdHarnessConfigSnapshot:
     def test_run_id_fallback_to_deterministic(self, tmp_path: Path) -> None:
         """When result has no run_id and derive returns empty, use deterministic."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1462,15 +1511,19 @@ class TestCmdHarnessConfigSnapshot:
         result = _minimal_harness_result(run_id=None)
         result["run_id"] = None
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1486,9 +1539,7 @@ class TestCmdHarnessProgressCallback:
     def test_progress_callback_verbose(self, tmp_path: Path) -> None:
         """Verbose mode enables the progress callback."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1510,15 +1561,19 @@ class TestCmdHarnessProgressCallback:
                 cb(10, 10)
             return result
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=mock_run,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="progress-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=mock_run,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="progress-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1527,9 +1582,7 @@ class TestCmdHarnessProgressCallback:
     def test_progress_callback_quiet_suppressed(self, tmp_path: Path) -> None:
         """Quiet mode suppresses progress callback output."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1547,15 +1600,19 @@ class TestCmdHarnessProgressCallback:
                 cb(1, 10)  # Should not crash even though quiet
             return result
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=mock_run,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="quiet-progress",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=mock_run,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="quiet-progress",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1567,9 +1624,7 @@ class TestCmdHarnessDatasetSpec:
     def test_dataset_spec_fields(self, tmp_path: Path) -> None:
         """Dataset spec picks up name, version, hash, provenance from config."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1585,15 +1640,19 @@ class TestCmdHarnessDatasetSpec:
             "path": "/data/file.jsonl",
         }
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="ds-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="ds-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1606,9 +1665,7 @@ class TestCmdHarnessDatasetSpec:
     def test_dataset_spec_fallback_fields(self, tmp_path: Path) -> None:
         """Dataset spec falls back to alternative field names."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1623,15 +1680,19 @@ class TestCmdHarnessDatasetSpec:
             "source": "local",
         }
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="ds-fallback",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="ds-fallback",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1644,9 +1705,7 @@ class TestCmdHarnessDatasetSpec:
     def test_non_dict_dataset_config(self, tmp_path: Path) -> None:
         """Non-dict dataset config is handled gracefully."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1656,15 +1715,19 @@ class TestCmdHarnessDatasetSpec:
         result = _minimal_harness_result(run_id="ds-none")
         result["config"]["dataset"] = "just_a_string"
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="ds-none",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="ds-none",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1672,9 +1735,7 @@ class TestCmdHarnessDatasetSpec:
     def test_non_list_models_probes(self, tmp_path: Path) -> None:
         """Non-list models/probes config is handled gracefully."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1685,15 +1746,19 @@ class TestCmdHarnessDatasetSpec:
         result["config"]["models"] = "not a list"
         result["config"]["probes"] = None
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="bad-lists",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="bad-lists",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1705,9 +1770,7 @@ class TestCmdHarnessOverwrite:
     def test_overwrite_existing_dir(self, tmp_path: Path) -> None:
         """With --overwrite and sentinel, existing dir is cleared."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         run_dir_path.mkdir()
         (run_dir_path / ".insidellms_run").write_text("marker\n", encoding="utf-8")
@@ -1721,15 +1784,19 @@ class TestCmdHarnessOverwrite:
         )
         result = _minimal_harness_result(run_id="overwrite-test")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="overwrite-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="overwrite-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1743,9 +1810,7 @@ class TestCmdHarnessReportFallback:
     def test_fallback_to_basic_report(self, tmp_path: Path) -> None:
         """When visualization import fails, basic report is generated."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1755,18 +1820,23 @@ class TestCmdHarnessReportFallback:
         )
         result = _minimal_harness_result(run_id="report-fallback")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="report-fallback",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch.dict(
-            "sys.modules",
-            {"insideLLMs.visualization": None},
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="report-fallback",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch.dict(
+                "sys.modules",
+                {"insideLLMs.visualization": None},
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1790,15 +1860,19 @@ class TestCmdHarnessNonDictConfig:
         )
         result = _minimal_harness_result(run_id="nondict-test")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="nondict-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value="not a dict",
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="nondict-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value="not a dict",
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1810,9 +1884,7 @@ class TestCmdHarnessValidateOutput:
     def test_validate_output_manifest_and_summary(self, tmp_path: Path) -> None:
         """validate_output triggers OutputValidator on manifest and summary."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1824,15 +1896,19 @@ class TestCmdHarnessValidateOutput:
         )
         result = _minimal_harness_result(run_id="validate-test")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="validate-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="validate-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1844,9 +1920,7 @@ class TestCmdHarnessConfigDefaultDir:
     def test_falls_back_to_config_output_dir(self, tmp_path: Path) -> None:
         """When no explicit dir options, uses config output_dir."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         expected_dir = tmp_path / "my_results"
         args = _harness_namespace(
             config=str(config_path),
@@ -1858,15 +1932,19 @@ class TestCmdHarnessConfigDefaultDir:
         result = _minimal_harness_result(run_id="fallback-dir-test")
         result["config"]["output_dir"] = str(expected_dir)
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="fallback-dir-test",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="fallback-dir-test",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0
@@ -1880,9 +1958,7 @@ class TestCmdHarnessTrackerEndRunFailure:
     def test_tracker_end_run_raises_attribute_error(self, tmp_path: Path) -> None:
         """When tracker.end_run raises AttributeError, harness still returns 1."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         args = _harness_namespace(
             config=str(config_path),
             run_id="tracker-end-fail",
@@ -1893,18 +1969,23 @@ class TestCmdHarnessTrackerEndRunFailure:
         mock_tracker = MagicMock()
         mock_tracker.end_run.side_effect = AttributeError("no end_run")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="tracker-end-fail",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value={"output_dir": str(tmp_path / "results")},
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="tracker-end-fail",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value={"output_dir": str(tmp_path / "results")},
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 1
@@ -1912,9 +1993,7 @@ class TestCmdHarnessTrackerEndRunFailure:
     def test_tracker_end_run_raises_runtime_error(self, tmp_path: Path) -> None:
         """When tracker.end_run raises RuntimeError, harness still returns 1."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         args = _harness_namespace(
             config=str(config_path),
             run_id="tracker-end-rt",
@@ -1925,18 +2004,23 @@ class TestCmdHarnessTrackerEndRunFailure:
         mock_tracker = MagicMock()
         mock_tracker.end_run.side_effect = RuntimeError("end failed")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="tracker-end-rt",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value={"output_dir": str(tmp_path / "results")},
-        ), patch(
-            "insideLLMs.experiment_tracking.create_tracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="tracker-end-rt",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value={"output_dir": str(tmp_path / "results")},
+            ),
+            patch(
+                "insideLLMs.experiment_tracking.create_tracker",
+                return_value=mock_tracker,
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 1
@@ -1948,9 +2032,7 @@ class TestCmdHarnessLegacySymlinkFallback:
     def test_symlink_failure_falls_back_to_copy(self, tmp_path: Path) -> None:
         """When os.symlink fails, fallback to hardlink or copy."""
         config_path = tmp_path / "config.yaml"
-        config_path.write_text(
-            "models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8"
-        )
+        config_path.write_text("models:\n- type: dummy\nprobes:\n- type: logic\n", encoding="utf-8")
         run_dir_path = tmp_path / "run_out"
         args = _harness_namespace(
             config=str(config_path),
@@ -1959,21 +2041,27 @@ class TestCmdHarnessLegacySymlinkFallback:
         )
         result = _minimal_harness_result(run_id="sym-fallback")
 
-        with patch(
-            "insideLLMs.cli.commands.harness.run_harness_from_config",
-            return_value=result,
-        ), patch(
-            "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
-            return_value="sym-fallback",
-        ), patch(
-            "insideLLMs.cli.commands.harness.load_config",
-            return_value=result["config"],
-        ), patch(
-            "os.symlink",
-            side_effect=OSError("symlink not supported"),
-        ), patch(
-            "os.link",
-            side_effect=OSError("hardlink not supported"),
+        with (
+            patch(
+                "insideLLMs.cli.commands.harness.run_harness_from_config",
+                return_value=result,
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.derive_run_id_from_config_path",
+                return_value="sym-fallback",
+            ),
+            patch(
+                "insideLLMs.cli.commands.harness.load_config",
+                return_value=result["config"],
+            ),
+            patch(
+                "os.symlink",
+                side_effect=OSError("symlink not supported"),
+            ),
+            patch(
+                "os.link",
+                side_effect=OSError("hardlink not supported"),
+            ),
         ):
             rc = cmd_harness(args)
         assert rc == 0

@@ -28,10 +28,10 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_experiment() -> ExperimentResult:
     """Create a minimal ExperimentResult for testing."""
@@ -102,6 +102,7 @@ def _mock_experiment_no_score_no_duration() -> ExperimentResult:
 # WandBTracker
 # ===================================================================
 
+
 class TestWandBTrackerFull:
     """Full coverage for WandBTracker with mocked wandb module."""
 
@@ -116,9 +117,12 @@ class TestWandBTrackerFull:
         self.mock_wandb.Table = MagicMock()
         self.mock_wandb.Artifact = MagicMock()
 
-        with patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.wandb", self.mock_wandb, create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.wandb", self.mock_wandb, create=True),
+        ):
             from insideLLMs.experiment_tracking import WandBTracker
+
             self.WandBTracker = WandBTracker
             yield
 
@@ -352,6 +356,7 @@ class TestWandBTrackerFull:
 # MLflowTracker
 # ===================================================================
 
+
 class TestMLflowTrackerFull:
     """Full coverage for MLflowTracker with mocked mlflow module."""
 
@@ -366,9 +371,12 @@ class TestMLflowTrackerFull:
         self.mock_mlflow.tensorflow = MagicMock()
         self.mock_mlflow.pyfunc = MagicMock()
 
-        with patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.mlflow", self.mock_mlflow, create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.mlflow", self.mock_mlflow, create=True),
+        ):
             from insideLLMs.experiment_tracking import MLflowTracker
+
             self.MLflowTracker = MLflowTracker
             yield
 
@@ -561,6 +569,7 @@ class TestMLflowTrackerFull:
 # TensorBoardTracker
 # ===================================================================
 
+
 class TestTensorBoardTrackerFull:
     """Full coverage for TensorBoardTracker with mocked SummaryWriter."""
 
@@ -570,9 +579,12 @@ class TestTensorBoardTrackerFull:
         self.writer_instance = MagicMock()
         self.MockWriter.return_value = self.writer_instance
 
-        with patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.SummaryWriter", self.MockWriter, create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.SummaryWriter", self.MockWriter, create=True),
+        ):
             from insideLLMs.experiment_tracking import TensorBoardTracker
+
             self.TensorBoardTracker = TensorBoardTracker
             yield
 
@@ -742,6 +754,7 @@ class TestTensorBoardTrackerFull:
 # MultiTracker edge cases
 # ===================================================================
 
+
 class TestMultiTrackerEdgeCases:
     """Additional edge-case tests for MultiTracker."""
 
@@ -814,6 +827,7 @@ class TestMultiTrackerEdgeCases:
 # create_tracker factory
 # ===================================================================
 
+
 class TestCreateTrackerFactory:
     """Tests for create_tracker with all backends."""
 
@@ -822,23 +836,32 @@ class TestCreateTrackerFactory:
         assert isinstance(tracker, LocalFileTracker)
 
     def test_create_wandb(self):
-        with patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.wandb", MagicMock(), create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.wandb", MagicMock(), create=True),
+        ):
             from insideLLMs.experiment_tracking import WandBTracker
+
             tracker = create_tracker("wandb", project="test-proj")
             assert isinstance(tracker, WandBTracker)
 
     def test_create_mlflow(self):
-        with patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.mlflow", MagicMock(), create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.mlflow", MagicMock(), create=True),
+        ):
             from insideLLMs.experiment_tracking import MLflowTracker
+
             tracker = create_tracker("mlflow", experiment_name="test")
             assert isinstance(tracker, MLflowTracker)
 
     def test_create_tensorboard(self):
-        with patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", True), \
-             patch("insideLLMs.experiment_tracking.SummaryWriter", MagicMock(), create=True):
+        with (
+            patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", True),
+            patch("insideLLMs.experiment_tracking.SummaryWriter", MagicMock(), create=True),
+        ):
             from insideLLMs.experiment_tracking import TensorBoardTracker
+
             tracker = create_tracker("tensorboard", log_dir="/tmp/tb")
             assert isinstance(tracker, TensorBoardTracker)
 
@@ -850,6 +873,7 @@ class TestCreateTrackerFactory:
 # ===================================================================
 # auto_track decorator
 # ===================================================================
+
 
 class TestAutoTrackDecorator:
     """Edge-case tests for auto_track."""
@@ -984,6 +1008,7 @@ class TestAutoTrackDecorator:
 # LocalFileTracker additional branches
 # ===================================================================
 
+
 class TestLocalFileTrackerAdditional:
     """Cover remaining branches in LocalFileTracker."""
 
@@ -1101,6 +1126,7 @@ class TestLocalFileTrackerAdditional:
 # TrackingConfig additional
 # ===================================================================
 
+
 class TestTrackingConfigAdditional:
     """Cover remaining TrackingConfig fields."""
 
@@ -1132,6 +1158,7 @@ class TestTrackingConfigAdditional:
 # ===================================================================
 # ExperimentTracker base class (abstract protocol)
 # ===================================================================
+
 
 class TestExperimentTrackerBase:
     """Test the ExperimentTracker abstract base class behavior."""
@@ -1198,23 +1225,27 @@ class TestExperimentTrackerBase:
 # Unavailable library import errors
 # ===================================================================
 
+
 class TestUnavailableLibraries:
     """Test ImportError when optional libraries are not installed."""
 
     def test_wandb_unavailable(self):
         with patch("insideLLMs.experiment_tracking.WANDB_AVAILABLE", False):
             from insideLLMs.experiment_tracking import WandBTracker
+
             with pytest.raises(ImportError, match="wandb is required"):
                 WandBTracker()
 
     def test_mlflow_unavailable(self):
         with patch("insideLLMs.experiment_tracking.MLFLOW_AVAILABLE", False):
             from insideLLMs.experiment_tracking import MLflowTracker
+
             with pytest.raises(ImportError, match="mlflow is required"):
                 MLflowTracker()
 
     def test_tensorboard_unavailable(self):
         with patch("insideLLMs.experiment_tracking.TENSORBOARD_AVAILABLE", False):
             from insideLLMs.experiment_tracking import TensorBoardTracker
+
             with pytest.raises(ImportError, match="tensorboard"):
                 TensorBoardTracker()

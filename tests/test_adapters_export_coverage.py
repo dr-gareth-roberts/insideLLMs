@@ -341,14 +341,14 @@ class TestAdapterFactoryProviderDetection:
         factory.set_api_key(Provider.OPENAI, "sk-fake")
         with patch.object(OpenAIAdapter, "__init__", lambda self, config: None):
             # Manually set attributes since __init__ is bypassed
-            adapter = factory.create("gpt-4o")
+            factory.create("gpt-4o")
 
     def test_create_auto_detect_from_provider_detector(self):
         factory = AdapterFactory()
         # Use a model ID that's not in registry but has a recognizable prefix
         factory.set_api_key(Provider.OPENAI, "sk-fake")
         with patch.object(OpenAIAdapter, "__init__", lambda self, config: None):
-            adapter = factory.create("gpt-99-future")
+            factory.create("gpt-99-future")
 
     def test_create_unknown_provider_raises(self):
         factory = AdapterFactory()
@@ -413,10 +413,12 @@ class TestFallbackChainGenerateChat:
             def generate_chat(self, messages, params=None, **kwargs):
                 raise RuntimeError("fail")
 
-        chain = FallbackChain([
-            FailingAdapter(AdapterConfig("f1", Provider.MOCK)),
-            FailingAdapter(AdapterConfig("f2", Provider.MOCK)),
-        ])
+        chain = FallbackChain(
+            [
+                FailingAdapter(AdapterConfig("f1", Provider.MOCK)),
+                FailingAdapter(AdapterConfig("f2", Provider.MOCK)),
+            ]
+        )
         with pytest.raises(RuntimeError, match="All adapters failed"):
             chain.generate_chat([{"role": "user", "content": "Test"}])
 

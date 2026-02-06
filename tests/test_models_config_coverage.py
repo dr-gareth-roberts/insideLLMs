@@ -41,10 +41,10 @@ from insideLLMs.models.base import (
 )
 from insideLLMs.types import ModelResponse
 
-
 # ---------------------------------------------------------------------------
 # Concrete subclasses for testing abstract Model / AsyncModel
 # ---------------------------------------------------------------------------
+
 
 class ConcreteModel(Model):
     """Non-abstract Model subclass for testing."""
@@ -78,6 +78,7 @@ class ConcreteAsyncModel(AsyncModel):
 # Custom provider exceptions for testing handle_provider_errors
 # ---------------------------------------------------------------------------
 
+
 class FakeRateLimitError(Exception):
     retry_after = 42.0
 
@@ -100,6 +101,7 @@ FAKE_EXCEPTION_MAP = ProviderExceptionMap(
 # ===================================================================
 # ProviderExceptionMap
 # ===================================================================
+
 
 class TestProviderExceptionMap:
     """Tests for ProviderExceptionMap class."""
@@ -131,6 +133,7 @@ class TestProviderExceptionMap:
 # ===================================================================
 # handle_provider_errors decorator
 # ===================================================================
+
 
 class TestHandleProviderErrors:
     """Tests for the handle_provider_errors decorator."""
@@ -266,6 +269,7 @@ class TestHandleProviderErrors:
 # translate_provider_error
 # ===================================================================
 
+
 class TestTranslateProviderError:
     """Tests for translate_provider_error function."""
 
@@ -276,9 +280,7 @@ class TestTranslateProviderError:
 
     def test_timeout_error(self):
         err = FakeTimeoutError()
-        result = translate_provider_error(
-            err, "model-1", FAKE_EXCEPTION_MAP, timeout_seconds=120.0
-        )
+        result = translate_provider_error(err, "model-1", FAKE_EXCEPTION_MAP, timeout_seconds=120.0)
         assert isinstance(result, InsideLLMsTimeoutError)
         assert result.details["timeout_seconds"] == 120.0
 
@@ -290,9 +292,7 @@ class TestTranslateProviderError:
 
     def test_generic_error(self):
         err = RuntimeError("unexpected")
-        result = translate_provider_error(
-            err, "model-1", FAKE_EXCEPTION_MAP, prompt="test prompt"
-        )
+        result = translate_provider_error(err, "model-1", FAKE_EXCEPTION_MAP, prompt="test prompt")
         assert isinstance(result, ModelGenerationError)
         assert "unexpected" in str(result)
 
@@ -312,23 +312,20 @@ class TestTranslateProviderError:
         assert result is original
 
     def test_already_generation_error_passthrough(self):
-        original = ModelGenerationError(
-            model_id="m", prompt="p", reason="r"
-        )
+        original = ModelGenerationError(model_id="m", prompt="p", reason="r")
         result = translate_provider_error(original, "model-1", FAKE_EXCEPTION_MAP)
         assert result is original
 
     def test_empty_prompt_in_generic_error(self):
         err = RuntimeError("fail")
-        result = translate_provider_error(
-            err, "model-1", FAKE_EXCEPTION_MAP, prompt=""
-        )
+        result = translate_provider_error(err, "model-1", FAKE_EXCEPTION_MAP, prompt="")
         assert isinstance(result, ModelGenerationError)
 
 
 # ===================================================================
 # AsyncModel
 # ===================================================================
+
 
 class TestAsyncModel:
     """Tests for AsyncModel async methods."""
@@ -378,6 +375,7 @@ class TestAsyncModel:
 # Model._validate_prompt
 # ===================================================================
 
+
 class TestModelValidatePrompt:
     """Tests for Model._validate_prompt."""
 
@@ -422,6 +420,7 @@ class TestModelValidatePrompt:
 # ===================================================================
 # Model base: chat, stream, batch, info, repr
 # ===================================================================
+
 
 class TestModelBase:
     """Tests for Model base class methods not covered elsewhere."""
@@ -477,6 +476,7 @@ class TestModelBase:
 # ===================================================================
 # ModelWrapper: __repr__, retry exhaustion, RuntimeError fallback
 # ===================================================================
+
 
 class TestModelWrapperCoverage:
     """Additional ModelWrapper tests for uncovered branches."""
@@ -550,6 +550,7 @@ class TestModelWrapperCoverage:
 # ===================================================================
 # config.py: Pydantic fallback code paths
 # ===================================================================
+
 
 class TestConfigFallbackPaths:
     """Tests for pydantic-unavailable fallback code in config.py.
@@ -636,6 +637,7 @@ class TestConfigFallbackPaths:
 # config.py: _parse_config_dict
 # ===================================================================
 
+
 class TestParseConfigDict:
     """Tests for _parse_config_dict."""
 
@@ -703,6 +705,7 @@ class TestParseConfigDict:
 # config.py: load / save error paths
 # ===================================================================
 
+
 class TestConfigLoadSaveErrors:
     """Tests for error paths in load/save config functions."""
 
@@ -731,7 +734,7 @@ class TestConfigLoadSaveErrors:
         yaml_mod = sys.modules.get("yaml")
         sys.modules["yaml"] = None  # type: ignore[assignment]
         try:
-            from insideLLMs.config import save_config_to_yaml, create_example_config
+            from insideLLMs.config import create_example_config, save_config_to_yaml
 
             config = create_example_config()
             with pytest.raises(ImportError, match="PyYAML"):
@@ -787,6 +790,7 @@ class TestConfigLoadSaveErrors:
 # config.py: _require_pydantic
 # ===================================================================
 
+
 class TestRequirePydantic:
     """Tests for _require_pydantic function."""
 
@@ -812,6 +816,7 @@ class TestRequirePydantic:
 # ===================================================================
 # config.py: save_config_to_json roundtrip and _config_to_dict path
 # ===================================================================
+
 
 class TestSaveConfigToJson:
     """Tests for save_config_to_json and related code."""
@@ -878,14 +883,15 @@ class TestSaveConfigToJson:
 # config.py: validate_config
 # ===================================================================
 
+
 class TestValidateConfigCoverage:
     """Additional tests for validate_config."""
 
     def test_validate_config_returns_same_experiment_config(self):
         from insideLLMs.config import (
             ExperimentConfig,
-            validate_config,
             create_example_config,
+            validate_config,
         )
 
         config = create_example_config()
@@ -910,6 +916,7 @@ class TestValidateConfigCoverage:
 # ===================================================================
 # config.py: DatasetConfig validation (pydantic)
 # ===================================================================
+
 
 class TestDatasetConfigValidation:
     """Test DatasetConfig source requirement validation."""
@@ -940,6 +947,7 @@ class TestDatasetConfigValidation:
 # config.py: ProbeConfig default name
 # ===================================================================
 
+
 class TestProbeConfigDefaults:
     """Test ProbeConfig name default."""
 
@@ -963,6 +971,7 @@ class TestProbeConfigDefaults:
 # ===================================================================
 # config.py: create_example_config
 # ===================================================================
+
 
 class TestCreateExampleConfigCoverage:
     """Ensure example config exercises both pydantic and non-pydantic paths."""
@@ -999,6 +1008,7 @@ class TestCreateExampleConfigCoverage:
 # config.py: Pydantic-unavailable fallback classes via module reload
 # ===================================================================
 
+
 class TestConfigNoPydanticFallback:
     """Test the fallback class definitions that activate when pydantic is missing.
 
@@ -1019,7 +1029,7 @@ class TestConfigNoPydanticFallback:
                 saved_modules[mod_name] = sys.modules.pop(mod_name)
 
         # Also save the config module itself so we can reload it
-        saved_config = sys.modules.pop("insideLLMs.config", None)
+        sys.modules.pop("insideLLMs.config", None)
 
         # Block pydantic from being imported
         sys.modules["pydantic"] = None  # type: ignore[assignment]
