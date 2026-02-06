@@ -134,7 +134,9 @@ def main():
 
     word_freq = get_word_frequencies(cleaned_text)
     print(
-        f"Top 5 most frequent words: {sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]}"
+        f"Top 5 most frequent words: {
+            sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
+        }"
     )
 
     # Basic text classification

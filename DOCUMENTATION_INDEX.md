@@ -97,6 +97,14 @@ flowchart LR
 
 ---
 
+### [docs/STABILITY_MATRIX.md](docs/STABILITY_MATRIX.md)
+**Surface-by-surface compatibility contract matrix** (Stable / Experimental / Internal)
+for CLI, artifacts, schemas, and extension points.
+
+**Best for:** PR review, release planning, deprecation decisions, contract governance
+
+---
+
 ### [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
 **Experiment tracking backends** for logging metrics/params/artifacts (local, W&B, MLflow, TensorBoard).
 
