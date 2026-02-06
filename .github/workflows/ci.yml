@@ -69,6 +69,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,nlp,visualization]"
+          pip install fastapi uvicorn
 
       - name: Download NLTK resources
         run: |
