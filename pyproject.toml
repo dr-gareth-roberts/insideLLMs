@@ -133,6 +133,8 @@ known-first-party = ["insideLLMs"]
 [tool.ruff.lint.per-file-ignores]
 "examples/**/*.py" = ["ARG", "F401", "UP"]
 "tests/**/*.py" = ["ARG", "B017", "E741", "F401", "SIM", "UP"]
+"insideLLMs/cache.py" = ["E402"]
+"insideLLMs/caching.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"

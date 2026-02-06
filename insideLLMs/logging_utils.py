@@ -842,7 +842,7 @@ def get_module_logger(module_name: str) -> logging.Logger:
     """
     # Remove "insideLLMs." prefix if already present to avoid duplication
     if module_name.startswith("insideLLMs."):
-        module_path = module_name[len("insideLLMs."):]
+        module_path = module_name[len("insideLLMs.") :]
     elif module_name == "insideLLMs":
         return logger  # Return the root insideLLMs logger
     else:

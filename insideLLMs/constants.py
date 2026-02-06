@@ -58,6 +58,7 @@ DEFAULT_TEMPERATURE: Final[float] = 0.7
 # OpenAI Model Identifiers
 # =============================================================================
 
+
 class OpenAIModels:
     """Constants for OpenAI model identifiers.
 
@@ -89,6 +90,7 @@ class OpenAIModels:
 # Anthropic Model Identifiers
 # =============================================================================
 
+
 class AnthropicModels:
     """Constants for Anthropic Claude model identifiers.
 
@@ -117,6 +119,7 @@ class AnthropicModels:
 # Google Gemini Model Identifiers
 # =============================================================================
 
+
 class GeminiModels:
     """Constants for Google Gemini model identifiers.
 
@@ -141,6 +144,7 @@ class GeminiModels:
 # =============================================================================
 # Cohere Model Identifiers
 # =============================================================================
+
 
 class CohereModels:
     """Constants for Cohere model identifiers.
@@ -169,6 +173,7 @@ class CohereModels:
 # =============================================================================
 # Environment Variable Names
 # =============================================================================
+
 
 class EnvVars:
     """Environment variable names used by insideLLMs.
@@ -205,6 +210,7 @@ class EnvVars:
 # Cache Configuration
 # =============================================================================
 
+
 class CacheDefaults:
     """Default values for cache configuration.
 
@@ -232,6 +238,7 @@ class CacheDefaults:
 # =============================================================================
 # Rate Limiting
 # =============================================================================
+
 
 class RateLimitDefaults:
     """Default values for rate limiting configuration.
@@ -265,6 +272,7 @@ LOGGER_PREFIX: Final[str] = "insideLLMs"
 # File Extensions and Formats
 # =============================================================================
 
+
 class FileExtensions:
     """File extensions used by insideLLMs.
 
@@ -295,6 +303,7 @@ class FileExtensions:
 # =============================================================================
 # Canonical Artifact Names
 # =============================================================================
+
 
 class ArtifactNames:
     """Names for canonical run artifacts.

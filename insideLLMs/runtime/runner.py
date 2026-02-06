@@ -36,6 +36,44 @@ Running from configuration:
 """
 
 # Re-export base classes and utilities
+from insideLLMs._serialization import (
+    StrictSerializationError,
+)
+
+# Re-export serialization utilities (for backward compatibility)
+from insideLLMs._serialization import (
+    fingerprint_value as _fingerprint_value,
+)
+from insideLLMs._serialization import (
+    serialize_value as _serialize_value,
+)
+from insideLLMs._serialization import (
+    stable_json_dumps as _stable_json_dumps,
+)
+
+# Re-export registry items (for backward compatibility with tests)
+from insideLLMs.registry import (
+    NotFoundError,
+    dataset_registry,
+    ensure_builtins_registered,
+    model_registry,
+    probe_registry,
+)
+
+# Re-export artifact utilities
+from insideLLMs.runtime._artifact_utils import (
+    _atomic_write_text,
+    _atomic_write_yaml,
+    _default_run_root,
+    _ensure_run_sentinel,
+    _prepare_run_dir,
+    _prepare_run_dir_for_resume,
+    _read_jsonl_records,
+    _semver_tuple,
+    _truncate_incomplete_jsonl,
+    _validate_resume_record,
+)
+from insideLLMs.runtime._async_runner import AsyncProbeRunner
 from insideLLMs.runtime._base import (
     LegacyProgressCallback,
     ProgressCallback,
@@ -45,8 +83,23 @@ from insideLLMs.runtime._base import (
     _RunnerBase,
 )
 
+# Re-export config loader utilities
+from insideLLMs.runtime._config_loader import (
+    _build_resolved_config_snapshot,
+    _create_middlewares_from_config,
+    _create_model_from_config,
+    _create_probe_from_config,
+    _extract_probe_kwargs_from_config,
+    _load_dataset_from_config,
+    _resolve_determinism_options,
+    _resolve_path,
+    load_config,
+)
+
 # Re-export determinism utilities
 from insideLLMs.runtime._determinism import (
+    _DETERMINISTIC_TIME_BASE,
+    _DETERMINISTIC_TIME_RANGE_SECONDS,
     _deterministic_base_time,
     _deterministic_harness_experiment_id,
     _deterministic_hash,
@@ -54,10 +107,19 @@ from insideLLMs.runtime._determinism import (
     _deterministic_run_id_from_config_snapshot,
     _deterministic_run_id_from_inputs,
     _deterministic_run_times,
-    _DETERMINISTIC_TIME_BASE,
-    _DETERMINISTIC_TIME_RANGE_SECONDS,
     _hash_prompt_set,
     _replicate_key,
+)
+
+# Re-export high-level functions
+from insideLLMs.runtime._high_level import (
+    create_experiment_result,
+    derive_run_id_from_config_path,
+    run_experiment_from_config,
+    run_experiment_from_config_async,
+    run_harness_from_config,
+    run_probe,
+    run_probe_async,
 )
 
 # Re-export result utilities
@@ -74,67 +136,11 @@ from insideLLMs.runtime._result_utils import (
     _result_dict_from_record,
 )
 
-# Re-export artifact utilities
-from insideLLMs.runtime._artifact_utils import (
-    _atomic_write_text,
-    _atomic_write_yaml,
-    _default_run_root,
-    _ensure_run_sentinel,
-    _prepare_run_dir,
-    _prepare_run_dir_for_resume,
-    _read_jsonl_records,
-    _semver_tuple,
-    _truncate_incomplete_jsonl,
-    _validate_resume_record,
-)
-
-# Re-export config loader utilities
-from insideLLMs.runtime._config_loader import (
-    _build_resolved_config_snapshot,
-    _create_middlewares_from_config,
-    _create_model_from_config,
-    _create_probe_from_config,
-    _extract_probe_kwargs_from_config,
-    _load_dataset_from_config,
-    _resolve_determinism_options,
-    _resolve_path,
-    load_config,
-)
-
 # Re-export runner classes
 from insideLLMs.runtime._sync_runner import ProbeRunner
-from insideLLMs.runtime._async_runner import AsyncProbeRunner
-
-# Re-export high-level functions
-from insideLLMs.runtime._high_level import (
-    create_experiment_result,
-    derive_run_id_from_config_path,
-    run_experiment_from_config,
-    run_experiment_from_config_async,
-    run_harness_from_config,
-    run_probe,
-    run_probe_async,
-)
 
 # Re-export schema version constant
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
-
-# Re-export serialization utilities (for backward compatibility)
-from insideLLMs._serialization import (
-    fingerprint_value as _fingerprint_value,
-    serialize_value as _serialize_value,
-    stable_json_dumps as _stable_json_dumps,
-    StrictSerializationError,
-)
-
-# Re-export registry items (for backward compatibility with tests)
-from insideLLMs.registry import (
-    dataset_registry,
-    ensure_builtins_registered,
-    model_registry,
-    NotFoundError,
-    probe_registry,
-)
 
 __all__ = [
     # Base classes and utilities

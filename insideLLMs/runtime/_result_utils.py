@@ -20,13 +20,12 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,
 )
+from insideLLMs.runtime._determinism import _replicate_key
 from insideLLMs.types import (
     ModelInfo,
     ProbeResult,
     ResultStatus,
 )
-
-from insideLLMs.runtime._determinism import _replicate_key
 
 
 def _normalize_status(status: Any) -> str:

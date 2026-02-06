@@ -16,18 +16,9 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
+from insideLLMs.analysis.statistics import generate_summary_report
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
-from insideLLMs.analysis.statistics import generate_summary_report
-from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
-from insideLLMs.types import (
-    ConfigDict,
-    ExperimentResult,
-    ProbeCategory,
-    ProbeResult,
-    ResultStatus,
-)
-
 from insideLLMs.runtime._base import _normalize_validation_mode
 from insideLLMs.runtime._config_loader import (
     _build_resolved_config_snapshot,
@@ -51,6 +42,14 @@ from insideLLMs.runtime._result_utils import (
     _build_result_record,
     _coerce_model_info,
     _normalize_info_obj_to_dict,
+)
+from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
+from insideLLMs.types import (
+    ConfigDict,
+    ExperimentResult,
+    ProbeCategory,
+    ProbeResult,
+    ResultStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,7 +93,6 @@ def run_probe(
     Union[list[dict[str, Any]], ExperimentResult]
         List of result dicts or ExperimentResult if config.return_experiment=True.
     """
-    from insideLLMs.config_types import RunConfig
     from insideLLMs.runtime._sync_runner import ProbeRunner
 
     runner = ProbeRunner(model, probe)
@@ -147,7 +145,6 @@ async def run_probe_async(
     Union[list[dict[str, Any]], ExperimentResult]
         List of result dicts or ExperimentResult if config.return_experiment=True.
     """
-    from insideLLMs.config_types import RunConfig
     from insideLLMs.runtime._async_runner import AsyncProbeRunner
 
     runner = AsyncProbeRunner(model, probe)

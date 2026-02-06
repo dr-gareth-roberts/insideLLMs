@@ -30,6 +30,9 @@ jobs:
       - name: Ruff format
         run: ruff format --check .
 
+      - name: Stability contract guardrails
+        run: pytest -q tests/test_stability_contract.py
+
       - name: Wiki link check
         run: python scripts/check_wiki_links.py
 
@@ -69,7 +72,7 @@ jobs:
 
       - name: Test with coverage
         run: >
-          pytest --cov=insideLLMs --cov-report=xml --cov-report=term --cov-fail-under=80
+          pytest --cov=insideLLMs --cov-report=xml --cov-report=term --cov-fail-under=95
           --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage to Codecov
