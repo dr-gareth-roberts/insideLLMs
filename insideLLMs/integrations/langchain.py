@@ -107,9 +107,9 @@ def as_langchain_chat_model(model: ModelProtocol):
 
         try:
             # pydantic v2
-            from pydantic import ConfigDict  # type: ignore[attr-defined]
+            from pydantic import ConfigDict  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
         except Exception:  # pragma: no cover
-            ConfigDict = None  # type: ignore[assignment]
+            ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
 
         from langchain_core.language_models.chat_models import BaseChatModel
         from langchain_core.messages import AIMessage
@@ -123,7 +123,7 @@ def as_langchain_chat_model(model: ModelProtocol):
         model: Any = Field(exclude=True)
 
         if ConfigDict is not None:
-            model_config = ConfigDict(arbitrary_types_allowed=True)  # type: ignore[misc]
+            model_config = ConfigDict(arbitrary_types_allowed=True)  # type: ignore[misc]  # Pydantic v2 config
         else:  # pragma: no cover
 
             class Config:
@@ -133,7 +133,7 @@ def as_langchain_chat_model(model: ModelProtocol):
         def _llm_type(self) -> str:
             return "insidellms-chat"
 
-        def _generate(  # type: ignore[override]
+        def _generate(  # type: ignore[override]  # LangChain signature uses Any for run_manager
             self,
             messages: list[Any],
             stop: Optional[list[str]] = None,
@@ -154,7 +154,7 @@ def as_langchain_chat_model(model: ModelProtocol):
                 llm_output={"model_id": getattr(self.model, "model_id", None)},
             )
 
-        def _stream(  # type: ignore[override]
+        def _stream(  # type: ignore[override]  # LangChain signature uses Any for run_manager
             self,
             messages: list[Any],
             stop: Optional[list[str]] = None,

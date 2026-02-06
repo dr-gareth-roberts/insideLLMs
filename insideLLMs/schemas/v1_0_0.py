@@ -125,11 +125,11 @@ _require_pydantic()
 from pydantic import BaseModel, Field  # noqa: E402
 
 try:  # Pydantic v2
-    from pydantic import ConfigDict  # type: ignore
+    from pydantic import ConfigDict  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
 
     _PYDANTIC_V2 = True
 except Exception:  # pragma: no cover
-    ConfigDict = None  # type: ignore
+    ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
     _PYDANTIC_V2 = False
 
 

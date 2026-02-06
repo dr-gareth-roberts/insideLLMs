@@ -2,6 +2,16 @@
 Caching Layer for Model Responses
 =================================
 
+.. deprecated:: 1.0.0
+    This module is deprecated and will be removed in a future version.
+    Import directly from ``insideLLMs.caching_unified`` instead::
+
+        # Old (deprecated):
+        from insideLLMs.cache import InMemoryCache, DiskCache
+
+        # New (recommended):
+        from insideLLMs.caching_unified import InMemoryCache, DiskCache
+
 This module provides a backward-compatible interface to the insideLLMs caching
 infrastructure. It re-exports essential caching components from the unified
 caching module (``caching_unified.py``), making it easy to add caching to LLM
@@ -170,6 +180,15 @@ References
 .. [1] LRU Cache: https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
 .. [2] SQLite: https://www.sqlite.org/docs.html
 """
+
+import warnings as _warnings
+
+_warnings.warn(
+    "The 'insideLLMs.cache' module is deprecated. "
+    "Import from 'insideLLMs.caching_unified' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # Re-export from unified module for backward compatibility
 from insideLLMs.caching_unified import (

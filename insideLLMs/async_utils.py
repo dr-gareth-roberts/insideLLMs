@@ -507,7 +507,7 @@ async def map_async(
             except Exception as e:
                 errors.append((index, e))
                 if return_exceptions:
-                    results[index] = e  # type: ignore
+                    results[index] = e  # type: ignore[assignment]  # When return_exceptions=True, exceptions stored in results
 
             completed += 1
             if on_progress:

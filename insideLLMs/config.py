@@ -126,7 +126,7 @@ except ImportError:
     PYDANTIC_AVAILABLE = False
 
     # Provide fallback base class
-    class BaseModel:  # type: ignore
+    class BaseModel:  # type: ignore[no-redef]  # Intentional: stub when Pydantic unavailable
         """Fallback BaseModel when Pydantic is not available."""
 
         def __init__(self, **data: Any) -> None:
@@ -136,22 +136,22 @@ except ImportError:
         def model_dump(self) -> dict[str, Any]:
             return self.__dict__.copy()
 
-    def Field(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+    def Field(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]  # Intentional: stub when Pydantic unavailable
         return kwargs.get("default")
 
-    def field_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+    def field_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]  # Intentional: stub when Pydantic unavailable
         def decorator(func: Any) -> Any:
             return func
 
         return decorator
 
-    def model_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+    def model_validator(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]  # Intentional: stub when Pydantic unavailable
         def decorator(func: Any) -> Any:
             return func
 
         return decorator
 
-    class ConfigDict:  # type: ignore
+    class ConfigDict:  # type: ignore[no-redef]  # Intentional: stub when Pydantic unavailable
         pass
 
 
@@ -937,7 +937,7 @@ if PYDANTIC_AVAILABLE:
 
 else:
     # Fallback implementations without Pydantic validation
-    class ModelConfig(BaseModel):  # type: ignore
+    class ModelConfig(BaseModel):  # type: ignore[no-redef]  # Intentional: fallback class when Pydantic unavailable
         """Configuration for connecting to a language model API (fallback).
 
         This is a fallback implementation used when Pydantic is not available.
@@ -1008,7 +1008,7 @@ else:
             self.max_retries = max_retries
             self.extra_params = extra_params or {}
 
-    class ProbeConfig(BaseModel):  # type: ignore
+    class ProbeConfig(BaseModel):  # type: ignore[no-redef]  # Intentional: fallback class when Pydantic unavailable
         """Configuration for a model evaluation probe (fallback).
 
         This is a fallback implementation used when Pydantic is not available.
@@ -1062,7 +1062,7 @@ else:
             self.timeout_per_item = timeout_per_item
             self.stop_on_error = stop_on_error
 
-    class DatasetConfig(BaseModel):  # type: ignore
+    class DatasetConfig(BaseModel):  # type: ignore[no-redef]  # Intentional: fallback class when Pydantic unavailable
         """Configuration for loading evaluation datasets (fallback).
 
         This is a fallback implementation used when Pydantic is not available.
@@ -1128,7 +1128,7 @@ else:
             self.shuffle = shuffle
             self.seed = seed
 
-    class RunnerConfig(BaseModel):  # type: ignore
+    class RunnerConfig(BaseModel):  # type: ignore[no-redef]  # Intentional: fallback class when Pydantic unavailable
         """Configuration for experiment execution settings (fallback).
 
         This is a fallback implementation used when Pydantic is not available.
@@ -1186,7 +1186,7 @@ else:
             self.verbose = verbose
             self.cache_responses = cache_responses
 
-    class ExperimentConfig(BaseModel):  # type: ignore
+    class ExperimentConfig(BaseModel):  # type: ignore[no-redef]  # Intentional: fallback class when Pydantic unavailable
         """Complete experiment configuration combining all components (fallback).
 
         This is a fallback implementation used when Pydantic is not available.
