@@ -212,9 +212,13 @@ def nltk_tokenize(text: str) -> list[str]:
         ImportError: If NLTK is not installed.
     """
     _ensure_nltk_tokenization()
-    from nltk.tokenize import word_tokenize  # Local import after ensuring nltk
+    from nltk.tokenize import word_tokenize, wordpunct_tokenize
 
-    return word_tokenize(text)
+    try:
+        return word_tokenize(text)
+    except LookupError:
+        # Gracefully degrade when punkt resources are unavailable.
+        return wordpunct_tokenize(text)
 
 
 def spacy_tokenize(text: str, model_name: str = "en_core_web_sm") -> list[str]:
@@ -327,13 +331,17 @@ def segment_sentences(text: str, use_nltk: bool = True) -> list[str]:
     Raises:
         ImportError: If use_nltk=True and NLTK is not installed.
     """
-    if use_nltk:
-        _ensure_nltk_tokenization()
-        from nltk.tokenize import sent_tokenize  # Local import after ensuring nltk
-
-        return sent_tokenize(text)
     # Simple regex-based sentence segmentation
     pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
+    if use_nltk:
+        _ensure_nltk_tokenization()
+        from nltk.tokenize import sent_tokenize
+
+        try:
+            return sent_tokenize(text)
+        except LookupError:
+            # Gracefully degrade when punkt resources are unavailable.
+            return pattern.split(text)
     return pattern.split(text)
 
 
