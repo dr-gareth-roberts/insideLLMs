@@ -160,6 +160,44 @@ class TestNltkDependentFunctions:
         assert "cat" in result or "cats" in result
 
 
+class TestNltkFallbacks:
+    """Tests for graceful fallbacks when NLTK tokenizer resources are missing."""
+
+    def test_nltk_tokenize_falls_back_to_wordpunct_tokenize(self, monkeypatch):
+        from nltk import tokenize as nltk_tokenize_mod
+
+        from insideLLMs.nlp import tokenization as tokenization_mod
+
+        monkeypatch.setattr(tokenization_mod, "_ensure_nltk_tokenization", lambda: None)
+
+        def _raise_lookup_error(_text):
+            raise LookupError("missing punkt resources")
+
+        monkeypatch.setattr(nltk_tokenize_mod, "word_tokenize", _raise_lookup_error)
+
+        result = tokenization_mod.nltk_tokenize("Hello, world!")
+        assert "Hello" in result
+        assert "world" in result
+
+    def test_segment_sentences_falls_back_to_regex_on_lookup_error(self, monkeypatch):
+        from nltk import tokenize as nltk_tokenize_mod
+
+        from insideLLMs.nlp import tokenization as tokenization_mod
+
+        monkeypatch.setattr(tokenization_mod, "_ensure_nltk_tokenization", lambda: None)
+
+        def _raise_lookup_error(_text):
+            raise LookupError("missing punkt resources")
+
+        monkeypatch.setattr(nltk_tokenize_mod, "sent_tokenize", _raise_lookup_error)
+
+        result = tokenization_mod.segment_sentences(
+            "Hello world. This is a test. How are you?",
+            use_nltk=True,
+        )
+        assert len(result) >= 2
+
+
 class TestSpacyDependentFunctions:
     """Tests for spaCy-dependent functions."""
 
