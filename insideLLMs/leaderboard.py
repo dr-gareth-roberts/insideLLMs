@@ -132,7 +132,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 
 class RankingMethod(Enum):
@@ -453,8 +453,8 @@ class ModelScore:
     benchmark_id: str
     score: float
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: str | None = None
-    run_id: str | None = None
+    timestamp: Optional[str] = None
+    run_id: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the ModelScore to a dictionary representation.
@@ -621,13 +621,13 @@ class LeaderboardEntry:
     rank: int
     model_id: str
     score: float
-    previous_rank: int | None
+    previous_rank: Optional[int]
     trend: TrendDirection
     score_breakdown: dict[str, float]
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def rank_change(self) -> int | None:
+    def rank_change(self) -> Optional[int]:
         """Calculate the change in rank from the previous leaderboard.
 
         Computes how many positions the model has moved since the last
@@ -858,7 +858,7 @@ class Leaderboard:
     version: str = "1.0"
 
     @property
-    def top_model(self) -> str | None:
+    def top_model(self) -> Optional[str]:
         """Get the identifier of the top-ranked model.
 
         Returns the model_id of the model in first place (rank 1).
@@ -937,7 +937,7 @@ class Leaderboard:
         """
         return len(self.entries)
 
-    def get_entry(self, model_id: str) -> LeaderboardEntry | None:
+    def get_entry(self, model_id: str) -> Optional[LeaderboardEntry]:
         """Retrieve the leaderboard entry for a specific model.
 
         Searches the leaderboard entries for the specified model and returns
@@ -1093,7 +1093,7 @@ class ScoreAggregator:
     def __init__(
         self,
         method: ScoreAggregation = ScoreAggregation.MEAN,
-        weights: dict[str, float] | None = None,
+        weights: Optional[dict[str, float]] = None,
     ):
         """Initialize aggregator.
 
@@ -1162,7 +1162,7 @@ class ModelRanker:
     def __init__(
         self,
         method: RankingMethod = RankingMethod.SCORE,
-        aggregator: ScoreAggregator | None = None,
+        aggregator: Optional[ScoreAggregator] = None,
     ):
         """Initialize ranker.
 
@@ -1176,7 +1176,7 @@ class ModelRanker:
     def rank(
         self,
         model_scores: dict[str, dict[str, float]],
-        previous_rankings: dict[str, int] | None = None,
+        previous_rankings: Optional[dict[str, int]] = None,
     ) -> list[LeaderboardEntry]:
         """Rank models.
 
@@ -1225,7 +1225,7 @@ class ModelRanker:
     @staticmethod
     def _calculate_trend(
         current_rank: int,
-        previous_rank: int | None,
+        previous_rank: Optional[int],
     ) -> TrendDirection:
         """Calculate trend direction."""
         if previous_rank is None:
@@ -1243,7 +1243,7 @@ class LeaderboardBuilder:
 
     def __init__(
         self,
-        ranker: ModelRanker | None = None,
+        ranker: Optional[ModelRanker] = None,
     ):
         """Initialize builder.
 
@@ -1274,9 +1274,9 @@ class LeaderboardBuilder:
         self,
         name: str,
         description: str = "",
-        benchmark_filter: list[str] | None = None,
-        model_filter: list[str] | None = None,
-        metric_weights: dict[str, float] | None = None,
+        benchmark_filter: Optional[list[str]] = None,
+        model_filter: Optional[list[str]] = None,
+        metric_weights: Optional[dict[str, float]] = None,
     ) -> Leaderboard:
         """Build a leaderboard.
 
@@ -1681,7 +1681,7 @@ def create_leaderboard(
     scores: list[ModelScore],
     name: str,
     description: str = "",
-    weights: dict[str, float] | None = None,
+    weights: Optional[dict[str, float]] = None,
 ) -> Leaderboard:
     """Create a leaderboard from scores.
 

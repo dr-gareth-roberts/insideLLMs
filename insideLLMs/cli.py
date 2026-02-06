@@ -3894,8 +3894,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
         record_b = index_b.get(key)
 
         if record_a is None:
-            only_b.append(_record_label(record_b))  # type: ignore[arg-type]
-            only_b_json.append(record_identity(record_b))  # type: ignore[arg-type]
+            only_b.append(_record_label(record_b))  # type: ignore[arg-type]  # record_b is not None here (checked via all_keys)
+            only_b_json.append(record_identity(record_b))  # type: ignore[arg-type]  # record_b is not None here
             continue
         if record_b is None:
             only_a.append(_record_label(record_a))

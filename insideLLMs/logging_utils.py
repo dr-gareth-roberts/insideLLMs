@@ -776,6 +776,81 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     return logger
 
 
+def get_module_logger(module_name: str) -> logging.Logger:
+    """Get a standardized logger for a module.
+
+    This is the recommended way to create loggers in insideLLMs modules.
+    It ensures consistent logger naming within the "insideLLMs" namespace.
+
+    Parameters
+    ----------
+    module_name : str
+        The module's __name__ attribute. This should be passed directly
+        as ``__name__`` in the calling module.
+
+    Returns
+    -------
+    logging.Logger
+        A logger named "insideLLMs.<module_path>" where module_path is
+        derived from the module_name by removing any "insideLLMs." prefix
+        if present.
+
+    Examples
+    --------
+    Standard usage at the top of a module:
+
+        >>> # In insideLLMs/models/openai.py:
+        >>> from insideLLMs.logging_utils import get_module_logger
+        >>> logger = get_module_logger(__name__)
+        >>> logger.name
+        'insideLLMs.models.openai'
+
+    Works correctly even if module is outside insideLLMs package:
+
+        >>> # In custom_module.py:
+        >>> logger = get_module_logger("custom_module")
+        >>> logger.name
+        'insideLLMs.custom_module'
+
+    Already prefixed names are handled correctly:
+
+        >>> logger = get_module_logger("insideLLMs.probes.bias")
+        >>> logger.name
+        'insideLLMs.probes.bias'
+
+    Notes
+    -----
+    This function should be called at module level (not inside functions)
+    for best performance. The logger is created once when the module loads.
+
+    Recommended pattern for all insideLLMs modules::
+
+        # At the top of the file, after imports
+        from insideLLMs.logging_utils import get_module_logger
+        logger = get_module_logger(__name__)
+
+        # Then use throughout the module
+        logger.debug("Detailed info")
+        logger.info("General info")
+        logger.warning("Warning message")
+        logger.error("Error occurred", exc_info=True)
+
+    See Also
+    --------
+    get_logger : Get a logger by explicit name
+    configure_logging : Configure the logging system
+    """
+    # Remove "insideLLMs." prefix if already present to avoid duplication
+    if module_name.startswith("insideLLMs."):
+        module_path = module_name[len("insideLLMs."):]
+    elif module_name == "insideLLMs":
+        return logger  # Return the root insideLLMs logger
+    else:
+        module_path = module_name
+
+    return logging.getLogger(f"insideLLMs.{module_path}")
+
+
 class LoggerAdapter(logging.LoggerAdapter):
     """A logger adapter that adds persistent context to log messages.
 

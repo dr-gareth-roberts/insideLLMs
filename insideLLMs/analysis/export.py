@@ -2518,7 +2518,7 @@ def create_export_bundle(
                 registry.EXPORT_METADATA,
                 meta_dict,
                 schema_version=schema_version,
-                mode=validation_mode,  # type: ignore[arg-type]
+                mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
             )
 
             if validate_schema_name and prepared:
@@ -2529,14 +2529,14 @@ def create_export_bundle(
                             validate_schema_name,
                             item,
                             schema_version=schema_version,
-                            mode=validation_mode,  # type: ignore[arg-type]
+                            mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                         )
                 else:
                     validator.validate(
                         validate_schema_name,
                         prepared,
                         schema_version=schema_version,
-                        mode=validation_mode,  # type: ignore[arg-type]
+                        mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                     )
 
         json.dump(meta_dict, f, indent=2, sort_keys=True)

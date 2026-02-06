@@ -2,6 +2,16 @@
 Prompt Caching and Memoization Module
 ======================================
 
+.. deprecated:: 1.0.0
+    This module is deprecated and will be removed in a future version.
+    Import directly from ``insideLLMs.caching_unified`` instead::
+
+        # Old (deprecated):
+        from insideLLMs.caching import create_cache, CacheStrategy
+
+        # New (recommended):
+        from insideLLMs.caching_unified import create_cache, CacheStrategy
+
 This module provides intelligent caching for LLM operations, enabling efficient
 response caching, memoization, and cache management. It supports multiple eviction
 strategies, semantic similarity-based lookups, and comprehensive cache analytics.
@@ -426,6 +436,15 @@ References
 .. [1] LRU Cache implementation: https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
 .. [2] Jaccard similarity: https://en.wikipedia.org/wiki/Jaccard_index
 """
+
+import warnings as _warnings
+
+_warnings.warn(
+    "The 'insideLLMs.caching' module is deprecated. "
+    "Import from 'insideLLMs.caching_unified' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # Re-export from unified module for backward compatibility
 from insideLLMs.caching_unified import (

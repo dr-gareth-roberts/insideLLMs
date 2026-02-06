@@ -93,7 +93,7 @@ import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class AggregationMethod(Enum):
@@ -455,7 +455,7 @@ class AggregatedOutput:
     agreement_score : float
         Numerical agreement score between 0 (no agreement) and 1 (unanimous).
         Based on pairwise similarity of all responses.
-    selected_model : str | None
+    selected_model : Optional[str]
         The model_id whose response was selected, or None if synthesized.
     vote_distribution : dict[str, int]
         Distribution of votes across response groups.
@@ -513,7 +513,7 @@ class AggregatedOutput:
     source_outputs: list[ModelOutput]
     agreement_level: AgreementLevel
     agreement_score: float
-    selected_model: str | None
+    selected_model: Optional[str]
     vote_distribution: dict[str, int]
 
     def to_dict(self) -> dict[str, Any]:
@@ -1024,13 +1024,13 @@ class TextSimilarityCalculator:
 
     def __init__(
         self,
-        normalizer: ResponseNormalizer | None = None,
+        normalizer: Optional[ResponseNormalizer] = None,
     ):
         """Initialize the similarity calculator.
 
         Args
         ----
-        normalizer : ResponseNormalizer | None, optional
+        normalizer : Optional[ResponseNormalizer], optional
             Custom normalizer for preprocessing text (default: None).
             If None, a default ResponseNormalizer is created with
             lowercase=True and strip_whitespace=True.
@@ -1181,14 +1181,14 @@ class ResponseAggregator:
 
     def __init__(
         self,
-        similarity_calculator: TextSimilarityCalculator | None = None,
+        similarity_calculator: Optional[TextSimilarityCalculator] = None,
         similarity_threshold: float = 0.8,
     ):
         """Initialize the response aggregator.
 
         Args
         ----
-        similarity_calculator : TextSimilarityCalculator | None, optional
+        similarity_calculator : Optional[TextSimilarityCalculator], optional
             Custom calculator for response similarity (default: None).
             If None, a default TextSimilarityCalculator is created.
         similarity_threshold : float, optional
@@ -1218,7 +1218,7 @@ class ResponseAggregator:
         self,
         outputs: list[ModelOutput],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Callable[[str], float] | None = None,
+        scorer: Optional[Callable[[str], float]] = None,
     ) -> AggregatedOutput:
         """Aggregate model outputs using the specified method.
 
@@ -1234,7 +1234,7 @@ class ResponseAggregator:
         method : AggregationMethod, optional
             The aggregation strategy to use (default: MAJORITY_VOTE).
             See :class:`AggregationMethod` for available options.
-        scorer : Callable[[str], float] | None, optional
+        scorer : Optional[Callable[[str], float]], optional
             Custom scoring function for BEST_OF_N method (default: None).
             If None and BEST_OF_N is used, defaults to selecting longest response.
             The function should take a response string and return a score.
@@ -1505,7 +1505,7 @@ class ResponseAggregator:
     @staticmethod
     def _best_of_n(
         outputs: list[ModelOutput],
-        scorer: Callable[[str], float] | None,
+        scorer: Optional[Callable[[str], float]],
     ) -> tuple[str, str]:
         """Select the best response according to a scoring function.
 
@@ -1516,7 +1516,7 @@ class ResponseAggregator:
         ----
         outputs : list[ModelOutput]
             List of model outputs to score.
-        scorer : Callable[[str], float] | None
+        scorer : Optional[Callable[[str], float]]
             Function that takes a response string and returns a score.
             Higher scores are better. If None, uses response length.
 
@@ -1742,13 +1742,13 @@ class ModelAgreementAnalyzer:
 
     def __init__(
         self,
-        similarity_calculator: TextSimilarityCalculator | None = None,
+        similarity_calculator: Optional[TextSimilarityCalculator] = None,
     ):
         """Initialize the agreement analyzer.
 
         Args
         ----
-        similarity_calculator : TextSimilarityCalculator | None, optional
+        similarity_calculator : Optional[TextSimilarityCalculator], optional
             Custom calculator for computing response similarity (default: None).
             If None, a default TextSimilarityCalculator is created.
 
@@ -1923,17 +1923,17 @@ class EnsembleEvaluator:
 
     def __init__(
         self,
-        aggregator: ResponseAggregator | None = None,
-        analyzer: ModelAgreementAnalyzer | None = None,
+        aggregator: Optional[ResponseAggregator] = None,
+        analyzer: Optional[ModelAgreementAnalyzer] = None,
     ):
         """Initialize the ensemble evaluator.
 
         Args
         ----
-        aggregator : ResponseAggregator | None, optional
+        aggregator : Optional[ResponseAggregator], optional
             Custom response aggregator (default: None).
             If None, a default ResponseAggregator is created.
-        analyzer : ModelAgreementAnalyzer | None, optional
+        analyzer : Optional[ModelAgreementAnalyzer], optional
             Custom agreement analyzer (default: None).
             If None, a default ModelAgreementAnalyzer is created.
 
@@ -1956,7 +1956,7 @@ class EnsembleEvaluator:
         self,
         prompt_outputs: list[list[ModelOutput]],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Callable[[str], float] | None = None,
+        scorer: Optional[Callable[[str], float]] = None,
     ) -> EnsembleReport:
         """Evaluate ensemble performance across multiple prompts.
 
@@ -1971,7 +1971,7 @@ class EnsembleEvaluator:
             outputs from different models for the same prompt.
         method : AggregationMethod, optional
             Aggregation method to use (default: MAJORITY_VOTE).
-        scorer : Callable[[str], float] | None, optional
+        scorer : Optional[Callable[[str], float]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns
@@ -2271,7 +2271,7 @@ class ModelEnsemble:
     def __init__(
         self,
         models: dict[str, Callable[[str], str]],
-        aggregator: ResponseAggregator | None = None,
+        aggregator: Optional[ResponseAggregator] = None,
         default_method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
     ):
         """Initialize the model ensemble.
@@ -2281,7 +2281,7 @@ class ModelEnsemble:
         models : dict[str, Callable[[str], str]]
             Dictionary mapping model identifiers to their query functions.
             Each function should take a prompt string and return a response string.
-        aggregator : ResponseAggregator | None, optional
+        aggregator : Optional[ResponseAggregator], optional
             Custom response aggregator (default: None).
             If None, a default ResponseAggregator is created.
         default_method : AggregationMethod, optional
@@ -2312,8 +2312,8 @@ class ModelEnsemble:
     def query(
         self,
         prompt: str,
-        method: AggregationMethod | None = None,
-        scorer: Callable[[str], float] | None = None,
+        method: Optional[AggregationMethod] = None,
+        scorer: Optional[Callable[[str], float]] = None,
     ) -> AggregatedOutput:
         """Query all models and aggregate their responses.
 
@@ -2325,9 +2325,9 @@ class ModelEnsemble:
         ----
         prompt : str
             The prompt to send to all models.
-        method : AggregationMethod | None, optional
+        method : Optional[AggregationMethod], optional
             Aggregation method to use (default: None uses default_method).
-        scorer : Callable[[str], float] | None, optional
+        scorer : Optional[Callable[[str], float]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns
@@ -2379,7 +2379,7 @@ class ModelEnsemble:
     def compare_methods(
         self,
         prompt: str,
-        methods: list[AggregationMethod] | None = None,
+        methods: Optional[list[AggregationMethod]] = None,
     ) -> dict[AggregationMethod, AggregatedOutput]:
         """Compare results across different aggregation methods.
 
@@ -2391,7 +2391,7 @@ class ModelEnsemble:
         ----
         prompt : str
             The prompt to send to all models.
-        methods : list[AggregationMethod] | None, optional
+        methods : Optional[list[AggregationMethod]], optional
             Methods to compare (default: None uses all methods).
 
         Returns

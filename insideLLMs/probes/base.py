@@ -600,7 +600,7 @@ class Probe(ABC, Generic[T]):
 
         if max_workers > 1:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                results: list[ProbeResult[T]] = [None] * len(dataset)  # type: ignore
+                results: list[ProbeResult[T]] = [None] * len(dataset)  # type: ignore[list-item]  # Pre-allocated, filled by workers
                 futures = {
                     executor.submit(process_item, item): index for index, item in enumerate(dataset)
                 }

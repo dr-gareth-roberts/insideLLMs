@@ -144,7 +144,7 @@ import string
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from insideLLMs.nlp.similarity import word_overlap_similarity
 
@@ -1085,7 +1085,7 @@ class PromptPerturbator:
     extending the dictionary or subclassing this class.
     """
 
-    def __init__(self, seed: int | None = None):
+    def __init__(self, seed: Optional[int] = None):
         """Initialize the prompt perturbator.
 
         Args
@@ -1124,7 +1124,7 @@ class PromptPerturbator:
     def perturb(
         self,
         prompt: str,
-        perturbation_types: list[PerturbationType] | None = None,
+        perturbation_types: Optional[list[PerturbationType]] = None,
         n_variations: int = 1,
     ) -> list[Perturbation]:
         """Generate perturbations of a prompt.
@@ -1218,7 +1218,7 @@ class PromptPerturbator:
         self,
         prompt: str,
         ptype: PerturbationType,
-    ) -> str | None:
+    ) -> Optional[str]:
         """Apply a specific perturbation type to a prompt.
 
         Internal dispatch method that routes to the appropriate
@@ -1732,7 +1732,7 @@ class OutputComparator:
 
     def __init__(
         self,
-        similarity_fn: Callable[[str, str], float] | None = None,
+        similarity_fn: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize the output comparator.
 
@@ -2093,8 +2093,8 @@ class InputSensitivityAnalyzer:
 
     def __init__(
         self,
-        perturbator: PromptPerturbator | None = None,
-        comparator: OutputComparator | None = None,
+        perturbator: Optional[PromptPerturbator] = None,
+        comparator: Optional[OutputComparator] = None,
         robustness_threshold: float = 0.7,
     ):
         """Initialize the sensitivity analyzer.
@@ -2135,7 +2135,7 @@ class InputSensitivityAnalyzer:
         self,
         prompt: str,
         get_response: Callable[[str], str],
-        perturbation_types: list[PerturbationType] | None = None,
+        perturbation_types: Optional[list[PerturbationType]] = None,
         n_variations: int = 2,
     ) -> SensitivityProfile:
         """Analyze the sensitivity of a prompt to various perturbations.
@@ -2407,7 +2407,7 @@ class InputSensitivityAnalyzer:
 class ComparativeSensitivityAnalyzer:
     """Compare sensitivity across prompts or models."""
 
-    def __init__(self, analyzer: InputSensitivityAnalyzer | None = None):
+    def __init__(self, analyzer: Optional[InputSensitivityAnalyzer] = None):
         """Initialize comparative analyzer.
 
         Args:
@@ -2419,7 +2419,7 @@ class ComparativeSensitivityAnalyzer:
         self,
         prompts: list[str],
         get_response: Callable[[str], str],
-        perturbation_types: list[PerturbationType] | None = None,
+        perturbation_types: Optional[list[PerturbationType]] = None,
     ) -> ComparativeSensitivity:
         """Compare sensitivity across multiple prompts.
 
@@ -2442,7 +2442,7 @@ class ComparativeSensitivityAnalyzer:
         self,
         prompt: str,
         model_responses: dict[str, Callable[[str], str]],
-        perturbation_types: list[PerturbationType] | None = None,
+        perturbation_types: Optional[list[PerturbationType]] = None,
     ) -> ComparativeSensitivity:
         """Compare sensitivity across multiple models.
 
@@ -2590,7 +2590,7 @@ class FormatSensitivityTester:
 def analyze_prompt_sensitivity(
     prompt: str,
     get_response: Callable[[str], str],
-    perturbation_types: list[PerturbationType] | None = None,
+    perturbation_types: Optional[list[PerturbationType]] = None,
 ) -> SensitivityProfile:
     """Analyze sensitivity of a prompt.
 
@@ -2625,7 +2625,7 @@ def compare_prompt_sensitivity(
 
 def generate_perturbations(
     prompt: str,
-    perturbation_types: list[PerturbationType] | None = None,
+    perturbation_types: Optional[list[PerturbationType]] = None,
     n_variations: int = 2,
 ) -> list[Perturbation]:
     """Generate perturbations of a prompt.

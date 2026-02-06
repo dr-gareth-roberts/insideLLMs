@@ -156,7 +156,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class CapabilityCategory(Enum):
@@ -1346,7 +1346,7 @@ class FingerprintComparison:
     shared_weaknesses: list[SkillType]
 
     @property
-    def winner(self) -> str | None:
+    def winner(self) -> Optional[str]:
         """Get the overall better model, if there is a clear winner.
 
         Determines if one model has a significant advantage over the other
@@ -1857,7 +1857,7 @@ class SkillAssessor:
 
     Parameters
     ----------
-    evaluator : Callable[[str, str], float] | None, optional
+    evaluator : Optional[Callable[[str, str], float]], optional
         Custom evaluation function that takes (response, expected) and
         returns a score between 0.0 and 1.0. If not provided, uses
         keyword-based matching as the default evaluator.
@@ -1904,13 +1904,13 @@ class SkillAssessor:
 
     def __init__(
         self,
-        evaluator: Callable[[str, str], float] | None = None,
+        evaluator: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize the skill assessor.
 
         Args
         ----
-        evaluator : Callable[[str, str], float] | None, optional
+        evaluator : Optional[Callable[[str, str], float]], optional
             Custom evaluation function that takes (response, expected) and
             returns a score between 0.0 and 1.0. If not provided, uses the
             default keyword-matching evaluator.
@@ -2336,7 +2336,7 @@ class CapabilityProfiler:
 
     def __init__(
         self,
-        skill_assessor: SkillAssessor | None = None,
+        skill_assessor: Optional[SkillAssessor] = None,
     ):
         """Initialize profiler.
 
@@ -2455,8 +2455,8 @@ class FingerprintGenerator:
 
     def __init__(
         self,
-        profiler: CapabilityProfiler | None = None,
-        limitation_detector: LimitationDetector | None = None,
+        profiler: Optional[CapabilityProfiler] = None,
+        limitation_detector: Optional[LimitationDetector] = None,
     ):
         """Initialize generator.
 
@@ -2473,7 +2473,7 @@ class FingerprintGenerator:
         skill_results: dict[SkillType, list[tuple[str, Any]]],
         responses: list[str],
         version: str = "1.0",
-        metadata: dict[str, Any] | None = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> ModelFingerprint:
         """Generate fingerprint for a model.
 

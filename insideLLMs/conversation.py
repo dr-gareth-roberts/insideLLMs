@@ -92,7 +92,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class MessageRole(Enum):
@@ -362,7 +362,7 @@ class ConversationMessage:
 
     role: MessageRole
     content: str
-    timestamp: float | None = None
+    timestamp: Optional[float] = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -495,7 +495,7 @@ class ConversationTurn:
     turn_number: int
     user_message: ConversationMessage
     assistant_response: ConversationMessage
-    topic: str | None = None
+    topic: Optional[str] = None
     quality: TurnQuality = TurnQuality.ACCEPTABLE
     relevance_score: float = 0.5
     coherence_score: float = 0.5
@@ -1309,8 +1309,8 @@ class Conversation:
 
     def __init__(
         self,
-        messages: list[dict[str, str]] | None = None,
-        system_prompt: str | None = None,
+        messages: Optional[list[dict[str, str]]] = None,
+        system_prompt: Optional[str] = None,
     ):
         """Initialize a conversation.
 
@@ -1358,8 +1358,8 @@ class Conversation:
         self,
         role: MessageRole,
         content: str,
-        timestamp: float | None = None,
-        metadata: dict[str, Any] | None = None,
+        timestamp: Optional[float] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> ConversationMessage:
         """Add a message to the conversation.
 
@@ -1737,8 +1737,8 @@ class TurnAnalyzer:
 
     def __init__(
         self,
-        relevance_fn: Callable[[str, str], float] | None = None,
-        coherence_fn: Callable[[str, str], float] | None = None,
+        relevance_fn: Optional[Callable[[str, str], float]] = None,
+        coherence_fn: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize the turn analyzer.
 
@@ -1862,7 +1862,7 @@ class TurnAnalyzer:
         self,
         user_message: str,
         assistant_response: str,
-        context: str | None = None,
+        context: Optional[str] = None,
     ) -> dict[str, Any]:
         """Analyze a single conversation turn for quality.
 
@@ -1997,7 +1997,7 @@ class TopicTracker:
 
     def __init__(
         self,
-        topic_extractor: Callable[[str], list[str]] | None = None,
+        topic_extractor: Optional[Callable[[str], list[str]]] = None,
     ):
         """Initialize the topic tracker.
 
@@ -2330,7 +2330,7 @@ class ConversationConsistencyChecker:
 
     def __init__(
         self,
-        similarity_fn: Callable[[str, str], float] | None = None,
+        similarity_fn: Optional[Callable[[str, str], float]] = None,
     ):
         """Initialize the consistency checker.
 
@@ -2779,10 +2779,10 @@ class ConversationAnalyzer:
 
     def __init__(
         self,
-        turn_analyzer: TurnAnalyzer | None = None,
-        topic_tracker: TopicTracker | None = None,
-        consistency_checker: ConversationConsistencyChecker | None = None,
-        engagement_analyzer: EngagementAnalyzer | None = None,
+        turn_analyzer: Optional[TurnAnalyzer] = None,
+        topic_tracker: Optional[TopicTracker] = None,
+        consistency_checker: Optional[ConversationConsistencyChecker] = None,
+        engagement_analyzer: Optional[EngagementAnalyzer] = None,
     ):
         """Initialize the conversation analyzer with optional custom components.
 
@@ -3075,7 +3075,7 @@ class ConversationAnalyzer:
 
 
 def create_conversation(
-    messages: list[dict[str, str]] | None = None,
+    messages: Optional[list[dict[str, str]]] = None,
 ) -> Conversation:
     """Create a new conversation.
 
