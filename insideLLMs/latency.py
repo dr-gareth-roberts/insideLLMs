@@ -137,7 +137,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class LatencyMetric(Enum):
@@ -1023,7 +1023,7 @@ class ResponseProfile:
         Number of tokens in the input prompt.
     completion_tokens : int
         Number of tokens in the model's response.
-    time_to_first_token_ms : float | None
+    time_to_first_token_ms : Optional[float]
         Time from request to first token received, in milliseconds.
         None if not measured (e.g., non-streaming response).
     total_time_ms : float
@@ -1032,7 +1032,7 @@ class ResponseProfile:
         Generation throughput calculated as completion_tokens / time.
     timestamp : float, optional
         Unix timestamp when the response was received. Defaults to current time.
-    model_id : str | None, optional
+    model_id : Optional[str], optional
         Identifier for the model that generated the response.
     metadata : dict[str, Any], optional
         Additional context such as temperature, max_tokens, or request ID.
@@ -1109,11 +1109,11 @@ class ResponseProfile:
 
     prompt_tokens: int
     completion_tokens: int
-    time_to_first_token_ms: float | None
+    time_to_first_token_ms: Optional[float]
     total_time_ms: float
     tokens_per_second: float
     timestamp: float = field(default_factory=time.time)
-    model_id: str | None = None
+    model_id: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -1441,9 +1441,9 @@ class LatencyTimer:
 
     Attributes
     ----------
-    time_to_first_token_ms : float | None
+    time_to_first_token_ms : Optional[float]
         Time from start to first token mark, in milliseconds.
-    total_time_ms : float | None
+    total_time_ms : Optional[float]
         Total elapsed time from start, in milliseconds.
     inter_token_latencies_ms : list[float]
         List of inter-token latencies in milliseconds.
@@ -1534,9 +1534,9 @@ class LatencyTimer:
         >>> timer.total_time_ms is not None
         True
         """
-        self._start_time: float | None = None
-        self._first_token_time: float | None = None
-        self._end_time: float | None = None
+        self._start_time: Optional[float] = None
+        self._first_token_time: Optional[float] = None
+        self._end_time: Optional[float] = None
         self._token_times: list[float] = []
 
     def start(self) -> LatencyTimer:
@@ -1634,7 +1634,7 @@ class LatencyTimer:
         self._end_time = time.perf_counter()
 
     @property
-    def time_to_first_token_ms(self) -> float | None:
+    def time_to_first_token_ms(self) -> Optional[float]:
         """Get the time to first token in milliseconds.
 
         Returns the time elapsed between start() and mark_first_token().
@@ -1642,7 +1642,7 @@ class LatencyTimer:
 
         Returns
         -------
-        float | None
+        Optional[float]
             Time to first token in milliseconds, or None if not measured.
 
         Examples
@@ -1662,7 +1662,7 @@ class LatencyTimer:
         return (self._first_token_time - self._start_time) * 1000
 
     @property
-    def total_time_ms(self) -> float | None:
+    def total_time_ms(self) -> Optional[float]:
         """Get the total elapsed time in milliseconds.
 
         If stop() has been called, returns the time between start() and
@@ -1670,7 +1670,7 @@ class LatencyTimer:
 
         Returns
         -------
-        float | None
+        Optional[float]
             Total elapsed time in milliseconds, or None if not started.
 
         Examples
@@ -1768,11 +1768,11 @@ class LatencyTimer:
 
         Parameters
         ----------
-        exc_type : type | None
+        exc_type : Optional[type]
             Exception type if an exception was raised.
-        exc_val : BaseException | None
+        exc_val : Optional[BaseException]
             Exception instance if an exception was raised.
-        exc_tb : TracebackType | None
+        exc_tb : Optional[TracebackType]
             Traceback if an exception was raised.
 
         Examples
@@ -1801,13 +1801,13 @@ class LatencyProfiler:
 
     Parameters
     ----------
-    model_id : str | None, optional
+    model_id : Optional[str], optional
         Identifier for the model being profiled. Used for labeling
         in reports and comparisons.
 
     Attributes
     ----------
-    model_id : str | None
+    model_id : Optional[str]
         The model identifier provided at initialization.
 
     Examples
@@ -1864,12 +1864,12 @@ class LatencyProfiler:
     LatencyStats : Statistics returned by get_stats().
     """
 
-    def __init__(self, model_id: str | None = None):
+    def __init__(self, model_id: Optional[str] = None):
         """Initialize a new LatencyProfiler instance.
 
         Parameters
         ----------
-        model_id : str | None, optional
+        model_id : Optional[str], optional
             Identifier for the model being profiled. Useful for
             labeling in reports and multi-model comparisons.
 
@@ -1893,7 +1893,7 @@ class LatencyProfiler:
         self,
         metric: LatencyMetric,
         value_ms: float,
-        metadata: dict[str, Any] | None = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> LatencyMeasurement:
         """Record a latency measurement.
 
@@ -1907,7 +1907,7 @@ class LatencyProfiler:
             The type of latency being measured.
         value_ms : float
             The latency value in milliseconds.
-        metadata : dict[str, Any] | None, optional
+        metadata : Optional[dict[str, Any]], optional
             Additional context such as request ID, model parameters,
             or custom tags.
 
@@ -2119,13 +2119,13 @@ class ThroughputProfiler:
 
     Parameters
     ----------
-    model_id : str | None, optional
+    model_id : Optional[str], optional
         Identifier for the model being profiled. Used for labeling
         in reports and comparisons.
 
     Attributes
     ----------
-    model_id : str | None
+    model_id : Optional[str]
         The model identifier provided at initialization.
 
     Examples
@@ -2174,12 +2174,12 @@ class ThroughputProfiler:
     ThroughputStats : Statistics returned by get_stats().
     """
 
-    def __init__(self, model_id: str | None = None):
+    def __init__(self, model_id: Optional[str] = None):
         """Initialize a new ThroughputProfiler instance.
 
         Parameters
         ----------
-        model_id : str | None, optional
+        model_id : Optional[str], optional
             Identifier for the model being profiled. Useful for
             labeling in reports and multi-model comparisons.
 
@@ -2198,7 +2198,7 @@ class ThroughputProfiler:
         self,
         metric: ThroughputMetric,
         value: float,
-        metadata: dict[str, Any] | None = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> ThroughputMeasurement:
         """Record a throughput measurement.
 
@@ -2212,7 +2212,7 @@ class ThroughputProfiler:
             The type of throughput being measured.
         value : float
             The throughput value.
-        metadata : dict[str, Any] | None, optional
+        metadata : Optional[dict[str, Any]], optional
             Additional context such as batch size, model parameters,
             or custom tags.
 
@@ -2451,8 +2451,8 @@ class ResponseProfiler:
 
     def __init__(
         self,
-        model_id: str | None = None,
-        token_estimator: Callable[[str], int] | None = None,
+        model_id: Optional[str] = None,
+        token_estimator: Optional[Callable[[str], int]] = None,
     ):
         """Initialize profiler.
 
@@ -2476,10 +2476,10 @@ class ResponseProfiler:
         prompt: str,
         response: str,
         total_time_ms: float,
-        time_to_first_token_ms: float | None = None,
-        prompt_tokens: int | None = None,
-        completion_tokens: int | None = None,
-        metadata: dict[str, Any] | None = None,
+        time_to_first_token_ms: Optional[float] = None,
+        prompt_tokens: Optional[int] = None,
+        completion_tokens: Optional[int] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> ResponseProfile:
         """Profile a single response.
 
@@ -2791,14 +2791,14 @@ class PerformanceComparator:
 class StreamingProfiler:
     """Profile streaming response characteristics."""
 
-    def __init__(self, model_id: str | None = None):
+    def __init__(self, model_id: Optional[str] = None):
         """Initialize profiler.
 
         Args:
             model_id: Optional model identifier
         """
         self.model_id = model_id
-        self._timer: LatencyTimer | None = None
+        self._timer: Optional[LatencyTimer] = None
         self._tokens_received: int = 0
         self._chunk_sizes: list[int] = []
 
@@ -2955,7 +2955,7 @@ def profile_response(
     prompt: str,
     response: str,
     time_ms: float,
-    model_id: str | None = None,
+    model_id: Optional[str] = None,
 ) -> ResponseProfile:
     """Quick profile of a response.
 
@@ -2974,7 +2974,7 @@ def profile_response(
 
 def quick_performance_check(
     response_times_ms: list[float],
-    tokens_per_response: list[int] | None = None,
+    tokens_per_response: Optional[list[int]] = None,
 ) -> dict[str, Any]:
     """Quick performance check from response times.
 
