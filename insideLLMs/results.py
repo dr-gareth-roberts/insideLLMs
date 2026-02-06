@@ -442,14 +442,14 @@ def save_results_json(
                         schema_name,
                         item,
                         schema_version=schema_version,
-                        mode=validation_mode,  # type: ignore[arg-type]
+                        mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                     )
             else:
                 validator.validate(
                     schema_name,
                     serializable,
                     schema_version=schema_version,
-                    mode=validation_mode,  # type: ignore[arg-type]
+                    mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                 )
         else:
             # Heuristic: list of per-item runner results
@@ -461,7 +461,7 @@ def save_results_json(
                         registry.RUNNER_ITEM,
                         item,
                         schema_version=schema_version,
-                        mode=validation_mode,  # type: ignore[arg-type]
+                        mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                     )
     from insideLLMs.resources import atomic_write_text
 

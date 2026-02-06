@@ -1614,7 +1614,7 @@ def load_entrypoint_plugins(
         if hasattr(eps, "select"):
             selected = list(eps.select(group=group))
         else:  # pragma: no cover (older Python)
-            selected = list(eps.get(group, []))  # type: ignore[attr-defined]
+            selected = list(eps.get(group, []))  # type: ignore[attr-defined]  # Python <3.10 EntryPoints API
     except (ImportError, AttributeError):
         return {}
 

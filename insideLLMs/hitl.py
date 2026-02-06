@@ -1766,7 +1766,7 @@ class ConsoleInputHandler:
         if response == "y":
             return True, comment
         elif response == "skip":
-            return None, comment  # type: ignore
+            return None, comment  # type: ignore[return-value]  # Skip returns None for approval status
         return False, comment
 
     def get_feedback(self, item: ReviewItem) -> Feedback:
@@ -3661,7 +3661,7 @@ class FeedbackCollector:
         for f in feedback_list:
             type_counts[f.feedback_type] = type_counts.get(f.feedback_type, 0) + 1
 
-        return max(type_counts, key=type_counts.get)  # type: ignore
+        return max(type_counts.keys(), key=lambda k: type_counts[k])
 
     def export(self) -> dict[str, list[dict[str, Any]]]:
         """Export all collected feedback."""
@@ -3739,7 +3739,7 @@ class AnnotationCollector:
         for a in annotations:
             label_counts[a.label] = label_counts.get(a.label, 0) + 1
 
-        return max(label_counts, key=label_counts.get)  # type: ignore
+        return max(label_counts.keys(), key=lambda k: label_counts[k])
 
     def export(self) -> dict[str, Any]:
         """Export all annotations with agreement scores."""

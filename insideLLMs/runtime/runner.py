@@ -89,7 +89,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 import yaml
 
@@ -131,8 +131,10 @@ from insideLLMs.validation import validate_prompt_set
 
 logger = logging.getLogger(__name__)
 
-# Type alias for progress callbacks - supports both simple (current, total) and rich ProgressInfo
-ProgressCallback = Union[Callable[[int, int], None], Callable[["ProgressInfo"], None]]
+# Type aliases for progress callbacks - supports both simple (current, total) and rich ProgressInfo
+LegacyProgressCallback = Callable[[int, int], None]
+RichProgressCallback = Callable[["ProgressInfo"], None]
+ProgressCallback = Union[LegacyProgressCallback, RichProgressCallback]
 
 
 def _invoke_progress_callback(
@@ -175,7 +177,8 @@ def _invoke_progress_callback(
             pass
 
     if callback_style == "legacy":
-        callback(current, total)  # type: ignore
+        # Runtime signature detection confirmed this is a (current, total) callback
+        cast(LegacyProgressCallback, callback)(current, total)
         return
 
     # Use new ProgressInfo style
@@ -187,7 +190,8 @@ def _invoke_progress_callback(
         current_index=current_index,
         status=status,
     )
-    callback(info)  # type: ignore
+    # Runtime signature detection confirmed this is a ProgressInfo callback
+    cast(RichProgressCallback, callback)(info)
 
 
 def _normalize_validation_mode(mode: Optional[str]) -> str:
@@ -3820,7 +3824,7 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
     import copy
     import posixpath
 
-    snapshot: dict[str, Any] = copy.deepcopy(config)  # type: ignore[arg-type]
+    snapshot: dict[str, Any] = copy.deepcopy(config)  # type: ignore[arg-type]  # Config can be dict-like or Mapping
 
     dataset = snapshot.get("dataset") if isinstance(snapshot, dict) else None
     if isinstance(dataset, dict):
@@ -5062,7 +5066,7 @@ def create_experiment_result(
 
     probe_results: list[ProbeResult] = []
     if results and isinstance(results[0], ProbeResult):
-        probe_results = list(results)  # type: ignore[list-item]
+        probe_results = list(results)  # type: ignore[list-item]  # Runtime check confirms ProbeResult type
     else:
         for r in results:
             status = _coerce_status(r.get("status"))

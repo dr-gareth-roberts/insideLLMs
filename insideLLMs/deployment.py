@@ -132,19 +132,19 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
     # Dummy classes for type hints
-    class FastAPI:  # type: ignore
+    class FastAPI:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class BaseModel:  # type: ignore
+    class BaseModel:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class HTTPException(Exception):  # type: ignore
+    class HTTPException(Exception):  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    def Field(*args, **kwargs):  # type: ignore
+    def Field(*args, **kwargs):  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         return None
 
-    def Depends(*args, **kwargs):  # type: ignore
+    def Depends(*args, **kwargs):  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         return None
 
 
@@ -627,28 +627,28 @@ if FASTAPI_AVAILABLE:
 
 else:
     # Dummy classes when FastAPI not available
-    class GenerateRequest:  # type: ignore
+    class GenerateRequest:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class GenerateResponse:  # type: ignore
+    class GenerateResponse:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class ProbeRequest:  # type: ignore
+    class ProbeRequest:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class ProbeResponse:  # type: ignore
+    class ProbeResponse:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class BatchRequest:  # type: ignore
+    class BatchRequest:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class BatchResponse:  # type: ignore
+    class BatchResponse:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class HealthResponse:  # type: ignore
+    class HealthResponse:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
-    class ErrorResponse:  # type: ignore
+    class ErrorResponse:  # type: ignore[no-redef]  # Intentional: stub when FastAPI unavailable
         pass
 
 
@@ -2918,7 +2918,7 @@ class DeploymentApp:
         """
         if self._app is None:
             self.build_app()
-        return self._app  # type: ignore
+        return self._app  # type: ignore[return-value]  # _app is set by build_app(), checked above
 
 
 def create_app(
