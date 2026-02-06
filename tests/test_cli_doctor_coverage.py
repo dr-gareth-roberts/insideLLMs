@@ -2,12 +2,11 @@
 
 import argparse
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from insideLLMs.cli.commands.doctor import cmd_doctor
-
 
 # Skip all tests if nltk not available (doctor command requires it)
 pytest.importorskip("nltk")
@@ -55,12 +54,12 @@ class TestDoctorCommand:
             assert rc == 0
 
     def test_text_format_with_fail_on_warn(self, capsys):
-        rc = cmd_doctor(_make_args(format="text", fail_on_warn=True))
+        cmd_doctor(_make_args(format="text", fail_on_warn=True))
         captured = capsys.readouterr()
         assert "insideLLMs Doctor" in captured.out
 
     def test_checks_structure(self, capsys):
-        rc = cmd_doctor(_make_args(format="json"))
+        cmd_doctor(_make_args(format="json"))
         captured = capsys.readouterr()
         data = json.loads(captured.out)
         for check in data["checks"]:
@@ -69,7 +68,7 @@ class TestDoctorCommand:
             assert isinstance(check["ok"], bool)
 
     def test_all_check_categories(self, capsys):
-        rc = cmd_doctor(_make_args(format="json"))
+        cmd_doctor(_make_args(format="json"))
         captured = capsys.readouterr()
         data = json.loads(captured.out)
         names = {c["name"] for c in data["checks"]}

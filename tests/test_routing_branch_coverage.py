@@ -55,7 +55,9 @@ def test_semantic_matcher_cosine_edge_cases_and_embedding_cache():
     assert matcher._cosine_similarity([1.0], [1.0, 2.0]) == 0.0
     assert matcher._cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
 
-    embedder = lambda text: [float(len(text))]
+    def embedder(text):
+        return [float(len(text))]
+
     embed_matcher = SemanticMatcher(embedder=embedder)
     embed_matcher.cache_route_embedding("r1", "description")
     assert embed_matcher.get_cached_embedding("r1") == [11.0]

@@ -24,7 +24,6 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper probe subclasses for testing
 # ---------------------------------------------------------------------------
@@ -320,7 +319,7 @@ class TestComparativeProbe:
         mock_model = MagicMock()
         mock_model.generate = MagicMock(return_value="response")
 
-        result = probe.run_comparison(
+        probe.run_comparison(
             mock_model, "a", "b", temperature=0.0
         )
         assert mock_model.generate.call_count == 2
@@ -1722,7 +1721,7 @@ class TestOllamaModelOptionsMapping:
         ]
         model._client = mock_client
 
-        chunks = list(model.stream("Test", temperature=0.5, max_tokens=100))
+        list(model.stream("Test", temperature=0.5, max_tokens=100))
         call_kwargs = mock_client.generate.call_args[1]
         options = call_kwargs["options"]
         assert options["temperature"] == 0.5
@@ -2064,7 +2063,7 @@ class TestOllamaModelGetClientHeaders:
         mock_ollama.Client.return_value = mock_client
 
         with patch.dict("sys.modules", {"ollama": mock_ollama}):
-            client = model._get_client()
+            model._get_client()
             call_kwargs = mock_ollama.Client.call_args[1]
             assert "headers" in call_kwargs
             assert call_kwargs["headers"]["Authorization"] == "Bearer test-key"

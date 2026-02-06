@@ -46,7 +46,6 @@ class TestInteractiveCommand:
         history_file = str(tmp_path / "history.txt")
         with patch("builtins.input", side_effect=["history", "quit"]):
             rc = cmd_interactive(_make_args(history_file=history_file))
-        captured = capsys.readouterr()
         assert rc == 0
 
     def test_clear_command(self, capsys, tmp_path):
@@ -85,7 +84,6 @@ class TestInteractiveCommand:
     def test_model_load_failure(self, capsys, tmp_path):
         history_file = str(tmp_path / "history.txt")
         rc = cmd_interactive(_make_args(model="nonexistent_model_xyz", history_file=history_file))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_model_switch(self, capsys, tmp_path):
@@ -98,7 +96,6 @@ class TestInteractiveCommand:
         history_file = str(tmp_path / "history.txt")
         with patch("builtins.input", side_effect=["model nonexistent_xyz", "quit"]):
             rc = cmd_interactive(_make_args(history_file=history_file))
-        captured = capsys.readouterr()
         assert rc == 0
 
     def test_load_existing_history(self, capsys, tmp_path):
@@ -118,5 +115,4 @@ class TestInteractiveCommand:
             ) as mock_registry:
                 mock_registry.get.return_value = mock_model
                 rc = cmd_interactive(_make_args(history_file=history_file))
-        captured = capsys.readouterr()
         assert rc == 0

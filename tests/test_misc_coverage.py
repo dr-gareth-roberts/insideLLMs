@@ -1337,9 +1337,8 @@ class TestOutputModule:
             assert _supports_color() is True
 
     def test_colorize_no_color(self):
-        from insideLLMs.cli._output import Colors, colorize
-
         import insideLLMs.cli._output as output_mod
+        from insideLLMs.cli._output import Colors, colorize
 
         orig = output_mod.USE_COLOR
         try:
@@ -1350,9 +1349,8 @@ class TestOutputModule:
             output_mod.USE_COLOR = orig
 
     def test_colorize_with_color(self):
-        from insideLLMs.cli._output import Colors, colorize
-
         import insideLLMs.cli._output as output_mod
+        from insideLLMs.cli._output import Colors, colorize
 
         orig = output_mod.USE_COLOR
         try:

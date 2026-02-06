@@ -18,29 +18,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # =============================================================================
-# Semantic Cache Imports
-# =============================================================================
-
-from insideLLMs.semantic_cache import (
-    RedisCache,
-    SemanticCache,
-    SemanticCacheConfig,
-    SemanticCacheEntry,
-    SemanticCacheModel,
-    SemanticCacheStats,
-    SemanticLookupResult,
-    SimpleEmbedder,
-    VectorCache,
-    cosine_similarity,
-    create_semantic_cache,
-    quick_semantic_cache,
-    wrap_model_with_semantic_cache,
-)
-
-# =============================================================================
 # Observability Imports
 # =============================================================================
-
 import insideLLMs.runtime.observability as obs_module
 from insideLLMs.runtime.observability import (
     CallRecord,
@@ -57,6 +36,24 @@ from insideLLMs.runtime.observability import (
     trace_function,
 )
 
+# =============================================================================
+# Semantic Cache Imports
+# =============================================================================
+from insideLLMs.semantic_cache import (
+    RedisCache,
+    SemanticCache,
+    SemanticCacheConfig,
+    SemanticCacheEntry,
+    SemanticCacheModel,
+    SemanticCacheStats,
+    SemanticLookupResult,
+    SimpleEmbedder,
+    VectorCache,
+    cosine_similarity,
+    create_semantic_cache,
+    quick_semantic_cache,
+    wrap_model_with_semantic_cache,
+)
 
 # =============================================================================
 # SEMANTIC CACHE: RedisCache with mocked redis
@@ -369,7 +366,7 @@ class TestVectorCacheEdgeCases:
         cache = VectorCache(config)
 
         # Set an entry with a very short TTL
-        entry = cache.set("test prompt", "test value", ttl=1)
+        cache.set("test prompt", "test value", ttl=1)
         assert cache.get("test prompt").hit is True
 
         # Wait for it to expire
@@ -1337,7 +1334,7 @@ class TestTraceCallCoverage:
         """Test trace_call when response is not set in context."""
         collector = TelemetryCollector()
 
-        with trace_call("model", "op", "prompt", collector) as ctx:
+        with trace_call("model", "op", "prompt", collector):
             pass  # Don't set response
 
         records = collector.get_records()

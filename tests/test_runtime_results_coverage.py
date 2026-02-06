@@ -28,7 +28,6 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -1119,9 +1118,9 @@ class TestNormalizeInfoObjToDictExtended:
 
     def test_non_type_class_not_treated_as_dataclass(self):
         """The dataclass type itself (not instance) returns empty dict."""
-        from insideLLMs.runtime._result_utils import _normalize_info_obj_to_dict
-
         from dataclasses import dataclass
+
+        from insideLLMs.runtime._result_utils import _normalize_info_obj_to_dict
 
         @dataclass
         class Info:

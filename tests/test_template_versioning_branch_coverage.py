@@ -62,7 +62,7 @@ def test_manager_create_version_missing_template_and_latest_fallback_and_lookups
     assert created.version_number == "1.0.0"
 
     # Force active id to point to missing entry so latest version fallback path is used.
-    base = manager.create_template("tmpl", "v1")
+    manager.create_template("tmpl", "v1")
     v2 = manager.create_version("tmpl", "v2")
     manager.active_versions["tmpl"] = "missing-active-id"
     v3 = manager.create_version("tmpl", "v3")
