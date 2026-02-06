@@ -15,7 +15,9 @@ from insideLLMs.context_window import (
 )
 
 
-def _block(content: str, tokens: int, priority: PriorityLevel = PriorityLevel.MEDIUM) -> ContextBlock:
+def _block(
+    content: str, tokens: int, priority: PriorityLevel = PriorityLevel.MEDIUM
+) -> ContextBlock:
     return ContextBlock(
         content=content,
         content_type=ContentType.CONTEXT,
@@ -95,7 +97,9 @@ def test_truncate_sliding_window_and_block_content_end_truncation():
     assert sw_result.strategy_used == TruncationStrategy.SLIDING_WINDOW
 
     content_block = _block("x" * 40, 10)
-    tail_truncated = truncator._truncate_block_content(content_block, target_tokens=3, keep_start=False)
+    tail_truncated = truncator._truncate_block_content(
+        content_block, target_tokens=3, keep_start=False
+    )
     assert tail_truncated.content.startswith("...")
     assert tail_truncated.metadata["truncated"] is True
     assert tail_truncated.original_content == content_block.content

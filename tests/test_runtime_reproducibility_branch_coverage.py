@@ -103,7 +103,9 @@ def test_environment_capture_installed_packages_exception_path(monkeypatch: pyte
     capture = EnvironmentCapture()
     import importlib.metadata
 
-    monkeypatch.setattr(importlib.metadata, "distributions", lambda: (_ for _ in ()).throw(Exception("boom")))
+    monkeypatch.setattr(
+        importlib.metadata, "distributions", lambda: (_ for _ in ()).throw(Exception("boom"))
+    )
     packages = capture._get_installed_packages()
     assert packages == {}
 
@@ -128,7 +130,9 @@ def test_environment_compare_env_var_differences_branch():
     assert "C" in diff["env_var_differences"]
 
 
-def test_snapshot_save_yaml_success_and_yaml_import_error(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_snapshot_save_yaml_success_and_yaml_import_error(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
     snapshot = _make_snapshot("snap-yaml")
 
     def safe_dump(data, fh, **_kwargs):

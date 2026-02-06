@@ -25,7 +25,9 @@ def _template(version_id: str, number: str = "1.0.0") -> TemplateVersion:
 
 
 def _variant(variant_id: str, name: str) -> ABVariant:
-    return ABVariant(variant_id=variant_id, name=name, template_version=_template(f"t-{variant_id}"))
+    return ABVariant(
+        variant_id=variant_id, name=name, template_version=_template(f"t-{variant_id}")
+    )
 
 
 def _abtest(

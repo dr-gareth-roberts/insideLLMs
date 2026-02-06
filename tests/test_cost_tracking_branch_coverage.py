@@ -147,7 +147,12 @@ def test_reporter_format_text_weekly_monthly_and_forecast_branches():
     weekly_report = {
         "week_start": "2026-02-02",
         "week_end": "2026-02-08",
-        "summary": {"total_cost": 1.2, "total_requests": 3, "total_input_tokens": 10, "total_output_tokens": 5},
+        "summary": {
+            "total_cost": 1.2,
+            "total_requests": 3,
+            "total_input_tokens": 10,
+            "total_output_tokens": 5,
+        },
         "top_models": [{"name": "gpt-4", "cost": 1.2}],
         "forecast": {
             "forecast_period": "week",
@@ -164,7 +169,12 @@ def test_reporter_format_text_weekly_monthly_and_forecast_branches():
     monthly_report = {
         "year": 2026,
         "month": 2,
-        "summary": {"total_cost": 3.0, "total_requests": 8, "total_input_tokens": 100, "total_output_tokens": 50},
+        "summary": {
+            "total_cost": 3.0,
+            "total_requests": 8,
+            "total_input_tokens": 100,
+            "total_output_tokens": 50,
+        },
         "top_models": [],
     }
     monthly_text = reporter.format_report_text(monthly_report)

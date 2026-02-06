@@ -47,7 +47,10 @@ def _throughput_stats(mean: float) -> ThroughputStats:
     )
 
 
-def _report(latency_stats: dict[LatencyMetric, LatencyStats], throughput_stats: dict[ThroughputMetric, ThroughputStats]) -> PerformanceReport:
+def _report(
+    latency_stats: dict[LatencyMetric, LatencyStats],
+    throughput_stats: dict[ThroughputMetric, ThroughputStats],
+) -> PerformanceReport:
     return PerformanceReport(
         model_id="m",
         latency_stats=latency_stats,
@@ -164,7 +167,9 @@ def test_response_profiler_classification_thresholds():
 
 def test_performance_comparator_fallback_when_metric_missing():
     latency_only = PerformanceComparator()
-    latency_only.add_report("a", _report({}, {ThroughputMetric.TOKENS_PER_SECOND: _throughput_stats(50.0)}))
+    latency_only.add_report(
+        "a", _report({}, {ThroughputMetric.TOKENS_PER_SECOND: _throughput_stats(50.0)})
+    )
     name_a, _ = latency_only.get_best_performer(by="latency")
     assert name_a == "a"
 

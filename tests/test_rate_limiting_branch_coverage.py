@@ -43,9 +43,10 @@ def test_token_bucket_blocking_path_can_return_false_after_wait():
     limiter = TokenBucketRateLimiter(rate=1.0, capacity=1)
     limiter._tokens = 0.0
 
-    with patch.object(limiter, "_refill", return_value=None), patch(
-        "insideLLMs.rate_limiting.time.sleep", return_value=None
-    ) as sleeper:
+    with (
+        patch.object(limiter, "_refill", return_value=None),
+        patch("insideLLMs.rate_limiting.time.sleep", return_value=None) as sleeper,
+    ):
         result = limiter.acquire(tokens=1, block=True)
 
     assert result is False
@@ -57,9 +58,10 @@ async def test_token_bucket_async_blocking_path_can_return_false_after_wait():
     limiter = TokenBucketRateLimiter(rate=1.0, capacity=1)
     limiter._tokens = 0.0
 
-    with patch.object(limiter, "_refill", return_value=None), patch(
-        "insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()
-    ) as sleeper:
+    with (
+        patch.object(limiter, "_refill", return_value=None),
+        patch("insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()) as sleeper,
+    ):
         result = await limiter.acquire_async(tokens=1, block=True)
 
     assert result is False
@@ -88,8 +90,9 @@ def test_sliding_window_blocking_path_can_return_false_after_wait():
     limiter = SlidingWindowRateLimiter(requests_per_second=1.0, window_size_seconds=1.0)
     limiter._requests.append(100.0)
 
-    with patch("insideLLMs.rate_limiting.time.monotonic", return_value=100.0), patch(
-        "insideLLMs.rate_limiting.time.sleep", return_value=None
+    with (
+        patch("insideLLMs.rate_limiting.time.monotonic", return_value=100.0),
+        patch("insideLLMs.rate_limiting.time.sleep", return_value=None),
     ):
         result = limiter.acquire(block=True)
 
@@ -101,8 +104,9 @@ async def test_sliding_window_async_blocking_path_can_return_false_after_wait():
     limiter = SlidingWindowRateLimiter(requests_per_second=1.0, window_size_seconds=1.0)
     limiter._requests.append(200.0)
 
-    with patch("insideLLMs.rate_limiting.time.monotonic", return_value=200.0), patch(
-        "insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()
+    with (
+        patch("insideLLMs.rate_limiting.time.monotonic", return_value=200.0),
+        patch("insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()),
     ):
         result = await limiter.acquire_async(block=True)
 

@@ -74,11 +74,15 @@ def test_cmd_validate_run_dir_schema_and_record_errors(tmp_path):
     manifest_path = run_dir / "manifest.json"
     records_path = run_dir / "records.jsonl"
 
-    with patch("insideLLMs.schemas.SchemaRegistry", _FakeRegistry), patch(
-        "insideLLMs.schemas.OutputValidator", _FakeValidator
-    ), patch("insideLLMs.schemas.OutputValidationError", _FakeOutputValidationError):
+    with (
+        patch("insideLLMs.schemas.SchemaRegistry", _FakeRegistry),
+        patch("insideLLMs.schemas.OutputValidator", _FakeValidator),
+        patch("insideLLMs.schemas.OutputValidationError", _FakeOutputValidationError),
+    ):
         # Manifest schema failure strict mode -> failure.
-        manifest_path.write_text(json.dumps({"manifest_fail": True, "records_file": "records.jsonl"}))
+        manifest_path.write_text(
+            json.dumps({"manifest_fail": True, "records_file": "records.jsonl"})
+        )
         records_path.write_text(json.dumps({"ok": True}) + "\n")
         rc_manifest_fail = cmd_validate(_validate_args(run_dir, mode="strict"))
         assert rc_manifest_fail == 1
@@ -132,8 +136,9 @@ def test_cmd_validate_config_validation_errors_and_success_paths(tmp_path):
         )
     )
 
-    with patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=[]), patch(
-        "insideLLMs.cli.commands.validate.probe_registry.list", return_value=[]
+    with (
+        patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=[]),
+        patch("insideLLMs.cli.commands.validate.probe_registry.list", return_value=[]),
     ):
         rc_unknown = cmd_validate(_validate_args(unknown_types, mode="strict"))
     assert rc_unknown == 1
@@ -150,8 +155,9 @@ def test_cmd_validate_config_validation_errors_and_success_paths(tmp_path):
         )
     )
 
-    with patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=["dummy"]), patch(
-        "insideLLMs.cli.commands.validate.probe_registry.list", return_value=["dummy"]
+    with (
+        patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=["dummy"]),
+        patch("insideLLMs.cli.commands.validate.probe_registry.list", return_value=["dummy"]),
     ):
         rc_warning_only = cmd_validate(_validate_args(warning_only, mode="strict"))
     assert rc_warning_only == 0
@@ -191,11 +197,12 @@ def test_cmd_benchmark_explicit_datasets_and_html_report(tmp_path):
 
     fake_dataset = SimpleNamespace(sample=lambda _n, seed=42: list(examples))
 
-    with patch("insideLLMs.benchmark_datasets.load_builtin_dataset", return_value=fake_dataset), patch(
-        "insideLLMs.cli.commands.benchmark.model_registry.get", return_value=_Model
-    ), patch(
-        "insideLLMs.cli.commands.benchmark.probe_registry.get", return_value=_Probe
-    ), patch("insideLLMs.runtime.runner.ProbeRunner", _Runner):
+    with (
+        patch("insideLLMs.benchmark_datasets.load_builtin_dataset", return_value=fake_dataset),
+        patch("insideLLMs.cli.commands.benchmark.model_registry.get", return_value=_Model),
+        patch("insideLLMs.cli.commands.benchmark.probe_registry.get", return_value=_Probe),
+        patch("insideLLMs.runtime.runner.ProbeRunner", _Runner),
+    ):
         rc = cmd_benchmark(
             _benchmark_args(
                 datasets="custom",
@@ -235,13 +242,20 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
             raise RuntimeError("cannot load probe")
         return SimpleNamespace()
 
-    with patch(
-        "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
-        return_value=fake_suite,
-    ), patch("insideLLMs.cli.commands.benchmark.model_registry.get", return_value=SimpleNamespace()), patch(
-        "insideLLMs.cli.commands.benchmark.probe_registry.get",
-        side_effect=_probe_get,
-    ), patch("insideLLMs.runtime.runner.ProbeRunner", _Runner):
+    with (
+        patch(
+            "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
+            return_value=fake_suite,
+        ),
+        patch(
+            "insideLLMs.cli.commands.benchmark.model_registry.get", return_value=SimpleNamespace()
+        ),
+        patch(
+            "insideLLMs.cli.commands.benchmark.probe_registry.get",
+            side_effect=_probe_get,
+        ),
+        patch("insideLLMs.runtime.runner.ProbeRunner", _Runner),
+    ):
         rc = cmd_benchmark(
             _benchmark_args(models="dummy", probes="badprobe,goodprobe", max_examples=2)
         )
@@ -250,10 +264,13 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
 
 
 def test_cmd_benchmark_outer_exception_verbose_returns_1(capsys):
-    with patch(
-        "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
-        side_effect=RuntimeError("suite boom"),
-    ), patch("traceback.print_exc") as print_exc:
+    with (
+        patch(
+            "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
+            side_effect=RuntimeError("suite boom"),
+        ),
+        patch("traceback.print_exc") as print_exc,
+    ):
         rc = cmd_benchmark(_benchmark_args(verbose=True))
 
     captured = capsys.readouterr()

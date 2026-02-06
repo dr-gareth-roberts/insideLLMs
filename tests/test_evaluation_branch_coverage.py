@@ -41,7 +41,9 @@ class _GenerateOnlyModel:
 def test_multi_metric_result_get_scores():
     r1 = EvaluationResult(score=1.0, passed=True, metric_name="m1")
     r2 = EvaluationResult(score=0.25, passed=False, metric_name="m2")
-    multi = MultiMetricResult(results={"m1": r1, "m2": r2}, overall_score=0.625, overall_passed=False)
+    multi = MultiMetricResult(
+        results={"m1": r1, "m2": r2}, overall_score=0.625, overall_passed=False
+    )
     assert multi["m1"] is r1
     assert multi.get_scores() == {"m1": 1.0, "m2": 0.25}
 
@@ -109,7 +111,9 @@ def test_composite_evaluator_require_all_branch():
 
 def test_judge_model_parse_score_compare_branches():
     criterion = JudgeCriterion(name="quality", description="Quality", weight=0.0)
-    judge = JudgeModel(judge_model=_GenerateOnlyModel('{"overall_winner":"A"}'), criteria=[criterion])
+    judge = JudgeModel(
+        judge_model=_GenerateOnlyModel('{"overall_winner":"A"}'), criteria=[criterion]
+    )
 
     with pytest.raises(ValueError, match="Failed to parse judge response as JSON"):
         judge._parse_judge_response("```json\n{bad json}\n```")
