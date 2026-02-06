@@ -190,7 +190,9 @@ def test_validate_with_config_fail_fast_after_stream(monkeypatch: pytest.MonkeyP
     called = {"tool_results": False}
 
     monkeypatch.setattr(trace_contracts, "validate_generate_boundaries", lambda _events: [])
-    monkeypatch.setattr(trace_contracts, "validate_stream_boundaries", lambda _events: [_violation("X", 1)])
+    monkeypatch.setattr(
+        trace_contracts, "validate_stream_boundaries", lambda _events: [_violation("X", 1)]
+    )
     monkeypatch.setattr(
         trace_contracts,
         "validate_tool_results",
@@ -210,7 +212,9 @@ def test_validate_with_config_fail_fast_after_tool_results(monkeypatch: pytest.M
 
     monkeypatch.setattr(trace_contracts, "validate_generate_boundaries", lambda _events: [])
     monkeypatch.setattr(trace_contracts, "validate_stream_boundaries", lambda _events: [])
-    monkeypatch.setattr(trace_contracts, "validate_tool_results", lambda _events: [_violation("TOOL", 2)])
+    monkeypatch.setattr(
+        trace_contracts, "validate_tool_results", lambda _events: [_violation("TOOL", 2)]
+    )
     monkeypatch.setattr(
         trace_contracts,
         "validate_tool_payloads",
@@ -247,7 +251,9 @@ def test_validate_with_config_fail_fast_after_tool_payloads(monkeypatch: pytest.
     monkeypatch.setattr(trace_contracts, "validate_generate_boundaries", lambda _events: [])
     monkeypatch.setattr(trace_contracts, "validate_stream_boundaries", lambda _events: [])
     monkeypatch.setattr(trace_contracts, "validate_tool_results", lambda _events: [])
-    monkeypatch.setattr(trace_contracts, "validate_tool_payloads", lambda _events, _schemas: [_violation("P", 3)])
+    monkeypatch.setattr(
+        trace_contracts, "validate_tool_payloads", lambda _events, _schemas: [_violation("P", 3)]
+    )
     monkeypatch.setattr(
         trace_contracts,
         "validate_tool_order",

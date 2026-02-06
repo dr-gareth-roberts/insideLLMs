@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy types-PyYAML
+          pip install ruff mypy PyYAML types-PyYAML pytest
 
       - name: Ruff lint
         run: ruff check .
@@ -31,7 +31,7 @@ jobs:
         run: ruff format --check .
 
       - name: Stability contract guardrails
-        run: pytest -q tests/test_stability_contract.py
+        run: PYTHONPATH=. pytest -q tests/test_stability_contract.py
 
       - name: Wiki link check
         run: python scripts/check_wiki_links.py
@@ -69,6 +69,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,nlp,visualization]"
+          pip install fastapi uvicorn
 
       - name: Download NLTK resources
         run: |

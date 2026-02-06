@@ -24,7 +24,6 @@ def _make_args(**kwargs):
 class TestCompareBasic:
     def test_no_models(self, capsys):
         rc = cmd_compare(_make_args(models=""))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_table_output(self, capsys):
@@ -49,9 +48,7 @@ class TestCompareBasic:
 
     def test_markdown_output_to_file(self, capsys, tmp_path):
         out = str(tmp_path / "compare.md")
-        rc = cmd_compare(
-            _make_args(models="dummy", input="test", format="markdown", output=out)
-        )
+        rc = cmd_compare(_make_args(models="dummy", input="test", format="markdown", output=out))
         assert rc == 0
         assert Path(out).exists()
 
@@ -63,7 +60,6 @@ class TestCompareBasic:
 
     def test_no_input(self, capsys):
         rc = cmd_compare(_make_args(input=None, input_file=None))
-        captured = capsys.readouterr()
         assert rc == 1
 
 
@@ -73,7 +69,9 @@ class TestCompareInputFile:
         input_file.write_text(json.dumps(["Hello", "World"]))
         out = str(tmp_path / "out.json")
         rc = cmd_compare(
-            _make_args(input=None, input_file=str(input_file), models="dummy", format="json", output=out)
+            _make_args(
+                input=None, input_file=str(input_file), models="dummy", format="json", output=out
+            )
         )
         assert rc == 0
         data = json.loads(Path(out).read_text())
@@ -113,30 +111,28 @@ class TestCompareInputFile:
 
     def test_missing_input_file(self, capsys):
         rc = cmd_compare(_make_args(input=None, input_file="/nonexistent/file.txt"))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_jsonl_invalid_json(self, capsys, tmp_path):
         input_file = tmp_path / "bad.jsonl"
         input_file.write_text("not json\n")
         rc = cmd_compare(_make_args(input=None, input_file=str(input_file), models="dummy"))
-        captured = capsys.readouterr()
         assert rc == 1
 
 
 class TestCompareModelErrors:
     def test_model_load_failure(self, capsys, tmp_path):
         out = str(tmp_path / "out.json")
-        rc = cmd_compare(_make_args(models="nonexistent_model_xyz", input="test", format="json", output=out))
+        rc = cmd_compare(
+            _make_args(models="nonexistent_model_xyz", input="test", format="json", output=out)
+        )
         assert rc == 0
         data = json.loads(Path(out).read_text())
         assert data[0]["models"][0]["error"] == "model_init_failed"
 
     def test_multiple_models_with_dummy(self, capsys, tmp_path):
         out = str(tmp_path / "out.json")
-        rc = cmd_compare(
-            _make_args(models="dummy,dummy", input="test", format="json", output=out)
-        )
+        rc = cmd_compare(_make_args(models="dummy,dummy", input="test", format="json", output=out))
         assert rc == 0
         data = json.loads(Path(out).read_text())
         assert len(data[0]["models"]) == 2

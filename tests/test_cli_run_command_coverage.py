@@ -34,7 +34,9 @@ def _make_run_args(config_path: Path, **overrides):
 
 def _write_config(tmp_path: Path) -> Path:
     config_path = tmp_path / "config.yaml"
-    config_path.write_text("model: {type: dummy}\nprobe: {type: dummy}\ndataset: {type: inline, items: []}\n")
+    config_path.write_text(
+        "model: {type: dummy}\nprobe: {type: dummy}\ndataset: {type: inline, items: []}\n"
+    )
     return config_path
 
 
@@ -86,16 +88,21 @@ def test_cmd_run_sync_table_output_tracking_and_artifacts(tmp_path, capsys):
         format="table",
     )
 
-    with patch(
-        "insideLLMs.cli.commands.run.run_experiment_from_config",
-        side_effect=_fake_run_experiment,
-    ), patch(
-        "insideLLMs.cli.commands.run.save_results_json",
-        side_effect=_fake_save_results_json,
-    ), patch(
-        "insideLLMs.experiment_tracking.create_tracker",
-        return_value=tracker,
-    ), patch("insideLLMs.experiment_tracking.TrackingConfig"):
+    with (
+        patch(
+            "insideLLMs.cli.commands.run.run_experiment_from_config",
+            side_effect=_fake_run_experiment,
+        ),
+        patch(
+            "insideLLMs.cli.commands.run.save_results_json",
+            side_effect=_fake_save_results_json,
+        ),
+        patch(
+            "insideLLMs.experiment_tracking.create_tracker",
+            return_value=tracker,
+        ),
+        patch("insideLLMs.experiment_tracking.TrackingConfig"),
+    ):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
@@ -107,7 +114,9 @@ def test_cmd_run_sync_table_output_tracking_and_artifacts(tmp_path, capsys):
     tracker.start_run.assert_called_once_with(run_name="run-1", run_id="run-1")
     tracker.log_metrics.assert_called_once()
     tracker.end_run.assert_called_once_with(status="finished")
-    logged_artifacts = [call.kwargs.get("artifact_name") for call in tracker.log_artifact.call_args_list]
+    logged_artifacts = [
+        call.kwargs.get("artifact_name") for call in tracker.log_artifact.call_args_list
+    ]
     assert "manifest.json" in logged_artifacts
     assert output_file.name in logged_artifacts
 
@@ -128,13 +137,16 @@ def test_cmd_run_async_json_prints_hints_to_stderr(tmp_path, capsys):
         quiet=False,
     )
 
-    with patch(
-        "insideLLMs.cli.commands.run.run_experiment_from_config_async",
-        side_effect=_fake_async_run,
-    ), patch(
-        "insideLLMs.cli.commands.run.derive_run_id_from_config_path",
-        return_value="derived-run-id",
-    ) as derive_run_id:
+    with (
+        patch(
+            "insideLLMs.cli.commands.run.run_experiment_from_config_async",
+            side_effect=_fake_async_run,
+        ),
+        patch(
+            "insideLLMs.cli.commands.run.derive_run_id_from_config_path",
+            return_value="derived-run-id",
+        ) as derive_run_id,
+    ):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
@@ -189,10 +201,13 @@ def test_cmd_run_tracking_setup_failure_is_nonfatal(tmp_path, capsys):
         run_root=str(tmp_path / "runs"),
     )
 
-    with patch(
-        "insideLLMs.experiment_tracking.create_tracker",
-        side_effect=RuntimeError("tracker unavailable"),
-    ), patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]):
+    with (
+        patch(
+            "insideLLMs.experiment_tracking.create_tracker",
+            side_effect=RuntimeError("tracker unavailable"),
+        ),
+        patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]),
+    ):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
@@ -216,9 +231,11 @@ def test_cmd_run_tracker_logging_error_is_nonfatal(tmp_path, capsys):
         format="summary",
     )
 
-    with patch("insideLLMs.experiment_tracking.create_tracker", return_value=tracker), patch(
-        "insideLLMs.experiment_tracking.TrackingConfig"
-    ), patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]):
+    with (
+        patch("insideLLMs.experiment_tracking.create_tracker", return_value=tracker),
+        patch("insideLLMs.experiment_tracking.TrackingConfig"),
+        patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]),
+    ):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
@@ -240,12 +257,15 @@ def test_cmd_run_outer_exception_ends_failed_tracker_and_prints_traceback(tmp_pa
         verbose=True,
     )
 
-    with patch("insideLLMs.experiment_tracking.create_tracker", return_value=tracker), patch(
-        "insideLLMs.experiment_tracking.TrackingConfig"
-    ), patch(
-        "insideLLMs.cli.commands.run.run_experiment_from_config",
-        side_effect=RuntimeError("run boom"),
-    ), patch("traceback.print_exc") as print_exc:
+    with (
+        patch("insideLLMs.experiment_tracking.create_tracker", return_value=tracker),
+        patch("insideLLMs.experiment_tracking.TrackingConfig"),
+        patch(
+            "insideLLMs.cli.commands.run.run_experiment_from_config",
+            side_effect=RuntimeError("run boom"),
+        ),
+        patch("traceback.print_exc") as print_exc,
+    ):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()

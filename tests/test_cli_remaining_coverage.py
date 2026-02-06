@@ -47,12 +47,10 @@ class TestInfoCommand:
 
     def test_model_not_found(self, capsys):
         rc = cmd_info(_info_args(type="model", name="nonexistent_xyz"))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_probe_not_found(self, capsys):
         rc = cmd_info(_info_args(type="probe", name="nonexistent_xyz"))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_dataset_info(self, capsys):
@@ -93,17 +91,14 @@ class TestListCommand:
 
     def test_list_with_filter(self, capsys):
         rc = cmd_list(_list_args(type="models", filter="dummy"))
-        captured = capsys.readouterr()
         assert rc == 0
 
     def test_list_detailed(self, capsys):
         rc = cmd_list(_list_args(type="models", detailed=True))
-        captured = capsys.readouterr()
         assert rc == 0
 
     def test_list_probes_detailed(self, capsys):
         rc = cmd_list(_list_args(type="probes", detailed=True))
-        captured = capsys.readouterr()
         assert rc == 0
 
     def test_list_datasets_detailed(self, capsys):
@@ -124,7 +119,6 @@ class TestQuicktestCommand:
 
     def test_quicktest_unknown_model(self, capsys):
         rc = cmd_quicktest(_quicktest_args(model="nonexistent_xyz"))
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_quicktest_with_probe(self, capsys):
@@ -167,7 +161,6 @@ class TestRunCommand:
             resume=False,
         )
         rc = cmd_run(args)
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_run_with_config(self, capsys, tmp_path):
@@ -412,7 +405,6 @@ class TestReportCommand:
             report_title="Test Report",
         )
         rc = cmd_report(args)
-        captured = capsys.readouterr()
         assert rc == 1
 
     def test_empty_records(self, capsys, tmp_path):

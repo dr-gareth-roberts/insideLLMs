@@ -489,7 +489,9 @@ class TestTraceBundleV1:
             schema_version="insideLLMs.custom.trace@1",
             mode="full",
             counts=TraceCounts(events_total=2, events_stored=2),
-            fingerprint=TraceFingerprint(enabled=True, value="b" * 64, basis="normalised_full_trace"),
+            fingerprint=TraceFingerprint(
+                enabled=True, value="b" * 64, basis="normalised_full_trace"
+            ),
             normaliser=TraceNormaliser(kind="builtin", name="default", config_hash="c" * 64),
             contracts=TraceContractsSummary(enabled=False, violations_total=0, violations_stored=0),
             events_view="normalised",
@@ -1233,9 +1235,7 @@ class TestReportBuilder:
             probe_name="test_probe",
             probe_category=ProbeCategory.CUSTOM,
             results=[
-                ProbeResult(
-                    input="q", output="a", status=ResultStatus.SUCCESS, latency_ms=100.0
-                )
+                ProbeResult(input="q", output="a", status=ResultStatus.SUCCESS, latency_ms=100.0)
             ],
             score=None,
             started_at=None,
@@ -1337,9 +1337,8 @@ class TestOutputModule:
             assert _supports_color() is True
 
     def test_colorize_no_color(self):
-        from insideLLMs.cli._output import Colors, colorize
-
         import insideLLMs.cli._output as output_mod
+        from insideLLMs.cli._output import Colors, colorize
 
         orig = output_mod.USE_COLOR
         try:
@@ -1350,9 +1349,8 @@ class TestOutputModule:
             output_mod.USE_COLOR = orig
 
     def test_colorize_with_color(self):
-        from insideLLMs.cli._output import Colors, colorize
-
         import insideLLMs.cli._output as output_mod
+        from insideLLMs.cli._output import Colors, colorize
 
         orig = output_mod.USE_COLOR
         try:

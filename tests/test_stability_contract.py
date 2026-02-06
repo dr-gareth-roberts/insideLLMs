@@ -9,9 +9,7 @@ from insideLLMs.schemas.registry import SchemaRegistry
 def _subcommand_names() -> set[str]:
     parser = create_parser()
     subparsers_action = next(
-        action
-        for action in parser._actions
-        if action.__class__.__name__ == "_SubParsersAction"
+        action for action in parser._actions if action.__class__.__name__ == "_SubParsersAction"
     )
     return set(subparsers_action.choices.keys())
 

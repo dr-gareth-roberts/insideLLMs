@@ -28,7 +28,6 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -170,9 +169,7 @@ class TestValidateResumeRecord:
 
         record = {"custom": {"record_index": 5}, "input": "test"}
         with pytest.raises(ValueError, match="not a contiguous prefix"):
-            _validate_resume_record(
-                record, expected_index=0, expected_item="test", run_id=None
-            )
+            _validate_resume_record(record, expected_index=0, expected_item="test", run_id=None)
 
     def test_run_id_mismatch_raises(self):
         """Mismatched run_id raises ValueError."""
@@ -524,9 +521,7 @@ class TestResultDictFromProbeResult:
             error="boom",
             metadata={},
         )
-        d = _result_dict_from_probe_result(
-            result, schema_version="1.0.0", error_type="ValueError"
-        )
+        d = _result_dict_from_probe_result(result, schema_version="1.0.0", error_type="ValueError")
         assert d["error_type"] == "ValueError"
 
     def test_non_dict_metadata(self):
@@ -615,9 +610,7 @@ class TestBuildDatasetSpecExtended:
     def test_with_revision_and_version(self):
         from insideLLMs.runtime._result_utils import _build_dataset_spec
 
-        spec = _build_dataset_spec(
-            {"name": "ds", "version": "1.0", "revision": "main"}
-        )
+        spec = _build_dataset_spec({"name": "ds", "version": "1.0", "revision": "main"})
         assert spec["dataset_version"] == "1.0@main"
 
     def test_with_revision_only(self):
@@ -629,9 +622,7 @@ class TestBuildDatasetSpecExtended:
     def test_with_split_and_version(self):
         from insideLLMs.runtime._result_utils import _build_dataset_spec
 
-        spec = _build_dataset_spec(
-            {"name": "ds", "version": "1.0", "split": "train"}
-        )
+        spec = _build_dataset_spec({"name": "ds", "version": "1.0", "split": "train"})
         assert spec["dataset_version"] == "1.0::train"
 
     def test_with_split_only(self):
@@ -1119,9 +1110,9 @@ class TestNormalizeInfoObjToDictExtended:
 
     def test_non_type_class_not_treated_as_dataclass(self):
         """The dataclass type itself (not instance) returns empty dict."""
-        from insideLLMs.runtime._result_utils import _normalize_info_obj_to_dict
-
         from dataclasses import dataclass
+
+        from insideLLMs.runtime._result_utils import _normalize_info_obj_to_dict
 
         @dataclass
         class Info:
@@ -1626,9 +1617,7 @@ class TestSaveResultsJsonExtended:
         """validate_output=True with explicit schema_name."""
         from insideLLMs.results import save_results_json
 
-        results = [
-            {"input": "q", "output": "a", "status": "success", "schema_version": "1.0.0"}
-        ]
+        results = [{"input": "q", "output": "a", "status": "success", "schema_version": "1.0.0"}]
         path = str(tmp_path / "validated.json")
         # Use correct schema name: "ProbeResult" (SchemaRegistry.RUNNER_ITEM)
         save_results_json(
@@ -1645,9 +1634,7 @@ class TestSaveResultsJsonExtended:
         """validate_output=True without schema_name uses heuristic."""
         from insideLLMs.results import save_results_json
 
-        results = [
-            {"input": "q", "output": "a", "status": "success", "schema_version": "1.0.0"}
-        ]
+        results = [{"input": "q", "output": "a", "status": "success", "schema_version": "1.0.0"}]
         path = str(tmp_path / "heuristic.json")
         save_results_json(
             results,
@@ -1695,9 +1682,7 @@ class TestSaveResultsMarkdownExtended:
         from insideLLMs.results import save_results_markdown
 
         with pytest.raises(FileNotFoundError, match="Parent directory"):
-            save_results_markdown(
-                [{"input": "q"}], str(tmp_path / "nonexistent" / "r.md")
-            )
+            save_results_markdown([{"input": "q"}], str(tmp_path / "nonexistent" / "r.md"))
 
 
 class TestSaveResultsCsvExtended:
@@ -1708,9 +1693,7 @@ class TestSaveResultsCsvExtended:
         from insideLLMs.results import save_results_csv
 
         with pytest.raises(FileNotFoundError, match="Parent directory"):
-            save_results_csv(
-                [{"a": 1}], str(tmp_path / "nonexistent" / "r.csv")
-            )
+            save_results_csv([{"a": 1}], str(tmp_path / "nonexistent" / "r.csv"))
 
 
 class TestSaveResultsHtmlExtended:
@@ -2026,9 +2009,7 @@ class TestStatisticalReportExtended:
         from insideLLMs.results import generate_statistical_report
 
         experiments = self._create_experiments()
-        report = generate_statistical_report(
-            experiments, confidence_level=0.99, format="markdown"
-        )
+        report = generate_statistical_report(experiments, confidence_level=0.99, format="markdown")
         assert "99%" in report
 
     def test_save_to_file(self, tmp_path):

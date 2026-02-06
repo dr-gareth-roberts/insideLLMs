@@ -79,7 +79,9 @@ def test_cmd_info_model_branch_prints_defaults_and_doc(capsys):
 
 
 def test_cmd_info_unexpected_exception_returns_error(capsys):
-    with patch("insideLLMs.cli.commands.info.model_registry.info", side_effect=RuntimeError("boom")):
+    with patch(
+        "insideLLMs.cli.commands.info.model_registry.info", side_effect=RuntimeError("boom")
+    ):
         rc = cmd_info(_info_args(type="model", name="dummy"))
 
     captured = capsys.readouterr()
@@ -112,7 +114,9 @@ def test_cmd_export_csv_and_latex(tmp_path):
     latex_file = tmp_path / "results.tex"
 
     rc_csv = cmd_export(_export_args(input=str(input_file), format="csv", output=str(csv_file)))
-    rc_latex = cmd_export(_export_args(input=str(input_file), format="latex", output=str(latex_file)))
+    rc_latex = cmd_export(
+        _export_args(input=str(input_file), format="latex", output=str(latex_file))
+    )
 
     assert rc_csv == 0
     assert rc_latex == 0
@@ -124,7 +128,9 @@ def test_cmd_export_html_and_invalid_json_error_paths(tmp_path, capsys):
     valid_input = tmp_path / "results.json"
     valid_input.write_text(json.dumps([{"status": "success"}]))
 
-    rc_html = cmd_export(_export_args(input=str(valid_input), format="html", output=str(tmp_path / "x.html")))
+    rc_html = cmd_export(
+        _export_args(input=str(valid_input), format="html", output=str(tmp_path / "x.html"))
+    )
     assert rc_html == 1
 
     invalid_input = tmp_path / "broken.json"
@@ -190,9 +196,12 @@ def test_cmd_report_handles_read_error_and_empty_reconstructed_experiments(tmp_p
 
     assert rc_read_error == 1
 
-    with patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=[{"x": 1}]), patch(
-        "insideLLMs.cli.commands.report._build_experiments_from_records",
-        return_value=([], {"cfg": 1}, "1.0.1"),
+    with (
+        patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=[{"x": 1}]),
+        patch(
+            "insideLLMs.cli.commands.report._build_experiments_from_records",
+            return_value=([], {"cfg": 1}, "1.0.1"),
+        ),
     ):
         rc_no_experiments = cmd_report(_report_args(run_dir))
 
@@ -213,18 +222,25 @@ def test_cmd_report_falls_back_to_basic_report_on_import_error_and_warns_multi_r
         {"run_id": "run-a", "completed_at": "2024-01-03T00:00:00Z"},
     ]
 
-    with patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=records), patch(
-        "insideLLMs.cli.commands.report._build_experiments_from_records",
-        return_value=([{"experiment": "ok"}], {"cfg": 1}, "1.0.1"),
-    ), patch("insideLLMs.cli.commands.report.generate_summary_report", return_value={"ok": True}), patch(
-        "insideLLMs.runtime.runner._deterministic_base_time",
-        side_effect=ValueError("bad run id"),
-    ), patch(
-        "insideLLMs.cli.commands.report._build_basic_harness_report",
-        return_value="<html>fallback</html>",
-    ), patch(
-        "insideLLMs.visualization.create_interactive_html_report",
-        side_effect=ImportError("plotly missing"),
+    with (
+        patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=records),
+        patch(
+            "insideLLMs.cli.commands.report._build_experiments_from_records",
+            return_value=([{"experiment": "ok"}], {"cfg": 1}, "1.0.1"),
+        ),
+        patch("insideLLMs.cli.commands.report.generate_summary_report", return_value={"ok": True}),
+        patch(
+            "insideLLMs.runtime.runner._deterministic_base_time",
+            side_effect=ValueError("bad run id"),
+        ),
+        patch(
+            "insideLLMs.cli.commands.report._build_basic_harness_report",
+            return_value="<html>fallback</html>",
+        ),
+        patch(
+            "insideLLMs.visualization.create_interactive_html_report",
+            side_effect=ImportError("plotly missing"),
+        ),
     ):
         rc = cmd_report(_report_args(run_dir, report_title="Fallback"))
 
@@ -243,16 +259,23 @@ def test_cmd_report_uses_deterministic_generated_at_when_available(tmp_path):
     records = [{"run_id": "run-1", "completed_at": "2024-01-02T00:00:00Z"}]
     fake_html_report = MagicMock()
 
-    with patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=records), patch(
-        "insideLLMs.cli.commands.report._build_experiments_from_records",
-        return_value=([{"experiment": "ok"}], {"cfg": 1}, "1.0.1"),
-    ), patch("insideLLMs.cli.commands.report.generate_summary_report", return_value={"ok": True}), patch(
-        "insideLLMs.runtime.runner._deterministic_base_time",
-        return_value="BASE",
-    ), patch(
-        "insideLLMs.runtime.runner._deterministic_run_times",
-        return_value=("START", "2024-01-05T12:00:00Z"),
-    ), patch("insideLLMs.visualization.create_interactive_html_report", fake_html_report):
+    with (
+        patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=records),
+        patch(
+            "insideLLMs.cli.commands.report._build_experiments_from_records",
+            return_value=([{"experiment": "ok"}], {"cfg": 1}, "1.0.1"),
+        ),
+        patch("insideLLMs.cli.commands.report.generate_summary_report", return_value={"ok": True}),
+        patch(
+            "insideLLMs.runtime.runner._deterministic_base_time",
+            return_value="BASE",
+        ),
+        patch(
+            "insideLLMs.runtime.runner._deterministic_run_times",
+            return_value=("START", "2024-01-05T12:00:00Z"),
+        ),
+        patch("insideLLMs.visualization.create_interactive_html_report", fake_html_report),
+    ):
         rc = cmd_report(_report_args(run_dir, report_title="Deterministic"))
 
     assert rc == 0

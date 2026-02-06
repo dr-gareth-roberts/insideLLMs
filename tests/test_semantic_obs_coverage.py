@@ -18,29 +18,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # =============================================================================
-# Semantic Cache Imports
-# =============================================================================
-
-from insideLLMs.semantic_cache import (
-    RedisCache,
-    SemanticCache,
-    SemanticCacheConfig,
-    SemanticCacheEntry,
-    SemanticCacheModel,
-    SemanticCacheStats,
-    SemanticLookupResult,
-    SimpleEmbedder,
-    VectorCache,
-    cosine_similarity,
-    create_semantic_cache,
-    quick_semantic_cache,
-    wrap_model_with_semantic_cache,
-)
-
-# =============================================================================
 # Observability Imports
 # =============================================================================
-
 import insideLLMs.runtime.observability as obs_module
 from insideLLMs.runtime.observability import (
     CallRecord,
@@ -57,6 +36,24 @@ from insideLLMs.runtime.observability import (
     trace_function,
 )
 
+# =============================================================================
+# Semantic Cache Imports
+# =============================================================================
+from insideLLMs.semantic_cache import (
+    RedisCache,
+    SemanticCache,
+    SemanticCacheConfig,
+    SemanticCacheEntry,
+    SemanticCacheModel,
+    SemanticCacheStats,
+    SemanticLookupResult,
+    SimpleEmbedder,
+    VectorCache,
+    cosine_similarity,
+    create_semantic_cache,
+    quick_semantic_cache,
+    wrap_model_with_semantic_cache,
+)
 
 # =============================================================================
 # SEMANTIC CACHE: RedisCache with mocked redis
@@ -96,7 +93,11 @@ class TestRedisCacheMocked:
 
         def mock_keys(pattern):
             prefix = pattern.rstrip("*")
-            return [k for k in list(self._store.keys()) + list(self._meta_store.keys()) if k.startswith(prefix)]
+            return [
+                k
+                for k in list(self._store.keys()) + list(self._meta_store.keys())
+                if k.startswith(prefix)
+            ]
 
         def mock_exists(key):
             return 1 if key in self._store else 0
@@ -369,7 +370,7 @@ class TestVectorCacheEdgeCases:
         cache = VectorCache(config)
 
         # Set an entry with a very short TTL
-        entry = cache.set("test prompt", "test value", ttl=1)
+        cache.set("test prompt", "test value", ttl=1)
         assert cache.get("test prompt").hit is True
 
         # Wait for it to expire
@@ -456,6 +457,7 @@ class TestVectorCacheEdgeCases:
 
     def test_get_embedding_with_callable(self):
         """Test _get_embedding with a callable embedder."""
+
         def my_embedder(text):
             return [float(len(text))] * 10
 
@@ -745,9 +747,16 @@ class TestDataClassSerialization:
         config = SemanticCacheConfig()
         data = config.to_dict()
         expected_keys = {
-            "max_size", "ttl_seconds", "similarity_threshold",
-            "embedding_dimension", "use_embeddings", "redis_host",
-            "redis_port", "redis_db", "redis_prefix", "max_candidates",
+            "max_size",
+            "ttl_seconds",
+            "similarity_threshold",
+            "embedding_dimension",
+            "use_embeddings",
+            "redis_host",
+            "redis_port",
+            "redis_db",
+            "redis_prefix",
+            "max_candidates",
         }
         assert expected_keys == set(data.keys())
 
@@ -860,8 +869,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.generate = MagicMock(return_value="generated text")
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -880,8 +891,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.generate = MagicMock(return_value="generated response text")
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig(log_prompts=True, log_responses=True)
@@ -900,8 +913,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.generate = MagicMock(side_effect=ValueError("API Error"))
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -921,8 +936,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.chat = MagicMock(return_value="chat response")
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -941,8 +958,10 @@ class TestOTelTracedModelMocked:
         model = MagicMock(spec=["generate", "name"])
         model.name = "test-model"
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -959,8 +978,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.chat = MagicMock(side_effect=RuntimeError("Chat failed"))
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -980,8 +1001,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.info = MagicMock(return_value={"name": "test-model"})
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -998,8 +1021,10 @@ class TestOTelTracedModelMocked:
         model.name = "test-model"
         model.custom_prop = "custom_value"
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -1014,8 +1039,10 @@ class TestOTelTracedModelMocked:
         model = MagicMock()
         model.name = "my-model"
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel.__new__(OTelTracedModel)
             otel_model._model = model
             otel_model._config = TracingConfig()
@@ -1030,8 +1057,10 @@ class TestOTelTracedModelMocked:
         model = MagicMock()
         model.name = "test-model"
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             otel_model = OTelTracedModel(model)
             assert otel_model._model is model
             assert otel_model._config is not None
@@ -1080,13 +1109,15 @@ class TestSetupOTelTracingMocked:
             console_export=True,
         )
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "Resource", mock_resource_cls, create=True), \
-             patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True), \
-             patch.object(obs_module, "BatchSpanProcessor", mock_batch_cls, create=True), \
-             patch.object(obs_module, "ConsoleSpanExporter", mock_console_cls, create=True), \
-             patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "Resource", mock_resource_cls, create=True),
+            patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True),
+            patch.object(obs_module, "BatchSpanProcessor", mock_batch_cls, create=True),
+            patch.object(obs_module, "ConsoleSpanExporter", mock_console_cls, create=True),
+            patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             setup_otel_tracing(config)
 
             mock_resource_cls.create.assert_called_once()
@@ -1112,14 +1143,16 @@ class TestSetupOTelTracingMocked:
         )
 
         # Mock the jaeger import to fail (ImportError path)
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "Resource", mock_resource_cls, create=True), \
-             patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True), \
-             patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True), \
-             patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True), \
-             patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True), \
-             patch.object(obs_module, "trace", mock_trace), \
-             patch.dict("sys.modules", {"opentelemetry.exporter.jaeger.thrift": None}):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "Resource", mock_resource_cls, create=True),
+            patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True),
+            patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True),
+            patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True),
+            patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True),
+            patch.object(obs_module, "trace", mock_trace),
+            patch.dict("sys.modules", {"opentelemetry.exporter.jaeger.thrift": None}),
+        ):
             setup_otel_tracing(config)
             mock_trace.set_tracer_provider.assert_called_once()
 
@@ -1141,14 +1174,18 @@ class TestSetupOTelTracingMocked:
         )
 
         # Mock the OTLP import to fail (ImportError path)
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "Resource", mock_resource_cls, create=True), \
-             patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True), \
-             patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True), \
-             patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True), \
-             patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True), \
-             patch.object(obs_module, "trace", mock_trace), \
-             patch.dict("sys.modules", {"opentelemetry.exporter.otlp.proto.grpc.trace_exporter": None}):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "Resource", mock_resource_cls, create=True),
+            patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True),
+            patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True),
+            patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True),
+            patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True),
+            patch.object(obs_module, "trace", mock_trace),
+            patch.dict(
+                "sys.modules", {"opentelemetry.exporter.otlp.proto.grpc.trace_exporter": None}
+            ),
+        ):
             setup_otel_tracing(config)
             mock_trace.set_tracer_provider.assert_called_once()
 
@@ -1169,13 +1206,15 @@ class TestSetupOTelTracingMocked:
             custom_attributes={"env": "staging", "version": "1.0"},
         )
 
-        with patch.object(obs_module, "OTEL_AVAILABLE", True), \
-             patch.object(obs_module, "Resource", mock_resource_cls, create=True), \
-             patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True), \
-             patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True), \
-             patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True), \
-             patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True), \
-             patch.object(obs_module, "trace", mock_trace):
+        with (
+            patch.object(obs_module, "OTEL_AVAILABLE", True),
+            patch.object(obs_module, "Resource", mock_resource_cls, create=True),
+            patch.object(obs_module, "TracerProvider", mock_provider_cls, create=True),
+            patch.object(obs_module, "BatchSpanProcessor", MagicMock(), create=True),
+            patch.object(obs_module, "ConsoleSpanExporter", MagicMock(), create=True),
+            patch.object(obs_module, "ResourceAttributes", mock_resource_attrs, create=True),
+            patch.object(obs_module, "trace", mock_trace),
+        ):
             setup_otel_tracing(config)
 
             # Verify custom attributes were passed to Resource.create
@@ -1337,7 +1376,7 @@ class TestTraceCallCoverage:
         """Test trace_call when response is not set in context."""
         collector = TelemetryCollector()
 
-        with trace_call("model", "op", "prompt", collector) as ctx:
+        with trace_call("model", "op", "prompt", collector):
             pass  # Don't set response
 
         records = collector.get_records()
@@ -1442,6 +1481,7 @@ class TestTraceFunctionCoverage:
         set_collector(collector)
 
         try:
+
             @trace_function(operation_name="custom")
             def add(a, b):
                 return a + b
@@ -1458,6 +1498,7 @@ class TestTraceFunctionCoverage:
         set_collector(collector)
 
         try:
+
             @trace_function()
             def my_func():
                 return 42

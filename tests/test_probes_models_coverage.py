@@ -24,7 +24,6 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper probe subclasses for testing
 # ---------------------------------------------------------------------------
@@ -93,9 +92,7 @@ class TestProbeInfo:
         assert "description" in info
 
     def test_info_with_custom_description(self):
-        probe = SimpleTestProbe(
-            name="Desc", description="Custom description"
-        )
+        probe = SimpleTestProbe(name="Desc", description="Custom description")
         info = probe.info()
         assert info["description"] == "Custom description"
 
@@ -187,9 +184,7 @@ class TestProbeRunBatchProgressCallback:
         def callback(current, total):
             progress_calls.append((current, total))
 
-        results = probe.run_batch(
-            mock_model, ["a", "b"], max_workers=2, progress_callback=callback
-        )
+        results = probe.run_batch(mock_model, ["a", "b"], max_workers=2, progress_callback=callback)
         assert len(results) == 2
         assert len(progress_calls) == 2
 
@@ -200,9 +195,7 @@ class TestProbeRunBatchParallelErrors:
     def test_parallel_with_errors(self):
         probe = SimpleTestProbe(name="Test")
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(
-            side_effect=["output1", ValueError("error"), "output3"]
-        )
+        mock_model.generate = MagicMock(side_effect=["output1", ValueError("error"), "output3"])
 
         results = probe.run_batch(mock_model, ["a", "b", "c"], max_workers=2)
         assert len(results) == 3
@@ -320,9 +313,7 @@ class TestComparativeProbe:
         mock_model = MagicMock()
         mock_model.generate = MagicMock(return_value="response")
 
-        result = probe.run_comparison(
-            mock_model, "a", "b", temperature=0.0
-        )
+        probe.run_comparison(mock_model, "a", "b", temperature=0.0)
         assert mock_model.generate.call_count == 2
 
 
@@ -404,7 +395,9 @@ class TestCodeGenerationProbe:
         from insideLLMs.probes.code import CodeGenerationProbe
 
         probe = CodeGenerationProbe(language="python")
-        response = "Here's my solution:\nimport math\ndef sqrt(x):\n    return math.sqrt(x)\n\nThis works."
+        response = (
+            "Here's my solution:\nimport math\ndef sqrt(x):\n    return math.sqrt(x)\n\nThis works."
+        )
         code = probe.extract_code(response)
         assert "import math" in code
 
@@ -553,7 +546,10 @@ class TestCodeExplanationProbe:
         from insideLLMs.probes.code import CodeExplanationProbe
 
         probe = CodeExplanationProbe(detail_level="detailed")
-        assert "detailed explanation" in probe.prompt_template.lower() or "purpose" in probe.prompt_template.lower()
+        assert (
+            "detailed explanation" in probe.prompt_template.lower()
+            or "purpose" in probe.prompt_template.lower()
+        )
 
     def test_run_with_string(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -738,8 +734,7 @@ class TestCodeDebugProbe:
 
         probe = CodeDebugProbe()
         response = (
-            "The bug is in the loop. The fix is:\n"
-            "```python\ndef correct():\n    return True\n```"
+            "The bug is in the loop. The fix is:\n```python\ndef correct():\n    return True\n```"
         )
         result = probe.evaluate_single(response, reference=None)
         assert result.metadata["label"] in ("fixed", "partially_fixed")
@@ -1138,7 +1133,9 @@ class TestCohereModelEnvVarFallback:
         env_without_keys = {
             k: v for k, v in os.environ.items() if k not in ("CO_API_KEY", "COHERE_API_KEY")
         }
-        with patch.dict(os.environ, {**env_without_keys, "COHERE_API_KEY": "cohere_env_key"}, clear=True):
+        with patch.dict(
+            os.environ, {**env_without_keys, "COHERE_API_KEY": "cohere_env_key"}, clear=True
+        ):
             model = CohereModel(model_name="command-r")
             assert model.api_key == "cohere_env_key"
 
@@ -1522,10 +1519,13 @@ class TestGeminiModelListModels:
         mock_google = MagicMock()
         mock_google.generativeai = mock_genai
 
-        with patch.dict(sys.modules, {
-            "google": mock_google,
-            "google.generativeai": mock_genai,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "google": mock_google,
+                "google.generativeai": mock_genai,
+            },
+        ):
             result = model.list_models()
             assert "models/gemini-1.5-pro" in result
             assert "models/gemini-1.5-flash" in result
@@ -1722,7 +1722,7 @@ class TestOllamaModelOptionsMapping:
         ]
         model._client = mock_client
 
-        chunks = list(model.stream("Test", temperature=0.5, max_tokens=100))
+        list(model.stream("Test", temperature=0.5, max_tokens=100))
         call_kwargs = mock_client.generate.call_args[1]
         options = call_kwargs["options"]
         assert options["temperature"] == 0.5
@@ -2064,7 +2064,7 @@ class TestOllamaModelGetClientHeaders:
         mock_ollama.Client.return_value = mock_client
 
         with patch.dict("sys.modules", {"ollama": mock_ollama}):
-            client = model._get_client()
+            model._get_client()
             call_kwargs = mock_ollama.Client.call_args[1]
             assert "headers" in call_kwargs
             assert call_kwargs["headers"]["Authorization"] == "Bearer test-key"
