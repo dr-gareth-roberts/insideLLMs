@@ -345,6 +345,90 @@ insidellms harness harness.yaml
 
 ---
 
+## Config Cookbook
+
+### Offline Testing (No API Keys)
+
+Use the `dummy` model for local-only testing and CI pipelines:
+
+```yaml
+model:
+  type: dummy
+  args: {}
+probe:
+  type: logic
+  args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+```
+
+### CI Diff-Gating
+
+Run a harness twice and fail the build on behavioural changes:
+
+```bash
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite --skip-report
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite --skip-report
+insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
+```
+
+### Determinism Controls
+
+Override default determinism settings for debugging:
+
+```yaml
+model:
+  type: openai
+  args:
+    model_name: gpt-4o
+probe:
+  type: logic
+  args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+determinism:
+  strict_serialization: false   # Allow non-deterministic values (default: true)
+  deterministic_artifacts: false # Use wall-clock times (default: follows strict_serialization)
+```
+
+### Multi-Probe Battery
+
+Test a model against several probe categories at once:
+
+```yaml
+models:
+  - type: openai
+    args:
+      model_name: gpt-4o
+probes:
+  - type: logic
+    args: {}
+  - type: bias
+    args: {}
+  - type: factuality
+    args: {}
+  - type: attack
+    args: {}
+dataset:
+  format: jsonl
+  path: data/questions.jsonl
+max_examples: 20
+```
+
+### Custom Dataset Format
+
+JSONL datasets should contain one JSON object per line. The required fields
+depend on the probe, but a common pattern is:
+
+```jsonl
+{"question": "What is 2+2?", "reference_answer": "4"}
+{"question": "Capital of France?", "reference_answer": "Paris"}
+```
+
+---
+
 ## Common Patterns
 
 ### Pattern 1: Test Multiple Models
@@ -383,6 +467,61 @@ for result in results:
         # Handle error
         print(f"Error: {result.error}")
 ```
+
+---
+
+## Writing Plugins
+
+insideLLMs uses Python entry points for plugin discovery. A plugin can register
+custom models, probes, or datasets.
+
+### 1. Create a Plugin Module
+
+```python
+# my_package/plugin.py
+def register():
+    """Called automatically when insideLLMs loads plugins."""
+    from insideLLMs.models.base import Model
+    from insideLLMs.registry import model_registry
+
+    class MyModel(Model):
+        def __init__(self):
+            super().__init__(name="my-custom-model", model_id="custom-v1")
+
+        def generate(self, prompt, **kwargs):
+            # Your model logic here
+            return "response"
+
+    model_registry.register("my-custom", MyModel)
+```
+
+### 2. Register the Entry Point
+
+In your package's `pyproject.toml`:
+
+```toml
+[project.entry-points."insidellms.plugins"]
+my_plugin = "my_package.plugin:register"
+```
+
+### 3. Use It
+
+After installing the package, the plugin loads automatically:
+
+```bash
+insidellms quicktest "Hello" --model my-custom
+insidellms list models  # shows my-custom in the list
+```
+
+Plugins can also receive registries as arguments:
+
+```python
+def register(model_registry, probe_registry, dataset_registry):
+    model_registry.register("my-model", MyModel)
+    probe_registry.register("my-probe", MyProbe)
+```
+
+For a full example, see [examples/example_plugin.py](examples/example_plugin.py).
 
 ---
 
