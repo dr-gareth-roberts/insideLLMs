@@ -23,6 +23,7 @@ The CLI is organized into subcommands, each handling a specific workflow:
 - ``schema``: Inspect and validate versioned output schemas
 - ``doctor``: Diagnose environment and optional dependencies
 - ``report``: Rebuild summary and HTML reports from records
+- ``trend``: Show metric trends across indexed runs
 """
 
 import sys
@@ -93,6 +94,7 @@ from .commands.quicktest import cmd_quicktest as cmd_quicktest
 from .commands.report import cmd_report as cmd_report
 from .commands.run import cmd_run as cmd_run
 from .commands.schema import cmd_schema as cmd_schema
+from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
 
 # Make _CLI_QUIET and _CLI_STATUS_TO_STDERR accessible at package level
@@ -167,6 +169,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "interactive": cmd_interactive,
             "validate": cmd_validate,
             "export": cmd_export,
+            "trend": cmd_trend,
         }
 
         handler = commands.get(args.command)
