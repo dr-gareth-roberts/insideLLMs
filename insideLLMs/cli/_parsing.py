@@ -47,7 +47,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except (LookupError, OSError):
+    except (ImportError, LookupError, OSError):
         return False
 
 
@@ -682,7 +682,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         choices=["basic", "benchmark", "tracking", "full"],
         default="basic",
-        help="Configuration template to use",
+        help=(
+            "Configuration template: basic (model+probe+dataset), "
+            "benchmark (+ dataset suites), tracking (+ experiment logging), "
+            "full (all features with async and HTML reports)"
+        ),
     )
 
     # =========================================================================

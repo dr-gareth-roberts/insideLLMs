@@ -144,10 +144,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             print()
             parser.print_help()
             print()
-            print(
-                colorize("Quick start: ", Colors.BOLD)
-                + 'insidellms quicktest "Hello world" --model dummy'
-            )
+            print(colorize("Getting started:", Colors.BOLD))
+            print('  1. Try it out:       insidellms quicktest "Hello world" --model dummy')
+            print("  2. Create a config:  insidellms init --template basic")
+            print("  3. Run experiment:   insidellms run experiment.yaml")
+            print("  4. Check your env:   insidellms doctor")
             return 0
 
         commands = {
