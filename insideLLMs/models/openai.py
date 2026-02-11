@@ -161,6 +161,8 @@ class OpenAIModel(Model):
         project: Optional[str] = None,
         timeout: float = 60.0,
         max_retries: int = 2,
+        api_key_env: str = "OPENAI_API_KEY",
+        default_headers: Optional[dict[str, str]] = None,
     ):
         """Initialize an OpenAI model.
 
@@ -173,8 +175,8 @@ class OpenAIModel(Model):
             model_name: The OpenAI model identifier to use.
                 Common options: "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo".
                 Default: "gpt-3.5-turbo".
-            api_key: OpenAI API key. If not provided, reads from
-                OPENAI_API_KEY environment variable.
+            api_key: OpenAI API key. If not provided, reads from the
+                environment variable specified by ``api_key_env``.
             base_url: Override the default OpenAI API base URL.
                 Useful for Azure OpenAI or proxy servers.
             organization: OpenAI organization ID for billing/access control.
@@ -182,6 +184,10 @@ class OpenAIModel(Model):
             timeout: Request timeout in seconds. Default: 60.0.
             max_retries: Number of automatic retries on transient errors.
                 Handled by the openai library. Default: 2.
+            api_key_env: Environment variable name used to fetch the API key
+                when ``api_key`` is not provided. Default: OPENAI_API_KEY.
+            default_headers: Optional default headers to include with each
+                request. Useful for OpenAI-compatible gateways.
 
         Raises:
             ModelInitializationError: If API key is missing or invalid,
@@ -225,11 +231,11 @@ class OpenAIModel(Model):
         """
         super().__init__(name=name, model_id=model_name)
         self.model_name = model_name
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv(api_key_env)
         if not self.api_key:
             raise ModelInitializationError(
                 model_id=model_name,
-                reason="OPENAI_API_KEY environment variable not set and no api_key provided.",
+                reason=(f"{api_key_env} environment variable not set and no api_key provided."),
             )
         try:
             self._client = OpenAI(
@@ -239,6 +245,7 @@ class OpenAIModel(Model):
                 project=project,
                 timeout=timeout,
                 max_retries=max_retries,
+                default_headers=default_headers,
             )
         except Exception as e:
             raise ModelInitializationError(
@@ -249,6 +256,8 @@ class OpenAIModel(Model):
         self._organization = organization
         self._project = project
         self._timeout = timeout
+        self._api_key_env = api_key_env
+        self._default_headers = default_headers
 
     def generate(self, prompt: str, **kwargs) -> str:
         """Generate a response from the OpenAI model.
@@ -550,10 +559,14 @@ class OpenAIModel(Model):
         base_info.extra.update(
             {
                 "model_name": self.model_name,
-                "description": ("OpenAI GPT model via API. Requires OPENAI_API_KEY env variable."),
+                "description": (
+                    "OpenAI GPT model via API. Requires an API key via api_key or api_key_env."
+                ),
                 "base_url": self._base_url,
                 "organization": self._organization,
                 "project": self._project,
+                "api_key_env": self._api_key_env,
+                "default_headers": self._default_headers,
             }
         )
         return base_info
