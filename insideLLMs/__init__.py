@@ -595,8 +595,8 @@ def __getattr__(name: str):
     -----
     The following categories of components are available via lazy loading:
 
-    - **Models**: OpenAIModel, AnthropicModel, HuggingFaceModel, GeminiModel,
-      CohereModel, OllamaModel, VLLMModel, LlamaCppModel
+    - **Models**: OpenAIModel, OpenRouterModel, AnthropicModel, HuggingFaceModel,
+      GeminiModel, CohereModel, OllamaModel, VLLMModel, LlamaCppModel
     - **Probes**: PromptInjectionProbe, JailbreakProbe, CodeGenerationProbe, etc.
     - **Caching**: InMemoryCache, DiskCache, CachedModel
     - **Pipeline**: ModelPipeline, CacheMiddleware, RetryMiddleware, etc.
@@ -620,6 +620,7 @@ def __getattr__(name: str):
     _LAZY_IMPORTS = {
         # Models
         "OpenAIModel": "insideLLMs.models",
+        "OpenRouterModel": "insideLLMs.models",
         "AnthropicModel": "insideLLMs.models",
         "HuggingFaceModel": "insideLLMs.models",
         "GeminiModel": "insideLLMs.models",

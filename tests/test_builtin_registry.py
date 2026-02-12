@@ -13,6 +13,7 @@ def test_register_builtins_registers_expected_models_and_probes() -> None:
     expected_models = {
         "dummy",
         "openai",
+        "openrouter",
         "anthropic",
         "huggingface",
         "gemini",
@@ -45,6 +46,7 @@ def test_registry_info_uses_stable_factory_names() -> None:
 
     assert model_registry.info("dummy")["factory"] == "DummyModel"
     assert model_registry.info("openai")["factory"] == "OpenAIModel"
+    assert model_registry.info("openrouter")["factory"] == "OpenRouterModel"
     assert model_registry.info("anthropic")["factory"] == "AnthropicModel"
     assert model_registry.info("huggingface")["factory"] == "HuggingFaceModel"
     assert model_registry.info("gemini")["factory"] == "GeminiModel"

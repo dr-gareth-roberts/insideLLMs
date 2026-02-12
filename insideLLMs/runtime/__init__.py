@@ -121,6 +121,12 @@ run_experiment_from_config(config_path, ...)
 run_harness_from_config(config_path, ...)
     Run a multi-model, multi-probe evaluation harness from configuration.
 
+run_harness_to_dir(config_path, run_dir, ...)
+    Stable workflow helper for running harness configs into explicit run dirs.
+
+diff_run_dirs(run_dir_a, run_dir_b, ...)
+    Stable workflow helper for diffing run directories with CI-oriented flags.
+
 load_config(path)
     Load and validate a YAML or JSON experiment configuration file.
 
