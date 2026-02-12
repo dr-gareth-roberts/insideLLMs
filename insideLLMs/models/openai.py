@@ -43,7 +43,7 @@ See Also:
 
 import os
 from collections.abc import Iterator
-from typing import Optional
+from typing import Any, Optional
 
 from openai import APIError, APITimeoutError, OpenAI
 from openai import RateLimitError as OpenAIRateLimitError
@@ -237,6 +237,7 @@ class OpenAIModel(Model):
                 model_id=model_name,
                 reason=(f"{api_key_env} environment variable not set and no api_key provided."),
             )
+        safe_default_headers = dict(default_headers) if isinstance(default_headers, dict) else None
         try:
             self._client = OpenAI(
                 api_key=self.api_key,
@@ -245,7 +246,7 @@ class OpenAIModel(Model):
                 project=project,
                 timeout=timeout,
                 max_retries=max_retries,
-                default_headers=default_headers,
+                default_headers=safe_default_headers,
             )
         except Exception as e:
             raise ModelInitializationError(
@@ -257,7 +258,20 @@ class OpenAIModel(Model):
         self._project = project
         self._timeout = timeout
         self._api_key_env = api_key_env
-        self._default_headers = default_headers
+        self._default_headers = safe_default_headers
+
+    @staticmethod
+    def _redact_headers(headers: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not headers:
+            return None
+        redacted: dict[str, Any] = {}
+        for key, value in headers.items():
+            key_str = str(key)
+            if any(token in key_str.lower() for token in ("authorization", "api-key", "x-api-key")):
+                redacted[key_str] = "***"
+            else:
+                redacted[key_str] = value
+        return redacted
 
     def generate(self, prompt: str, **kwargs) -> str:
         """Generate a response from the OpenAI model.
@@ -566,7 +580,7 @@ class OpenAIModel(Model):
                 "organization": self._organization,
                 "project": self._project,
                 "api_key_env": self._api_key_env,
-                "default_headers": self._default_headers,
+                "default_headers": self._redact_headers(self._default_headers),
             }
         )
         return base_info

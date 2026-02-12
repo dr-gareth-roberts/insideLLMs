@@ -32,14 +32,16 @@ class OpenRouterModel(OpenAIModel):
         **kwargs,
     ):
         default_headers: dict[str, str] = {}
-        referer = http_referer or os.getenv("OPENROUTER_HTTP_REFERER")
-        title = app_title or os.getenv("OPENROUTER_APP_TITLE")
-        if referer:
-            default_headers["HTTP-Referer"] = referer
-        if title:
-            default_headers["X-Title"] = title
+        referer = (
+            http_referer
+            or os.getenv("OPENROUTER_HTTP_REFERER")
+            or "https://github.com/dr-gareth-roberts/insideLLMs"
+        )
+        title = app_title or os.getenv("OPENROUTER_APP_TITLE") or "insideLLMs"
+        default_headers["HTTP-Referer"] = referer
+        default_headers["X-Title"] = title
         if extra_headers:
-            default_headers.update(extra_headers)
+            default_headers.update(dict(extra_headers))
 
         super().__init__(
             name=name,
@@ -47,12 +49,13 @@ class OpenRouterModel(OpenAIModel):
             api_key=api_key,
             base_url=base_url,
             api_key_env="OPENROUTER_API_KEY",
-            default_headers=default_headers or None,
+            default_headers=default_headers,
             **kwargs,
         )
 
     def info(self):
         base_info = super().info()
+        base_info.provider = "openrouter"
         base_info.extra.update(
             {
                 "description": (
@@ -60,6 +63,7 @@ class OpenRouterModel(OpenAIModel):
                     "Requires OPENROUTER_API_KEY env variable."
                 ),
                 "provider": "openrouter",
+                "base_url": self._base_url,
             }
         )
         return base_info
