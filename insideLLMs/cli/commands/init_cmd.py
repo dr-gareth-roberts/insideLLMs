@@ -40,6 +40,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     # Add model-specific args hints
     model_hints = {
         "openai": {"model_name": "gpt-4"},
+        "openrouter": {"model_name": "openai/gpt-4o-mini"},
         "anthropic": {"model_name": "claude-3-opus-20240229"},
         "cohere": {"model_name": "command-r-plus"},
         "gemini": {"model_name": "gemini-pro"},
