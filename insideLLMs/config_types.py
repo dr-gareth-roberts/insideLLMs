@@ -441,6 +441,10 @@ class RunConfig:
 
     # Verifiable evaluation (Ultimate mode)
     run_mode: Literal["default", "ultimate"] = "default"
+    publish_oci_ref: Optional[str] = None
+    """OCI ref (e.g. ghcr.io/org/repo:tag) to push run bundle when run_mode=ultimate."""
+    scitt_service_url: Optional[str] = None
+    """SCITT service URL to submit critical attestations (04, 07) when run_mode=ultimate."""
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -840,6 +844,8 @@ class RunConfigBuilder:
         self._batch_workers: Optional[int] = None
         self._return_experiment: bool = False
         self._run_mode: Literal["default", "ultimate"] = "default"
+        self._publish_oci_ref: Optional[str] = None
+        self._scitt_service_url: Optional[str] = None
 
     def with_validation(
         self,
@@ -1742,6 +1748,8 @@ class RunConfigBuilder:
             batch_workers=self._batch_workers,
             return_experiment=self._return_experiment,
             run_mode=self._run_mode,
+            publish_oci_ref=self._publish_oci_ref,
+            scitt_service_url=self._scitt_service_url,
         )
 
 
