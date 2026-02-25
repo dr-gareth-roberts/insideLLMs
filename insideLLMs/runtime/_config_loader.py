@@ -332,7 +332,11 @@ def _create_middlewares_from_config(items: Any) -> list[Any]:
     def normalize(name: str) -> str:
         return name.strip().lower().replace("-", "_")
 
+    from insideLLMs.runtime.receipt import ReceiptMiddleware
+
     middleware_map = {
+        "receipt": ReceiptMiddleware,
+        "receiptmiddleware": ReceiptMiddleware,
         "cache": CacheMiddleware,
         "cachemiddleware": CacheMiddleware,
         "rate_limit": RateLimitMiddleware,

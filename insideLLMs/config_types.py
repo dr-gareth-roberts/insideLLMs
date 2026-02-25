@@ -161,7 +161,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 
@@ -438,6 +438,9 @@ class RunConfig:
     use_probe_batch: bool = False
     batch_workers: Optional[int] = None
     return_experiment: bool = False
+
+    # Verifiable evaluation (Ultimate mode)
+    run_mode: Literal["default", "ultimate"] = "default"
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -836,6 +839,7 @@ class RunConfigBuilder:
         self._use_probe_batch: bool = False
         self._batch_workers: Optional[int] = None
         self._return_experiment: bool = False
+        self._run_mode: Literal["default", "ultimate"] = "default"
 
     def with_validation(
         self,
@@ -1737,6 +1741,7 @@ class RunConfigBuilder:
             use_probe_batch=self._use_probe_batch,
             batch_workers=self._batch_workers,
             return_experiment=self._return_experiment,
+            run_mode=self._run_mode,
         )
 
 

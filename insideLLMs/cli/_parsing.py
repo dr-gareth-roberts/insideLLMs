@@ -783,4 +783,55 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output file path",
     )
 
+    # =========================================================================
+    # Attest command (Ultimate: generate attestations for a run dir)
+    # =========================================================================
+    attest_parser = subparsers.add_parser(
+        "attest",
+        help="Generate attestations for a run directory (Ultimate mode)",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    attest_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory (must contain manifest.json)",
+    )
+
+    # =========================================================================
+    # Sign command (Ultimate: sign attestations with Sigstore)
+    # =========================================================================
+    sign_parser = subparsers.add_parser(
+        "sign",
+        help="Sign attestations in a run directory (requires cosign)",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    sign_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory (must contain attestations/)",
+    )
+
+    # =========================================================================
+    # Verify-signatures command (Ultimate: verify attestation signatures)
+    # =========================================================================
+    verify_parser = subparsers.add_parser(
+        "verify-signatures",
+        help="Verify attestation signatures in a run directory",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    verify_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory",
+    )
+    verify_parser.add_argument(
+        "--identity",
+        type=str,
+        default=None,
+        help="Identity constraints for verification (e.g. issuer+subject)",
+    )
+
     return parser

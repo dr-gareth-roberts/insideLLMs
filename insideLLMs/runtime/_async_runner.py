@@ -257,6 +257,7 @@ class AsyncProbeRunner(_RunnerBase):
         return_experiment = (
             return_experiment if return_experiment is not None else config.return_experiment
         )
+        run_mode = getattr(config, "run_mode", "default")
 
         # Validate prompt set
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
@@ -345,6 +346,18 @@ class AsyncProbeRunner(_RunnerBase):
 
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
+
+        effective_model = self.model
+        if emit_run_artifacts and run_mode == "ultimate":
+            receipts_dir = resolved_run_dir / "receipts"
+            receipts_dir.mkdir(parents=True, exist_ok=True)
+            receipt_sink = receipts_dir / "calls.jsonl"
+            from insideLLMs.runtime.pipeline import AsyncModelPipeline
+            from insideLLMs.runtime.receipt import ReceiptMiddleware
+            effective_model = AsyncModelPipeline(
+                self.model,
+                middlewares=[ReceiptMiddleware(receipt_sink=receipt_sink)],
+            )
 
         semaphore = asyncio.Semaphore(concurrency)
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
@@ -442,7 +455,7 @@ class AsyncProbeRunner(_RunnerBase):
                     async def execute_probe() -> Any:
                         return await loop.run_in_executor(
                             None,
-                            lambda: self.probe.run(self.model, item, **probe_kwargs),
+                            lambda: self.probe.run(effective_model, item, **probe_kwargs),
                         )
 
                     output = await run_with_timeout(
@@ -543,7 +556,7 @@ class AsyncProbeRunner(_RunnerBase):
                     probe_results = await loop.run_in_executor(
                         None,
                         lambda: self.probe.run_batch(
-                            self.model,
+                            effective_model,
                             remaining_items,
                             max_workers=resolved_batch_workers,
                             progress_callback=batch_progress if progress_callback else None,
@@ -667,6 +680,20 @@ class AsyncProbeRunner(_RunnerBase):
                     default=_serialize_manifest,
                 ),
             )
+
+            if run_mode == "ultimate":
+                from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
+                try:
+                    import insideLLMs as _pkg
+                    _ver = getattr(_pkg, "__version__", None)
+                except ImportError:
+                    _ver = None
+                run_ultimate_post_artifact(
+                    resolved_run_dir,
+                    dataset_spec=dataset_spec,
+                    config_snapshot=config_snapshot,
+                    insidellms_version=_ver,
+                )
 
         if validate_output:
             validator.validate(

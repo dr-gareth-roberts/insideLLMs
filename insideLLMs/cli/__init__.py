@@ -79,6 +79,7 @@ from ._record_utils import _trace_violations as _trace_violations
 from ._record_utils import _write_jsonl as _write_jsonl
 from ._report_builder import _build_basic_harness_report as _build_basic_harness_report
 from ._report_builder import _build_experiments_from_records as _build_experiments_from_records
+from .commands.attest import cmd_attest as cmd_attest
 from .commands.benchmark import cmd_benchmark as cmd_benchmark
 from .commands.compare import cmd_compare as cmd_compare
 from .commands.diff import cmd_diff as cmd_diff
@@ -93,7 +94,9 @@ from .commands.quicktest import cmd_quicktest as cmd_quicktest
 from .commands.report import cmd_report as cmd_report
 from .commands.run import cmd_run as cmd_run
 from .commands.schema import cmd_schema as cmd_schema
+from .commands.sign import cmd_sign as cmd_sign
 from .commands.validate import cmd_validate as cmd_validate
+from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
 
 # Make _CLI_QUIET and _CLI_STATUS_TO_STDERR accessible at package level
 _CLI_QUIET = _output._CLI_QUIET
@@ -166,6 +169,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             "interactive": cmd_interactive,
             "validate": cmd_validate,
             "export": cmd_export,
+            "attest": cmd_attest,
+            "sign": cmd_sign,
+            "verify-signatures": cmd_verify_signatures,
         }
 
         handler = commands.get(args.command)
