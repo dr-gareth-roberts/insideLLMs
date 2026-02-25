@@ -717,6 +717,8 @@ class ProbeRunner(_RunnerBase):
                     dataset_spec=dataset_spec,
                     config_snapshot=config_snapshot,
                     insidellms_version=_ver,
+                    publish_oci_ref=config.publish_oci_ref,
+                    scitt_service_url=config.scitt_service_url,
                 )
 
         if validate_output:

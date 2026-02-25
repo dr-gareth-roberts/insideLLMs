@@ -468,6 +468,41 @@ class TestEmbeddingClusterer:
 
         assert result.n_clusters == 2
 
+    def test_cluster_dbscan(self):
+        """Test DBSCAN clustering path."""
+        # Embedder that groups similar texts (identical texts -> same embedding)
+        def embed(text: str) -> list:
+            return [ord(c) / 256.0 for c in (text[:10] + " " * 10)[:10]]
+
+        clusterer = EmbeddingClusterer(embed_fn=embed)
+        texts = ["aaa", "aaa", "bbb", "bbb", "ccc"]
+        result = clusterer.cluster(
+            texts,
+            method=ClusteringMethod.DBSCAN,
+            eps=0.5,
+            min_samples=2,
+        )
+
+        assert result.method == ClusteringMethod.DBSCAN
+        assert len(result.labels) == 5
+        assert result.n_clusters >= 1
+        assert len(result.clusters) == result.n_clusters
+
+    def test_cluster_dbscan_tiny_dataset(self):
+        """DBSCAN with tiny dataset uses deterministic fallback."""
+        clusterer = EmbeddingClusterer()
+        texts = ["a", "b"]
+        result = clusterer.cluster(
+            texts,
+            method=ClusteringMethod.DBSCAN,
+            eps=1.0,
+            min_samples=2,
+        )
+
+        assert result.method == ClusteringMethod.DBSCAN
+        assert len(result.labels) == 2
+        assert result.n_clusters >= 0
+
 
 class TestSemanticSearch:
     """Tests for SemanticSearch."""

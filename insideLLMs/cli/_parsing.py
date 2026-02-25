@@ -772,7 +772,7 @@ def create_parser() -> argparse.ArgumentParser:
     export_parser.add_argument(
         "--format",
         "-f",
-        choices=["csv", "markdown", "html", "latex"],
+        choices=["csv", "markdown", "html", "latex", "jsonl"],
         default="csv",
         help="Export format",
     )
@@ -781,6 +781,22 @@ def create_parser() -> argparse.ArgumentParser:
         "-o",
         type=str,
         help="Output file path",
+    )
+    export_parser.add_argument(
+        "--redact-pii",
+        action="store_true",
+        help="Redact PII from exported data before writing",
+    )
+    export_parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Encrypt JSONL output (requires --encryption-key-env)",
+    )
+    export_parser.add_argument(
+        "--encryption-key-env",
+        type=str,
+        default="INSIDELLMS_ENCRYPTION_KEY",
+        help="Environment variable holding the Fernet key for encryption (default: INSIDELLMS_ENCRYPTION_KEY)",
     )
 
     # =========================================================================

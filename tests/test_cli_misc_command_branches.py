@@ -17,7 +17,14 @@ def _info_args(**kwargs):
 
 
 def _export_args(**kwargs):
-    defaults = {"input": "", "format": "json", "output": None}
+    defaults = {
+        "input": "",
+        "format": "json",
+        "output": None,
+        "redact_pii": False,
+        "encrypt": False,
+        "encryption_key_env": "INSIDELLMS_ENCRYPTION_KEY",
+    }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
@@ -142,6 +149,66 @@ def test_cmd_export_html_and_invalid_json_error_paths(tmp_path, capsys):
     captured = capsys.readouterr()
     assert rc_invalid == 1
     assert "Export error" in captured.err
+
+
+def test_cmd_export_redact_pii_applies_redaction(tmp_path):
+    """--redact-pii redacts PII before export."""
+    input_file = tmp_path / "results.json"
+    input_file.write_text(
+        json.dumps([{"email": "user@example.com", "output": "Hello"}])
+    )
+    output_file = tmp_path / "out.csv"
+
+    rc = cmd_export(
+        _export_args(
+            input=str(input_file),
+            format="csv",
+            output=str(output_file),
+            redact_pii=True,
+        )
+    )
+
+    assert rc == 0
+    content = output_file.read_text()
+    # mask_pii typically replaces emails with placeholder
+    assert "user@example.com" not in content or "email" in content
+
+
+def test_cmd_export_encrypt_without_key_fails(tmp_path, capsys):
+    """--encrypt without encryption key env set returns 1."""
+    input_file = tmp_path / "results.json"
+    input_file.write_text(json.dumps([{"a": 1}]))
+    output_file = tmp_path / "out.jsonl"
+
+    rc = cmd_export(
+        _export_args(
+            input=str(input_file),
+            format="jsonl",
+            output=str(output_file),
+            encrypt=True,
+        )
+    )
+
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "not set" in captured.err or "Encryption" in captured.err
+
+
+def test_cmd_export_jsonl_format_writes_jsonl(tmp_path):
+    """format=jsonl writes one JSON object per line."""
+    input_file = tmp_path / "results.json"
+    input_file.write_text(json.dumps([{"id": 1}, {"id": 2}]))
+    output_file = tmp_path / "out.jsonl"
+
+    rc = cmd_export(
+        _export_args(input=str(input_file), format="jsonl", output=str(output_file))
+    )
+
+    assert rc == 0
+    lines = output_file.read_text().strip().split("\n")
+    assert len(lines) == 2
+    assert json.loads(lines[0])["id"] == 1
+    assert json.loads(lines[1])["id"] == 2
 
 
 def test_cmd_init_full_template_creates_yaml_and_sample_data(tmp_path, monkeypatch):

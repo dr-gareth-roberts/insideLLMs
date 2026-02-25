@@ -25,7 +25,10 @@ from insideLLMs.attestations.steps.builders import (
     build_attestation_09_publish,
 )
 from insideLLMs.crypto import digest_obj, merkle_root_from_jsonl, run_bundle_id
+from insideLLMs.policy.engine import run_policy
+from insideLLMs.publish.oras import push_run_oci
 from insideLLMs.runtime._artifact_utils import _atomic_write_text
+from insideLLMs.transparency.scitt_client import submit_statement, verify_receipt
 
 
 def run_ultimate_post_artifact(
@@ -40,6 +43,8 @@ def run_ultimate_post_artifact(
     dataset_spec: Optional[dict[str, Any]] = None,
     config_snapshot: Optional[dict[str, Any]] = None,
     insidellms_version: Optional[str] = None,
+    publish_oci_ref: Optional[str] = None,
+    scitt_service_url: Optional[str] = None,
 ) -> None:
     """Compute integrity roots, write attestations, and optionally run_bundle_id.
 
@@ -128,7 +133,8 @@ def run_ultimate_post_artifact(
 
     subject_manifest = [{"name": "manifest.json", "digest": {"sha256": manifest_digest_val or ""}}]
 
-    steps = [
+    # Build and write attestations 00-07 first (policy checks these)
+    steps_00_07 = [
         ("00.source", build_attestation_00_source(subject_manifest, insidellms_version=insidellms_version)),
         ("01.env", build_attestation_01_env(subject_manifest)),
         (
@@ -154,12 +160,64 @@ def run_ultimate_post_artifact(
         ("05.scoring", build_attestation_05_scoring(subject_manifest)),
         ("06.report", build_attestation_06_report(subject_manifest)),
         ("07.claims", build_attestation_07_claims(subject_manifest)),
-        ("08.policy", build_attestation_08_policy(subject_manifest)),
-        ("09.publish", build_attestation_09_publish(subject_manifest)),
     ]
 
     attestation_digests: list[str] = []
-    for name, statement in steps:
+    for name, statement in steps_00_07:
+        envelope = build_dsse_envelope(statement)
+        digest = digest_obj(statement, purpose="attestation")["digest"]
+        attestation_digests.append(digest)
+        _atomic_write_text(
+            attestations_dir / f"{name}.dsse.json",
+            json.dumps(envelope, sort_keys=True, separators=(",", ":"), indent=2) + "\n",
+        )
+
+    # Submit critical attestations (04, 07) to SCITT when configured
+    scitt_receipts_dir = receipts_dir / "scitt"
+    if scitt_service_url:
+        scitt_receipts_dir.mkdir(parents=True, exist_ok=True)
+        for att_name in ("04.execution", "07.claims"):
+            att_path = attestations_dir / f"{att_name}.dsse.json"
+            if att_path.exists():
+                envelope = json.loads(att_path.read_text(encoding="utf-8"))
+                result = submit_statement(envelope, scitt_service_url)
+                receipt_path = scitt_receipts_dir / f"{att_name}.receipt.json"
+                _atomic_write_text(
+                    receipt_path,
+                    json.dumps(result, sort_keys=True, indent=2) + "\n",
+                )
+
+    # Run policy and persist verdict
+    verdict = run_policy(run_dir)
+    policy_dir = run_dir / "policy"
+    policy_dir.mkdir(parents=True, exist_ok=True)
+    verdict_path = policy_dir / "verdict.json"
+    verdict_json = json.dumps(verdict, sort_keys=True, indent=2)
+    _atomic_write_text(verdict_path, verdict_json + "\n")
+    verdict_digest = digest_obj(verdict, purpose="policy_verdict")["digest"]
+    policy_file_digest = digest_obj({"verdict": verdict}, purpose="policy_file")["digest"]
+
+    # Optionally push to OCI and get metadata for attestation 09
+    oci_ref: Optional[str] = None
+    oci_digest: Optional[str] = None
+    if publish_oci_ref:
+        push_result = push_run_oci(run_dir, publish_oci_ref)
+        oci_ref = push_result.ref
+        oci_digest = push_result.digest
+
+    # Build and write attestations 08 (policy) and 09 (publish)
+    statement_08 = build_attestation_08_policy(
+        subject_manifest,
+        policy_file_digest=policy_file_digest,
+        verdict_digest=verdict_digest,
+        passed=verdict["passed"],
+        reasons=verdict["reasons"],
+    )
+    statement_09 = build_attestation_09_publish(
+        subject_manifest, oci_ref=oci_ref, oci_digest=oci_digest
+    )
+
+    for name, statement in [("08.policy", statement_08), ("09.publish", statement_09)]:
         envelope = build_dsse_envelope(statement)
         digest = digest_obj(statement, purpose="attestation")["digest"]
         attestation_digests.append(digest)
