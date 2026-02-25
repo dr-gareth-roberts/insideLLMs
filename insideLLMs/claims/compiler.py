@@ -32,7 +32,7 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
         claims_doc = yaml.safe_load(f)
 
     claims = claims_doc.get("claims", [])
-    
+
     summary_path = run_dir / "summary.json"
     with summary_path.open() as f:
         summary = json.load(f)
@@ -48,7 +48,7 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
 
         # Assume summary.json structure: "metrics": {"accuracy": {"mean": 0.95}}
         metric_val = metrics.get(metric_name, {}).get("mean")
-        
+
         if metric_val is None:
             passed = False
             error = f"Metric {metric_name} not found in summary"
@@ -59,12 +59,12 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
             except Exception as e:
                 passed = False
                 error = str(e)
-                
+
         verification[claim_id] = {
             "passed": passed,
             "metric_value": metric_val,
             "threshold": threshold,
-            "operator": operator
+            "operator": operator,
         }
         if error:
             verification[claim_id]["error"] = error
@@ -79,7 +79,4 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
     with verification_out.open("w") as f:
         json.dump(verification, f, indent=2)
 
-    return {
-        "status": "success",
-        "verification": verification
-    }
+    return {"status": "success", "verification": verification}
