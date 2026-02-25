@@ -280,6 +280,7 @@ class ProbeRunner(_RunnerBase):
         return_experiment = (
             return_experiment if return_experiment is not None else config.return_experiment
         )
+        run_mode = getattr(config, "run_mode", "default")
 
         # Validate prompt set before execution
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
@@ -359,6 +360,19 @@ class ProbeRunner(_RunnerBase):
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
 
+        # Ultimate mode: receipt sink and wrap model so every call is logged
+        effective_model = self.model
+        if emit_run_artifacts and run_mode == "ultimate":
+            receipts_dir = resolved_run_dir / "receipts"
+            receipts_dir.mkdir(parents=True, exist_ok=True)
+            receipt_sink = receipts_dir / "calls.jsonl"
+            from insideLLMs.runtime.pipeline import ModelPipeline
+            from insideLLMs.runtime.receipt import ReceiptMiddleware
+            effective_model = ModelPipeline(
+                self.model,
+                middlewares=[ReceiptMiddleware(receipt_sink=receipt_sink)],
+            )
+
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
         completed = 0
         total = len(prompt_set)
@@ -406,7 +420,7 @@ class ProbeRunner(_RunnerBase):
                         )
 
                     probe_results = self.probe.run_batch(
-                        self.model,
+                        effective_model,
                         remaining_items,
                         max_workers=resolved_batch_workers,
                         progress_callback=batch_progress if progress_callback else None,
@@ -498,7 +512,7 @@ class ProbeRunner(_RunnerBase):
 
                     item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
                     try:
-                        output = self.probe.run(self.model, item, **probe_kwargs)
+                        output = self.probe.run(effective_model, item, **probe_kwargs)
                         probe_result = ProbeResult(
                             input=item,
                             output=output,
@@ -690,6 +704,20 @@ class ProbeRunner(_RunnerBase):
                     default=_serialize_manifest,
                 ),
             )
+
+            if run_mode == "ultimate":
+                from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
+                try:
+                    import insideLLMs as _pkg
+                    _ver = getattr(_pkg, "__version__", None)
+                except ImportError:
+                    _ver = None
+                run_ultimate_post_artifact(
+                    resolved_run_dir,
+                    dataset_spec=dataset_spec,
+                    config_snapshot=config_snapshot,
+                    insidellms_version=_ver,
+                )
 
         if validate_output:
             validator.validate(
