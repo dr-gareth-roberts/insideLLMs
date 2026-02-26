@@ -3,9 +3,9 @@
 import argparse
 from pathlib import Path
 
-from .._output import print_error, print_header, print_success
-
 from insideLLMs.signing import sign_blob
+
+from .._output import print_error, print_header, print_success
 
 
 def cmd_sign(args: argparse.Namespace) -> int:

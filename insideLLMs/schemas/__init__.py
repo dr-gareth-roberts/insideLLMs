@@ -50,6 +50,7 @@ The following schema types are available in both v1.0.0 and v1.0.1:
 **Harness Schemas**
     - ``HarnessRecord``: Per-line JSONL record from harness runs
     - ``HarnessSummary``: Summary payload (``summary.json``)
+    - ``HarnessExplain``: Explainability payload (``explain.json``)
 
 **Benchmark and Comparison Schemas**
     - ``BenchmarkSummary``: Output for benchmark runs

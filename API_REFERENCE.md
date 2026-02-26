@@ -1,7 +1,7 @@
 # insideLLMs API Reference
 
-**Version:** 0.1.0  
-**Last Updated:** January 17, 2026
+**Version:** 0.2.0  
+**Last Updated:** February 26, 2026
 
 This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the Docs Site.
 
@@ -20,7 +20,10 @@ For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTUR
 5. [Dataset Utilities](#dataset-utilities)
 6. [NLP Utilities](#nlp-utilities)
 7. [Type Definitions](#type-definitions)
-8. [CLI Verifiable Evaluation Commands](#cli-verifiable-evaluation-commands)
+8. [Runtime Diffing and Snapshot APIs](#runtime-diffing-and-snapshot-apis)
+9. [Production Shadow Capture](#production-shadow-capture)
+10. [CLI Core Evaluation Commands](#cli-core-evaluation-commands)
+11. [CLI Verifiable Evaluation Commands](#cli-verifiable-evaluation-commands)
 
 ---
 
@@ -1154,6 +1157,224 @@ Load a configuration file.
 
 ---
 
+## Runtime Diffing and Snapshot APIs
+
+The diff engine is now framework-level and shared across CLI, automation, and
+programmatic users.
+
+### `insideLLMs.diffing` (public facade)
+
+Use this module for stable imports without pulling broader runtime symbols.
+
+```python
+from insideLLMs.diffing import (
+    DiffGatePolicy,
+    build_diff_computation,
+    compute_diff_exit_code,
+    judge_diff_report,
+    print_interactive_review,
+)
+```
+
+### `DiffGatePolicy`
+
+Typed gate configuration used by `compute_diff_exit_code()`.
+
+**Module:** `insideLLMs.runtime.diffing` (re-exported by `insideLLMs.diffing`)
+
+```python
+from insideLLMs.diffing import DiffGatePolicy
+
+policy = DiffGatePolicy(
+    fail_on_regressions=True,
+    fail_on_changes=True,
+    fail_on_trace_violations=True,
+    fail_on_trace_drift=False,
+    fail_on_trajectory_drift=True,
+)
+```
+
+### `build_diff_computation(...) -> DiffComputation`
+
+Compute deterministic diff artifacts and categorized change lists.
+
+**Module:** `insideLLMs.runtime.diffing` (re-exported by `insideLLMs.diffing`)
+
+**Key Parameters:**
+- `records_baseline` / `records_candidate`: Parsed `records.jsonl` entries.
+- `baseline_label` / `candidate_label`: Names in `diff_report`.
+- `output_fingerprint_ignore`: Keys ignored when fingerprinting structured outputs.
+- `validate_output`: If `True`, validates `diff_report` against `DiffReport` schema.
+- `schema_version`: Schema version for emitted/validated `diff_report`.
+- `validation_mode`: `strict` or `warn`.
+
+**Schema Validation Path:**
+When `validate_output=True`, the engine validates against `SchemaRegistry.DIFF_REPORT`
+through `OutputValidator` before returning.
+
+```python
+from insideLLMs.diffing import build_diff_computation
+
+computation = build_diff_computation(
+    records_baseline=baseline_records,
+    records_candidate=candidate_records,
+    baseline_label="baseline",
+    candidate_label="candidate",
+    output_fingerprint_ignore=["latency_ms", "timestamps"],
+    validate_output=True,
+    schema_version="1.0.1",
+    validation_mode="strict",
+)
+
+print(computation.diff_report["counts"])
+```
+
+### `judge_diff_report(diff_report, policy=\"strict\", limit=None) -> DiffJudgeComputation`
+
+Apply deterministic triage on top of a computed diff report.
+
+**Policies:**
+- `strict`: Treat `review` and `breaking` verdicts as gate-breaking.
+- `balanced`: Treat only explicit `breaking` verdicts as gate-breaking.
+
+```python
+from insideLLMs.diffing import judge_diff_report
+
+judge = judge_diff_report(computation.diff_report, policy="balanced", limit=50)
+print(judge.judge_report["summary"])
+```
+
+### `compute_diff_exit_code(computation, policy) -> int`
+
+Canonical exit-code computation:
+- `0`: no triggered policy condition
+- `2`: regression/change gate failed
+- `3`: trace violation increase gate failed
+- `4`: trace drift gate failed
+- `5`: trajectory drift gate failed
+
+### Interactive Snapshot Helpers
+
+Interactive snapshot review helpers are in `insideLLMs.runtime.diffing_interactive`
+and re-exported by `insideLLMs.diffing`:
+- `build_interactive_review_lines`
+- `print_interactive_review`
+- `prompt_accept_snapshot`
+- `copy_candidate_artifacts_to_baseline`
+
+---
+
+## Production Shadow Capture
+
+Capture sampled production traffic in canonical `records.jsonl` format using FastAPI middleware.
+
+### `fastapi(...)`
+
+**Module:** `insideLLMs.shadow`
+
+**Signature (abridged):**
+```python
+fastapi(
+    *,
+    output_path: str | Path = "records.jsonl",
+    sample_rate: float = 0.01,
+    run_id: str | None = None,
+    model_id: str = "production-shadow",
+    model_provider: str = "insideLLMs",
+    probe_id: str = "shadow_capture",
+    dataset_id: str = "production-traffic",
+    include_request_headers: bool = False,
+    strict_serialization: bool = False,
+)
+```
+
+**Notes:**
+- `sample_rate` must be in `[0, 1]`.
+- Records are emitted in `ResultRecord`-compatible shape.
+- Captures success and error responses with deterministic JSONL serialization.
+
+```python
+from fastapi import FastAPI
+from insideLLMs import shadow
+
+app = FastAPI()
+app.middleware("http")(
+    shadow.fastapi(
+        output_path="./shadow/records.jsonl",
+        sample_rate=0.01,
+        include_request_headers=False,
+    )
+)
+```
+
+---
+
+## CLI Core Evaluation Commands
+
+These are the primary commands for deterministic evaluation workflows.
+
+### `insidellms harness <config>`
+
+Run a multi-model harness from config.
+
+**Important options:**
+- `--profile {healthcare-hipaa,finance-sec,eu-ai-act}`
+- `--active-red-team`
+- `--red-team-rounds N`
+- `--red-team-attempts-per-round N`
+- `--red-team-target-system-prompt TEXT`
+- `--explain`
+- `--run-dir`, `--run-root`, `--run-id`, `--overwrite`
+- `--validate-output`, `--schema-version`, `--validation-mode`
+
+```bash
+insidellms harness harness.yaml --profile healthcare-hipaa --explain
+insidellms harness harness.yaml --active-red-team --red-team-rounds 3
+```
+
+### `insidellms diff <baseline_run_dir> <candidate_run_dir>`
+
+Compare deterministic run artifacts and optionally gate CI.
+
+**Important options:**
+- `--fail-on-regressions`
+- `--fail-on-changes`
+- `--fail-on-trace-violations`
+- `--fail-on-trace-drift`
+- `--fail-on-trajectory-drift`
+- `--output-fingerprint-ignore key1,key2`
+- `--judge`, `--judge-policy {strict,balanced}`, `--judge-limit N`
+- `--interactive`
+
+```bash
+insidellms diff ./baseline ./candidate --fail-on-changes
+insidellms diff ./baseline ./candidate --judge --judge-policy balanced
+insidellms diff ./baseline ./candidate --interactive --fail-on-changes
+```
+
+### `insidellms doctor`
+
+Environment diagnostics and capability introspection.
+
+**Important options:**
+- `--format {text,json}`
+- `--fail-on-warn`
+- `--capabilities`
+
+```bash
+insidellms doctor --format json --capabilities
+```
+
+### `insidellms init [output]`
+
+Create a starter experiment configuration.
+
+```bash
+insidellms init experiment.yaml --model dummy --probe logic
+```
+
+---
+
 ## CLI Verifiable Evaluation Commands
 
 These commands support provenance-oriented workflows around run artifacts.
@@ -1193,7 +1414,7 @@ Verify attestation signatures against generated bundles.
 Use doctor diagnostics to verify common Ultimate dependencies:
 
 ```bash
-insidellms doctor --format text
+insidellms doctor --format text --capabilities
 ```
 
 This includes checks for `ultimate:tuf`, `ultimate:cosign`, and `ultimate:oras`.
@@ -2863,5 +3084,5 @@ print(f"Passed: {results.passed_count}/{results.total_count}")
 
 ---
 
-**Last Updated:** January 17, 2026
-**Version:** 0.1.0
+**Last Updated:** February 26, 2026
+**Version:** 0.2.0

@@ -77,6 +77,8 @@ from insideLLMs.analysis.export import (
     stream_export,
 )
 
+pytestmark = pytest.mark.adapter
+
 # ============================================================================
 # ADAPTERS COVERAGE
 # ============================================================================

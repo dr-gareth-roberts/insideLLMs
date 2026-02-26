@@ -385,8 +385,8 @@ Validate your config before running:
 # Check config syntax
 python -c "import yaml; yaml.safe_load(open('config.yaml'))"
 
-# Dry run (coming soon)
-insidellms run config.yaml --dry-run
+# Validate config against schema contracts
+insidellms validate config.yaml
 ```
 
 ---

@@ -13,7 +13,7 @@ pytest.importorskip("nltk")
 
 
 def _make_args(**kwargs):
-    defaults = {"format": "text", "fail_on_warn": False}
+    defaults = {"format": "text", "fail_on_warn": False, "capabilities": False}
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
@@ -81,3 +81,23 @@ class TestDoctorCommand:
         assert "ultimate:tuf" in names
         assert "ultimate:cosign" in names
         assert "ultimate:oras" in names
+
+    def test_json_capabilities_payload_shape(self, capsys):
+        rc = cmd_doctor(_make_args(format="json", capabilities=True))
+        captured = capsys.readouterr()
+        payload = json.loads(captured.out)
+
+        assert rc == 0
+        assert "capabilities" in payload
+        capabilities = payload["capabilities"]
+        assert "models" in capabilities
+        assert "probes" in capabilities
+        assert "datasets" in capabilities
+        assert "plugins" in capabilities
+        assert isinstance(capabilities["models"], list)
+        assert isinstance(capabilities["plugins"].get("discovered_entry_points", []), list)
+
+    def test_text_capabilities_section(self, capsys):
+        cmd_doctor(_make_args(format="text", capabilities=True))
+        captured = capsys.readouterr()
+        assert "Capabilities" in captured.out

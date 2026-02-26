@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Intelligence — Multi-Agent AML/KYC Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .risk-glow-low { box-shadow: 0 0 20px rgba(34,197,94,0.2); }
+        .risk-glow-medium { box-shadow: 0 0 20px rgba(234,179,8,0.2); }
+        .risk-glow-high { box-shadow: 0 0 20px rgba(249,115,22,0.2); }
+        .risk-glow-critical { box-shadow: 0 0 20px rgba(239,68,68,0.3); }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+        @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slide-up 0.4s ease-out; }
+        .step-line { position: relative; padding-left: 1.5rem; }
+        .step-line::before { content: ''; position: absolute; left: 0.45rem; top: 1.5rem; bottom: 0; width: 1px; background: rgba(99,102,241,0.3); }
+        .step-line:last-child::before { display: none; }
+        .step-dot { position: absolute; left: 0; top: 0.35rem; width: 0.9rem; height: 0.9rem; border-radius: 9999px; border: 2px solid #6366f1; background: #1e1b4b; }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100 font-sans">
+
+<div x-data="complianceApp()" x-cloak class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <header class="text-center mb-10">
+        <div class="inline-flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">Compliance Intelligence</h1>
+        </div>
+        <p class="text-gray-400 max-w-2xl mx-auto">Multi-Agent AML/KYC Transaction Monitoring — powered by <span class="text-brand-400 font-semibold">LangGraph</span>, <span class="text-purple-400 font-semibold">Deep Agents</span> &amp; <span class="text-emerald-400 font-semibold">Pydantic</span></p>
+    </header>
+
+    <!-- Scenario Selector -->
+    <section class="mb-8">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Select a Transaction Scenario</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <template x-for="s in scenarios" :key="s.key">
+                <button
+                    @click="selectScenario(s.key)"
+                    :class="{
+                        'ring-2 ring-brand-500 bg-brand-500/10': selectedScenario === s.key,
+                        'hover:bg-white/5': selectedScenario !== s.key
+                    }"
+                    class="glass rounded-xl p-4 text-left transition-all duration-200 cursor-pointer group"
+                >
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2 h-2 rounded-full" :class="verdictDotColor(s.expected_verdict)"></span>
+                        <span class="text-xs font-medium uppercase tracking-wide" :class="verdictTextColor(s.expected_verdict)" x-text="s.expected_verdict.replace('_',' ')"></span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-gray-200 group-hover:text-white transition-colors mb-1" x-text="s.name"></h3>
+                    <p class="text-xs text-gray-500 leading-relaxed" x-text="s.description"></p>
+                </button>
+            </template>
+        </div>
+    </section>
+
+    <!-- Analyze Button -->
+    <div class="text-center mb-10">
+        <button
+            @click="analyze()"
+            :disabled="!selectedScenario || loading"
+            :class="{ 'opacity-50 cursor-not-allowed': !selectedScenario || loading }"
+            class="px-8 py-3 bg-brand-600 hover:bg-brand-500 rounded-xl font-semibold text-white transition-all shadow-lg shadow-brand-600/20 hover:shadow-brand-500/30"
+        >
+            <span x-show="!loading" class="flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Run Compliance Analysis
+            </span>
+            <span x-show="loading" class="flex items-center gap-2">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Agents Working...
+            </span>
+        </button>
+    </div>
+
+    <!-- Error -->
+    <div x-show="error" class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm" x-text="error"></div>
+
+    <!-- Results -->
+    <div x-show="result" class="space-y-6 animate-slide-up">
+
+        <!-- Executive Summary Card -->
+        <div class="glass rounded-2xl p-6" :class="riskGlowClass()">
+            <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+                <!-- Verdict Badge -->
+                <div class="flex-shrink-0 text-center">
+                    <div class="w-24 h-24 rounded-2xl flex items-center justify-center text-3xl font-black" :class="verdictBgClass()">
+                        <span x-text="riskScore()"></span>
+                    </div>
+                    <div class="mt-2 text-xs font-bold uppercase tracking-wider" :class="verdictColorClass()" x-text="verdictLabel()"></div>
+                    <div class="text-[10px] text-gray-500 mt-1" x-text="riskLevelLabel()"></div>
+                </div>
+                <!-- Summary -->
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-lg font-bold text-white mb-2">Executive Summary</h2>
+                    <p class="text-sm text-gray-300 leading-relaxed" x-text="result?.executive_summary"></p>
+                    <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-400">
+                        <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span x-text="result?.processing_time_ms?.toFixed(0) + 'ms'"></span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3l9.09 16.91H2.91L12 3z"/></svg>
+                            <span x-text="alertCount() + ' alerts'"></span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span x-text="reanalysisCount() + ' re-analysis cycles'"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Breakdown -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Risk Scores -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Risk Breakdown</h3>
+                <div class="space-y-4">
+                    <template x-for="(item, idx) in riskBreakdown()" :key="idx">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-300" x-text="item.label"></span>
+                                <span class="font-mono font-bold" :class="scoreColor(item.score)" x-text="item.score.toFixed(0) + '/100'"></span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-2">
+                                <div class="h-2 rounded-full transition-all duration-700" :class="scoreBarColor(item.score)" :style="'width:' + item.score + '%'"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <!-- Contributing Factors -->
+                <div x-show="contributingFactors().length > 0" class="mt-6">
+                    <h4 class="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Contributing Factors</h4>
+                    <ul class="space-y-1">
+                        <template x-for="f in contributingFactors()" :key="f">
+                            <li class="text-xs text-gray-400 flex items-start gap-1.5">
+                                <span class="text-red-400 mt-0.5">&#9679;</span>
+                                <span x-text="f"></span>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+                <div x-show="mitigatingFactors().length > 0" class="mt-4">
+                    <h4 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Mitigating Factors</h4>
+                    <ul class="space-y-1">
+                        <template x-for="f in mitigatingFactors()" :key="f">
+                            <li class="text-xs text-gray-400 flex items-start gap-1.5">
+                                <span class="text-emerald-400 mt-0.5">&#9679;</span>
+                                <span x-text="f"></span>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Alerts</h3>
+                <div class="space-y-3 max-h-80 overflow-y-auto scrollbar-thin pr-1">
+                    <template x-for="alert in alerts()" :key="alert.alert_id">
+                        <div class="rounded-lg p-3" :class="alertBgClass(alert.severity)">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" :class="alertBadgeClass(alert.severity)" x-text="alert.severity"></span>
+                                <span class="text-xs font-semibold text-gray-200" x-text="alert.title"></span>
+                            </div>
+                            <p class="text-xs text-gray-400 leading-relaxed" x-text="alert.description"></p>
+                        </div>
+                    </template>
+                    <div x-show="alerts().length === 0" class="text-sm text-gray-500 text-center py-8">No alerts raised</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decision Details + Recommended Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Decision Rationale</h3>
+                <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-line" x-text="decisionRationale()"></p>
+                <div x-show="regulatoryRefs().length > 0" class="mt-4">
+                    <h4 class="text-xs font-semibold text-brand-400 uppercase tracking-wider mb-2">Regulatory References</h4>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="ref in regulatoryRefs()" :key="ref">
+                            <span class="text-[10px] px-2 py-1 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/20" x-text="ref"></span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Recommended Actions</h3>
+                <ol class="space-y-2">
+                    <template x-for="(action, idx) in recommendedActions()" :key="idx">
+                        <li class="flex items-start gap-3">
+                            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center" x-text="idx + 1"></span>
+                            <span class="text-sm text-gray-300" x-text="action"></span>
+                        </li>
+                    </template>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Agent Trace (Processing Steps) -->
+        <div class="glass rounded-2xl p-6">
+            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                Agent Execution Trace
+                <span class="text-xs font-normal text-gray-500 ml-2" x-text="'(' + (result?.graph_trace?.length || 0) + ' steps)'"></span>
+            </h3>
+            <div class="max-h-72 overflow-y-auto scrollbar-thin pr-2">
+                <div class="space-y-0">
+                    <template x-for="(step, idx) in result?.graph_trace || []" :key="idx">
+                        <div class="step-line py-2">
+                            <div class="step-dot" :class="stepDotClass(step)"></div>
+                            <code class="text-xs font-mono leading-relaxed" :class="stepTextClass(step)" x-text="step"></code>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Architecture Note -->
+        <div class="glass rounded-2xl p-6 text-center">
+            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Architecture</h3>
+            <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
+                <span class="px-3 py-1.5 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-300 font-semibold">Intake Agent</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">KYC/AML Agent</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold">Pattern Agent</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 font-semibold">Geopolitical Agent</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-semibold">Risk Scoring</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">Decision Agent</span>
+                <span class="text-gray-600">&rarr;</span>
+                <span class="px-3 py-1.5 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-300 font-semibold">Report</span>
+            </div>
+            <div class="mt-2 text-[10px] text-gray-500">Decision Agent may trigger re-analysis cycles (LangGraph conditional edges + cycles)</div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-16 text-center text-xs text-gray-600 pb-8">
+        <p>Compliance Intelligence v1.0 &mdash; LangGraph + Deep Agents + Pydantic v2 Demonstration</p>
+        <p class="mt-1">Simulation mode &mdash; no API keys required. All data is synthetic.</p>
+    </footer>
+</div>
+
+<script>
+function complianceApp() {
+    return {
+        scenarios: [],
+        selectedScenario: null,
+        loading: false,
+        error: null,
+        result: null,
+
+        async init() {
+            try {
+                const res = await fetch('/api/scenarios');
+                this.scenarios = await res.json();
+            } catch (e) {
+                this.error = 'Failed to load scenarios: ' + e.message;
+            }
+        },
+
+        selectScenario(key) {
+            this.selectedScenario = key;
+            this.error = null;
+        },
+
+        async analyze() {
+            if (!this.selectedScenario || this.loading) return;
+            this.loading = true;
+            this.error = null;
+            this.result = null;
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario_key: this.selectedScenario })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Analysis failed');
+                }
+                this.result = await res.json();
+            } catch (e) {
+                this.error = e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // --- Helpers ---
+        riskScore() { return this.result?.report?.risk_score?.overall_score?.toFixed(0) || '—'; },
+        riskLevel() { return this.result?.report?.risk_score?.overall_level || ''; },
+        riskLevelLabel() { return (this.riskLevel() || '').toUpperCase() + ' RISK'; },
+        verdictLabel() { return (this.result?.report?.decision?.verdict || '').replace(/_/g, ' '); },
+        alertCount() { return this.result?.report?.alerts?.length || 0; },
+        reanalysisCount() { return this.result?.report?.reanalysis_count || 0; },
+        decisionRationale() { return this.result?.report?.decision?.rationale || ''; },
+        regulatoryRefs() { return this.result?.report?.decision?.regulatory_references || []; },
+        recommendedActions() { return this.result?.report?.decision?.recommended_actions || []; },
+        contributingFactors() { return this.result?.report?.risk_score?.contributing_factors || []; },
+        mitigatingFactors() { return this.result?.report?.risk_score?.mitigating_factors || []; },
+        alerts() { return this.result?.report?.alerts || []; },
+
+        riskBreakdown() {
+            const rs = this.result?.report?.risk_score;
+            if (!rs) return [];
+            return [
+                { label: 'Entity Risk', score: rs.entity_risk_score || 0 },
+                { label: 'Transaction Risk', score: rs.transaction_risk_score || 0 },
+                { label: 'Pattern Risk', score: rs.pattern_risk_score || 0 },
+                { label: 'Geopolitical Risk', score: rs.geopolitical_risk_score || 0 },
+            ];
+        },
+
+        verdictDotColor(v) {
+            const m = { approve: 'bg-emerald-400', flag_for_review: 'bg-amber-400', escalate: 'bg-orange-400', block: 'bg-red-500', request_more_info: 'bg-blue-400' };
+            return m[v] || 'bg-gray-400';
+        },
+        verdictTextColor(v) {
+            const m = { approve: 'text-emerald-400', flag_for_review: 'text-amber-400', escalate: 'text-orange-400', block: 'text-red-400', request_more_info: 'text-blue-400' };
+            return m[v] || 'text-gray-400';
+        },
+        verdictBgClass() {
+            const v = this.result?.report?.decision?.verdict;
+            const m = { approve: 'bg-emerald-500/20 text-emerald-400', flag_for_review: 'bg-amber-500/20 text-amber-400', escalate: 'bg-orange-500/20 text-orange-400', block: 'bg-red-500/20 text-red-400', request_more_info: 'bg-blue-500/20 text-blue-400' };
+            return m[v] || 'bg-gray-500/20 text-gray-400';
+        },
+        verdictColorClass() {
+            const v = this.result?.report?.decision?.verdict;
+            const m = { approve: 'text-emerald-400', flag_for_review: 'text-amber-400', escalate: 'text-orange-400', block: 'text-red-500', request_more_info: 'text-blue-400' };
+            return m[v] || 'text-gray-400';
+        },
+        riskGlowClass() {
+            const l = this.riskLevel();
+            const m = { low: 'risk-glow-low', medium: 'risk-glow-medium', high: 'risk-glow-high', critical: 'risk-glow-critical' };
+            return m[l] || '';
+        },
+        scoreColor(s) {
+            if (s >= 75) return 'text-red-400';
+            if (s >= 50) return 'text-orange-400';
+            if (s >= 25) return 'text-amber-400';
+            return 'text-emerald-400';
+        },
+        scoreBarColor(s) {
+            if (s >= 75) return 'bg-red-500';
+            if (s >= 50) return 'bg-orange-500';
+            if (s >= 25) return 'bg-amber-500';
+            return 'bg-emerald-500';
+        },
+        alertBgClass(sev) {
+            const m = { critical: 'bg-red-500/5 border border-red-500/20', warning: 'bg-amber-500/5 border border-amber-500/20', info: 'bg-blue-500/5 border border-blue-500/20' };
+            return m[sev] || 'bg-gray-500/5 border border-gray-500/20';
+        },
+        alertBadgeClass(sev) {
+            const m = { critical: 'bg-red-500/20 text-red-400', warning: 'bg-amber-500/20 text-amber-400', info: 'bg-blue-500/20 text-blue-400' };
+            return m[sev] || 'bg-gray-500/20 text-gray-400';
+        },
+        stepDotClass(step) {
+            if (step.includes('CRITICAL') || step.includes('Sanctions') || step.includes('BLOCK')) return '!bg-red-500 !border-red-500';
+            if (step.includes('Re-analysis') || step.includes('♻')) return '!bg-purple-500 !border-purple-500';
+            if (step.includes('complete') || step.includes('Report:')) return '!bg-emerald-500 !border-emerald-500';
+            return '';
+        },
+        stepTextClass(step) {
+            if (step.includes('CRITICAL') || step.includes('Sanctions') || step.includes('BLOCK')) return 'text-red-400';
+            if (step.includes('Re-analysis') || step.includes('♻')) return 'text-purple-400';
+            if (step.includes('complete') || step.includes('Report:')) return 'text-emerald-400';
+            return 'text-gray-400';
+        },
+    };
+}
+</script>
+</body>
+</html>

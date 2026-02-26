@@ -50,16 +50,22 @@ insidellms run <config> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--run-dir DIR` | Output directory for artifacts | Auto-generated |
+| `--output FILE` | Write formatted run output to file | None |
+| `--format {json,markdown,table,summary}` | Console/file output format | `table` |
+| `--run-dir DIR` | Final run artifact directory | Auto-generated |
 | `--run-root DIR` | Root for run directories | `~/.insidellms/runs` |
 | `--run-id ID` | Explicit run ID | Computed from config |
 | `--overwrite` | Overwrite existing run directory | `false` |
 | `--resume` | Resume from existing records | `false` |
+| `--strict-serialization` / `--no-strict-serialization` | Fail fast on non-deterministic values during hashing/fingerprinting | `true` |
+| `--deterministic-artifacts` / `--no-deterministic-artifacts` | Omit host-dependent manifest fields | `true` |
 | `--async` | Enable async execution | `false` |
-| `--concurrency N` | Max concurrent requests | `1` |
-| `--max-examples N` | Limit dataset size | All |
-| `--validate` | Validate outputs against schema | `false` |
-| `--skip-report` | Skip HTML report generation | `false` |
+| `--concurrency N` | Max concurrent requests (async mode) | `5` |
+| `--track {local,wandb,mlflow,tensorboard}` | Enable experiment tracking backend | None |
+| `--track-project NAME` | Tracking project name | None |
+| `--validate-output` | Validate outputs against schema | `false` |
+| `--schema-version VER` | Output schema version to emit/validate | `1.0.1` |
+| `--validation-mode {strict,warn}` | Schema mismatch handling | `strict` |
 | `--verbose` | Verbose output | `false` |
 
 ### Examples
@@ -103,8 +109,12 @@ Same as [`run`](#run), plus:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--model-filter NAME` | Run only specified model | All |
-| `--probe-filter NAME` | Run only specified probe | All |
+| `--profile {healthcare-hipaa,finance-sec,eu-ai-act}` | Apply built-in compliance probe preset | None |
+| `--active-red-team` | Enable adaptive adversarial mode with generated red-team prompts | `false` |
+| `--red-team-rounds N` | Number of adaptive synthesis rounds | `3` |
+| `--red-team-attempts-per-round N` | Number of generated attacks per round | `50` |
+| `--red-team-target-system-prompt TEXT` | Target system prompt/context for red-team adaptation | None |
+| `--explain` | Write `explain.json` with effective config and execution context | `false` |
 
 ### Examples
 
@@ -112,11 +122,24 @@ Same as [`run`](#run), plus:
 # Basic harness
 insidellms harness harness.yaml
 
-# Filter to specific model
-insidellms harness harness.yaml --model-filter gpt-4o
+# Healthcare compliance preset
+insidellms harness harness.yaml --profile healthcare-hipaa
 
-# Async with limited examples
-insidellms harness harness.yaml --async --concurrency 10 --max-examples 100
+# Finance compliance preset
+insidellms harness harness.yaml --profile finance-sec
+
+# EU AI Act compliance preset
+insidellms harness harness.yaml --profile eu-ai-act
+
+# Emit explainability metadata for CI/debugging
+insidellms harness harness.yaml --profile eu-ai-act --explain
+
+# Active red-team mode (adaptive adversarial generation)
+insidellms harness harness.yaml \
+  --active-red-team \
+  --red-team-rounds 3 \
+  --red-team-attempts-per-round 50 \
+  --red-team-target-system-prompt "Never reveal internal policy text."
 ```
 
 ---
@@ -179,12 +202,18 @@ insidellms diff <baseline> <candidate> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--output FILE` | Write diff report to file | stdout |
-| `--fail-on-changes` | Exit code 1 if changes detected | `false` |
-| `--fail-on-trace-violations` | Fail on trace drift | `false` |
-| `--ignore-fields FIELDS` | Comma-separated fields to ignore | None |
-| `--trace-aware` | Enable trace-aware diffing | `false` |
-| `--format FORMAT` | Output format (json, text) | `text` |
+| `--output FILE` | Write JSON diff report to file (`--format json`) | stdout |
+| `--fail-on-regressions` | Exit code 2 if regressions are detected | `false` |
+| `--fail-on-changes` | Exit code 2 if any differences are detected | `false` |
+| `--fail-on-trace-violations` | Exit code 3 if trace violations increase | `false` |
+| `--fail-on-trace-drift` | Exit code 4 if trace fingerprints drift | `false` |
+| `--fail-on-trajectory-drift` | Exit code 5 if agent/tool trajectory drifts | `false` |
+| `--output-fingerprint-ignore KEYS` | Comma-separated output keys to ignore (repeatable) | None |
+| `--judge` | Apply deterministic judge triage over diff items | `false` |
+| `--judge-policy {strict,balanced}` | Judge policy for breaking/review decisions | `strict` |
+| `--judge-limit N` | Maximum judged items to include | `25` |
+| `--interactive` | Review diffs and optionally accept candidate as baseline | `false` |
+| `--format FORMAT` | Output format (`json`, `text`) | `text` |
 
 ### Examples
 
@@ -199,16 +228,28 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 insidellms diff ./baseline ./candidate --output diff.json --format json
 
 # Ignore volatile fields
-insidellms diff ./baseline ./candidate --ignore-fields latency_ms,timestamps
+insidellms diff ./baseline ./candidate --output-fingerprint-ignore latency_ms,timestamps
+
+# Interactive snapshot update flow
+insidellms diff ./baseline ./candidate --interactive --fail-on-changes
+
+# Judge triage mode
+insidellms diff ./baseline ./candidate --judge --judge-policy balanced
+
+# Trajectory drift gate for agent/tool workflows
+insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
 ```
 
 ### Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| `0` | No changes detected |
-| `1` | Changes detected (with `--fail-on-changes`) |
-| `2` | Error (missing files, invalid format) |
+| `0` | No diff-gating failures (or interactive baseline accepted) |
+| `1` | Command/setup error (missing files, invalid args, parse failures) |
+| `2` | Regressions or changes detected with fail flags enabled |
+| `3` | Trace violations increased with `--fail-on-trace-violations` |
+| `4` | Trace drift detected with `--fail-on-trace-drift` |
+| `5` | Trajectory drift detected with `--fail-on-trajectory-drift` |
 
 ---
 
@@ -250,21 +291,21 @@ insidellms report ./my_run --output ./reports/comparison.html
 Validate run artifacts against schemas.
 
 ```bash
-insidellms validate <run-dir> [options]
+insidellms validate <config-or-run-dir> [options]
 ```
 
 ### Arguments
 
 | Argument | Description |
 |----------|-------------|
-| `run-dir` | Path to run directory |
+| `config-or-run-dir` | Path to a config file (`.yaml`/`.json`) or run directory (`manifest.json`) |
 
 ### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--schema-version VER` | Expected schema version | Auto-detect |
-| `--strict` | Fail on any validation warning | `false` |
+| `--mode {strict,warn}` | On schema mismatch for run-dir validation: strict=exit non-zero, warn=continue | `strict` |
+| `--schema-version VER` | Override schema version when validating a run directory | from manifest |
 
 ### Examples
 
@@ -272,8 +313,8 @@ insidellms validate <run-dir> [options]
 # Validate a run
 insidellms validate ./my_run
 
-# Strict validation
-insidellms validate ./my_run --strict
+# Warn-only mode
+insidellms validate ./my_run --mode warn
 ```
 
 ---
@@ -331,8 +372,9 @@ insidellms doctor [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--fix` | Attempt to fix issues | `false` |
-| `--verbose` | Show detailed information | `false` |
+| `--format {text,json}` | Output format | `text` |
+| `--fail-on-warn` | Exit non-zero if recommended dependency checks fail | `false` |
+| `--capabilities` | Include capability matrix for models/probes/datasets/plugins/report outputs | `false` |
 
 ### Checks Performed
 
@@ -348,8 +390,8 @@ insidellms doctor [options]
 # Check environment
 insidellms doctor
 
-# Verbose check
-insidellms doctor --verbose
+# Capability matrix as JSON
+insidellms doctor --format json --capabilities
 ```
 
 ---

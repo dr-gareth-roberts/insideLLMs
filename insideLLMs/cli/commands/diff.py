@@ -2,9 +2,21 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
+from insideLLMs.runtime.diffing import (
+    DiffGatePolicy,
+    build_diff_computation,
+    compute_diff_exit_code,
+    judge_diff_report,
+)
+from insideLLMs.runtime.diffing_interactive import (
+    copy_candidate_artifacts_to_baseline,
+    print_interactive_review,
+    prompt_accept_snapshot,
+)
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 
 from .._output import (
@@ -16,23 +28,41 @@ from .._output import (
     print_subheader,
     print_warning,
 )
-from .._record_utils import (
-    _json_default,
-    _metric_mismatch_context,
-    _metric_mismatch_details,
-    _metric_mismatch_reason,
-    _output_fingerprint,
-    _output_summary,
-    _output_text,
-    _primary_score,
-    _read_jsonl_records,
-    _record_key,
-    _record_label,
-    _status_string,
-    _trace_fingerprint,
-    _trace_violation_count,
-    _trace_violations,
-)
+from .._record_utils import _json_default, _read_jsonl_records
+
+
+def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
+    """Render judge verdict details for terminal output."""
+    summary = judge_report.get("summary") if isinstance(judge_report.get("summary"), dict) else {}
+    verdicts = judge_report.get("verdicts") if isinstance(judge_report.get("verdicts"), list) else []
+
+    print_subheader("Judge Verdict")
+    print_key_value("Policy", judge_report.get("policy", "strict"))
+    print_key_value("Breaking", "yes" if judge_report.get("breaking") else "no")
+    print_key_value("Breaking items", summary.get("breaking", 0))
+    print_key_value("Review items", summary.get("review", 0))
+    print_key_value("Acceptable items", summary.get("acceptable", 0))
+
+    if not verdicts:
+        print("  No judged items.")
+        return
+
+    for item in verdicts[:limit]:
+        if not isinstance(item, dict):
+            continue
+        label = item.get("label") if isinstance(item.get("label"), dict) else {}
+        model_label = label.get("model", item.get("model_id", "unknown"))
+        probe_label = label.get("probe", item.get("probe_id", "unknown"))
+        example_label = label.get("example", item.get("example_id", "unknown"))
+        decision = item.get("decision", "review")
+        reason = item.get("reason", "")
+        detail = item.get("detail") or item.get("kind") or "change"
+        print(
+            f"  [{decision}] {model_label} | {probe_label} | example {example_label}: "
+            f"{detail} ({reason})"
+        )
+    if len(verdicts) > limit:
+        print(colorize(f"  ... and {len(verdicts) - limit} more", Colors.DIM))
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -70,327 +100,75 @@ def cmd_diff(args: argparse.Namespace) -> int:
 
     output_format = getattr(args, "format", "text")
     output_path = getattr(args, "output", None)
+    interactive = bool(getattr(args, "interactive", False))
     if output_path and output_format != "json":
         print_warning("--output is only used with --format json")
+    if interactive and output_format == "json":
+        print_error("--interactive requires text output; remove --format json")
+        return 1
+    if interactive and not sys.stdin.isatty():
+        print_warning("--interactive is running in a non-interactive shell; snapshot prompt may default")
+    gate_policy = DiffGatePolicy(
+        fail_on_regressions=bool(args.fail_on_regressions),
+        fail_on_changes=bool(args.fail_on_changes),
+        fail_on_trace_violations=bool(args.fail_on_trace_violations),
+        fail_on_trace_drift=bool(args.fail_on_trace_drift),
+        fail_on_trajectory_drift=bool(getattr(args, "fail_on_trajectory_drift", False)),
+    )
+    try:
+        computation = build_diff_computation(
+            records_baseline=records_a,
+            records_candidate=records_b,
+            baseline_label=str(run_dir_a),
+            candidate_label=str(run_dir_b),
+            output_fingerprint_ignore=args.output_fingerprint_ignore,
+            validate_output=bool(getattr(args, "validate_output", False)),
+            schema_version=str(getattr(args, "schema_version", DEFAULT_SCHEMA_VERSION)),
+            validation_mode=str(getattr(args, "validation_mode", "strict")),
+        )
+    except Exception as e:
+        print_error(f"Could not compute diff report: {e}")
+        return 1
+    diff_report = computation.diff_report
+    regressions = computation.regressions
+    improvements = computation.improvements
+    changes = computation.changes
+    only_a = computation.only_baseline
+    only_b = computation.only_candidate
+    trace_drifts = computation.trace_drifts
+    trace_violation_increases = computation.trace_violation_increases
+    trajectory_drifts = computation.trajectory_drifts
+    judge_report: dict[str, Any] | None = None
 
-    ignore_keys: set[str] = set()
-    for entry in args.output_fingerprint_ignore or []:
-        for item in str(entry).split(","):
-            item = item.strip()
-            if item:
-                ignore_keys.add(item.lower())
+    if bool(getattr(args, "judge", False)):
+        judge_computation = judge_diff_report(
+            diff_report,
+            policy=str(getattr(args, "judge_policy", "strict")),
+            limit=int(getattr(args, "judge_limit", args.limit)),
+        )
+        judge_report = judge_computation.judge_report
 
-    ignore_keys_set = ignore_keys if ignore_keys else None
-
-    def build_index(
-        records: list[dict[str, Any]],
-    ) -> tuple[dict[tuple[str, str, str], dict[str, Any]], int]:
-        index: dict[tuple[str, str, str], dict[str, Any]] = {}
-        duplicates = 0
-        for record in records:
-            key = _record_key(record)
-            if key in index:
-                duplicates += 1
-                continue
-            index[key] = record
-        return index, duplicates
-
-    def record_identity(record: dict[str, Any]) -> dict[str, Any]:
-        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-        label = _record_label(record)
-        key = _record_key(record)
-        return {
-            "record_key": {"model_id": key[0], "probe_id": key[1], "item_id": key[2]},
-            "model_id": key[0],
-            "probe_id": key[1],
-            "example_id": label[2],
-            "replicate_key": custom.get("replicate_key"),
-            "label": {"model": label[0], "probe": label[1], "example": label[2]},
-        }
-
-    def record_summary(record: dict[str, Any]) -> dict[str, Any]:
-        scores = record.get("scores") if isinstance(record.get("scores"), dict) else None
-        _metric_name, metric_value = _primary_score(record)
-        return {
-            "status": _status_string(record),
-            "primary_metric": record.get("primary_metric"),
-            "primary_score": metric_value,
-            "scores_keys": sorted(scores.keys()) if isinstance(scores, dict) else None,
-            "output": _output_summary(record, ignore_keys_set),
-        }
-
-    index_a, dup_a = build_index(records_a)
-    index_b, dup_b = build_index(records_b)
-
-    if dup_a:
-        print_warning(f"Baseline has {dup_a} duplicate key(s); first occurrence used")
-    if dup_b:
-        print_warning(f"Comparison has {dup_b} duplicate key(s); first occurrence used")
-
-    all_keys = set(index_a) | set(index_b)
-    regressions: list[tuple[str, str, str, str]] = []
-    improvements: list[tuple[str, str, str, str]] = []
-    changes: list[tuple[str, str, str, str]] = []
-    only_a: list[tuple[str, str, str]] = []
-    only_b: list[tuple[str, str, str]] = []
-
-    regressions_json: list[dict[str, Any]] = []
-    improvements_json: list[dict[str, Any]] = []
-    changes_json: list[dict[str, Any]] = []
-    only_a_json: list[dict[str, Any]] = []
-    only_b_json: list[dict[str, Any]] = []
-    # Trace tracking
-    trace_drifts: list[tuple[str, str, str, str]] = []
-    trace_drifts_json: list[dict[str, Any]] = []
-    trace_violation_increases: list[tuple[str, str, str, str]] = []
-    trace_violation_increases_json: list[dict[str, Any]] = []
-
-    for key in sorted(all_keys):
-        record_a = index_a.get(key)
-        record_b = index_b.get(key)
-
-        if record_a is None:
-            only_b.append(_record_label(record_b))  # type: ignore[arg-type]  # record_b is not None here (checked via all_keys)
-            only_b_json.append(record_identity(record_b))  # type: ignore[arg-type]  # record_b is not None here
-            continue
-        if record_b is None:
-            only_a.append(_record_label(record_a))
-            only_a_json.append(record_identity(record_a))
-            continue
-
-        label = _record_label(record_a)
-        status_a = _status_string(record_a)
-        status_b = _status_string(record_b)
-        score_name_a, score_a = _primary_score(record_a)
-        score_name_b, score_b = _primary_score(record_b)
-        identity = record_identity(record_a)
-        summary_a = record_summary(record_a)
-        summary_b = record_summary(record_b)
-
-        if status_a == "success" and status_b != "success":
-            regressions.append((*label, f"status {status_a} -> {status_b}"))
-            regressions_json.append(
-                {
-                    **identity,
-                    "kind": "status_regression",
-                    "detail": f"status {status_a} -> {status_b}",
-                    "baseline": summary_a,
-                    "candidate": summary_b,
-                }
-            )
-            continue
-        if status_a != "success" and status_b == "success":
-            improvements.append((*label, f"status {status_a} -> {status_b}"))
-            improvements_json.append(
-                {
-                    **identity,
-                    "kind": "status_improvement",
-                    "detail": f"status {status_a} -> {status_b}",
-                    "baseline": summary_a,
-                    "candidate": summary_b,
-                }
-            )
-            continue
-
-        metrics_compared = False
-        if score_a is not None and score_b is not None and score_name_a == score_name_b:
-            delta = score_b - score_a
-            metrics_compared = True
-            if delta < 0:
-                regressions.append(
-                    (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta {delta:.4f})")
-                )
-                regressions_json.append(
-                    {
-                        **identity,
-                        "kind": "metric_regression",
-                        "metric": score_name_a,
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                        "delta": delta,
-                    }
-                )
-                continue
-            if delta > 0:
-                improvements.append(
-                    (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta +{delta:.4f})")
-                )
-                improvements_json.append(
-                    {
-                        **identity,
-                        "kind": "metric_improvement",
-                        "metric": score_name_a,
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                        "delta": delta,
-                    }
-                )
-
-        if not metrics_compared and (score_a is not None or score_b is not None):
-            reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
-            detail = _metric_mismatch_details(record_a, record_b)
-            changes.append((*label, f"metrics not comparable:{reason}; {detail}"))
-            changes_json.append(
-                {
-                    **identity,
-                    "kind": "metrics_not_comparable",
-                    "reason": reason,
-                    "baseline": summary_a,
-                    "candidate": summary_b,
-                    "details": _metric_mismatch_context(record_a, record_b),
-                }
-            )
-
-        if metrics_compared and status_a == "success" and status_b == "success":
-            scores_a = record_a.get("scores") if isinstance(record_a.get("scores"), dict) else None
-            scores_b = record_b.get("scores") if isinstance(record_b.get("scores"), dict) else None
-            if isinstance(scores_a, dict) and isinstance(scores_b, dict):
-                keys_a = sorted(scores_a.keys())
-                keys_b = sorted(scores_b.keys())
-                missing_in_b = sorted(set(keys_a) - set(keys_b))
-                missing_in_a = sorted(set(keys_b) - set(keys_a))
-                if missing_in_a or missing_in_b:
-                    changes.append(
-                        (
-                            *label,
-                            "metric_key_missing: "
-                            f"baseline_missing={missing_in_a}, candidate_missing={missing_in_b}",
-                        )
-                    )
-                    changes_json.append(
-                        {
-                            **identity,
-                            "kind": "metric_key_missing",
-                            "baseline_missing": missing_in_a,
-                            "candidate_missing": missing_in_b,
-                            "baseline": summary_a,
-                            "candidate": summary_b,
-                        }
-                    )
-
-        output_a = _output_text(record_a)
-        output_b = _output_text(record_b)
-        if output_a is not None or output_b is not None:
-            if output_a != output_b:
-                changes.append((*label, "output changed"))
-                changes_json.append(
-                    {
-                        **identity,
-                        "kind": "output_changed",
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                    }
-                )
-        else:
-            fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys_set)
-            fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys_set)
-            if fingerprint_a != fingerprint_b:
-                if fingerprint_a and fingerprint_b:
-                    changes.append(
-                        (*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}")
-                    )
-                else:
-                    changes.append((*label, "output changed (structured)"))
-                changes_json.append(
-                    {
-                        **identity,
-                        "kind": "output_changed",
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                        "baseline_fingerprint": fingerprint_a,
-                        "candidate_fingerprint": fingerprint_b,
-                    }
-                )
-        if status_a != status_b:
-            changes.append((*label, f"status {status_a} -> {status_b}"))
-            changes_json.append(
-                {
-                    **identity,
-                    "kind": "status_changed",
-                    "detail": f"status {status_a} -> {status_b}",
-                    "baseline": summary_a,
-                    "candidate": summary_b,
-                }
-            )
-
-        # Trace drift detection
-        trace_fp_a = _trace_fingerprint(record_a)
-        trace_fp_b = _trace_fingerprint(record_b)
-        if trace_fp_a and trace_fp_b and trace_fp_a != trace_fp_b:
-            trace_drifts.append((*label, f"trace {trace_fp_a[:12]} -> {trace_fp_b[:12]}"))
-            trace_drifts_json.append(
-                {
-                    **identity,
-                    "kind": "trace_drift",
-                    "baseline_trace_fingerprint": trace_fp_a,
-                    "candidate_trace_fingerprint": trace_fp_b,
-                }
-            )
-
-        # Trace violation comparison
-        violations_a = _trace_violation_count(record_a)
-        violations_b = _trace_violation_count(record_b)
-        if violations_b > violations_a:
-            trace_violation_increases.append(
-                (*label, f"violations {violations_a} -> {violations_b}")
-            )
-            trace_violation_increases_json.append(
-                {
-                    **identity,
-                    "kind": "trace_violations_increased",
-                    "baseline_violations": violations_a,
-                    "candidate_violations": violations_b,
-                    "candidate_violation_details": _trace_violations(record_b),
-                }
-            )
-
-    diff_report = {
-        "schema_version": DEFAULT_SCHEMA_VERSION,
-        "baseline": str(run_dir_a),
-        "candidate": str(run_dir_b),
-        "run_ids": {
-            "baseline": sorted(
-                {record.get("run_id") for record in records_a if record.get("run_id")}
-            ),
-            "candidate": sorted(
-                {record.get("run_id") for record in records_b if record.get("run_id")}
-            ),
-        },
-        "counts": {
-            "common": len(all_keys) - len(only_a) - len(only_b),
-            "only_baseline": len(only_a),
-            "only_candidate": len(only_b),
-            "regressions": len(regressions),
-            "improvements": len(improvements),
-            "other_changes": len(changes),
-            "trace_drifts": len(trace_drifts),
-            "trace_violation_increases": len(trace_violation_increases),
-        },
-        "duplicates": {"baseline": dup_a, "candidate": dup_b},
-        "regressions": regressions_json,
-        "improvements": improvements_json,
-        "changes": changes_json,
-        "only_baseline": only_a_json,
-        "only_candidate": only_b_json,
-        "trace_drifts": trace_drifts_json,
-        "trace_violation_increases": trace_violation_increases_json,
-    }
+    if computation.baseline_duplicates:
+        print_warning(
+            f"Baseline has {computation.baseline_duplicates} duplicate key(s); first occurrence used"
+        )
+    if computation.candidate_duplicates:
+        print_warning(
+            f"Comparison has {computation.candidate_duplicates} duplicate key(s); first occurrence used"
+        )
 
     if output_format == "json":
-        payload = json.dumps(diff_report, indent=2, default=_json_default, sort_keys=True)
+        payload_obj = dict(diff_report)
+        if judge_report is not None:
+            payload_obj["judge"] = judge_report
+        payload = json.dumps(payload_obj, indent=2, default=_json_default, sort_keys=True)
         if output_path:
             Path(output_path).write_text(payload, encoding="utf-8")
         else:
             print(payload)
-        if args.fail_on_regressions and regressions:
-            return 2
-        if args.fail_on_changes and (regressions or changes or only_a or only_b):
-            return 2
-        if args.fail_on_trace_violations and trace_violation_increases:
-            return 3
-        if args.fail_on_trace_drift and trace_drifts:
-            return 4
-        return 0
+        return compute_diff_exit_code(computation, gate_policy)
+
+    has_differences = computation.has_differences
 
     print_header("Behavioural Diff")
     print_key_value("Baseline", run_dir_a)
@@ -407,6 +185,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print_key_value(
             "Trace violation increases", diff_report["counts"]["trace_violation_increases"]
         )
+    if trajectory_drifts:
+        print_key_value("Trajectory drifts", diff_report["counts"]["trajectory_drifts"])
 
     def print_section(title: str, items: list[tuple[str, str, str, str]]) -> None:
         if not items:
@@ -422,6 +202,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_section("Other Changes", changes)
     print_section("Trace Drifts", trace_drifts)
     print_section("Trace Violation Increases", trace_violation_increases)
+    print_section("Trajectory Drifts", trajectory_drifts)
 
     if only_a:
         print_subheader("Missing in Comparison")
@@ -437,12 +218,29 @@ def cmd_diff(args: argparse.Namespace) -> int:
         if len(only_b) > args.limit:
             print(colorize(f"  ... and {len(only_b) - args.limit} more", Colors.DIM))
 
-    if args.fail_on_regressions and regressions:
-        return 2
-    if args.fail_on_changes and (regressions or changes or only_a or only_b):
-        return 2
-    if args.fail_on_trace_violations and trace_violation_increases:
-        return 3
-    if args.fail_on_trace_drift and trace_drifts:
-        return 4
-    return 0
+    if judge_report is not None:
+        _print_judge_review(judge_report, limit=args.limit)
+
+    if interactive:
+        print_interactive_review(
+            diff_report,
+            limit=args.limit,
+            emit_subheader=print_subheader,
+            dim_text=lambda text: colorize(text, Colors.DIM),
+        )
+        if has_differences:
+            if prompt_accept_snapshot():
+                copied = copy_candidate_artifacts_to_baseline(run_dir_a, run_dir_b)
+                if copied:
+                    print_subheader("Baseline Updated")
+                    print(f"  Copied {len(copied)} artifact(s) from candidate to baseline:")
+                    for artifact_name in copied:
+                        print(f"  - {artifact_name}")
+                else:
+                    print_warning("No candidate artifacts were copied to baseline")
+                return 0
+            print_warning("Baseline unchanged (interactive review declined).")
+        else:
+            print("  Baseline already matches candidate.")
+
+    return compute_diff_exit_code(computation, gate_policy)

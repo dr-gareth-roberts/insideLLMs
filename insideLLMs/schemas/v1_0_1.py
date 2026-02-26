@@ -437,6 +437,7 @@ def get_schema_model(schema_name: str):
         - "RunnerOutput" - Returns v1.0.0 RunnerOutput (delegated)
         - "HarnessRecord" - Returns v1.0.0 HarnessRecord (delegated)
         - "HarnessSummary" - Returns v1.0.0 HarnessSummary (delegated)
+        - "HarnessExplain" - Returns v1.0.0 HarnessExplain (delegated)
         - "BenchmarkSummary" - Returns v1.0.0 BenchmarkSummary (delegated)
         - "ComparisonReport" - Returns v1.0.0 ComparisonReport (delegated)
         - "DiffReport" - Returns v1.0.0 DiffReport (delegated)

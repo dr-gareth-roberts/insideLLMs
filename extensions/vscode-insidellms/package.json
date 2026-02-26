@@ -1,0 +1,50 @@
+{
+  "name": "insidellms-tools",
+  "displayName": "insideLLMs Tools",
+  "description": "Run insideLLMs harness probes from VS Code/Cursor with Python CodeLens actions.",
+  "version": "0.1.0",
+  "publisher": "insideLLMs",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onCommand:insidellms.runProbes"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "insidellms.runProbes",
+        "title": "insideLLMs: Run Probes"
+      }
+    ],
+    "configuration": {
+      "title": "insideLLMs",
+      "properties": {
+        "insidellms.harnessConfigPath": {
+          "type": "string",
+          "default": "ci/harness.yaml",
+          "description": "Harness config file used by the Run Probes command."
+        },
+        "insidellms.runDir": {
+          "type": "string",
+          "default": ".tmp/runs/ide",
+          "description": "Run directory path for IDE-triggered harness runs."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -w -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.6.3"
+  }
+}

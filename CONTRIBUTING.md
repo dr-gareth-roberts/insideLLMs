@@ -66,6 +66,7 @@ Or use the provided helpers:
 ```bash
 make check          # Full: lint + format-check + typecheck + test
 make check-fast     # Quick: lint + format-check + test-fast (skips slow/integration)
+make docs-audit     # Docs coverage/link audit for key CLI/runtime workflows
 # or
 bash scripts/checks.sh
 ```

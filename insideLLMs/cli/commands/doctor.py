@@ -1,12 +1,22 @@
 """Doctor command: diagnose environment and optional dependencies."""
 
 import argparse
+import importlib.metadata
 import json
 import os
 import platform
 import shutil
 import sys
+import warnings
 from typing import Any, Optional
+
+from insideLLMs.registry import (
+    PLUGIN_ENTRYPOINT_GROUP,
+    dataset_registry,
+    ensure_builtins_registered,
+    model_registry,
+    probe_registry,
+)
 
 from .._output import (
     print_header,
@@ -17,6 +27,258 @@ from .._output import (
 )
 from .._parsing import _check_nltk_resource, _has_module, _module_version
 from .._record_utils import _json_default
+
+_BUILTIN_MODELS = {
+    "dummy",
+    "openai",
+    "anthropic",
+    "gemini",
+    "cohere",
+    "huggingface",
+    "llamacpp",
+    "ollama",
+    "vllm",
+}
+
+_BUILTIN_PROBES = {
+    "logic",
+    "factuality",
+    "bias",
+    "attack",
+    "prompt_injection",
+    "jailbreak",
+    "code_generation",
+    "code_explanation",
+    "code_debug",
+    "instruction_following",
+    "multi_step_task",
+    "constraint_compliance",
+}
+
+_BUILTIN_DATASETS = {"csv", "jsonl", "hf"}
+
+_MODEL_REQUIREMENTS: dict[str, dict[str, Any]] = {
+    "dummy": {"modules": [], "env": [], "notes": []},
+    "openai": {"modules": ["openai"], "env": ["OPENAI_API_KEY"], "notes": []},
+    "anthropic": {"modules": ["anthropic"], "env": ["ANTHROPIC_API_KEY"], "notes": []},
+    "gemini": {"modules": ["google.generativeai"], "env": ["GOOGLE_API_KEY"], "notes": []},
+    "cohere": {"modules": ["cohere"], "env": ["COHERE_API_KEY"], "notes": []},
+    "huggingface": {"modules": ["transformers"], "env": [], "notes": []},
+    "llamacpp": {"modules": ["llama_cpp"], "env": [], "notes": []},
+    "ollama": {
+        "modules": [],
+        "env": [],
+        "notes": ["Requires a reachable Ollama service for live generation."],
+    },
+    "vllm": {
+        "modules": [],
+        "env": [],
+        "notes": ["Requires a reachable vLLM endpoint for live generation."],
+    },
+}
+
+
+def _plugins_disabled_via_env() -> bool:
+    raw = os.environ.get("INSIDELLMS_DISABLE_PLUGINS", "").strip().lower()
+    return raw in {"1", "true", "yes"}
+
+
+def _entrypoint_plugins(group: str) -> list[dict[str, str]]:
+    try:
+        eps = importlib.metadata.entry_points()
+        if hasattr(eps, "select"):
+            selected = list(eps.select(group=group))
+        else:  # pragma: no cover (older Python)
+            selected = list(eps.get(group, []))  # type: ignore[attr-defined]
+    except Exception:
+        return []
+
+    normalized = [
+        {"name": str(getattr(ep, "name", "")), "value": str(getattr(ep, "value", ""))}
+        for ep in selected
+    ]
+    return sorted(normalized, key=lambda item: (item["name"], item["value"]))
+
+
+def _capability_status(
+    *,
+    modules: list[str],
+    credential_env: list[str],
+    notes: list[str],
+) -> dict[str, Any]:
+    missing_modules = sorted(module for module in modules if not _has_module(module))
+    missing_credentials = sorted(
+        env_name for env_name in credential_env if not bool(os.environ.get(env_name))
+    )
+    status = "ready"
+    if missing_modules and missing_credentials:
+        status = "missing_dependencies_and_credentials"
+    elif missing_modules:
+        status = "missing_dependencies"
+    elif missing_credentials:
+        status = "missing_credentials"
+    elif notes:
+        status = "requires_external_service"
+
+    return {
+        "status": status,
+        "dependency_ready": not missing_modules,
+        "credential_ready": not missing_credentials,
+        "missing_dependencies": missing_modules,
+        "missing_credentials": missing_credentials,
+        "notes": notes,
+    }
+
+
+def _build_capabilities(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        ensure_builtins_registered()
+
+    model_names = sorted(model_registry.list())
+    probe_names = sorted(probe_registry.list())
+    dataset_names = sorted(dataset_registry.list())
+
+    model_capabilities: list[dict[str, Any]] = []
+    for model_name in model_names:
+        requirements = _MODEL_REQUIREMENTS.get(
+            model_name, {"modules": [], "env": [], "notes": ["No static requirement metadata."]}
+        )
+        resolved = _capability_status(
+            modules=list(requirements.get("modules", [])),
+            credential_env=list(requirements.get("env", [])),
+            notes=list(requirements.get("notes", [])),
+        )
+        model_capabilities.append(
+            {
+                "name": model_name,
+                "source": "builtin" if model_name in _BUILTIN_MODELS else "plugin",
+                **resolved,
+            }
+        )
+
+    probe_capabilities = [
+        {
+            "name": probe_name,
+            "source": "builtin" if probe_name in _BUILTIN_PROBES else "plugin",
+            "status": "ready",
+        }
+        for probe_name in probe_names
+    ]
+    dataset_capabilities = [
+        {
+            "name": dataset_name,
+            "source": "builtin" if dataset_name in _BUILTIN_DATASETS else "plugin",
+            "status": "ready",
+        }
+        for dataset_name in dataset_names
+    ]
+
+    check_map = {item["name"]: item for item in checks}
+
+    def _ok(name: str) -> bool:
+        return bool(check_map.get(name, {}).get("ok"))
+
+    extras = [
+        {
+            "name": "nlp",
+            "ready": all(
+                _ok(check_name)
+                for check_name in (
+                    "nltk",
+                    "sklearn",
+                    "spacy",
+                    "gensim",
+                    "nltk:punkt",
+                    "nltk:vader_lexicon",
+                    "spacy:en_core_web_sm",
+                )
+            ),
+            "checks": [
+                "nltk",
+                "sklearn",
+                "spacy",
+                "gensim",
+                "nltk:punkt",
+                "nltk:vader_lexicon",
+                "spacy:en_core_web_sm",
+            ],
+        },
+        {
+            "name": "visualization",
+            "ready": all(
+                _ok(check_name)
+                for check_name in ("matplotlib", "pandas", "seaborn", "plotly", "ipywidgets")
+            ),
+            "checks": ["matplotlib", "pandas", "seaborn", "plotly", "ipywidgets"],
+        },
+        {
+            "name": "verifiable_evaluation",
+            "ready": all(_ok(check_name) for check_name in ("ultimate:tuf", "ultimate:cosign", "ultimate:oras")),
+            "checks": ["ultimate:tuf", "ultimate:cosign", "ultimate:oras"],
+        },
+    ]
+
+    report_outputs = [
+        {"name": "summary.json", "available": True, "requires": []},
+        {"name": "report.html_basic", "available": True, "requires": []},
+        {"name": "report.html_interactive", "available": _ok("plotly"), "requires": ["plotly"]},
+        {"name": "schema_validate", "available": _ok("pydantic"), "requires": ["pydantic"]},
+    ]
+
+    plugin_model_names = [name for name in model_names if name not in _BUILTIN_MODELS]
+    plugin_probe_names = [name for name in probe_names if name not in _BUILTIN_PROBES]
+    plugin_dataset_names = [name for name in dataset_names if name not in _BUILTIN_DATASETS]
+
+    plugins_disabled = _plugins_disabled_via_env()
+    plugin_entrypoints = _entrypoint_plugins(PLUGIN_ENTRYPOINT_GROUP)
+
+    return {
+        "models": model_capabilities,
+        "probes": probe_capabilities,
+        "datasets": dataset_capabilities,
+        "extras": extras,
+        "reports": report_outputs,
+        "plugins": {
+            "entry_point_group": PLUGIN_ENTRYPOINT_GROUP,
+            "auto_loading_enabled": not plugins_disabled,
+            "disabled_by_env": plugins_disabled,
+            "discovered_entry_points": plugin_entrypoints,
+            "registered_extensions": {
+                "models": plugin_model_names,
+                "probes": plugin_probe_names,
+                "datasets": plugin_dataset_names,
+            },
+        },
+    }
+
+
+def _print_capabilities_summary(capabilities: dict[str, Any]) -> None:
+    print_subheader("Capabilities")
+    models = capabilities.get("models", [])
+    ready_models = [m for m in models if m.get("status") == "ready"]
+    blocked_models = [m for m in models if m.get("status") != "ready"]
+    print_key_value("Models (ready/total)", f"{len(ready_models)}/{len(models)}")
+    for item in blocked_models:
+        print_warning(f"model:{item.get('name')} ({item.get('status')})")
+
+    probes = capabilities.get("probes", [])
+    datasets = capabilities.get("datasets", [])
+    print_key_value("Probes (total)", str(len(probes)))
+    print_key_value("Datasets (total)", str(len(datasets)))
+
+    extras = capabilities.get("extras", [])
+    for extra in extras:
+        if extra.get("ready"):
+            print_success(f"extra:{extra.get('name')}")
+        else:
+            print_warning(f"extra:{extra.get('name')} (missing checks)")
+
+    plugins = capabilities.get("plugins", {})
+    discovered = plugins.get("discovered_entry_points", [])
+    print_key_value("Plugins discovered", str(len(discovered)))
+    if plugins.get("disabled_by_env"):
+        print_warning("plugin auto-loading is disabled by INSIDELLMS_DISABLE_PLUGINS")
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -113,8 +375,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         and not c["ok"]
     ]
 
+    include_capabilities = bool(getattr(args, "capabilities", False))
+    capabilities = _build_capabilities(checks) if include_capabilities else None
+
     if args.format == "json":
         payload = {"checks": checks, "warnings": warn_checks}
+        if capabilities is not None:
+            payload["capabilities"] = capabilities
         print(json.dumps(payload, indent=2, default=_json_default))
         return 1 if (args.fail_on_warn and warn_checks) else 0
 
@@ -130,6 +397,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         else:
             hint = f" ({item['hint']})" if item.get("hint") else ""
             print_warning(f"{item['name']}{hint}")
+
+    if capabilities is not None:
+        print()
+        _print_capabilities_summary(capabilities)
 
     if warn_checks:
         print()

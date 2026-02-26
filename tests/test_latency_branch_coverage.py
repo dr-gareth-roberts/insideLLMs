@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from insideLLMs import latency as latency_module
 from insideLLMs.latency import (
     LatencyMetric,
@@ -18,6 +20,8 @@ from insideLLMs.latency import (
     measure_latency,
     quick_performance_check,
 )
+
+pytestmark = pytest.mark.performance
 
 
 def _latency_stats(mean: float, std: float, p99: float) -> LatencyStats:

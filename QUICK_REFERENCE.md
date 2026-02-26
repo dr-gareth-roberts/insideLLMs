@@ -30,6 +30,18 @@ insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite
 insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
 ```
 
+### Advanced Diff & Harness Flags
+```bash
+# Adaptive adversarial red-team harness mode
+insidellms harness config.yaml --active-red-team --red-team-rounds 3 --red-team-attempts-per-round 50
+
+# Diff triage with deterministic judge
+insidellms diff ./baseline ./candidate --judge --judge-policy balanced
+
+# Gate on agent/tool trajectory drift
+insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
+```
+
 ### Basic Usage
 ```python
 from insideLLMs.models import OpenAIModel
