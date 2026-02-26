@@ -254,7 +254,6 @@ class ClusteringMethod(Enum):
         Density-Based Spatial Clustering of Applications with Noise.
         Finds clusters of arbitrary shape based on density.
         Best for: Unknown number of clusters, noise detection.
-        Note: Currently not implemented, raises NotImplementedError.
 
     Examples
     --------

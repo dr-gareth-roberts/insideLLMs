@@ -2,7 +2,7 @@
 
 import pytest
 
-from insideLLMs.statistics import (
+from insideLLMs.analysis.statistics import (
     ConfidenceInterval,
     HypothesisTestResult,
     bootstrap_confidence_interval,

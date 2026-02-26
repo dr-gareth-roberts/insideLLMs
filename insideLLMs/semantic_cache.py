@@ -176,7 +176,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, TypeVar, Union
 
-from insideLLMs.caching_unified import CacheEntryMixin
+from insideLLMs.caching import CacheEntryMixin
 
 # Optional Redis import
 try:

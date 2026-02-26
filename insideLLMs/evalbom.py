@@ -54,19 +54,19 @@ def emit_spdx3(run_dir: Path | str) -> dict[str, Any]:
             manifest = json.loads(manifest_path.read_text())
             if "model" in manifest and "model_id" in manifest["model"]:
                 elements.append({
-                    "type": "software",
+                    "type": "Software",
                     "name": manifest["model"]["model_id"],
                     "primaryPurpose": "machine-learning-model",
                 })
             if "probe" in manifest and "probe_id" in manifest["probe"]:
                 elements.append({
-                    "type": "software",
+                    "type": "Software",
                     "name": manifest["probe"]["probe_id"],
                     "primaryPurpose": "application",
                 })
             if "dataset" in manifest and "dataset_id" in manifest["dataset"]:
                 elements.append({
-                    "type": "dataset",
+                    "type": "Dataset",
                     "name": manifest["dataset"]["dataset_id"],
                 })
         except Exception:

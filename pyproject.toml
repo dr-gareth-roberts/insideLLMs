@@ -1,6 +1,6 @@
 [project]
 name = "insideLLMs"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cross-model behavioural probe harness for LLM evaluation and comparison."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
@@ -77,8 +77,12 @@ langchain = [
     "langchain-core",
     "langgraph",
 ]
+serving = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+]
 all = [
-    "insideLLMs[nlp,visualization,dev]",
+    "insideLLMs[nlp,visualization,dev,serving]",
 ]
 
 [project.scripts]
@@ -136,7 +140,6 @@ known-first-party = ["insideLLMs"]
 [tool.ruff.lint.per-file-ignores]
 "examples/**/*.py" = ["ARG", "F401", "UP"]
 "tests/**/*.py" = ["ARG", "B017", "E741", "F401", "SIM", "UP"]
-"insideLLMs/cache.py" = ["E402"]
 "insideLLMs/caching.py" = ["E402"]
 
 [tool.mypy]
@@ -183,6 +186,7 @@ addopts = [
     "--strict-markers",
 ]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",

@@ -168,7 +168,7 @@ class _BaseSchema(BaseModel):
     """
 
     if _PYDANTIC_V2:
-        model_config = ConfigDict(extra="forbid")
+        model_config = ConfigDict(extra="forbid", protected_namespaces=())
     else:  # Pydantic v1
 
         class Config:

@@ -1847,7 +1847,7 @@ def generate_statistical_report(
     insideLLMs.statistics.generate_summary_report : Underlying statistics function
     experiment_to_markdown : Single experiment report
     """
-    from insideLLMs.statistics import (
+    from insideLLMs.analysis.statistics import (
         generate_summary_report,
     )
 

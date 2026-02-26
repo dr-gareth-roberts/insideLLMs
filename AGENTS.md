@@ -37,7 +37,6 @@ This file provides guidance to Verdent when working with code in this repository
 - Development entry points
   - CLI: `insideLLMs.cli:main` (`insidellms`)
   - Runner (canonical): `insideLLMs.runtime.runner`
-  - Back-compat shims: `insideLLMs.runner`, `insideLLMs.reproducibility`
 - Mermaid diagram of subsystem relationships
   - (Simplified from `ARCHITECTURE.md`)
 ```mermaid
