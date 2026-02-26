@@ -1265,6 +1265,7 @@ def register_builtins() -> None:
     Registered Models:
         - dummy: DummyModel for testing
         - openai: OpenAI API models (GPT-3.5, GPT-4, etc.)
+        - openrouter: OpenRouter OpenAI-compatible API models
         - anthropic: Anthropic API models (Claude)
         - gemini: Google Gemini models
         - cohere: Cohere API models
@@ -1356,6 +1357,9 @@ def register_builtins() -> None:
     # Hosted/API models (optional SDK dependencies).
     model_registry.register(
         "openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel")
+    )
+    model_registry.register(
+        "openrouter", _lazy_import_factory("insideLLMs.models.openrouter", "OpenRouterModel")
     )
     model_registry.register(
         "anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel")

@@ -51,11 +51,19 @@ python examples/example_harness_programmatic.py
 - `examples/example_experiment_tracking.py`: tracking backends
 - `examples/example_interactive_visualization.py`: report/visualization helpers
 - `examples/example_nlp.py`: NLP utilities
+- `examples/example_ollama_cloud_harness_diff.py`: Ollama Cloud harness double-run + diff (Python)
+- `examples/example_openrouter_advanced.py`: OpenRouter advanced harness + stats + diff
+- `examples/killer_feature_1_ci_gate.py`: deterministic behavioral CI gate workflow
+- `examples/killer_feature_2_trace_guard.py`: trace-aware drift + violation guardrails
+- `examples/killer_feature_3_model_selection.py`: model-selection workflow + statistical report
+- `examples/parallel_killer_features.md`: map for splitting killer features across parallel envs
 
 ## Example configs
 
 - `examples/experiment.yaml`: minimal offline `insidellms run` config
 - `examples/harness.yaml`: sample hosted-model harness config (requires API keys)
 - `examples/harness_ollama_cloud_deepseek_battery.yaml`: Ollama DeepSeek battery (set `OLLAMA_API_KEY`)
+- `examples/ollama_cloud_benchmark.md`: detailed Ollama Cloud all-model benchmark walkthrough
 - `examples/probe_battery.jsonl`: small multi-probe dataset for battery runs
+- `scripts/ollama_cloud_harness_diff.sh`: helper script to run the Ollama Cloud harness twice + diff
 - `ci/harness.yaml`: minimal offline harness used for CI diff-gating
