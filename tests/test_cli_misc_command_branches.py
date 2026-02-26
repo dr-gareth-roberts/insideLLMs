@@ -154,9 +154,7 @@ def test_cmd_export_html_and_invalid_json_error_paths(tmp_path, capsys):
 def test_cmd_export_redact_pii_applies_redaction(tmp_path):
     """--redact-pii redacts PII before export."""
     input_file = tmp_path / "results.json"
-    input_file.write_text(
-        json.dumps([{"email": "user@example.com", "output": "Hello"}])
-    )
+    input_file.write_text(json.dumps([{"email": "user@example.com", "output": "Hello"}]))
     output_file = tmp_path / "out.csv"
 
     rc = cmd_export(
@@ -200,9 +198,7 @@ def test_cmd_export_jsonl_format_writes_jsonl(tmp_path):
     input_file.write_text(json.dumps([{"id": 1}, {"id": 2}]))
     output_file = tmp_path / "out.jsonl"
 
-    rc = cmd_export(
-        _export_args(input=str(input_file), format="jsonl", output=str(output_file))
-    )
+    rc = cmd_export(_export_args(input=str(input_file), format="jsonl", output=str(output_file)))
 
     assert rc == 0
     lines = output_file.read_text().strip().split("\n")

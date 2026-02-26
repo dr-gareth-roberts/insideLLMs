@@ -31,6 +31,7 @@ class OpenRouterModel(OpenAIModel):
         extra_headers: Optional[dict[str, str]] = None,
         **kwargs,
     ):
+        self._openrouter_base_url = base_url
         default_headers: dict[str, str] = {}
         referer = (
             http_referer
@@ -63,7 +64,11 @@ class OpenRouterModel(OpenAIModel):
                     "Requires OPENROUTER_API_KEY env variable."
                 ),
                 "provider": "openrouter",
-                "base_url": self._base_url,
+                "base_url": getattr(
+                    self,
+                    "_base_url",
+                    getattr(self, "_openrouter_base_url", "https://openrouter.ai/api/v1"),
+                ),
             }
         )
         return base_info

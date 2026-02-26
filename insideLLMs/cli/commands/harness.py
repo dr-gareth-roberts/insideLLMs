@@ -243,11 +243,11 @@ def cmd_harness(args: argparse.Namespace) -> int:
             "records_file": "records.jsonl",
             "schemas": {"RunManifest": args.schema_version, "ResultRecord": args.schema_version},
             "custom": {
-                    "status_counts": {
-                        "success": success_count,
-                        "error": error_count,
-                        "timeout": timeout_count,
-                    },
+                "status_counts": {
+                    "success": success_count,
+                    "error": error_count,
+                    "timeout": timeout_count,
+                },
                 "harness": {
                     "models": models_cfg,
                     "probes": probes_cfg,
@@ -255,7 +255,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     "max_examples": result.get("config", {}).get("max_examples"),
                     "experiment_count": len(result.get("experiments", [])),
                     "legacy_results_file": "results.jsonl",
-                        "timeout_count": timeout_count,
+                    "timeout_count": timeout_count,
                 },
                 "determinism": {
                     "strict_serialization": strict_serialization,

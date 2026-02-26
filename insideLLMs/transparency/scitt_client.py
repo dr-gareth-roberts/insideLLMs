@@ -10,7 +10,6 @@ import json
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 from typing import Any
 
 from insideLLMs.crypto.canonical import digest_obj
@@ -81,10 +80,8 @@ def submit_statement(
             last_error = ScittSubmissionError(f"SCITT HTTP {e.code}: {e.reason}")
             if e.code and 400 <= e.code < 500:
                 break
-        except TimeoutError as e:
-            last_error = ScittTimeoutError(
-                f"SCITT request timed out after {timeout}s"
-            )
+        except TimeoutError:
+            last_error = ScittTimeoutError(f"SCITT request timed out after {timeout}s")
         except OSError as e:
             last_error = ScittSubmissionError(f"SCITT request failed: {e}")
         if attempt < retries:
