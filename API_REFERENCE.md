@@ -20,6 +20,7 @@ For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTUR
 5. [Dataset Utilities](#dataset-utilities)
 6. [NLP Utilities](#nlp-utilities)
 7. [Type Definitions](#type-definitions)
+8. [CLI Verifiable Evaluation Commands](#cli-verifiable-evaluation-commands)
 
 ---
 
@@ -1150,6 +1151,52 @@ Load a configuration file.
 **Supported Formats:**
 - YAML (.yaml, .yml)
 - JSON (.json)
+
+---
+
+## CLI Verifiable Evaluation Commands
+
+These commands support provenance-oriented workflows around run artifacts.
+
+### `insidellms attest <run_dir>`
+
+Generate DSSE attestations for an existing run directory (Ultimate mode).
+
+**Purpose:** Creates attestation payloads under `<run_dir>/attestations`.
+
+**Requirements:**
+- `<run_dir>/manifest.json` must exist.
+
+### `insidellms sign <run_dir>`
+
+Sign generated attestation envelopes using Sigstore.
+
+**Purpose:** Signs `*.dsse.json` files and writes bundles into `<run_dir>/signing`.
+
+**Requirements:**
+- `cosign` must be installed and available on `PATH`.
+- `<run_dir>/attestations` must exist (run `insidellms attest` first).
+
+### `insidellms verify-signatures <run_dir> [--identity ...]`
+
+Verify attestation signatures against generated bundles.
+
+**Purpose:** Validates each `*.dsse.json` against the matching `.sigstore.bundle.json`.
+
+**Requirements:**
+- `cosign` must be installed and available on `PATH`.
+- `<run_dir>/attestations` and `<run_dir>/signing` must both exist.
+- Optional `--identity` can enforce signer identity constraints.
+
+### Readiness Check
+
+Use doctor diagnostics to verify common Ultimate dependencies:
+
+```bash
+insidellms doctor --format text
+```
+
+This includes checks for `ultimate:tuf`, `ultimate:cosign`, and `ultimate:oras`.
 
 ---
 

@@ -20,12 +20,12 @@ This file provides guidance to Verdent when working with code in this repository
 
 ## Architecture
 - Major subsystems & responsibilities
-  - `insideLLMs/cli.py`: CLI entrypoint (`insidellms` script) and subcommands (`run`, `harness`, `report`, `diff`, `schema`, `doctor`, etc.).
+  - `insideLLMs/cli/__init__.py` + `insideLLMs/cli/commands/*`: CLI entrypoint (`insidellms` script) and subcommands (`run`, `harness`, `report`, `diff`, `schema`, `doctor`, etc.).
   - `insideLLMs/runtime/runner.py`: canonical execution engine (`ProbeRunner`, `AsyncProbeRunner`) and config-driven run/harness orchestration.
   - `insideLLMs/registry.py` + registries: model/probe/dataset registration + lookup used by config-driven flows.
   - `insideLLMs/schemas/` + `insideLLMs/trace_contracts.py`: versioned output schemas + validation utilities (used by `schema validate` and optional runtime validation).
   - `insideLLMs/results.py`, `insideLLMs/export.py`, `insideLLMs/visualization.py`: aggregation + report generation (`summary.json`, `report.html`, exports).
-  - `insideLLMs/caching_unified.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`: infra modules used by model adapters / pipelines (not all enforced by runner).
+  - `insideLLMs/caching.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`: infra modules used by model adapters / pipelines (not all enforced by runner).
   - `insideLLMs/models/` and `insideLLMs/probes/`: provider adapters + probe implementations.
 - Key data flows and request/response lifecycles
   - Deterministic spine: config → runner/harness → `records.jsonl` (canonical) → `summary.json`/`report.html` → `diff.json` (CI-friendly surface).
@@ -41,7 +41,7 @@ This file provides guidance to Verdent when working with code in this repository
   - (Simplified from `ARCHITECTURE.md`)
 ```mermaid
 graph TD
-  CLI[insideLLMs/cli.py] --> Runner[insideLLMs/runtime/runner.py]
+  CLI[insideLLMs/cli package] --> Runner[insideLLMs/runtime/runner.py]
   Runner --> Registry[insideLLMs/registry.py]
   Runner --> Datasets[insideLLMs/dataset_utils.py]
   Runner --> Probes[insideLLMs/probes/*]
@@ -69,13 +69,13 @@ graph TD
   - Local file datasets are content-addressed (`dataset_hash=sha256:<...>`) and included in `run_id`.
 - CI constraints (from `.github/workflows/ci.yml`)
   - CI runs Ruff lint + Ruff format check + Mypy on 3.12 and Pytest on 3.10/3.11/3.12.
-  - Coverage gating is enforced: `--cov-fail-under=80` for `insideLLMs`.
+  - Coverage gating is enforced: `--cov-fail-under=95` for `insideLLMs`.
   - Tests should write run artifacts under `INSIDELLMS_RUN_ROOT` when applicable.
 
 ## Development Hints
 - Adding a new API endpoint
   - [inferred] Treat this as “adding a new CLI subcommand or public runner entrypoint”.
-  - CLI: add subcommand wiring in `insideLLMs/cli.py` (`create_parser` + `cmd_*`), then route into `insideLLMs.runtime.runner` functions/classes.
+  - CLI: add subcommand wiring in `insideLLMs/cli/_parsing.py` (`create_parser`) and `insideLLMs/cli/commands/*`, then route into `insideLLMs.runtime.runner` functions/classes.
   - Keep the canonical artifact surface deterministic (ordering, timestamps, stable JSON emission).
 - Modifying CI/CD pipeline
   - Work in `.github/workflows/ci.yml`; keep the lint/typecheck/test split consistent with local `Makefile` targets.

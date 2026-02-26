@@ -1,5 +1,8 @@
 ## Determinism
 
+This page is the canonical determinism guide for the repository.
+For field-level artifact guarantees, see `docs/ARTIFACT_CONTRACT.md`.
+
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI diff-gating.
 For the same inputs and configuration, run directories are intended to be byte-for-byte identical.
 This assumes the model responses themselves are identical (e.g., deterministic sampling settings,

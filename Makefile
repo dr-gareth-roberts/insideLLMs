@@ -1,4 +1,4 @@
-.PHONY: help lint format format-check typecheck test test-fast check golden-path
+.PHONY: help lint format format-check typecheck test test-fast check check-fast golden-path
 
 help:
 	@echo "insideLLMs developer commands"
@@ -10,6 +10,7 @@ help:
 	@echo "  make test          - pytest"
 	@echo "  make test-fast     - pytest -m \"not slow and not integration\""
 	@echo "  make check         - lint + format-check + typecheck + test"
+	@echo "  make check-fast    - lint + format-check + test-fast (quick pre-commit)"
 	@echo "  make golden-path   - offline harness + diff (DummyModel)"
 
 lint:
@@ -32,6 +33,8 @@ test-fast:
 	pytest -m "not slow and not integration"
 
 check: lint format-check typecheck test
+
+check-fast: lint format-check test-fast
 
 golden-path:
 	python -m insideLLMs.cli harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite --skip-report

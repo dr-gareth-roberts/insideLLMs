@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import platform
+import shutil
 import sys
 from typing import Any, Optional
 
@@ -66,6 +67,23 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     # Optional integrations
     add_check(name="redis", ok=_has_module("redis"), hint="pip install redis")
     add_check(name="datasets", ok=_has_module("datasets"), hint="pip install datasets")
+
+    # Ultimate/verifiable-evaluation tooling readiness
+    add_check(
+        name="ultimate:tuf",
+        ok=_has_module("tuf"),
+        hint='pip install "tuf>=3.0.0"',
+    )
+    add_check(
+        name="ultimate:cosign",
+        ok=shutil.which("cosign") is not None,
+        hint="install cosign: https://docs.sigstore.dev/cosign/system_config/installation/",
+    )
+    add_check(
+        name="ultimate:oras",
+        ok=shutil.which("oras") is not None,
+        hint="install oras: https://oras.land/docs/installation",
+    )
 
     # API keys (informational)
     add_check(name="OPENAI_API_KEY", ok=bool(os.environ.get("OPENAI_API_KEY")), hint="set env var")

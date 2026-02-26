@@ -78,3 +78,6 @@ class TestDoctorCommand:
         assert "OPENAI_API_KEY" in names
         assert "ANTHROPIC_API_KEY" in names
         assert "INSIDELLMS_RUN_ROOT" in names
+        assert "ultimate:tuf" in names
+        assert "ultimate:cosign" in names
+        assert "ultimate:oras" in names

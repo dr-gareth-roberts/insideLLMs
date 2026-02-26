@@ -83,6 +83,13 @@ flowchart LR
 
 ---
 
+### [ci/README.md](ci/README.md)
+**How to extend the CI harness** with additional low-cost probes while preserving offline determinism.
+
+**Best for:** Adding probes to CI diff-gating, understanding harness.yaml and harness_dataset.jsonl
+
+---
+
 ### [docs/PLUGINS.md](docs/PLUGINS.md)
 **How to extend insideLLMs without forking** using Python entry points.
 
@@ -105,6 +112,34 @@ for CLI, artifacts, schemas, and extension points.
 
 ---
 
+### [docs/DETERMINISM.md](docs/DETERMINISM.md)
+**Deterministic artifact guarantees** for CI diff-gating.
+
+**Best for:** Reproducibility expectations, deterministic controls, local verification workflow
+
+---
+
+### [docs/ARTIFACT_CONTRACT.md](docs/ARTIFACT_CONTRACT.md)
+**Field-level contract for canonical run artifacts** (`records.jsonl`, `manifest.json`, `summary.json`, `report.html`).
+
+**Best for:** Contributor implementation checks, artifact compatibility reviews, schema-change impact
+
+---
+
+### [docs/CRYPTO_DIGEST_CONTRACT.md](docs/CRYPTO_DIGEST_CONTRACT.md)
+**Digest descriptor contract** for external verifiers: `purpose`, `algo`, `canon_version` fields and Merkle root descriptors.
+
+**Best for:** Verifying attestations, interpreting provenance digests, building external verifier tooling
+
+---
+
+### [docs/IMPORT_PATHS.md](docs/IMPORT_PATHS.md)
+**Import path migration matrix** for canonical vs deprecated vs shim paths.
+
+**Best for:** Updating imports after module moves, identifying canonical locations, avoiding internal modules
+
+---
+
 ### [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
 **Experiment tracking backends** for logging metrics/params/artifacts (local, W&B, MLflow, TensorBoard).
 
@@ -123,6 +158,13 @@ for CLI, artifacts, schemas, and extension points.
 **Trace-aware diffing and fingerprinting** for CI gating and drift detection.
 
 **Best for:** Understanding `insidellms diff` trace flags and structured-output fingerprints
+
+---
+
+### [wiki/advanced/Verifiable-Evaluation.md](wiki/advanced/Verifiable-Evaluation.md)
+**Provenance-oriented workflows** for attestations, signature verification, SCITT receipts, and OCI publishing.
+
+**Best for:** Security/compliance-aligned evaluation flows and end-to-end assurance quickstarts
 
 ---
 
@@ -162,6 +204,12 @@ for CLI, artifacts, schemas, and extension points.
 
 #### **Use trace-aware diffing**
 → [wiki/Tracing-and-Fingerprinting.md](wiki/Tracing-and-Fingerprinting.md)
+
+#### **Run verifiable-evaluation workflows (attest/sign/verify)**
+→ [wiki/advanced/Verifiable-Evaluation.md](wiki/advanced/Verifiable-Evaluation.md), [API_REFERENCE.md - CLI Verifiable Evaluation Commands](API_REFERENCE.md#cli-verifiable-evaluation-commands)
+
+#### **Validate JSON/JSONL artifacts against schemas**
+→ [README.md - Schema Validation Commands](README.md#schema-validation-commands), [wiki/reference/CLI.md](wiki/reference/CLI.md#schema)
 
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
@@ -207,6 +255,16 @@ for CLI, artifacts, schemas, and extension points.
 | Benchmarking | API_REFERENCE.md | [ModelBenchmark](API_REFERENCE.md#modelbenchmark) |
 | Config files | API_REFERENCE.md | [Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution) |
 | Quick examples | QUICK_REFERENCE.md | [Runners](QUICK_REFERENCE.md#runners) |
+
+### Verifiable Evaluation
+
+| Topic | Document | Section |
+|-------|----------|---------|
+| Determinism guarantees | docs/DETERMINISM.md | [Determinism controls](docs/DETERMINISM.md#determinism-controls-strict-mode) |
+| Artifact field contract | docs/ARTIFACT_CONTRACT.md | [records + manifest expectations](docs/ARTIFACT_CONTRACT.md) |
+| Digest descriptor contract | docs/CRYPTO_DIGEST_CONTRACT.md | [purpose, algo, canon_version](docs/CRYPTO_DIGEST_CONTRACT.md) |
+| Provenance quickstart | wiki/advanced/Verifiable-Evaluation.md | [Quickstart](wiki/advanced/Verifiable-Evaluation.md#quickstart-attest-sign-verify) |
+| CLI command reference | wiki/reference/CLI.md | [`attest` / `sign` / `verify-signatures`](wiki/reference/CLI.md#attest) |
 
 ### Data Management
 
@@ -269,9 +327,14 @@ for CLI, artifacts, schemas, and extension points.
 ## Additional Resources
 
 - **Examples:** See `examples/` directory for runnable code
+- **Compliance Intelligence:** See `compliance_intelligence/` for a multi-agent AML/KYC demo (LangGraph; separate from core insideLLMs)
 - **Tests:** See `tests/` directory for usage examples
 - **Configuration:** See `README.md` and `QUICK_REFERENCE.md` for sample configurations
 - **Source Code:** Browse `insideLLMs/` for implementation details
+
+## Archival (Historical Planning Docs)
+
+- **docs/plans/**: Historical implementation plans and migration notes. See [docs/plans/README.md](docs/plans/README.md). These are **not** current API guidance; use `docs/STABILITY_MATRIX.md` and `docs/IMPORT_PATHS.md` for up-to-date contracts.
 
 ---
 
@@ -284,5 +347,5 @@ If you find errors or have suggestions for improving the documentation:
 
 ---
 
-**Last Updated:** January 17, 2026  
-**Version:** 0.1.0
+**Last Updated:** February 26, 2026  
+**Version:** 0.2.0

@@ -46,3 +46,12 @@ def register(*, model_registry, probe_registry, dataset_registry) -> None:
     model_registry.register("my_model", MyModel)
 ```
 
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Plugins not discovered | `INSIDELLMS_DISABLE_PLUGINS=1` set | Unset or remove the env var |
+| Import errors when loading plugin | Missing dependency or wrong module path in entry point | Check `pyproject.toml` entry point value; ensure package is installed (`pip install -e .`) |
+| Registration collisions | Two plugins register the same name | Use unique names; check `model_registry`, `probe_registry`, `dataset_registry` for existing keys |
+| Plugin loads but model/probe not found | Entry point runs but doesn't call `registry.register()` | Ensure `register()` is invoked with the correct registry and key |
+

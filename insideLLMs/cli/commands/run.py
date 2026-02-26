@@ -3,14 +3,15 @@
 import argparse
 import asyncio
 import json
-import os
 import sys
 import time
+import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from insideLLMs.results import results_to_markdown, save_results_json
+from insideLLMs.runtime._artifact_utils import _default_run_root
 from insideLLMs.runtime.runner import (
     derive_run_id_from_config_path,
     run_experiment_from_config,
@@ -31,6 +32,7 @@ from .._output import (
     print_warning,
 )
 from .._record_utils import _json_default
+from ._run_common import create_tracker, iter_standard_run_artifacts
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -59,12 +61,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         tracker = None
 
         # Resolve deterministic run artifact location (used for both runner and UX hints)
-        env_run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
-        default_run_root = (
-            Path(env_run_root).expanduser().absolute()
-            if env_run_root
-            else Path.home() / ".insidellms" / "runs"
-        )
+        default_run_root = _default_run_root().expanduser().absolute()
         if args.run_id:
             resolved_run_id = args.run_id
         else:
@@ -83,39 +80,14 @@ def cmd_run(args: argparse.Namespace) -> int:
             else (effective_run_root / resolved_run_id)
         )
 
-        if args.track:
-            try:
-                from insideLLMs.experiment_tracking import TrackingConfig, create_tracker
-
-                tracking_root = effective_run_dir.parent / "tracking"
-
-                tracker_kwargs: dict[str, Any] = {}
-                if args.track == "local":
-                    tracker_kwargs["output_dir"] = str(tracking_root)
-                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
-                elif args.track == "wandb":
-                    tracker_kwargs["project"] = args.track_project
-                elif args.track == "mlflow":
-                    tracker_kwargs["experiment_name"] = args.track_project
-                elif args.track == "tensorboard":
-                    tracker_kwargs["log_dir"] = str(
-                        tracking_root / "tensorboard" / args.track_project
-                    )
-                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
-
-                tracker = create_tracker(args.track, **tracker_kwargs)
-                tracker.start_run(run_name=resolved_run_id, run_id=resolved_run_id)
-                tracker.log_params(
-                    {
-                        "run_id": resolved_run_id,
-                        "run_dir": str(effective_run_dir),
-                        "config_path": str(config_path),
-                        "schema_version": args.schema_version,
-                    }
-                )
-            except Exception as e:
-                print_warning(f"Tracking disabled: {e}")
-                tracker = None
+        tracker = create_tracker(
+            backend=args.track,
+            project=args.track_project,
+            run_dir=effective_run_dir,
+            run_id=resolved_run_id,
+            config_path=config_path,
+            schema_version=args.schema_version,
+        )
 
         if args.use_async:
             print_info(f"Using async execution with concurrency={args.concurrency}")
@@ -172,14 +144,14 @@ def cmd_run(args: argparse.Namespace) -> int:
                 }
                 for r in experiment_result.results
             ]
-            success_count = experiment_result.success_count
-            error_count = experiment_result.error_count
             total = experiment_result.total_count
         else:
             raw_results = results
-            success_count = sum(1 for r in results if r.get("status") == "success")
-            error_count = sum(1 for r in results if r.get("status") == "error")
             total = len(results)
+
+        success_count = sum(1 for r in raw_results if r.get("status") == "success")
+        error_count = sum(1 for r in raw_results if r.get("status") == "error")
+        timeout_count = sum(1 for r in raw_results if r.get("status") == "timeout")
 
         # Output results
         if args.output:
@@ -198,9 +170,12 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(results_to_markdown(raw_results))
         elif args.format == "summary":
             # Minimal summary output
-            print(
+            summary_text = (
                 f"OK {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
             )
+            if timeout_count:
+                summary_text += f", timeouts: {timeout_count}"
+            print(summary_text)
         else:  # table format
             print_subheader("Results Summary")
             print_key_value("Total items", total)
@@ -208,6 +183,11 @@ def cmd_run(args: argparse.Namespace) -> int:
                 "Successful", f"{success_count} ({success_count / max(1, total) * 100:.1f}%)"
             )
             print_key_value("Errors", f"{error_count} ({error_count / max(1, total) * 100:.1f}%)")
+            if timeout_count:
+                print_key_value(
+                    "Timeouts",
+                    f"{timeout_count} ({timeout_count / max(1, total) * 100:.1f}%)",
+                )
             print_key_value("Duration", f"{elapsed:.2f}s")
 
             if raw_results:
@@ -247,6 +227,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                     "total_count": float(total),
                     "success_count": float(success_count),
                     "error_count": float(error_count),
+                    "timeout_count": float(timeout_count),
                 }
 
                 latency_values = [
@@ -263,13 +244,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
                 tracker.log_metrics(metrics)
 
-                for artifact in (
-                    effective_run_dir / "manifest.json",
-                    effective_run_dir / "records.jsonl",
-                    effective_run_dir / "config.resolved.yaml",
-                    effective_run_dir / "summary.json",
-                    effective_run_dir / "report.html",
-                ):
+                for artifact in iter_standard_run_artifacts(effective_run_dir):
                     if artifact.exists():
                         tracker.log_artifact(str(artifact), artifact_name=artifact.name)
 
@@ -300,7 +275,5 @@ def cmd_run(args: argparse.Namespace) -> int:
                 pass
         print_error(f"Error running experiment: {e}")
         if args.verbose:
-            import traceback
-
             traceback.print_exc()
         return 1
