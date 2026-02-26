@@ -129,14 +129,17 @@ try:
 except ImportError:
     MLFLOW_AVAILABLE = False
 
+SummaryWriter: Any | None = None
 try:
-    from torch.utils.tensorboard import SummaryWriter
+    from torch.utils.tensorboard import SummaryWriter as _TorchSummaryWriter
 
+    SummaryWriter = _TorchSummaryWriter
     TENSORBOARD_AVAILABLE = True
 except ImportError:
     try:
-        from tensorboardX import SummaryWriter
+        from tensorboardX import SummaryWriter as _TBXSummaryWriter
 
+        SummaryWriter = _TBXSummaryWriter
         TENSORBOARD_AVAILABLE = True
     except ImportError:
         TENSORBOARD_AVAILABLE = False
@@ -1731,7 +1734,7 @@ class TensorBoardTracker(ExperimentTracker):
 
         super().__init__(config)
         self.log_dir = log_dir
-        self._writer: Optional[SummaryWriter] = None
+        self._writer: Optional[Any] = None
 
     def start_run(
         self,

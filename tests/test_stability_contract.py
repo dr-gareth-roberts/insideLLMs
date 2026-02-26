@@ -16,7 +16,16 @@ def _subcommand_names() -> set[str]:
 
 def test_stable_cli_commands_exist() -> None:
     commands = _subcommand_names()
-    assert {"run", "harness", "diff", "report", "schema"}.issubset(commands)
+    assert {
+        "run",
+        "harness",
+        "diff",
+        "report",
+        "schema",
+        "attest",
+        "sign",
+        "verify-signatures",
+    }.issubset(commands)
 
 
 def test_stable_diff_flag_parse_contract() -> None:

@@ -20,6 +20,7 @@ For architecture diagrams and execution flows, see [ARCHITECTURE.md](ARCHITECTUR
 5. [Dataset Utilities](#dataset-utilities)
 6. [NLP Utilities](#nlp-utilities)
 7. [Type Definitions](#type-definitions)
+8. [CLI Verifiable Evaluation Commands](#cli-verifiable-evaluation-commands)
 
 ---
 
@@ -797,7 +798,7 @@ for result in results:
 
 Synchronous runner for executing probes on models.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Constructor:**
 ```python
@@ -835,7 +836,7 @@ Run the probe on a set of prompts/inputs.
 ```python
 from insideLLMs.models import OpenAIModel
 from insideLLMs.probes import LogicProbe
-from insideLLMs.runner import ProbeRunner
+from insideLLMs.runtime.runner import ProbeRunner
 
 model = OpenAIModel()
 probe = LogicProbe()
@@ -862,7 +863,7 @@ for result in results:
 
 Asynchronous runner for concurrent probe execution.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Constructor:**
 ```python
@@ -896,7 +897,7 @@ Run the probe asynchronously with controlled concurrency.
 import asyncio
 from insideLLMs.models import OpenAIModel
 from insideLLMs.probes import LogicProbe
-from insideLLMs.runner import AsyncProbeRunner
+from insideLLMs.runtime.runner import AsyncProbeRunner
 
 async def main():
     model = OpenAIModel()
@@ -928,11 +929,11 @@ asyncio.run(main())
 
 Convenience function to run a probe synchronously.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Example:**
 ```python
-from insideLLMs.runner import run_probe
+from insideLLMs.runtime.runner import run_probe
 from insideLLMs.models import DummyModel
 from insideLLMs.probes import LogicProbe
 
@@ -947,12 +948,12 @@ results = run_probe(
 
 Convenience function to run a probe asynchronously.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Example:**
 ```python
 import asyncio
-from insideLLMs.runner import run_probe_async
+from insideLLMs.runtime.runner import run_probe_async
 
 async def main():
     results = await run_probe_async(
@@ -1057,7 +1058,7 @@ Set the dataset for the benchmark.
 
 Run a complete experiment from a YAML or JSON configuration file.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Parameters:**
 - `config_path` (Union[str, Path]): Path to configuration file (.yaml, .yml, or .json)
@@ -1081,7 +1082,7 @@ dataset:
 
 **Example:**
 ```python
-from insideLLMs.runner import run_experiment_from_config
+from insideLLMs.runtime.runner import run_experiment_from_config
 
 results = run_experiment_from_config("experiments/config.yaml")
 
@@ -1092,7 +1093,7 @@ print(f"Results: {len(results)}")
 
 Run a cross-model probe harness from a YAML or JSON configuration file.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Parameters:**
 - `config_path` (Union[str, Path]): Path to configuration file (.yaml, .yml, or .json)
@@ -1123,7 +1124,7 @@ output_dir: results
 
 **Example:**
 ```python
-from insideLLMs.runner import run_harness_from_config
+from insideLLMs.runtime.runner import run_harness_from_config
 
 result = run_harness_from_config("harness.yaml")
 
@@ -1135,7 +1136,7 @@ print(result["summary"].keys())
 
 Load a configuration file.
 
-**Module:** `insideLLMs.runner`
+**Module:** `insideLLMs.runtime.runner`
 
 **Parameters:**
 - `path` (Union[str, Path]): Path to config file
@@ -1150,6 +1151,52 @@ Load a configuration file.
 **Supported Formats:**
 - YAML (.yaml, .yml)
 - JSON (.json)
+
+---
+
+## CLI Verifiable Evaluation Commands
+
+These commands support provenance-oriented workflows around run artifacts.
+
+### `insidellms attest <run_dir>`
+
+Generate DSSE attestations for an existing run directory (Ultimate mode).
+
+**Purpose:** Creates attestation payloads under `<run_dir>/attestations`.
+
+**Requirements:**
+- `<run_dir>/manifest.json` must exist.
+
+### `insidellms sign <run_dir>`
+
+Sign generated attestation envelopes using Sigstore.
+
+**Purpose:** Signs `*.dsse.json` files and writes bundles into `<run_dir>/signing`.
+
+**Requirements:**
+- `cosign` must be installed and available on `PATH`.
+- `<run_dir>/attestations` must exist (run `insidellms attest` first).
+
+### `insidellms verify-signatures <run_dir> [--identity ...]`
+
+Verify attestation signatures against generated bundles.
+
+**Purpose:** Validates each `*.dsse.json` against the matching `.sigstore.bundle.json`.
+
+**Requirements:**
+- `cosign` must be installed and available on `PATH`.
+- `<run_dir>/attestations` and `<run_dir>/signing` must both exist.
+- Optional `--identity` can enforce signer identity constraints.
+
+### Readiness Check
+
+Use doctor diagnostics to verify common Ultimate dependencies:
+
+```bash
+insidellms doctor --format text
+```
+
+This includes checks for `ultimate:tuf`, `ultimate:cosign`, and `ultimate:oras`.
 
 ---
 
@@ -2065,7 +2112,7 @@ Here's a comprehensive example demonstrating the main features:
 import os
 from insideLLMs.models import OpenAIModel, AnthropicModel, DummyModel
 from insideLLMs.probes import LogicProbe, BiasProbe, AttackProbe
-from insideLLMs.runner import ProbeRunner, run_probe
+from insideLLMs.runtime.runner import ProbeRunner, run_probe
 from insideLLMs.benchmark import ModelBenchmark
 from insideLLMs.registry import model_registry, probe_registry
 from insideLLMs.dataset_utils import load_jsonl_dataset

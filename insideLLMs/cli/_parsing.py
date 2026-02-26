@@ -47,7 +47,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except (LookupError, OSError):
+    except (ImportError, LookupError, OSError):
         return False
 
 
@@ -682,7 +682,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         choices=["basic", "benchmark", "tracking", "full"],
         default="basic",
-        help="Configuration template to use",
+        help=(
+            "Configuration template: basic (model+probe+dataset), "
+            "benchmark (+ dataset suites), tracking (+ experiment logging), "
+            "full (all features with async and HTML reports)"
+        ),
     )
 
     # =========================================================================
@@ -772,7 +776,7 @@ def create_parser() -> argparse.ArgumentParser:
     export_parser.add_argument(
         "--format",
         "-f",
-        choices=["csv", "markdown", "html", "latex"],
+        choices=["csv", "markdown", "html", "latex", "jsonl"],
         default="csv",
         help="Export format",
     )
@@ -781,6 +785,129 @@ def create_parser() -> argparse.ArgumentParser:
         "-o",
         type=str,
         help="Output file path",
+    )
+    export_parser.add_argument(
+        "--redact-pii",
+        action="store_true",
+        help="Redact PII from exported data before writing",
+    )
+    export_parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Encrypt JSONL output (requires --encryption-key-env)",
+    )
+    export_parser.add_argument(
+        "--encryption-key-env",
+        type=str,
+        default="INSIDELLMS_ENCRYPTION_KEY",
+        help="Environment variable holding the Fernet key for encryption (default: INSIDELLMS_ENCRYPTION_KEY)",
+    )
+
+    # =========================================================================
+    # Attest command (Ultimate: generate attestations for a run dir)
+    # =========================================================================
+    attest_parser = subparsers.add_parser(
+        "attest",
+        help="Generate attestations for a run directory (Ultimate mode)",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    attest_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory (must contain manifest.json)",
+    )
+
+    # =========================================================================
+    # Sign command (Ultimate: sign attestations with Sigstore)
+    # =========================================================================
+    sign_parser = subparsers.add_parser(
+        "sign",
+        help="Sign attestations in a run directory (requires cosign)",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    sign_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory (must contain attestations/)",
+    )
+
+    # =========================================================================
+    # Verify-signatures command (Ultimate: verify attestation signatures)
+    # =========================================================================
+    verify_parser = subparsers.add_parser(
+        "verify-signatures",
+        help="Verify attestation signatures in a run directory",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    verify_parser.add_argument(
+        "run_dir",
+        type=str,
+        help="Path to the run directory",
+    )
+    verify_parser.add_argument(
+        "--identity",
+        type=str,
+        default=None,
+        help="Identity constraints for verification (e.g. issuer+subject)",
+    )
+
+    # =========================================================================
+    # Trend command
+    # =========================================================================
+    trend_parser = subparsers.add_parser(
+        "trend",
+        help="Show metric trends across indexed runs",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    trend_parser.add_argument(
+        "--index",
+        type=str,
+        default="run_index.jsonl",
+        help="Path to the run index file (default: run_index.jsonl)",
+    )
+    trend_parser.add_argument(
+        "--add",
+        type=str,
+        metavar="RUN_DIR",
+        help="Index a completed run directory before showing trends",
+    )
+    trend_parser.add_argument(
+        "--label",
+        type=str,
+        default="",
+        help="Config label for the run being indexed (used with --add)",
+    )
+    trend_parser.add_argument(
+        "--metric",
+        type=str,
+        default="accuracy",
+        help="Metric to track (default: accuracy)",
+    )
+    trend_parser.add_argument(
+        "--last",
+        type=int,
+        default=0,
+        help="Show only the last N runs (default: all)",
+    )
+    trend_parser.add_argument(
+        "--threshold",
+        type=float,
+        help="Alert if metric drops below this value",
+    )
+    trend_parser.add_argument(
+        "--fail-on-threshold",
+        action="store_true",
+        help="Exit with non-zero status if threshold is violated",
+    )
+    trend_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
     )
 
     return parser

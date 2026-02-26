@@ -4,5 +4,8 @@ contact_links:
     url: https://github.com/dr-gareth-roberts/insideLLMs/discussions
     about: Ask questions and discuss ideas in GitHub Discussions
   - name: Documentation
-    url: https://github.com/dr-gareth-roberts/insideLLMs#readme
-    about: Check the documentation before opening an issue
+    url: https://github.com/dr-gareth-roberts/insideLLMs/blob/main/DOCUMENTATION_INDEX.md
+    about: Check the documentation index before opening an issue
+  - name: Docs Site
+    url: https://dr-gareth-roberts.github.io/insideLLMs/
+    about: Browse guides and workflows on the docs site

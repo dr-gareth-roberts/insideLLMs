@@ -22,7 +22,7 @@ from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,
 )
 from insideLLMs.config_types import RunConfig
-from insideLLMs.exceptions import RunnerExecutionError
+from insideLLMs.exceptions import ProbeExecutionError, RunnerExecutionError
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -280,6 +280,7 @@ class ProbeRunner(_RunnerBase):
         return_experiment = (
             return_experiment if return_experiment is not None else config.return_experiment
         )
+        run_mode = getattr(config, "run_mode", "default")
 
         # Validate prompt set before execution
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
@@ -359,6 +360,20 @@ class ProbeRunner(_RunnerBase):
         records_path = resolved_run_dir / "records.jsonl"
         manifest_path = resolved_run_dir / "manifest.json"
 
+        # Ultimate mode: receipt sink and wrap model so every call is logged
+        effective_model = self.model
+        if emit_run_artifacts and run_mode == "ultimate":
+            receipts_dir = resolved_run_dir / "receipts"
+            receipts_dir.mkdir(parents=True, exist_ok=True)
+            receipt_sink = receipts_dir / "calls.jsonl"
+            from insideLLMs.runtime.pipeline import ModelPipeline
+            from insideLLMs.runtime.receipt import ReceiptMiddleware
+
+            effective_model = ModelPipeline(
+                self.model,
+                middlewares=[ReceiptMiddleware(receipt_sink=receipt_sink)],
+            )
+
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
         completed = 0
         total = len(prompt_set)
@@ -406,7 +421,7 @@ class ProbeRunner(_RunnerBase):
                         )
 
                     probe_results = self.probe.run_batch(
-                        self.model,
+                        effective_model,
                         remaining_items,
                         max_workers=resolved_batch_workers,
                         progress_callback=batch_progress if progress_callback else None,
@@ -450,6 +465,14 @@ class ProbeRunner(_RunnerBase):
                                 error_type=error_type,
                                 strict_serialization=strict_serialization,
                             )
+                            if isinstance(probe_result.metadata, dict) and isinstance(
+                                record.get("custom"), dict
+                            ):
+                                timeout_seconds = probe_result.metadata.get("timeout_seconds")
+                                if isinstance(timeout_seconds, (int, float)):
+                                    record["custom"]["timeout_seconds"] = float(timeout_seconds)
+                                if _normalize_status(probe_result.status) == "timeout":
+                                    record["custom"]["timeout"] = True
                             if validate_output:
                                 validator.validate(
                                     registry.RESULT_RECORD,
@@ -498,7 +521,7 @@ class ProbeRunner(_RunnerBase):
 
                     item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
                     try:
-                        output = self.probe.run(self.model, item, **probe_kwargs)
+                        output = self.probe.run(effective_model, item, **probe_kwargs)
                         probe_result = ProbeResult(
                             input=item,
                             output=output,
@@ -553,9 +576,14 @@ class ProbeRunner(_RunnerBase):
                             },
                             exc_info=True,
                         )
+                        is_timeout = False
+                        if isinstance(e, ProbeExecutionError):
+                            reason = str(getattr(e, "details", {}).get("reason", "")).lower()
+                            is_timeout = "timed out" in reason
+
                         probe_result = ProbeResult(
                             input=item,
-                            status=ResultStatus.ERROR,
+                            status=ResultStatus.TIMEOUT if is_timeout else ResultStatus.ERROR,
                             error=str(e),
                             latency_ms=None,
                             metadata={"error_type": type(e).__name__},
@@ -581,10 +609,12 @@ class ProbeRunner(_RunnerBase):
                                 latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
-                                status="error",
+                                status="timeout" if is_timeout else "error",
                                 error=e,
                                 strict_serialization=strict_serialization,
                             )
+                            if is_timeout and isinstance(record.get("custom"), dict):
+                                record["custom"]["timeout"] = True
                             if validate_output:
                                 validator.validate(
                                     registry.RESULT_RECORD,
@@ -634,6 +664,11 @@ class ProbeRunner(_RunnerBase):
         if emit_run_artifacts:
             python_version = None if deterministic_artifacts else sys.version.split()[0]
             platform_info = None if deterministic_artifacts else platform.platform()
+            status_counts = {
+                "success": sum(1 for r in final_results if r.get("status") == "success"),
+                "error": sum(1 for r in final_results if r.get("status") == "error"),
+                "timeout": sum(1 for r in final_results if r.get("status") == "timeout"),
+            }
 
             def _serialize_manifest(value: Any) -> Any:
                 return _serialize_value(value, strict=strict_serialization)
@@ -652,15 +687,18 @@ class ProbeRunner(_RunnerBase):
                 "probe": probe_spec,
                 "dataset": dataset_spec,
                 "record_count": len(final_results),
-                "success_count": sum(1 for r in final_results if r.get("status") == "success"),
-                "error_count": sum(1 for r in final_results if r.get("status") == "error"),
+                "success_count": status_counts["success"],
+                "error_count": status_counts["error"],
                 "records_file": "records.jsonl",
                 "schemas": {
                     registry.RESULT_RECORD: schema_version,
                     registry.RUN_MANIFEST: schema_version,
                     registry.RUNNER_ITEM: schema_version,
                 },
-                "custom": {},
+                "custom": {
+                    "status_counts": status_counts,
+                    "timeout_count": status_counts["timeout"],
+                },
             }
 
             if _semver_tuple(schema_version) >= (1, 0, 1):
@@ -691,6 +729,24 @@ class ProbeRunner(_RunnerBase):
                 ),
             )
 
+            if run_mode == "ultimate":
+                from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
+
+                try:
+                    import insideLLMs as _pkg
+
+                    _ver = getattr(_pkg, "__version__", None)
+                except ImportError:
+                    _ver = None
+                run_ultimate_post_artifact(
+                    resolved_run_dir,
+                    dataset_spec=dataset_spec,
+                    config_snapshot=config_snapshot,
+                    insidellms_version=_ver,
+                    publish_oci_ref=config.publish_oci_ref,
+                    scitt_service_url=config.scitt_service_url,
+                )
+
         if validate_output:
             validator.validate(
                 registry.RUNNER_OUTPUT,
@@ -711,7 +767,8 @@ class ProbeRunner(_RunnerBase):
         )
 
         success_count = sum(1 for r in final_results if r.get("status") == "success")
-        error_count = len(final_results) - success_count
+        error_count = sum(1 for r in final_results if r.get("status") == "error")
+        timeout_count = sum(1 for r in final_results if r.get("status") == "timeout")
         logger.info(
             "Sync probe run completed",
             extra={
@@ -719,6 +776,7 @@ class ProbeRunner(_RunnerBase):
                 "total_items": len(final_results),
                 "success_count": success_count,
                 "error_count": error_count,
+                "timeout_count": timeout_count,
                 "success_rate": success_count / len(final_results) if final_results else 0,
             },
         )

@@ -3,10 +3,12 @@
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
-from insideLLMs.statistics import generate_summary_report
+from insideLLMs.analysis.statistics import generate_summary_report
+from insideLLMs.runtime import runner as runtime_runner
 
-from .._output import print_error, print_success, print_warning
+from .._output import _cli_version_string, print_error, print_success, print_warning
 from .._record_utils import _json_default, _parse_datetime, _read_jsonl_records
 from .._report_builder import _build_basic_harness_report, _build_experiments_from_records
 
@@ -46,10 +48,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     generated_at = None
     if run_id:
         try:
-            from insideLLMs.runtime.runner import _deterministic_base_time, _deterministic_run_times
-
-            base_time = _deterministic_base_time(str(run_id))
-            _, generated_at = _deterministic_run_times(base_time, len(records))
+            base_time = runtime_runner._deterministic_base_time(str(run_id))
+            _, generated_at = runtime_runner._deterministic_run_times(base_time, len(records))
         except (ValueError, KeyError):
             generated_at = None
 
@@ -60,11 +60,18 @@ def cmd_report(args: argparse.Namespace) -> int:
         )
 
     summary = generate_summary_report(experiments, include_ci=True)
+    report_metadata: dict[str, Any] = {
+        "from_records": True,
+        "tool": "insidellms report",
+        "tool_version": _cli_version_string(),
+        "records_file": "records.jsonl",
+    }
     summary_payload = {
         "schema_version": schema_version,
         "generated_at": generated_at,
         "summary": summary,
         "config": derived_config,
+        "report_metadata": report_metadata,
     }
 
     summary_path = run_dir / "summary.json"
@@ -75,7 +82,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     report_title = args.report_title or "Behavioural Probe Report"
     report_path = run_dir / "report.html"
     try:
-        from insideLLMs.visualization import create_interactive_html_report
+        from insideLLMs.analysis.visualization import create_interactive_html_report
 
         create_interactive_html_report(
             experiments,

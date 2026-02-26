@@ -1,0 +1,71 @@
+name: "insideLLMs Diff Gate"
+description: >
+  Run baseline and candidate harness evaluations, diff the results,
+  and post a summary comment on the pull request.  Blocks merge when
+  regressions exceed the configured threshold.
+
+inputs:
+  config:
+    description: "Path to the harness YAML config file"
+    required: false
+    default: "ci/harness.yaml"
+  baseline-ref:
+    description: "Git ref for the baseline run (default: PR base)"
+    required: false
+    default: ""
+  fail-on:
+    description: "Failure mode: 'regressions', 'changes', or 'none'"
+    required: false
+    default: "regressions"
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.12"
+  extra-pip-args:
+    description: "Extra arguments passed to pip install"
+    required: false
+    default: ""
+  harness-args:
+    description: "Extra arguments passed to insidellms harness"
+    required: false
+    default: "--skip-report --deterministic-artifacts"
+  comment:
+    description: "Post a PR comment with the diff summary (true/false)"
+    required: false
+    default: "true"
+
+outputs:
+  exit-code:
+    description: "Exit code from the diff command (0=pass, 2=fail)"
+    value: ${{ steps.diff.outputs.exit_code }}
+  diff-json:
+    description: "Path to the JSON diff report"
+    value: ${{ steps.diff.outputs.diff_json }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: pyproject.toml
+
+    - name: Install insideLLMs
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,nlp]" ${{ inputs.extra-pip-args }}
+
+    - name: Run diff-gate script
+      id: diff
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_BASELINE_REF: ${{ inputs.baseline-ref }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_HARNESS_ARGS: ${{ inputs.harness-args }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: bash ${{ github.action_path }}/diff-gate.sh

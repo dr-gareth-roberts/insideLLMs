@@ -318,6 +318,7 @@ from insideLLMs.probes.instruction import (
     InstructionFollowingProbe,
     MultiStepTaskProbe,
 )
+from insideLLMs.probes.judge import JudgeScoredProbe, JudgeScorer
 from insideLLMs.probes.logic import LogicProbe
 from insideLLMs.types import ProbeCategory
 
@@ -529,6 +530,9 @@ __all__ = [
     "InstructionFollowingProbe",
     "MultiStepTaskProbe",
     "ConstraintComplianceProbe",
+    # Judge scoring
+    "JudgeScorer",
+    "JudgeScoredProbe",
     # Template
     "CustomProbe",
     # Types

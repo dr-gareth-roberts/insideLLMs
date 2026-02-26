@@ -387,7 +387,7 @@ if PYDANTIC_AVAILABLE:
         ExperimentConfig : Parent configuration using ModelConfig
         """
 
-        model_config = ConfigDict(extra="allow", validate_default=True)
+        model_config = ConfigDict(extra="allow", validate_default=True, protected_namespaces=())
 
         provider: ModelProvider = Field(
             description="Model provider (openai, anthropic, huggingface, dummy)"

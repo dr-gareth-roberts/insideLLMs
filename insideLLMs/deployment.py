@@ -125,7 +125,7 @@ __all__ = [
 # Check for FastAPI availability
 try:
     from fastapi import Depends, FastAPI, HTTPException
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel, ConfigDict, Field
 
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -217,14 +217,15 @@ if FASTAPI_AVAILABLE:
         stream: bool = Field(False, description="Enable streaming response")
         metadata: Optional[dict[str, Any]] = Field(None, description="Additional metadata")
 
-        class Config:
-            json_schema_extra = {
+        model_config = ConfigDict(
+            json_schema_extra={
                 "example": {
                     "prompt": "What is the capital of France?",
                     "temperature": 0.7,
                     "max_tokens": 100,
                 }
             }
+        )
 
     class GenerateResponse(BaseModel):
         """Response schema for the text generation endpoint.
@@ -276,6 +277,8 @@ if FASTAPI_AVAILABLE:
                 >>> response_dict["request_id"]
                 'req-789'
         """
+
+        model_config = ConfigDict(protected_namespaces=())
 
         response: str = Field(..., description="Generated text")
         model_id: Optional[str] = Field(None, description="Model identifier")
@@ -556,6 +559,8 @@ if FASTAPI_AVAILABLE:
                 >>> if health.status == "unhealthy":
                 ...     alert("Service degraded!")
         """
+
+        model_config = ConfigDict(protected_namespaces=())
 
         status: str = Field(..., description="Health status")
         version: str = Field(..., description="API version")

@@ -20,6 +20,11 @@ OpenAIModel
     Supports text generation, chat, and streaming.
     Requires: ``openai>=1.0.0``, ``OPENAI_API_KEY`` environment variable.
 
+OpenRouterModel
+    Wrapper for OpenRouter's OpenAI-compatible API.
+    Supports text generation, chat, and streaming.
+    Requires: ``openai>=1.0.0``, ``OPENROUTER_API_KEY`` environment variable.
+
 AnthropicModel
     Wrapper for Anthropic's Claude models (Claude 3 Opus, Sonnet, Haiku).
     Supports text generation, chat, and streaming.
@@ -430,6 +435,7 @@ class DummyModel(Model):
 # Lazy loading for heavy model implementations
 _LAZY_MODEL_IMPORTS = {
     "OpenAIModel": "insideLLMs.models.openai",
+    "OpenRouterModel": "insideLLMs.models.openrouter",
     "AnthropicModel": "insideLLMs.models.anthropic",
     "HuggingFaceModel": "insideLLMs.models.huggingface",
     "GeminiModel": "insideLLMs.models.gemini",
@@ -496,6 +502,7 @@ def __getattr__(name: str):
     The following classes are lazily loaded:
 
     - OpenAIModel (from insideLLMs.models.openai)
+    - OpenRouterModel (from insideLLMs.models.openrouter)
     - AnthropicModel (from insideLLMs.models.anthropic)
     - HuggingFaceModel (from insideLLMs.models.huggingface)
     - GeminiModel (from insideLLMs.models.gemini)
@@ -526,6 +533,7 @@ __all__ = [
     "translate_provider_error",
     # API Provider implementations (lazy loaded)
     "OpenAIModel",
+    "OpenRouterModel",
     "AnthropicModel",
     "HuggingFaceModel",
     "GeminiModel",

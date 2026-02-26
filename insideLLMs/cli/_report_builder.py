@@ -47,17 +47,12 @@ def _build_experiments_from_records(
         for experiment_id, group_records in groups.items():
             first = group_records[0]
             harness = first.get("custom", {}).get("harness", {})
+            model_spec = first.get("model", {}) if isinstance(first.get("model"), dict) else {}
 
-            model_name = (
-                harness.get("model_name") or first.get("model", {}).get("model_id") or "model"
-            )
-            model_id = (
-                harness.get("model_id") or first.get("model", {}).get("model_id") or model_name
-            )
-            provider = (
-                first.get("model", {}).get("provider") or harness.get("model_type") or "unknown"
-            )
-            extra = first.get("model", {}).get("params") or {}
+            model_name = harness.get("model_name") or model_spec.get("model_id") or "model"
+            model_id = harness.get("model_id") or model_spec.get("model_id") or model_name
+            provider = model_spec.get("provider") or harness.get("model_type") or "unknown"
+            extra = model_spec.get("params") if isinstance(model_spec.get("params"), dict) else {}
 
             probe_name = (
                 harness.get("probe_name") or first.get("probe", {}).get("probe_id") or "probe"
@@ -73,7 +68,10 @@ def _build_experiments_from_records(
 
             def _sort_key(item: dict[str, Any]) -> int:
                 harness_item = item.get("custom", {}).get("harness", {})
-                return int(harness_item.get("example_index", 0))
+                try:
+                    return int(harness_item.get("example_index", 0))
+                except (TypeError, ValueError):
+                    return 0
 
             sorted_records = sorted(group_records, key=_sort_key)
             probe_results = [
@@ -83,7 +81,7 @@ def _build_experiments_from_records(
                     status=_status_from_record(record.get("status")),
                     error=record.get("error"),
                     latency_ms=record.get("latency_ms"),
-                    metadata=record.get("custom") or {},
+                    metadata=record.get("custom") if isinstance(record.get("custom"), dict) else {},
                 )
                 for record in sorted_records
             ]
@@ -177,7 +175,7 @@ def _build_experiments_from_records(
                 status=_status_from_record(record.get("status")),
                 error=record.get("error"),
                 latency_ms=record.get("latency_ms"),
-                metadata=record.get("custom") or {},
+                metadata=record.get("custom") if isinstance(record.get("custom"), dict) else {},
             )
             for record in group_records
         ]

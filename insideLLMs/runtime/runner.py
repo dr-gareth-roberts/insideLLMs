@@ -138,6 +138,10 @@ from insideLLMs.runtime._result_utils import (
 
 # Re-export runner classes
 from insideLLMs.runtime._sync_runner import ProbeRunner
+from insideLLMs.runtime.workflows import (
+    diff_run_dirs,
+    run_harness_to_dir,
+)
 
 # Re-export schema version constant
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
@@ -203,8 +207,10 @@ __all__ = [
     "run_experiment_from_config",
     "run_experiment_from_config_async",
     "run_harness_from_config",
+    "run_harness_to_dir",
     "run_probe",
     "run_probe_async",
+    "diff_run_dirs",
     # Constants
     "DEFAULT_SCHEMA_VERSION",
     # Serialization utilities (for backward compatibility)

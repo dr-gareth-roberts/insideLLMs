@@ -26,6 +26,9 @@ insidellms <command> [options]
 | [`validate`](#validate) | Validate run artifacts |
 | [`schema`](#schema) | Schema utilities |
 | [`doctor`](#doctor) | Check environment and dependencies |
+| [`attest`](#attest) | Generate DSSE attestations for a run directory |
+| [`sign`](#sign) | Sign attestations with Sigstore |
+| [`verify-signatures`](#verify-signatures) | Verify attestation signature bundles |
 
 ---
 
@@ -280,16 +283,17 @@ insidellms validate ./my_run --strict
 Schema utilities.
 
 ```bash
-insidellms schema <subcommand> [options]
+insidellms schema [op] [options]
 ```
 
-### Subcommands
+### Operations
 
-| Subcommand | Description |
-|------------|-------------|
-| `list` | List available schemas |
-| `show <name>` | Show schema definition |
-| `validate <file>` | Validate file against schema |
+| Operation | Description |
+|-----------|-------------|
+| `list` (default) | List available schemas and versions |
+| `dump` | Print/write a JSON Schema document |
+| `validate` | Validate `.json` or `.jsonl` input payloads |
+| `<SchemaName>` | Shortcut for `dump --name <SchemaName>` |
 
 ### Examples
 
@@ -297,11 +301,20 @@ insidellms schema <subcommand> [options]
 # List schemas
 insidellms schema list
 
-# Show a schema
-insidellms schema show result_record
+# Dump a schema to stdout
+insidellms schema dump --name ResultRecord
 
-# Validate a file
-insidellms schema validate records.jsonl --schema result_record
+# Shortcut dump form
+insidellms schema ResultRecord
+
+# Validate a JSON object (manifest)
+insidellms schema validate --name RunManifest --input ./baseline/manifest.json
+
+# Validate a JSONL stream (records)
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl
+
+# Warn-only mode
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl --mode warn
 ```
 
 ---
@@ -337,6 +350,79 @@ insidellms doctor
 
 # Verbose check
 insidellms doctor --verbose
+```
+
+---
+
+## attest
+
+Generate attestation artifacts for an existing run directory.
+
+```bash
+insidellms attest <run-dir>
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `run-dir` | Path to run directory (must contain `manifest.json`) |
+
+### Examples
+
+```bash
+insidellms attest ./baseline
+```
+
+---
+
+## sign
+
+Sign attestation envelopes in a run directory using Sigstore (`cosign`).
+
+```bash
+insidellms sign <run-dir>
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `run-dir` | Path to run directory (must contain `attestations/`) |
+
+### Examples
+
+```bash
+insidellms sign ./baseline
+```
+
+---
+
+## verify-signatures
+
+Verify attestation signatures against Sigstore bundles.
+
+```bash
+insidellms verify-signatures <run-dir> [--identity ...]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `run-dir` | Path to run directory (must contain `attestations/` and `signing/`) |
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--identity CONSTRAINTS` | Identity constraints passed to verifier | None |
+
+### Examples
+
+```bash
+insidellms verify-signatures ./baseline
+insidellms verify-signatures ./baseline --identity "issuer=https://token.actions.githubusercontent.com"
 ```
 
 ---
