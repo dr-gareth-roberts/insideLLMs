@@ -1392,6 +1392,7 @@ def register_builtins() -> None:
         FactualityProbe,
         InstructionFollowingProbe,
         JailbreakProbe,
+        JudgeScoredProbe,
         LogicProbe,
         MultiStepTaskProbe,
         PromptInjectionProbe,
@@ -1409,6 +1410,7 @@ def register_builtins() -> None:
     probe_registry.register("instruction_following", InstructionFollowingProbe)
     probe_registry.register("multi_step_task", MultiStepTaskProbe)
     probe_registry.register("constraint_compliance", ConstraintComplianceProbe)
+    probe_registry.register("judge", JudgeScoredProbe)
 
     # Register dataset loaders
     from insideLLMs.dataset_utils import (

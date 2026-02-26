@@ -1,0 +1,22 @@
+name: Diff Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed to check out base ref
+
+      - uses: ./.github/actions/diff-gate
+        with:
+          config: ci/harness.yaml
+          fail-on: regressions

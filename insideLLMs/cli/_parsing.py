@@ -47,7 +47,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except (LookupError, OSError):
+    except (ImportError, LookupError, OSError):
         return False
 
 
@@ -682,7 +682,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         choices=["basic", "benchmark", "tracking", "full"],
         default="basic",
-        help="Configuration template to use",
+        help=(
+            "Configuration template: basic (model+probe+dataset), "
+            "benchmark (+ dataset suites), tracking (+ experiment logging), "
+            "full (all features with async and HTML reports)"
+        ),
     )
 
     # =========================================================================
@@ -848,6 +852,62 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Identity constraints for verification (e.g. issuer+subject)",
+    )
+
+    # =========================================================================
+    # Trend command
+    # =========================================================================
+    trend_parser = subparsers.add_parser(
+        "trend",
+        help="Show metric trends across indexed runs",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    trend_parser.add_argument(
+        "--index",
+        type=str,
+        default="run_index.jsonl",
+        help="Path to the run index file (default: run_index.jsonl)",
+    )
+    trend_parser.add_argument(
+        "--add",
+        type=str,
+        metavar="RUN_DIR",
+        help="Index a completed run directory before showing trends",
+    )
+    trend_parser.add_argument(
+        "--label",
+        type=str,
+        default="",
+        help="Config label for the run being indexed (used with --add)",
+    )
+    trend_parser.add_argument(
+        "--metric",
+        type=str,
+        default="accuracy",
+        help="Metric to track (default: accuracy)",
+    )
+    trend_parser.add_argument(
+        "--last",
+        type=int,
+        default=0,
+        help="Show only the last N runs (default: all)",
+    )
+    trend_parser.add_argument(
+        "--threshold",
+        type=float,
+        help="Alert if metric drops below this value",
+    )
+    trend_parser.add_argument(
+        "--fail-on-threshold",
+        action="store_true",
+        help="Exit with non-zero status if threshold is violated",
+    )
+    trend_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
     )
 
     return parser

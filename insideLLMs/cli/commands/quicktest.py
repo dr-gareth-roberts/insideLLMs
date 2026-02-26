@@ -7,7 +7,9 @@ import time
 from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
 
 from .._output import (
+    Colors,
     Spinner,
+    colorize,
     print_error,
     print_header,
     print_info,
@@ -64,6 +66,15 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
             print_info(
                 f"Probe '{args.probe}' applied (detailed scoring available in full experiments)"
             )
+
+        print()
+        print_info("Next steps:")
+        cmd_init = colorize("insidellms init --template basic", Colors.GREEN)
+        cmd_compare = colorize('insidellms compare --models m1,m2 --input "prompt"', Colors.GREEN)
+        cmd_list = colorize("insidellms list probes", Colors.GREEN)
+        print(f"  Create a config:   {cmd_init}")
+        print(f"  Compare models:    {cmd_compare}")
+        print(f"  See all probes:    {cmd_list}")
 
         return 0
 

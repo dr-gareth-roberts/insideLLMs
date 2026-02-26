@@ -23,6 +23,7 @@ The CLI is organized into subcommands, each handling a specific workflow:
 - ``schema``: Inspect and validate versioned output schemas
 - ``doctor``: Diagnose environment and optional dependencies
 - ``report``: Rebuild summary and HTML reports from records
+- ``trend``: Show metric trends across indexed runs
 """
 
 import sys
@@ -95,6 +96,7 @@ from .commands.report import cmd_report as cmd_report
 from .commands.run import cmd_run as cmd_run
 from .commands.schema import cmd_schema as cmd_schema
 from .commands.sign import cmd_sign as cmd_sign
+from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
 from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
 
@@ -147,10 +149,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             print()
             parser.print_help()
             print()
-            print(
-                colorize("Quick start: ", Colors.BOLD)
-                + 'insidellms quicktest "Hello world" --model dummy'
-            )
+            print(colorize("Getting started:", Colors.BOLD))
+            print('  1. Try it out:       insidellms quicktest "Hello world" --model dummy')
+            print("  2. Create a config:  insidellms init --template basic")
+            print("  3. Run experiment:   insidellms run experiment.yaml")
+            print("  4. Check your env:   insidellms doctor")
             return 0
 
         commands = {
@@ -172,6 +175,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "attest": cmd_attest,
             "sign": cmd_sign,
             "verify-signatures": cmd_verify_signatures,
+            "trend": cmd_trend,
         }
 
         handler = commands.get(args.command)
