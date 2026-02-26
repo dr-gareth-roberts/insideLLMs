@@ -2,6 +2,25 @@
 
 This directory contains runnable examples for common insideLLMs workflows.
 
+## Compatibility Matrix
+
+| Example | Offline? | API keys required |
+|---------|----------|-------------------|
+| `example_quickstart.py` | Yes | None |
+| `example_cli_golden_path.py` | Yes | None |
+| `example_harness_programmatic.py` | Yes | None |
+| `example_models.py` | Partial | Dummy/HF work offline; OpenAI needs `OPENAI_API_KEY` |
+| `example_factuality.py` | Partial | Skips OpenAI/Anthropic if keys missing |
+| `example_registry.py` | Yes | None |
+| `example_benchmark_suite.py` | Yes | None |
+| `example_experiment_tracking.py` | Yes | None (local backend) |
+| `example_interactive_visualization.py` | Yes | None |
+| `example_nlp.py` | Yes | None |
+| `examples/experiment.yaml` | Yes | None (DummyModel) |
+| `examples/harness.yaml` | No | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` |
+| `examples/harness_ollama_cloud_deepseek_battery.yaml` | No | `OLLAMA_API_KEY` |
+| `ci/harness.yaml` | Yes | None (DummyModel only) |
+
 ## Quickstart (pure Python)
 
 ```bash

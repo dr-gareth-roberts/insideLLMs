@@ -20,6 +20,8 @@ python benchmarks/benchmark_probes.py
 
 ## Interpreting Results
 
+**Note:** Thresholds are environment-dependent. CPU, disk, and installed packages vary across machines. Use results for relative comparison (e.g. before/after changes) rather than absolute pass/fail. For CI trend tracking, establish baselines on your own runners.
+
 ### Import Time
 - **< 500ms**: Excellent - fast startup
 - **500-1000ms**: Good - acceptable for most use cases

@@ -57,7 +57,7 @@ body:
     attributes:
       label: insideLLMs Version
       description: What version of insideLLMs are you using?
-      placeholder: "0.1.0"
+      placeholder: "0.2.x"
     validations:
       required: true
 

@@ -7,13 +7,27 @@ import platform
 import shutil
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Optional
 
 from insideLLMs._serialization import (
     StrictSerializationError,
 )
+from insideLLMs.runtime._artifact_utils import (
+    _atomic_write_text,
+    _atomic_write_yaml,
+    _ensure_run_sentinel,
+    _prepare_run_dir,
+    _semver_tuple,
+)
 from insideLLMs.runtime.runner import (
+    _build_resolved_config_snapshot,
+    _deterministic_base_time,
+    _deterministic_run_id_from_config_snapshot,
+    _deterministic_run_times,
+    _resolve_determinism_options,
+    _serialize_value,
     derive_run_id_from_config_path,
     load_config,
     run_harness_from_config,
@@ -29,6 +43,7 @@ from .._output import (
 )
 from .._record_utils import _write_jsonl
 from .._report_builder import _build_basic_harness_report
+from ._run_common import create_tracker, iter_standard_run_artifacts, resolve_harness_output_dir
 
 
 def cmd_harness(args: argparse.Namespace) -> int:
@@ -64,55 +79,18 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         # Precompute output_dir for tracking. Must match the precedence used later when emitting
         # standardized run artifacts.
-        config = load_config(config_path)
-        effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
-        config_default_dir = (
-            Path(config.get("output_dir", "results")).expanduser().absolute()
-            if isinstance(config, dict)
-            else Path("results").expanduser().absolute()
+        loaded_config = load_config(config_path)
+        config_for_output_dir = loaded_config if isinstance(loaded_config, dict) else {}
+        output_dir = resolve_harness_output_dir(args, config_for_output_dir, resolved_run_id)
+
+        tracker = create_tracker(
+            backend=args.track,
+            project=args.track_project,
+            run_dir=output_dir,
+            run_id=resolved_run_id,
+            config_path=config_path,
+            schema_version=args.schema_version,
         )
-        if args.run_dir:
-            output_dir = Path(args.run_dir).expanduser().absolute()
-        elif args.output_dir:
-            output_dir = Path(args.output_dir).expanduser().absolute()
-        elif effective_run_root is not None:
-            output_dir = effective_run_root / resolved_run_id
-        else:
-            output_dir = config_default_dir
-
-        if args.track:
-            try:
-                from insideLLMs.experiment_tracking import TrackingConfig, create_tracker
-
-                tracking_root = output_dir.parent / "tracking"
-
-                tracker_kwargs: dict[str, Any] = {}
-                if args.track == "local":
-                    tracker_kwargs["output_dir"] = str(tracking_root)
-                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
-                elif args.track == "wandb":
-                    tracker_kwargs["project"] = args.track_project
-                elif args.track == "mlflow":
-                    tracker_kwargs["experiment_name"] = args.track_project
-                elif args.track == "tensorboard":
-                    tracker_kwargs["log_dir"] = str(
-                        tracking_root / "tensorboard" / args.track_project
-                    )
-                    tracker_kwargs["config"] = TrackingConfig(project=args.track_project)
-
-                tracker = create_tracker(args.track, **tracker_kwargs)
-                tracker.start_run(run_name=resolved_run_id, run_id=resolved_run_id)
-                tracker.log_params(
-                    {
-                        "run_id": resolved_run_id,
-                        "run_dir": str(output_dir),
-                        "config_path": str(config_path),
-                        "schema_version": args.schema_version,
-                    }
-                )
-            except Exception as e:
-                print_warning(f"Tracking disabled: {e}")
-                tracker = None
 
         result = run_harness_from_config(
             config_path,
@@ -127,19 +105,6 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         if progress_bar:
             progress_bar.finish()
-
-        # -----------------------------------------------------------------
-        # Determine harness run directory and emit standardized run artifacts
-        # -----------------------------------------------------------------
-        from insideLLMs.runtime.runner import (
-            _build_resolved_config_snapshot,
-            _deterministic_base_time,
-            _deterministic_run_id_from_config_snapshot,
-            _deterministic_run_times,
-            _prepare_run_dir,
-            _resolve_determinism_options,
-            _serialize_value,
-        )
 
         config_snapshot = result.get("config_snapshot")
         if not isinstance(config_snapshot, dict):
@@ -172,57 +137,21 @@ def cmd_harness(args: argparse.Namespace) -> int:
                         "strict_serialization requires JSON-stable values in the resolved harness config."
                     ) from exc
 
-        # Absolute paths reduce surprise when users pass relative paths.
+        result_config = result.get("config")
+        config_for_output_dir = result_config if isinstance(result_config, dict) else {}
+        output_dir = resolve_harness_output_dir(args, config_for_output_dir, resolved_run_id)
         effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
-        config_default_dir = (
-            Path(result["config"].get("output_dir", "results")).expanduser().absolute()
-        )
-
-        # Precedence: --run-dir > --output-dir (legacy alias) > --run-root/run-id > config output_dir
-        if args.run_dir:
-            output_dir = Path(args.run_dir).expanduser().absolute()
-        elif args.output_dir:
-            output_dir = Path(args.output_dir).expanduser().absolute()
-        elif effective_run_root is not None:
-            output_dir = effective_run_root / resolved_run_id
-        else:
-            output_dir = config_default_dir
-
-        def _semver_tuple(version: str) -> tuple[int, int, int]:
-            from insideLLMs.schemas.registry import semver_tuple
-
-            return semver_tuple(version)
-
-        def _atomic_write_text(path: Path, text: str) -> None:
-            from insideLLMs.resources import atomic_write_text
-
-            atomic_write_text(path, text)
-
-        def _atomic_write_yaml(path: Path, data: Any) -> None:
-            import yaml
-
-            content = yaml.safe_dump(
-                _serialize_value(data, strict=strict_serialization),
-                sort_keys=True,
-                default_flow_style=False,
-                allow_unicode=True,
-            )
-            _atomic_write_text(path, content)
-
-        def _ensure_run_sentinel(run_dir_path: Path) -> None:
-            marker = run_dir_path / ".insidellms_run"
-            if not marker.exists():
-                try:
-                    marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-                except (IOError, OSError):
-                    pass
 
         # Prepare run dir with the same safety policy as `insidellms run`.
         _prepare_run_dir(output_dir, overwrite=bool(args.overwrite), run_root=effective_run_root)
         _ensure_run_sentinel(output_dir)
 
         # Write resolved config snapshot for reproducibility.
-        _atomic_write_yaml(output_dir / "config.resolved.yaml", config_snapshot)
+        _atomic_write_yaml(
+            output_dir / "config.resolved.yaml",
+            config_snapshot,
+            strict_serialization=strict_serialization,
+        )
 
         # Canonical record stream for validate/run-dir tooling.
         records_path = output_dir / "records.jsonl"
@@ -275,6 +204,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
         record_count = len(result.get("records", []))
         success_count = sum(1 for r in result.get("records", []) if r.get("status") == "success")
         error_count = sum(1 for r in result.get("records", []) if r.get("status") == "error")
+        timeout_count = sum(1 for r in result.get("records", []) if r.get("status") == "timeout")
 
         run_base_time = _deterministic_base_time(resolved_run_id)
         started_at, completed_at = _deterministic_run_times(run_base_time, record_count)
@@ -313,6 +243,11 @@ def cmd_harness(args: argparse.Namespace) -> int:
             "records_file": "records.jsonl",
             "schemas": {"RunManifest": args.schema_version, "ResultRecord": args.schema_version},
             "custom": {
+                    "status_counts": {
+                        "success": success_count,
+                        "error": error_count,
+                        "timeout": timeout_count,
+                    },
                 "harness": {
                     "models": models_cfg,
                     "probes": probes_cfg,
@@ -320,6 +255,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     "max_examples": result.get("config", {}).get("max_examples"),
                     "experiment_count": len(result.get("experiments", [])),
                     "legacy_results_file": "results.jsonl",
+                        "timeout_count": timeout_count,
                 },
                 "determinism": {
                     "strict_serialization": strict_serialization,
@@ -396,7 +332,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 "report_title", "Behavioural Probe Report"
             )
             try:
-                from insideLLMs.visualization import create_interactive_html_report
+                from insideLLMs.analysis.visualization import create_interactive_html_report
 
                 create_interactive_html_report(
                     result["experiments"],
@@ -425,6 +361,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     "record_count": float(record_count),
                     "success_count": float(success_count),
                     "error_count": float(error_count),
+                    "timeout_count": float(timeout_count),
                     "experiment_count": float(len(result.get("experiments", []))),
                 }
                 tracker.log_metrics(metrics)
@@ -440,13 +377,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     }
                 )
 
-                for artifact in (
-                    output_dir / "manifest.json",
-                    output_dir / "records.jsonl",
-                    output_dir / "config.resolved.yaml",
-                    output_dir / "summary.json",
-                    output_dir / "report.html",
-                ):
+                for artifact in iter_standard_run_artifacts(output_dir):
                     if artifact.exists():
                         tracker.log_artifact(str(artifact), artifact_name=artifact.name)
 
@@ -468,7 +399,5 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 pass
         print_error(f"Error running harness: {e}")
         if args.verbose:
-            import traceback
-
             traceback.print_exc()
         return 1

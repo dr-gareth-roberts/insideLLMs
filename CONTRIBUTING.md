@@ -64,7 +64,8 @@ mypy insideLLMs
 Or use the provided helpers:
 
 ```bash
-make check
+make check          # Full: lint + format-check + typecheck + test
+make check-fast     # Quick: lint + format-check + test-fast (skips slow/integration)
 # or
 bash scripts/checks.sh
 ```
@@ -157,12 +158,28 @@ insideLLMs/
 │   ├── logic.py
 │   ├── bias.py
 │   └── ...
+├── cli/           # CLI package (parser + command modules)
+│   ├── __init__.py
+│   ├── _parsing.py
+│   └── commands/
+├── runtime/       # Execution/runtime package
+│   ├── runner.py  # Public runtime entrypoints
+│   ├── _sync_runner.py
+│   ├── _async_runner.py
+│   └── ...
 ├── registry.py    # Plugin registry system
-├── runner.py      # Probe execution engine
 ├── types.py       # Type definitions
 ├── exceptions.py  # Exception hierarchy
 └── ...
 ```
+
+### Stable vs internal APIs
+
+Use `docs/STABILITY.md` and `docs/STABILITY_MATRIX.md` as the source of truth for compatibility.
+
+- **Prefer stable/public imports** for new code (`insideLLMs.runtime.runner`, `insideLLMs.cli.commands.*`).
+- **Treat underscored modules as internal** (`insideLLMs.runtime._*`, `insideLLMs.cli._*`): these can change without notice.
+- **If you must touch an internal module**, keep changes localized and avoid introducing new external coupling.
 
 ### Key Design Patterns
 

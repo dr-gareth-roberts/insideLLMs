@@ -46,6 +46,7 @@ If behaviour changed, the deploy blocks. Simple.
 | **See it work** | [Quick Install](getting-started/Quick-Install.md) → [First Run](getting-started/First-Run.md) | 5 min |
 | **Compare models** | [First Harness](getting-started/First-Harness.md) | 15 min |
 | **Block regressions** | [CI Integration](tutorials/CI-Integration.md) | 30 min |
+| **Add provenance checks** | [Verifiable Evaluation](advanced/Verifiable-Evaluation.md) | 15 min |
 | **Understand the approach** | [Philosophy](Philosophy.md) | 10 min |
 
 ---

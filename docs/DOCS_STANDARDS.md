@@ -68,7 +68,12 @@ Docs that describe artefacts must:
 - For repo-root docs from wiki pages, use explicit relative paths: `(../README.md)`.
 - Do not link to generated `_site/` output.
 
-## 7) Review checklist (PR gate)
+## 7) Import path and reference hygiene
+
+- **Canonical paths:** Prefer `docs/IMPORT_PATHS.md` for import guidance. Avoid referencing deprecated paths (e.g. `insideLLMs.statistics`, `insideLLMs.cli.py`) in new docs.
+- **Recurring checks:** Periodically run import-path lint across `wiki/`, `docs/`, and module docstrings to catch stale references. See `docs/IMPORT_PATHS.md` for the migration matrix.
+
+## 8) Review checklist (PR gate)
 
 When changing docs or adding pages:
 
