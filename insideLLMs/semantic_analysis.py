@@ -1398,7 +1398,6 @@ class EmbeddingClusterer:
     ) -> list[int]:
         """DBSCAN: density-based clustering. Returns labels (-1 = noise)."""
         n = len(embeddings)
-        dim = len(embeddings[0]) if embeddings else 0
 
         # Tiny dataset fallback: ensure we can form at least one cluster
         if n < 2:

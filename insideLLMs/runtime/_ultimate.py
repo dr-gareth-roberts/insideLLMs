@@ -28,7 +28,7 @@ from insideLLMs.crypto import digest_obj, merkle_root_from_jsonl, run_bundle_id
 from insideLLMs.policy.engine import run_policy
 from insideLLMs.publish.oras import push_run_oci
 from insideLLMs.runtime._artifact_utils import _atomic_write_text
-from insideLLMs.transparency.scitt_client import submit_statement, verify_receipt
+from insideLLMs.transparency.scitt_client import submit_statement
 
 
 def run_ultimate_post_artifact(

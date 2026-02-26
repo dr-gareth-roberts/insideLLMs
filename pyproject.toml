@@ -190,6 +190,10 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "determinism: tests that verify deterministic artifact and diff-gating guarantees",
+    "contract: tests for public stability contracts (CLI/schema/artifact contracts)",
+    "adapter: tests focused on adapter/provider integration layers",
+    "performance: tests focused on latency/throughput/performance behavior",
 ]
 
 [tool.coverage.run]

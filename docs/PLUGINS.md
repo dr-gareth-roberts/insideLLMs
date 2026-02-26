@@ -55,3 +55,4 @@ def register(*, model_registry, probe_registry, dataset_registry) -> None:
 | Registration collisions | Two plugins register the same name | Use unique names; check `model_registry`, `probe_registry`, `dataset_registry` for existing keys |
 | Plugin loads but model/probe not found | Entry point runs but doesn't call `registry.register()` | Ensure `register()` is invoked with the correct registry and key |
 
+For compatibility and determinism metadata direction, see `docs/architecture/PLUGIN_SDK_RFC.md`.

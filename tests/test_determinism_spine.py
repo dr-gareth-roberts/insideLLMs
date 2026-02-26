@@ -7,8 +7,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from insideLLMs import cli
 from insideLLMs.runtime.runner import derive_run_id_from_config_path
+
+pytestmark = pytest.mark.determinism
 
 
 def _sha256_bytes(data: bytes) -> str:

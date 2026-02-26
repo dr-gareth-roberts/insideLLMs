@@ -198,7 +198,7 @@ models:
 
 **Solutions:**
 ```bash
-insidellms diff baseline candidate --ignore-fields latency_ms
+insidellms diff baseline candidate --output-fingerprint-ignore latency_ms
 ```
 
 ---
@@ -242,7 +242,7 @@ insidellms run config.yaml --run-dir ./my_run --resume
 Run diagnostics:
 
 ```bash
-insidellms doctor --verbose
+insidellms doctor --format text --capabilities
 ```
 
 This checks:
@@ -262,10 +262,10 @@ This checks:
 insidellms run config.yaml --verbose
 ```
 
-### Debug mode
+### Validation Debugging
 
 ```bash
-insidellms run config.yaml --debug
+insidellms run config.yaml --validate-output --validation-mode warn
 ```
 
 ### Report an issue

@@ -75,9 +75,10 @@ insidellms harness real_harness.yaml
 ## Common Options
 
 ```bash
---async --concurrency 10    # Parallel execution
---max-examples 50           # Limit dataset
---overwrite                 # Replace existing
+--run-dir .tmp/runs/first-harness   # Explicit artifact directory
+--overwrite                          # Replace existing output directory
+--profile healthcare-hipaa           # Apply compliance probe preset
+--explain                            # Emit explain.json metadata
 ```
 
 ## Next

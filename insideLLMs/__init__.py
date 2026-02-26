@@ -458,6 +458,7 @@ from insideLLMs.types import (
     ResultStatus,
     TokenUsage,
 )
+from . import shadow
 
 # Auto-register built-in models, probes, and datasets
 ensure_builtins_registered()
@@ -526,6 +527,7 @@ __all__ = [
     "ensure_builtins_registered",
     "model_registry",
     "probe_registry",
+    "shadow",
 ]
 
 

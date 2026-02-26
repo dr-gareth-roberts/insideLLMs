@@ -250,6 +250,30 @@ def test_cmd_init_json_output_and_existing_sample_data_is_preserved(tmp_path, mo
     assert sample_path.read_text() == '{"question": "Existing", "reference_answer": "Existing"}\n'
 
 
+def test_cmd_init_harness_template_creates_deterministic_scaffold(tmp_path, monkeypatch):
+    import yaml
+
+    monkeypatch.chdir(tmp_path)
+    output_file = tmp_path / "harness.yaml"
+
+    rc = cmd_init(
+        _init_args(output=str(output_file), template="harness", model="dummy", probe="logic")
+    )
+
+    assert rc == 0
+    payload = yaml.safe_load(output_file.read_text())
+    assert "models" in payload
+    assert "probes" in payload
+    assert payload["dataset"]["path"] == "data/harness_dataset.jsonl"
+    assert payload["determinism"]["strict_serialization"] is True
+    assert payload["determinism"]["deterministic_artifacts"] is True
+
+    sample_data = tmp_path / "data" / "harness_dataset.jsonl"
+    assert sample_data.exists()
+    first_row = json.loads(sample_data.read_text().splitlines()[0])
+    assert {"example_id", "question", "prompt", "task"}.issubset(first_row)
+
+
 def test_cmd_report_handles_read_error_and_empty_reconstructed_experiments(tmp_path, capsys):
     run_dir = tmp_path / "run"
     run_dir.mkdir()
@@ -334,11 +358,11 @@ def test_cmd_report_uses_deterministic_generated_at_when_available(tmp_path):
         ),
         patch("insideLLMs.cli.commands.report.generate_summary_report", return_value={"ok": True}),
         patch(
-            "insideLLMs.runtime.runner._deterministic_base_time",
+            "insideLLMs.cli.commands.report._deterministic_base_time",
             return_value="BASE",
         ),
         patch(
-            "insideLLMs.runtime.runner._deterministic_run_times",
+            "insideLLMs.cli.commands.report._deterministic_run_times",
             return_value=("START", "2024-01-05T12:00:00Z"),
         ),
         patch("insideLLMs.visualization.create_interactive_html_report", fake_html_report),

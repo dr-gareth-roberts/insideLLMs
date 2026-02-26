@@ -17,6 +17,8 @@ from insideLLMs.trace_contracts import (
 )
 from insideLLMs.tracing import TraceEvent, TraceEventKind
 
+pytestmark = pytest.mark.contract
+
 
 class TestViolation:
     """Tests for Violation dataclass."""

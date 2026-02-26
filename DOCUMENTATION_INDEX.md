@@ -32,13 +32,16 @@ flowchart LR
 
 ---
 
-### [API_REFERENCE.md](API_REFERENCE.md) (51 KB, 2,123 lines)
+### [API_REFERENCE.md](API_REFERENCE.md) (living reference)
 **Comprehensive API documentation** covering all public interfaces.
 
 **Contents:**
 - **Core Model Classes** - Base `Model` class and implementations (`OpenAIModel`, `AnthropicModel`, `HuggingFaceModel`, `DummyModel`)
 - **Core Probe Classes** - Base `Probe` class and implementations (`LogicProbe`, `BiasProbe`, `AttackProbe`, `FactualityProbe`)
 - **Runner and Orchestration** - `ProbeRunner`, `AsyncProbeRunner`, `ModelBenchmark`, configuration-based execution
+- **Diffing Engine** - `insideLLMs.diffing` public facade, `DiffGatePolicy`, judge composition, interactive snapshot helpers
+- **Shadow Capture** - `insideLLMs.shadow.fastapi` middleware for production traffic capture
+- **Core CLI Surfaces** - `harness`, `diff`, `doctor`, and `init` runtime-aligned options
 - **Registry System** - `Registry` class and global registries (`model_registry`, `probe_registry`, `dataset_registry`)
 - **Dataset Utilities** - Functions for loading CSV, JSONL, and HuggingFace datasets
 - **NLP Utilities** - 100+ text processing functions (cleaning, tokenization, similarity, metrics, etc.)
@@ -76,6 +79,51 @@ flowchart LR
 
 ---
 
+### [docs/GITHUB_ACTION.md](docs/GITHUB_ACTION.md)
+**First-class GitHub Action reference** for deterministic base-vs-head harness diffing and PR comments.
+
+**Contents:**
+- Action inputs/outputs
+- Forked PR edge-case behavior (`comment-on-forks`)
+- Reusable workflow snippets
+
+**Best for:** CI maintainers, release gating in GitHub PR workflows
+
+---
+
+### [extensions/vscode-insidellms/README.md](extensions/vscode-insidellms/README.md)
+**VS Code / Cursor extension scaffold** for CodeLens-driven probe execution.
+
+**Contents:**
+- CodeLens behavior
+- Extension settings
+- Build instructions
+
+**Best for:** Editor-native evaluation workflows and rapid local feedback
+
+---
+
+### [wiki/guides/Production-Shadow-Capture.md](wiki/guides/Production-Shadow-Capture.md)
+**Long-form guide** for sampling real production traffic into canonical `records.jsonl` safely.
+
+**Best for:** Converting production behavior into replayable regression suites
+
+---
+
+### [wiki/guides/IDE-Extension-Workflow.md](wiki/guides/IDE-Extension-Workflow.md)
+**Long-form guide** for VS Code/Cursor extension setup, local feedback loop, and roadmap.
+
+**Best for:** Editor-native prompt/probe iteration workflows
+
+---
+
+### [docs/AUDITS/2026-02-26-docs-audit.md](docs/AUDITS/2026-02-26-docs-audit.md)
+**Phase 1 documentation audit report** covering high-traffic docs and CLI parity checks.
+
+**Best for:** Tracking docs quality improvements, identifying remaining audit backlog
+
+---
+
 ### [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md)
 **A 5-minute offline, end-to-end workflow** (DummyModel → records → report → diff) suitable for CI gating.
 
@@ -94,6 +142,22 @@ flowchart LR
 **How to extend insideLLMs without forking** using Python entry points.
 
 **Best for:** Third-party integrations, adding private models/probes, sharing extensions
+
+---
+
+### [docs/architecture/API_TIERS.md](docs/architecture/API_TIERS.md)
+**API compatibility tier map** (Tier 1 stable, Tier 2 evolving, Tier 3 internal)
+for CLI, runtime, and extension surfaces.
+
+**Best for:** PR review, release planning, avoiding accidental internal coupling
+
+---
+
+### [docs/architecture/PLUGIN_SDK_RFC.md](docs/architecture/PLUGIN_SDK_RFC.md)
+**Draft proposal** for formal plugin SDK metadata (capabilities, compatibility,
+determinism declarations) on top of current entry-point registration.
+
+**Best for:** Plugin ecosystem planning, extension governance, CI policy discussions
 
 ---
 
@@ -196,6 +260,9 @@ for CLI, artifacts, schemas, and extension points.
 #### **Run a cross-model behavioural harness**
 → [README.md](README.md#behavioural-harness), [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
+#### **Capture and replay production traffic safely**
+→ [wiki/guides/Production-Shadow-Capture.md](wiki/guides/Production-Shadow-Capture.md), [API_REFERENCE.md - Production Shadow Capture](API_REFERENCE.md#production-shadow-capture)
+
 #### **Track runs in W&B / MLflow / TensorBoard**
 → [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
 
@@ -204,6 +271,9 @@ for CLI, artifacts, schemas, and extension points.
 
 #### **Use trace-aware diffing**
 → [wiki/Tracing-and-Fingerprinting.md](wiki/Tracing-and-Fingerprinting.md)
+
+#### **Use the VS Code/Cursor extension workflow**
+→ [wiki/guides/IDE-Extension-Workflow.md](wiki/guides/IDE-Extension-Workflow.md), [extensions/vscode-insidellms/README.md](extensions/vscode-insidellms/README.md)
 
 #### **Run verifiable-evaluation workflows (attest/sign/verify)**
 → [wiki/advanced/Verifiable-Evaluation.md](wiki/advanced/Verifiable-Evaluation.md), [API_REFERENCE.md - CLI Verifiable Evaluation Commands](API_REFERENCE.md#cli-verifiable-evaluation-commands)

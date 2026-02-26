@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from insideLLMs.cli._parsing import create_parser
 from insideLLMs.schemas.registry import SchemaRegistry
+
+pytestmark = pytest.mark.contract
 
 
 def _subcommand_names() -> set[str]:
@@ -32,6 +36,25 @@ def test_stable_diff_flag_parse_contract() -> None:
     parser = create_parser()
     args = parser.parse_args(["diff", "run_a", "run_b", "--fail-on-changes"])
     assert args.fail_on_changes is True
+
+
+def test_stable_diff_interactive_parse_contract() -> None:
+    parser = create_parser()
+    args = parser.parse_args(["diff", "run_a", "run_b", "--interactive"])
+    assert args.interactive is True
+
+
+def test_stable_diff_judge_parse_contract() -> None:
+    parser = create_parser()
+    args = parser.parse_args(["diff", "run_a", "run_b", "--judge", "--judge-policy", "balanced"])
+    assert args.judge is True
+    assert args.judge_policy == "balanced"
+
+
+def test_stable_diff_trajectory_gate_parse_contract() -> None:
+    parser = create_parser()
+    args = parser.parse_args(["diff", "run_a", "run_b", "--fail-on-trajectory-drift"])
+    assert args.fail_on_trajectory_drift is True
 
 
 def test_stable_run_determinism_flags_parse_contract() -> None:

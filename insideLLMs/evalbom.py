@@ -11,7 +11,7 @@ def emit_cyclonedx(run_dir: Path | str) -> dict[str, Any]:
     """Emit CycloneDX EvalBOM for run."""
     run_dir = Path(run_dir)
     manifest_path = run_dir / "manifest.json"
-    
+
     components = []
     if manifest_path.exists():
         try:
@@ -47,7 +47,7 @@ def emit_spdx3(run_dir: Path | str) -> dict[str, Any]:
     """Emit SPDX 3 EvalBOM for run."""
     run_dir = Path(run_dir)
     manifest_path = run_dir / "manifest.json"
-    
+
     elements = []
     if manifest_path.exists():
         try:
