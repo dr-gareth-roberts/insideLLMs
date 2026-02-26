@@ -34,7 +34,7 @@ insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
 ```python
 from insideLLMs.models import OpenAIModel
 from insideLLMs.probes import LogicProbe
-from insideLLMs.runner import run_probe
+from insideLLMs.runtime.runner import run_probe
 
 # Create model
 model = OpenAIModel(model_name="gpt-3.5-turbo")
@@ -153,7 +153,7 @@ print(f"Error rate: {score.error_rate:.2%}")
 ### Synchronous Runner
 
 ```python
-from insideLLMs.runner import ProbeRunner, run_probe
+from insideLLMs.runtime.runner import ProbeRunner, run_probe
 
 # Using ProbeRunner
 runner = ProbeRunner(model, probe, verbose=True)
@@ -167,7 +167,7 @@ results = run_probe(model, probe, ["Input 1", "Input 2"])
 
 ```python
 import asyncio
-from insideLLMs.runner import AsyncProbeRunner, run_probe_async
+from insideLLMs.runtime.runner import AsyncProbeRunner, run_probe_async
 
 async def main():
     runner = AsyncProbeRunner(model, probe)
@@ -333,7 +333,7 @@ output_dir: results
 ### Running from Config
 
 ```python
-from insideLLMs.runner import run_experiment_from_config
+from insideLLMs.runtime.runner import run_experiment_from_config
 
 results = run_experiment_from_config("config.yaml")
 ```

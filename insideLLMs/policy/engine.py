@@ -10,15 +10,17 @@ from insideLLMs.crypto import digest_obj
 from insideLLMs.transparency.scitt_client import verify_receipt
 
 
-def run_policy(run_dir: Path | str, policy_yaml_path: Path | str | None = None) -> dict[str, Any]:
-    """Load policy, run checks (attestations exist, signatures verify, Merkle recompute, etc.), return verdict.
+def run_policy(run_dir: Path | str) -> dict[str, Any]:
+    """Run artifact-completeness checks on a run directory and return a verdict.
+
+    Checks for required artifacts (manifest.json, records.jsonl), core
+    attestations (00-07), integrity roots, and SCITT receipts.
 
     Args:
         run_dir: Path to the run directory.
-        policy_yaml_path: Optional path to policy YAML; if present, its digest is included.
 
     Returns:
-        Verdict dict with keys: passed, reasons, checks.
+        Verdict dict with keys: passed (bool), reasons (list[str]), checks (dict[str, bool]).
     """
     run_dir = Path(run_dir)
     verdict: dict[str, Any] = {"passed": True, "reasons": [], "checks": {}}
@@ -45,8 +47,14 @@ def run_policy(run_dir: Path | str, policy_yaml_path: Path | str | None = None) 
 
     # Core attestations (00-07) should exist when policy runs post-attestation
     required_attestations = [
-        "00.source", "01.env", "02.dataset", "03.promptset",
-        "04.execution", "05.scoring", "06.report", "07.claims",
+        "00.source",
+        "01.env",
+        "02.dataset",
+        "03.promptset",
+        "04.execution",
+        "05.scoring",
+        "06.report",
+        "07.claims",
     ]
     for name in required_attestations:
         att_path = attestations_dir / f"{name}.dsse.json"

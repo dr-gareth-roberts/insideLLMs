@@ -204,7 +204,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from insideLLMs.probes.base import Probe
-from insideLLMs.trace_config import (
+from insideLLMs.trace.trace_config import (
     OnViolationMode,
     TraceConfig,
     TracePayloadNormaliser,
@@ -935,7 +935,7 @@ class AgentProbe(Probe[AgentProbeResult]):
 
         Initialization with TraceConfig object:
 
-            >>> from insideLLMs.trace_config import TraceConfig, OnViolationConfig
+            >>> from insideLLMs.trace.trace_config import TraceConfig, OnViolationConfig
             >>>
             >>> config = TraceConfig(
             ...     enabled=True,
@@ -1007,7 +1007,7 @@ class AgentProbe(Probe[AgentProbeResult]):
 
         Checking violation mode:
 
-            >>> from insideLLMs.trace_config import OnViolationMode
+            >>> from insideLLMs.trace.trace_config import OnViolationMode
             >>>
             >>> probe = MyAgentProbe(
             ...     name="test",

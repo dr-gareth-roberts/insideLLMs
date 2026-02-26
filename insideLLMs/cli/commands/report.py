@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from insideLLMs.statistics import generate_summary_report
+from insideLLMs.analysis.statistics import generate_summary_report
 
 from .._output import print_error, print_success, print_warning
 from .._record_utils import _json_default, _parse_datetime, _read_jsonl_records

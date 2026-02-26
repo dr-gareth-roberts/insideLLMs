@@ -1,4 +1,4 @@
-"""Claims compiler: read claims.yaml, compute effects/CIs, emit claims.json + verification.json (stub)."""
+"""Claims compiler: read claims.yaml, evaluate metric thresholds, emit claims.json + verification.json."""
 
 from __future__ import annotations
 

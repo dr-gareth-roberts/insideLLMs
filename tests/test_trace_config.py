@@ -2,7 +2,7 @@
 
 import pytest
 
-from insideLLMs.trace_config import (
+from insideLLMs.trace.trace_config import (
     FingerprintConfig,
     NormaliserConfig,
     NormaliserKind,

@@ -1205,8 +1205,8 @@ def plot_latency_distribution(
     else:
         # Simple box plot with matplotlib
         plt.boxplot(
-            latencies_by_model.values(),
-            labels=latencies_by_model.keys(),
+            list(latencies_by_model.values()),
+            tick_labels=list(latencies_by_model.keys()),
         )
         plt.ylabel("Latency (ms)")
 
@@ -1677,7 +1677,7 @@ def plot_factuality_results(
             if cat not in by_cat:
                 by_cat[cat] = []
             by_cat[cat].append(row["Response Length"])
-        plt.boxplot(by_cat.values(), labels=by_cat.keys())
+        plt.boxplot(list(by_cat.values()), tick_labels=list(by_cat.keys()))
 
     plt.title(f"{title} - Response Lengths")
     plt.xlabel("Category")

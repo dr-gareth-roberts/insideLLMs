@@ -1,6 +1,8 @@
-"""TUF client for verified dataset fetch (stub).
+"""TUF client for verified dataset fetch.
 
-Fetch dataset by name/version and verify TUF metadata before run.
+Fetches a dataset by name/version and verifies TUF metadata before a run.
+When the ``tuf`` package is available, uses ``tuf.ngclient.Updater`` for
+real verification. Falls back to a mock implementation for testing/offline use.
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@ from insideLLMs.probes.agent_probe import (
     AgentProbeResult,
     ToolDefinition,
 )
-from insideLLMs.trace_config import OnViolationMode, TraceConfig, load_trace_config
+from insideLLMs.trace.trace_config import OnViolationMode, TraceConfig, load_trace_config
 from insideLLMs.tracing import TraceEventKind, TraceRecorder
 from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 
