@@ -254,7 +254,6 @@ class ClusteringMethod(Enum):
         Density-Based Spatial Clustering of Applications with Noise.
         Finds clusters of arbitrary shape based on density.
         Best for: Unknown number of clusters, noise detection.
-        Note: Currently not implemented, raises NotImplementedError.
 
     Examples
     --------
@@ -1391,11 +1390,66 @@ class EmbeddingClusterer:
 
         return labels
 
+    def _dbscan_clustering(
+        self,
+        embeddings: list[list[float]],
+        eps: float,
+        min_samples: int,
+    ) -> list[int]:
+        """DBSCAN: density-based clustering. Returns labels (-1 = noise)."""
+        n = len(embeddings)
+
+        # Tiny dataset fallback: ensure we can form at least one cluster
+        if n < 2:
+            return [0] * n if n else []
+        effective_min = min(min_samples, n)
+        if effective_min < 1:
+            effective_min = 1
+
+        def dist(a: list[float], b: list[float]) -> float:
+            return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
+
+        # Build neighbor lists
+        neighbors: list[list[int]] = [[] for _ in range(n)]
+        for i in range(n):
+            for j in range(i + 1, n):
+                d = dist(embeddings[i], embeddings[j])
+                if d <= eps:
+                    neighbors[i].append(j)
+                    neighbors[j].append(i)
+
+        labels = [-1] * n
+        cluster_id = 0
+
+        def expand_cluster(seed: int) -> None:
+            nonlocal cluster_id
+            stack = [seed]
+            while stack:
+                p = stack.pop()
+                if labels[p] >= 0:
+                    continue
+                labels[p] = cluster_id
+                if len(neighbors[p]) >= effective_min - 1:
+                    for q in neighbors[p]:
+                        if labels[q] < 0:
+                            stack.append(q)
+
+        for i in range(n):
+            if labels[i] >= 0:
+                continue
+            if len(neighbors[i]) >= effective_min - 1:
+                expand_cluster(i)
+                cluster_id += 1
+
+        return labels
+
     def cluster(
         self,
         texts: list[str],
         n_clusters: int = 5,
         method: ClusteringMethod = ClusteringMethod.KMEANS,
+        eps: float = 0.5,
+        min_samples: int = 2,
     ) -> ClusteringResult:
         """Cluster texts based on embeddings."""
         if not texts:
@@ -1421,11 +1475,12 @@ class EmbeddingClusterer:
         # Cluster
         if method == ClusteringMethod.KMEANS:
             labels, centroids, inertia = self._simple_kmeans(embeddings, n_clusters)
+            unique_labels = list(range(n_clusters))
         elif method == ClusteringMethod.HIERARCHICAL:
             labels = self._hierarchical_clustering(embeddings, n_clusters)
             centroids = []
             inertia = None
-            # Compute centroids
+            unique_labels = list(range(n_clusters))
             for c in range(n_clusters):
                 cluster_embs = [embeddings[i] for i in range(len(texts)) if labels[i] == c]
                 if cluster_embs:
@@ -1435,13 +1490,28 @@ class EmbeddingClusterer:
                     centroids.append(centroid)
                 else:
                     centroids.append([0.0] * max_dim)
+        elif method == ClusteringMethod.DBSCAN:
+            labels = self._dbscan_clustering(embeddings, eps=eps, min_samples=min_samples)
+            unique_labels = sorted(set(labels) - {-1})
+            centroids = []
+            inertia = None
+            for c in unique_labels:
+                cluster_embs = [embeddings[i] for i in range(len(texts)) if labels[i] == c]
+                if cluster_embs:
+                    centroid = [
+                        sum(e[d] for e in cluster_embs) / len(cluster_embs) for d in range(max_dim)
+                    ]
+                    centroids.append(centroid)
+                else:
+                    centroids.append([0.0] * max_dim)
+            n_clusters = len(unique_labels)
         else:
-            # Default to kmeans
             labels, centroids, inertia = self._simple_kmeans(embeddings, n_clusters)
+            unique_labels = list(range(n_clusters))
 
         # Build cluster info
         clusters = []
-        for c in range(n_clusters):
+        for c in unique_labels:
             member_indices = [i for i, label in enumerate(labels) if label == c]
             member_texts = [texts[i] for i in member_indices]
 
@@ -1461,7 +1531,8 @@ class EmbeddingClusterer:
                     intra_sim = 1.0
 
                 # Representative: closest to centroid
-                centroid = centroids[c] if c < len(centroids) else [0.0] * max_dim
+                c_idx = unique_labels.index(c) if c in unique_labels else 0
+                centroid = centroids[c_idx] if c_idx < len(centroids) else [0.0] * max_dim
                 best_dist = float("inf")
                 best_text = member_texts[0]
                 for idx in member_indices:

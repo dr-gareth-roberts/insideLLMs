@@ -17,6 +17,19 @@ has_children: true
 | [Structured Outputs](Structured-Outputs.md) | Extract Pydantic models from LLM responses |
 | [Agent Evaluation](Agent-Evaluation.md) | Test tool-using agents with trace integration |
 | [Retry Strategies](Retry-Strategies.md) | Circuit breakers, exponential backoff, error handling |
+| [Verifiable Evaluation](Verifiable-Evaluation.md) | Attest, sign, and verify run provenance artifacts |
+
+## Advanced Assurance
+
+For CI-grade behavioral guarantees and provenance-oriented workflows:
+
+| Topic | Where to Start |
+|---|---|
+| Determinism contract | [Determinism and CI](../Determinism-and-CI.md) |
+| Artifact field guarantees | `docs/ARTIFACT_CONTRACT.md` |
+| Trace drift and fingerprinting | [Tracing and Fingerprinting](../Tracing-and-Fingerprinting.md) |
+| Verifiable workflow quickstart | [Verifiable Evaluation](Verifiable-Evaluation.md) |
+| Assurance CLI surfaces | [CLI Reference](../reference/CLI.md) (`attest`, `sign`, `verify-signatures`) |
 
 ## Why These Matter
 

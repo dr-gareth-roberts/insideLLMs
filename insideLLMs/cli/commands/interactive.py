@@ -4,8 +4,9 @@ import argparse
 import os
 import time
 from pathlib import Path
+from typing import Optional
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry
+from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
 
 from .._output import (
     Colors,
@@ -14,8 +15,10 @@ from .._output import (
     print_error,
     print_header,
     print_info,
+    print_key_value,
     print_subheader,
     print_success,
+    print_warning,
 )
 
 
@@ -36,6 +39,10 @@ def cmd_interactive(args: argparse.Namespace) -> int:
 
     # Command history
     history: list[str] = []
+
+    # Track the last exchange for probe evaluation
+    last_prompt: Optional[str] = None
+    last_response: Optional[str] = None
 
     # Load history file
     history_path = Path(args.history_file)
@@ -94,6 +101,27 @@ def cmd_interactive(args: argparse.Namespace) -> int:
                 print_success(f"Switched to model: {new_model}")
             except Exception as e:
                 print_error(f"Could not load model: {e}")
+        elif prompt.lower().startswith("probe "):
+            probe_name = prompt[6:].strip()
+            if last_prompt is None or last_response is None:
+                print_warning("No previous response to evaluate. Send a prompt first.")
+                continue
+            try:
+                probe_factory = probe_registry.get(probe_name)
+                probe = probe_factory() if isinstance(probe_factory, type) else probe_factory
+                print_subheader(f"Probe: {probe.name}")
+                result = probe.run(model, last_prompt)
+                if isinstance(result, dict):
+                    for k, v in result.items():
+                        print_key_value(str(k), str(v))
+                else:
+                    print(f"  {result}")
+            except KeyError:
+                available = ", ".join(probe_registry.list())
+                print_error(f"Unknown probe: {probe_name}")
+                print_info(f"Available probes: {available}")
+            except Exception as e:
+                print_error(f"Probe error: {e}")
         else:
             # Regular prompt - generate response
             spinner = Spinner("Thinking")
@@ -104,6 +132,9 @@ def cmd_interactive(args: argparse.Namespace) -> int:
                 response = model.generate(prompt)
                 elapsed = time.time() - start
                 spinner.stop(success=True)
+
+                last_prompt = prompt
+                last_response = response
 
                 print(f"\n{response}\n")
                 print(colorize(f"[{elapsed * 1000:.0f}ms]", Colors.DIM))

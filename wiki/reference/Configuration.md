@@ -8,6 +8,20 @@ nav_order: 2
 
 Complete reference for YAML/JSON configuration files.
 
+## Which Config API to Use
+
+insideLLMs has two configuration surfaces; use the one that matches your workflow:
+
+| Use case | Module | Primary types | When to use |
+|----------|--------|---------------|-------------|
+| **YAML/JSON config files** (run, harness) | `insideLLMs.config` | `ExperimentConfig`, `ModelConfig`, `ProbeConfig`, `DatasetConfig`, `RunnerConfig` | Loading from files, `load_config()`, `save_config_to_yaml()` |
+| **Programmatic runner control** | `insideLLMs.config_types` | `RunConfig`, `RunConfigBuilder`, `ProgressInfo` | Passing options to `ProbeRunner.run()` / `AsyncProbeRunner.run()` |
+
+- **Config files** → `insideLLMs.config` (Pydantic models for YAML/JSON).
+- **Runner kwargs** → `insideLLMs.config_types.RunConfig` (dataclass-style runtime controls).
+
+The CLI (`insidellms run`, `insidellms harness`) loads YAML via `config` and internally builds `RunConfig`-compatible settings.
+
 ## Config Types
 
 | Type | Command | Purpose |

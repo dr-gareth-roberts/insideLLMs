@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-model behavioural harness command with JSONL outputs, summary, and HTML report
 - Versioned output schemas with optional Pydantic validation (runner/results/export) and `insidellms schema` CLI utilities
 
+## [0.2.0] - 2026-02-26
+
+### Removed
+- Deprecated import shims: `insideLLMs.cache`, `insideLLMs.caching`,
+  `insideLLMs.runner`, `insideLLMs.comparison`, `insideLLMs.statistics`,
+  `insideLLMs.trace_config`. Import from canonical paths instead
+  (`insideLLMs.caching`, `insideLLMs.runtime.runner`,
+  `insideLLMs.analysis.comparison`, `insideLLMs.analysis.statistics`,
+  `insideLLMs.trace.trace_config`).
+
+### Changed
+- Renamed `insideLLMs.caching_unified` to `insideLLMs.caching`.
+- `run_policy()` no longer accepts a `policy_yaml_path` parameter (was unused).
+
 ## [0.1.0] - 2025-01-18
 
 ### Added

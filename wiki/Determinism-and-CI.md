@@ -6,6 +6,9 @@ nav_order: 28
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI
 diff-gating.
 
+> Canonical source: `docs/DETERMINISM.md` and `docs/ARTIFACT_CONTRACT.md`.
+> This wiki page is a practical guide and should stay aligned with those contracts.
+
 ```mermaid
 flowchart LR
   Config[Resolved config + dataset identity] --> Run[Run / Harness]
@@ -105,3 +108,10 @@ insidellms diff ... --output-fingerprint-ignore timestamp,request_id
 ```
 
 See [Tracing and Fingerprinting](Tracing-and-Fingerprinting.md) for details.
+
+## Verifiable workflows
+
+For provenance-oriented command flows (`attest`, `sign`, `verify-signatures`), see:
+
+- [Verifiable Evaluation](advanced/Verifiable-Evaluation.md)
+- [CLI Reference](reference/CLI.md)

@@ -1265,6 +1265,7 @@ def register_builtins() -> None:
     Registered Models:
         - dummy: DummyModel for testing
         - openai: OpenAI API models (GPT-3.5, GPT-4, etc.)
+        - openrouter: OpenRouter OpenAI-compatible API models
         - anthropic: Anthropic API models (Claude)
         - gemini: Google Gemini models
         - cohere: Cohere API models
@@ -1358,6 +1359,9 @@ def register_builtins() -> None:
         "openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel")
     )
     model_registry.register(
+        "openrouter", _lazy_import_factory("insideLLMs.models.openrouter", "OpenRouterModel")
+    )
+    model_registry.register(
         "anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel")
     )
     model_registry.register(
@@ -1392,6 +1396,7 @@ def register_builtins() -> None:
         FactualityProbe,
         InstructionFollowingProbe,
         JailbreakProbe,
+        JudgeScoredProbe,
         LogicProbe,
         MultiStepTaskProbe,
         PromptInjectionProbe,
@@ -1409,6 +1414,7 @@ def register_builtins() -> None:
     probe_registry.register("instruction_following", InstructionFollowingProbe)
     probe_registry.register("multi_step_task", MultiStepTaskProbe)
     probe_registry.register("constraint_compliance", ConstraintComplianceProbe)
+    probe_registry.register("judge", JudgeScoredProbe)
 
     # Register dataset loaders
     from insideLLMs.dataset_utils import (

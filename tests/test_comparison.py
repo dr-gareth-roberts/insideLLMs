@@ -2,15 +2,15 @@
 
 import pytest
 
-from insideLLMs.comparison import (
+from insideLLMs.analysis.comparison import (
     ComparisonMetric,
-    ComparisonResult,
-    CostCalculator,
     CostEstimate,
     LatencyProfile,
     MetricSummary,
     MetricValue,
     ModelComparator,
+    ModelComparisonResult,
+    ModelCostComparator,
     ModelProfile,
     PerformanceTracker,
     QualityMetrics,
@@ -251,18 +251,18 @@ class TestCostEstimate:
 
 
 class TestCostCalculator:
-    """Tests for CostCalculator."""
+    """Tests for ModelCostComparator."""
 
     def test_set_pricing(self):
         """Test setting custom pricing."""
-        calc = CostCalculator()
+        calc = ModelCostComparator()
         calc.set_pricing("custom-model", 0.005, 0.01)
 
         assert "custom-model" in calc._pricing
 
     def test_estimate(self):
         """Test cost estimation."""
-        calc = CostCalculator()
+        calc = ModelCostComparator()
         calc.set_pricing("test-model", 0.01, 0.02)
 
         estimate = calc.estimate("test-model", 2000, 1000)
@@ -271,14 +271,14 @@ class TestCostCalculator:
 
     def test_estimate_unknown_model(self):
         """Test estimation for unknown model."""
-        calc = CostCalculator()
+        calc = ModelCostComparator()
 
         with pytest.raises(KeyError):
             calc.estimate("unknown-model", 1000, 500)
 
     def test_compare_costs(self):
         """Test comparing costs across models."""
-        calc = CostCalculator()
+        calc = ModelCostComparator()
         calc.set_pricing("model-a", 0.01, 0.02)
         calc.set_pricing("model-b", 0.005, 0.01)
 
@@ -290,7 +290,7 @@ class TestCostCalculator:
 
     def test_cheapest_model(self):
         """Test finding cheapest model."""
-        calc = CostCalculator()
+        calc = ModelCostComparator()
         calc.set_pricing("expensive", 0.1, 0.2)
         calc.set_pricing("cheap", 0.001, 0.002)
 
@@ -463,11 +463,11 @@ class TestUtilityFunctions:
 
 
 class TestComparisonResult:
-    """Tests for ComparisonResult."""
+    """Tests for ModelComparisonResult."""
 
     def test_basic_creation(self):
         """Test basic creation."""
-        result = ComparisonResult(
+        result = ModelComparisonResult(
             models=["model-a", "model-b"],
             winner="model-a",
         )

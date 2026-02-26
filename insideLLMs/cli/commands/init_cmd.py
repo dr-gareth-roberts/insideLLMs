@@ -40,6 +40,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     # Add model-specific args hints
     model_hints = {
         "openai": {"model_name": "gpt-4"},
+        "openrouter": {"model_name": "openai/gpt-4o-mini"},
         "anthropic": {"model_name": "claude-3-opus-20240229"},
         "cohere": {"model_name": "command-r-plus"},
         "gemini": {"model_name": "gemini-pro"},
@@ -114,10 +115,13 @@ def cmd_init(args: argparse.Namespace) -> int:
             for item in sample_data:
                 f.write(json.dumps(item) + "\n")
         print_success(f"Created sample data: {sample_data_path}")
+    else:
+        print_info(f"Sample data already exists: {sample_data_path}")
 
     print()
     print_info("Next steps:")
     print(f"  1. Edit {colorize(str(output_path), Colors.CYAN)} to customize your experiment")
-    print(f"  2. Run: {colorize(f'insidellms run {output_path}', Colors.GREEN)}")
+    print(f"  2. Add your prompts to {colorize(str(sample_data_path), Colors.CYAN)} (JSONL format)")
+    print(f"  3. Run: {colorize(f'insidellms run {output_path}', Colors.GREEN)}")
 
     return 0

@@ -167,6 +167,12 @@ with LocalFileTracker(output_dir="./experiments") as tracker:
 - tensorboard: `pip install tensorboard` or `pip install tensorboardX`
   (TensorBoardTracker uses `torch.utils.tensorboard` if available, else `tensorboardX`)
 
+## Data Retention and Privacy
+
+- **Retention**: Backend-specific. LocalFileTracker stores files indefinitely in `output_dir`. Hosted backends (W&B, MLflow) follow their own retention policies.
+- **Privacy**: Do not log PII, secrets, or sensitive prompts. Artifacts are copied as-is; ensure source paths contain only appropriate data.
+- **Compliance**: For compliance-sensitive adopters, consider: (1) using local-only tracking, (2) disabling artifact logging, (3) scrubbing params/metrics before logging, (4) reviewing backend terms for data residency and retention.
+
 ## CI and Determinism Notes
 
 - Canonical run artifacts are deterministic and used for CI diff-gating.

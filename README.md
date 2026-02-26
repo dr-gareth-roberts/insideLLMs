@@ -141,6 +141,53 @@ insidellms report ./baseline
   run: insidellms diff ./baseline ./candidate --fail-on-changes
 ```
 
+## Verifiable Evaluation Commands
+
+For attestation/signature workflows, use the built-in Ultimate-mode commands:
+
+```bash
+# 1) Generate DSSE attestations from an existing run directory
+insidellms attest ./baseline
+
+# 2) Sign attestations (requires cosign)
+insidellms sign ./baseline
+
+# 3) Verify signature bundles
+insidellms verify-signatures ./baseline
+```
+
+**Prerequisites**
+- `cosign` is required for signing and verification commands.
+- `oras` is required when publishing artifacts to OCI registries in Ultimate workflows.
+- `tuf` support is used by dataset security utilities.
+
+Run readiness checks with:
+
+```bash
+insidellms doctor --format text
+```
+
+## Schema Validation Commands
+
+Use `insidellms schema` to inspect and validate artifact payloads against versioned contracts.
+
+```bash
+# List available schema names and versions
+insidellms schema list
+
+# Validate manifest.json (single JSON object)
+insidellms schema validate --name RunManifest --input ./baseline/manifest.json
+
+# Validate records.jsonl (one ResultRecord per line)
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl
+```
+
+For non-blocking validation during exploratory workflows:
+
+```bash
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl --mode warn
+```
+
 ## Key Features
 
 ### Deterministic Artefacts
@@ -184,6 +231,7 @@ Build domain-specific tests without forking the framework.
 - **[Tutorials](https://dr-gareth-roberts.github.io/insideLLMs/tutorials/)** - Bias testing, CI integration, custom probes
 - **[API Reference](API_REFERENCE.md)** - Complete Python API
 - **[Examples](examples/)** - Runnable code samples
+- **[Compliance Intelligence](compliance_intelligence/)** - Multi-agent AML/KYC demo (LangGraph, separate scope)
 
 ## Use Cases
 

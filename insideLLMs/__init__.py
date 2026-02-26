@@ -234,7 +234,7 @@ insideLLMs.evaluation
     - ExactMatchEvaluator: Exact string matching
     - HELPFULNESS_CRITERIA, ACCURACY_CRITERIA: Pre-defined judge criteria
 
-insideLLMs.cache
+insideLLMs.caching
     Response caching utilities:
     - InMemoryCache: Fast in-process caching
     - DiskCache: Persistent disk-based caching
@@ -287,7 +287,7 @@ insideLLMs.pipeline
     - ModelPipeline: Chain middleware together
     - CacheMiddleware, RetryMiddleware, RateLimitMiddleware
 
-insideLLMs.statistics
+insideLLMs.analysis.statistics
     Statistical analysis:
     - descriptive_statistics: Basic statistics
     - compare_experiments: Cross-experiment comparison
@@ -353,7 +353,7 @@ For production use, always pin to a specific version and test thoroughly
 before upgrading.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # =============================================================================
 # Core Types (Essential for all users)
@@ -436,7 +436,7 @@ from insideLLMs.runtime.runner import (
 # =============================================================================
 # Trace Configuration (For deterministic CI enforcement)
 # =============================================================================
-from insideLLMs.trace_config import (
+from insideLLMs.trace.trace_config import (
     FingerprintConfig,
     NormaliserConfig,
     NormaliserKind,
@@ -595,8 +595,8 @@ def __getattr__(name: str):
     -----
     The following categories of components are available via lazy loading:
 
-    - **Models**: OpenAIModel, AnthropicModel, HuggingFaceModel, GeminiModel,
-      CohereModel, OllamaModel, VLLMModel, LlamaCppModel
+    - **Models**: OpenAIModel, OpenRouterModel, AnthropicModel, HuggingFaceModel,
+      GeminiModel, CohereModel, OllamaModel, VLLMModel, LlamaCppModel
     - **Probes**: PromptInjectionProbe, JailbreakProbe, CodeGenerationProbe, etc.
     - **Caching**: InMemoryCache, DiskCache, CachedModel
     - **Pipeline**: ModelPipeline, CacheMiddleware, RetryMiddleware, etc.
@@ -620,6 +620,7 @@ def __getattr__(name: str):
     _LAZY_IMPORTS = {
         # Models
         "OpenAIModel": "insideLLMs.models",
+        "OpenRouterModel": "insideLLMs.models",
         "AnthropicModel": "insideLLMs.models",
         "HuggingFaceModel": "insideLLMs.models",
         "GeminiModel": "insideLLMs.models",
@@ -639,13 +640,13 @@ def __getattr__(name: str):
         "ComparativeProbe": "insideLLMs.probes",
         "ScoredProbe": "insideLLMs.probes",
         # Caching
-        "InMemoryCache": "insideLLMs.cache",
-        "DiskCache": "insideLLMs.cache",
-        "CachedModel": "insideLLMs.cache",
-        "cached": "insideLLMs.cache",
-        "BaseCache": "insideLLMs.cache",
-        "CacheEntry": "insideLLMs.cache",
-        "CacheStats": "insideLLMs.cache",
+        "InMemoryCache": "insideLLMs.caching",
+        "DiskCache": "insideLLMs.caching",
+        "CachedModel": "insideLLMs.caching",
+        "cached": "insideLLMs.caching",
+        "BaseCache": "insideLLMs.caching",
+        "CacheEntry": "insideLLMs.caching",
+        "CacheStats": "insideLLMs.caching",
         # Pipeline (Model Middleware)
         "ModelPipeline": "insideLLMs.pipeline",
         "Middleware": "insideLLMs.pipeline",
@@ -682,9 +683,9 @@ def __getattr__(name: str):
         "extract_json": "insideLLMs.structured",
         "parse_json": "insideLLMs.structured",
         # Statistics
-        "descriptive_statistics": "insideLLMs.statistics",
-        "compare_experiments": "insideLLMs.statistics",
-        "confidence_interval": "insideLLMs.statistics",
+        "descriptive_statistics": "insideLLMs.analysis.statistics",
+        "compare_experiments": "insideLLMs.analysis.statistics",
+        "confidence_interval": "insideLLMs.analysis.statistics",
         # Safety
         "detect_pii": "insideLLMs.safety",
         "quick_safety_check": "insideLLMs.safety",

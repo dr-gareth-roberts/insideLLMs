@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from insideLLMs.caching_unified import (
+from insideLLMs.caching import (
     CacheConfig,
     CacheEntry,
     CacheLookupResult,

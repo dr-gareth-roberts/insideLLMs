@@ -443,3 +443,96 @@ class TestReportCommand:
         )
         rc = cmd_report(args)
         assert rc in (0, 1)
+
+    def test_report_writes_regeneration_metadata(self, tmp_path):
+        from insideLLMs.cli.commands.report import cmd_report
+
+        records = [
+            {
+                "schema_version": "1.0.1",
+                "run_id": "run-report-meta",
+                "started_at": "2026-01-01T00:00:00+00:00",
+                "completed_at": "2026-01-01T00:00:01+00:00",
+                "model": {"model_id": "dummy", "provider": "local", "params": {}},
+                "probe": {"probe_id": "logic", "probe_version": "1.0.0", "params": {}},
+                "example_id": "ex-1",
+                "status": "success",
+                "scores": {"score": 1.0},
+                "usage": {},
+                "custom": {
+                    "harness": {
+                        "model_id": "dummy",
+                        "model_name": "Dummy",
+                        "model_type": "dummy",
+                        "probe_name": "Logic",
+                        "probe_type": "logic",
+                        "example_index": 0,
+                        "experiment_id": "exp-1",
+                    }
+                },
+            }
+        ]
+        (tmp_path / "records.jsonl").write_text(
+            "\n".join(json.dumps(record) for record in records), encoding="utf-8"
+        )
+
+        args = argparse.Namespace(
+            run_dir=str(tmp_path),
+            report_title="Test Report",
+        )
+        rc = cmd_report(args)
+        assert rc == 0
+
+        summary_payload = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+        metadata = summary_payload.get("report_metadata")
+        assert isinstance(metadata, dict)
+        assert metadata.get("from_records") is True
+        assert metadata.get("tool") == "insidellms report"
+        assert metadata.get("records_file") == "records.jsonl"
+        assert metadata.get("tool_version")
+
+    def test_report_handles_partial_harness_metadata(self, tmp_path):
+        from insideLLMs.cli.commands.report import cmd_report
+
+        records = [
+            {
+                "schema_version": "1.0.1",
+                "run_id": "run-partial-harness",
+                "status": "success",
+                "input": {"messages": [{"role": "user", "content": "a"}]},
+                "output": "ok",
+                "model": "legacy-model-shape",
+                "probe": "legacy-probe-shape",
+                "custom": {
+                    "harness": {
+                        "experiment_id": "exp-partial",
+                        "model_type": "dummy",
+                        "probe_type": "logic",
+                        "probe_name": "Logic",
+                        "example_index": "not-an-int",
+                    }
+                },
+            },
+            {
+                "schema_version": "1.0.1",
+                "run_id": "run-partial-harness",
+                "status": "error",
+                "input": {"messages": [{"role": "user", "content": "b"}]},
+                "error": "boom",
+                "custom": ["unexpected-shape-but-valid-json"],
+            },
+        ]
+        (tmp_path / "records.jsonl").write_text(
+            "\n".join(json.dumps(record) for record in records), encoding="utf-8"
+        )
+
+        args = argparse.Namespace(
+            run_dir=str(tmp_path),
+            report_title="Test Report",
+        )
+        rc = cmd_report(args)
+        assert rc == 0
+
+        summary_payload = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+        assert summary_payload.get("config", {}).get("derived_from_records") is True
+        assert "models" in summary_payload.get("config", {})

@@ -8,6 +8,9 @@ nav_order: 5
 
 **Same inputs → byte-for-byte identical outputs.**
 
+> Canonical source: `docs/DETERMINISM.md` and `docs/ARTIFACT_CONTRACT.md`.
+> This concept page summarizes the contract for quick navigation.
+
 Enables:
 - CI diff-gating (block regressions)
 - Reproducibility (re-run = same artefacts)

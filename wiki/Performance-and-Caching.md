@@ -8,7 +8,7 @@ middleware pipeline, caching modules, async runners, and rate limiting utilities
 
 ## Quick map of knobs (where to set them)
 
-- CLI: `insidellms run --async --concurrency N` (defaults in `insideLLMs/cli.py`)
+- CLI: `insidellms run --async --concurrency N` (parser in `insideLLMs/cli/_parsing.py`)
 - Async runners: `RunConfig.concurrency` (default 5 in `insideLLMs/config_types.py`)
 - Config YAML: `RunnerConfig.concurrency` (default 1 in `insideLLMs/config.py`)
 - Pipeline middleware: `CacheMiddleware`, `RateLimitMiddleware`, `RetryMiddleware`
@@ -47,7 +47,7 @@ pipeline = ModelPipeline(model, middlewares=[CacheMiddleware(cache_size=1000, tt
 
 ### 3) Unified caching module (general + LLM-specific)
 
-- **Module:** `insideLLMs.caching` (re-exports `caching_unified.py`)
+- **Module:** `insideLLMs.caching`
 - **Backends:** `InMemoryCache`, `DiskCache` (SQLite persistence), `StrategyCache`
   (LRU/LFU/FIFO/TTL/SIZE).
 - **LLM helpers:** `PromptCache`, `CachedModel`, cache warming + stats.
@@ -69,7 +69,7 @@ pipeline = ModelPipeline(model, middlewares=[CacheMiddleware(cache_size=1000, tt
 ## In-memory vs persistent/Redis
 
 - **In-memory:** `CacheMiddleware`, `ModelWrapper`, `InMemoryCache`, `PromptCache` (fast, per process).
-- **Persistent (local disk):** `DiskCache` (SQLite) from `caching_unified.py` survives restarts.
+- **Persistent (local disk):** `DiskCache` (SQLite) from `insideLLMs.caching` survives restarts.
 - **Distributed (Redis):** `SemanticCache` can use Redis (`redis` optional dep). Useful for
   multi-process / multi-host caching.
 

@@ -2,11 +2,24 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 
+from insideLLMs.privacy.redaction import redact_pii
 from insideLLMs.results import results_to_markdown
 
 from .._output import print_error, print_header, print_key_value, print_success
+
+
+def _load_results(input_path: Path) -> list:
+    """Load results from JSON or JSONL file."""
+    with open(input_path) as f:
+        if input_path.suffix.lower() == ".jsonl":
+            results = [json.loads(line) for line in f if line.strip()]
+        else:
+            data = json.load(f)
+            results = data if isinstance(data, list) else [data]
+    return results
 
 
 def cmd_export(args: argparse.Namespace) -> int:
@@ -22,11 +35,11 @@ def cmd_export(args: argparse.Namespace) -> int:
     print_key_value("Format", args.format)
 
     try:
-        with open(input_path) as f:
-            results = json.load(f)
+        results = _load_results(input_path)
 
-        if not isinstance(results, list):
-            results = [results]
+        if getattr(args, "redact_pii", False):
+            results = redact_pii(results)
+            print_key_value("Redact PII", "enabled")
 
         output_path = args.output
         if not output_path:
@@ -79,6 +92,32 @@ def cmd_export(args: argparse.Namespace) -> int:
                 )
                 with open(output_path, "w") as f:
                     f.write("\n".join(lines))
+
+        elif args.format == "jsonl":
+            with open(output_path, "w") as f:
+                for r in results:
+                    f.write(json.dumps(r, default=str) + "\n")
+
+        if getattr(args, "encrypt", False):
+            key_env = getattr(args, "encryption_key_env", "INSIDELLMS_ENCRYPTION_KEY")
+            key_b64 = os.environ.get(key_env)
+            if not key_b64:
+                print_error(
+                    f"Encryption requested but {key_env} is not set. "
+                    "Set the env var with a Fernet key (base64)."
+                )
+                return 1
+            if args.format != "jsonl":
+                print_error("--encrypt is only supported for JSONL format")
+                return 1
+            try:
+                from insideLLMs.privacy.encryption import encrypt_jsonl
+
+                encrypt_jsonl(output_path, key=key_b64.encode())
+                print_key_value("Encrypted", "yes")
+            except RuntimeError as e:
+                print_error(f"Encryption failed: {e}")
+                return 1
 
         print_success(f"Exported to: {output_path}")
         return 0
