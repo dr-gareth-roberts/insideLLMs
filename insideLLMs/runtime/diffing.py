@@ -155,9 +155,7 @@ def _strip_volatile_keys(value: Any, ignore_keys: set[str]) -> Any:
     return value
 
 
-def _output_fingerprint(
-    record: dict[str, Any], ignore_keys: set[str] | None = None
-) -> str | None:
+def _output_fingerprint(record: dict[str, Any], ignore_keys: set[str] | None = None) -> str | None:
     output = record.get("output")
     if ignore_keys:
         custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
@@ -178,9 +176,7 @@ def _output_fingerprint(
     return _fingerprint_value(output)
 
 
-def _output_summary(
-    record: dict[str, Any], ignore_keys: set[str] | None
-) -> dict[str, Any] | None:
+def _output_summary(record: dict[str, Any], ignore_keys: set[str] | None) -> dict[str, Any] | None:
     output_text = _output_text(record)
     if isinstance(output_text, str):
         return {"type": "text", "preview": _trim_text(output_text), "length": len(output_text)}
@@ -684,7 +680,9 @@ def build_diff_computation(
             fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys)
             if fingerprint_a != fingerprint_b:
                 if fingerprint_a and fingerprint_b:
-                    changes.append((*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}"))
+                    changes.append(
+                        (*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}")
+                    )
                 else:
                     changes.append((*label, "output changed (structured)"))
                 changes_json.append(
@@ -725,7 +723,9 @@ def build_diff_computation(
         violations_a = _trace_violation_count(record_a)
         violations_b = _trace_violation_count(record_b)
         if violations_b > violations_a:
-            trace_violation_increases.append((*label, f"violations {violations_a} -> {violations_b}"))
+            trace_violation_increases.append(
+                (*label, f"violations {violations_a} -> {violations_b}")
+            )
             trace_violation_increases_json.append(
                 {
                     **identity,

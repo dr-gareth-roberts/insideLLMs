@@ -470,6 +470,7 @@ class TestEmbeddingClusterer:
 
     def test_cluster_dbscan(self):
         """Test DBSCAN clustering path."""
+
         # Embedder that groups similar texts (identical texts -> same embedding)
         def embed(text: str) -> list:
             return [ord(c) / 256.0 for c in (text[:10] + " " * 10)[:10]]

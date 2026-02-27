@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from app.config import settings
 from app.models import (
     Alert,
     AlertSeverity,
@@ -32,13 +31,22 @@ SANCTIONS_DB: dict[str, list[str]] = {
 }
 
 EMBARGOED_PAIRS: set[tuple[str, str]] = {
-    ("US", "IR"), ("US", "KP"), ("US", "SY"), ("US", "CU"),
-    ("GB", "IR"), ("GB", "KP"), ("GB", "SY"),
+    ("US", "IR"),
+    ("US", "KP"),
+    ("US", "SY"),
+    ("US", "CU"),
+    ("GB", "IR"),
+    ("GB", "KP"),
+    ("GB", "SY"),
 }
 
 TRADE_RESTRICTIONS_DB: dict[str, list[str]] = {
     "CN": ["Export control restrictions (Entity List)", "Technology transfer limitations"],
-    "RU": ["SWIFT disconnection for select banks", "Energy sector restrictions", "Luxury goods ban"],
+    "RU": [
+        "SWIFT disconnection for select banks",
+        "Energy sector restrictions",
+        "Luxury goods ban",
+    ],
     "IR": ["Total trade embargo", "Financial sector sanctions"],
     "KP": ["Comprehensive sanctions regime", "Maritime interdiction"],
 }
@@ -60,11 +68,15 @@ def run_geopolitical(state: PipelineState) -> PipelineState:
     state.geopolitical_finding = finding
 
     if finding.geo_risk.value in ("critical", "high"):
-        state.alerts.append(Alert(
-            severity=AlertSeverity.CRITICAL if finding.embargo_active else AlertSeverity.WARNING,
-            title=f"Geopolitical Risk: {corridor}",
-            description=finding.risk_narrative,
-        ))
+        state.alerts.append(
+            Alert(
+                severity=AlertSeverity.CRITICAL
+                if finding.embargo_active
+                else AlertSeverity.WARNING,
+                title=f"Geopolitical Risk: {corridor}",
+                description=finding.risk_narrative,
+            )
+        )
 
     state.processing_steps.append(
         f"[{_now()}] Geo: corridor {corridor} → risk={finding.geo_risk.value}, "
@@ -88,16 +100,17 @@ def _analyze_corridor(src_cc: str, dst_cc: str, corridor: str) -> GeopoliticalFi
             trade_restrictions.extend(TRADE_RESTRICTIONS_DB[cc])
 
     # Check embargo
-    embargo_active = (
-        (src_cc, dst_cc) in EMBARGOED_PAIRS
-        or (dst_cc, src_cc) in EMBARGOED_PAIRS
-    )
+    embargo_active = (src_cc, dst_cc) in EMBARGOED_PAIRS or (dst_cc, src_cc) in EMBARGOED_PAIRS
 
     # Add corridor-specific warnings
     if src_cc != dst_cc:
-        regulatory_warnings.append(f"Cross-border transaction: {corridor} — verify compliance with both jurisdictions")
+        regulatory_warnings.append(
+            f"Cross-border transaction: {corridor} — verify compliance with both jurisdictions"
+        )
     if any(cc in {"PA", "VU", "KY", "VG", "BZ"} for cc in (src_cc, dst_cc)):
-        regulatory_warnings.append("Transaction involves offshore financial center — enhanced due diligence recommended")
+        regulatory_warnings.append(
+            "Transaction involves offshore financial center — enhanced due diligence recommended"
+        )
 
     # Intermediary country risks (from intermediary bank locations could be added here)
 
@@ -121,7 +134,9 @@ def _analyze_corridor(src_cc: str, dst_cc: str, corridor: str) -> GeopoliticalFi
             f"Verify transaction does not violate sector-specific restrictions."
         )
     else:
-        narrative = f"Low geopolitical risk on corridor {corridor}. Standard compliance procedures apply."
+        narrative = (
+            f"Low geopolitical risk on corridor {corridor}. Standard compliance procedures apply."
+        )
 
     return GeopoliticalFinding(
         corridor=corridor,

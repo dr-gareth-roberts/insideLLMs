@@ -11,7 +11,9 @@ class Settings(BaseSettings):
 
     model_config = {"env_prefix": "CI_", "env_file": ".env", "extra": "ignore"}
 
-    openai_api_key: str = Field(default="", description="OpenAI API key (leave blank for simulation mode)")
+    openai_api_key: str = Field(
+        default="", description="OpenAI API key (leave blank for simulation mode)"
+    )
     openai_model: str = "gpt-4o"
     simulation_mode: bool = Field(
         default=True,

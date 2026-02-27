@@ -37,9 +37,14 @@ Be thorough and conservative — when in doubt, flag for review."""
 
 
 WATCHLISTS = [
-    "OFAC SDN List", "EU Consolidated Sanctions", "UN Security Council",
-    "UK HMT Sanctions", "FATF Blacklist", "Interpol Red Notices",
-    "World Bank Debarment", "FinCEN 311 Special Measures",
+    "OFAC SDN List",
+    "EU Consolidated Sanctions",
+    "UN Security Council",
+    "UK HMT Sanctions",
+    "FATF Blacklist",
+    "Interpol Red Notices",
+    "World Bank Debarment",
+    "FinCEN 311 Special Measures",
 ]
 
 SANCTIONS_COUNTRIES = {"IR", "KP", "SY", "CU", "VE", "RU", "BY"}
@@ -50,8 +55,10 @@ def run_kyc(state: PipelineState) -> PipelineState:
     logger.info("▶ KYC Agent screening entities for TXN %s", state.transaction.transaction_id)
     state.status = "kyc_processing"
 
-    for label, entity in [("source", state.transaction.source_entity),
-                          ("destination", state.transaction.destination_entity)]:
+    for label, entity in [
+        ("source", state.transaction.source_entity),
+        ("destination", state.transaction.destination_entity),
+    ]:
         state.processing_steps.append(f"[{_now()}] KYC: screening {label} entity '{entity.name}'")
 
         if settings.simulation_mode:
@@ -63,17 +70,21 @@ def run_kyc(state: PipelineState) -> PipelineState:
 
         # Raise alerts for critical findings
         if finding.sanctions_match:
-            state.alerts.append(Alert(
-                severity=AlertSeverity.CRITICAL,
-                title=f"Sanctions Match — {entity.name}",
-                description=f"Entity matched against: {', '.join(finding.watchlist_hits)}. IMMEDIATE ESCALATION REQUIRED.",
-            ))
+            state.alerts.append(
+                Alert(
+                    severity=AlertSeverity.CRITICAL,
+                    title=f"Sanctions Match — {entity.name}",
+                    description=f"Entity matched against: {', '.join(finding.watchlist_hits)}. IMMEDIATE ESCALATION REQUIRED.",
+                )
+            )
         elif finding.kyc_risk in (RiskLevel.HIGH, RiskLevel.CRITICAL):
-            state.alerts.append(Alert(
-                severity=AlertSeverity.WARNING,
-                title=f"Elevated KYC Risk — {entity.name}",
-                description=f"KYC risk level: {finding.kyc_risk.value}. Flags: {', '.join(finding.risk_flags)}.",
-            ))
+            state.alerts.append(
+                Alert(
+                    severity=AlertSeverity.WARNING,
+                    title=f"Elevated KYC Risk — {entity.name}",
+                    description=f"KYC risk level: {finding.kyc_risk.value}. Flags: {', '.join(finding.risk_flags)}.",
+                )
+            )
 
         state.processing_steps.append(
             f"[{_now()}] KYC: {label} '{entity.name}' → risk={finding.kyc_risk.value}, "
@@ -137,7 +148,11 @@ def _simulate_kyc(entity, state: PipelineState) -> KYCFinding:
         pep_match=is_pep,
         adverse_media_summary=adverse_summary,
         watchlist_hits=hits,
-        verification_sources=["Internal KYC DB", "Thomson Reuters World-Check", "Dow Jones Risk & Compliance"],
+        verification_sources=[
+            "Internal KYC DB",
+            "Thomson Reuters World-Check",
+            "Dow Jones Risk & Compliance",
+        ],
         confidence=confidence,
         risk_flags=risk_flags,
     )
@@ -158,6 +173,7 @@ def _llm_kyc(entity, state: PipelineState) -> KYCFinding:
 
     # Parse structured output
     import json
+
     try:
         data = json.loads(response.content)
         return KYCFinding(entity_id=entity.entity_id, **data)

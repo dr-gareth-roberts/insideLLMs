@@ -73,7 +73,9 @@ def cmd_optimize_prompt(args: argparse.Namespace) -> int:
     print_header("Optimize Prompt")
     print_key_value("Token reduction", report.token_reduction)
     print_key_value("Estimated quality change", f"{report.estimated_quality_change:.3f}")
-    print_key_value("Strategies applied", ", ".join(s.value for s in report.strategies_applied) or "-")
+    print_key_value(
+        "Strategies applied", ", ".join(s.value for s in report.strategies_applied) or "-"
+    )
 
     if args.show_diff:
         print_subheader("Original")
@@ -96,4 +98,3 @@ def cmd_optimize_prompt(args: argparse.Namespace) -> int:
         f"{colorize('insidellms diff --fail-on-changes', Colors.GREEN)}."
     )
     return 0
-

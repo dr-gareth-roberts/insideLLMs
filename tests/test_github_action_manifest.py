@@ -38,7 +38,5 @@ def test_example_workflow_uses_local_action_and_permissions() -> None:
     assert workflow["permissions"]["pull-requests"] == "write"
 
     job = workflow["jobs"]["behavioural-diff"]
-    uses_steps = [
-        step for step in job["steps"] if isinstance(step, dict) and "uses" in step
-    ]
+    uses_steps = [step for step in job["steps"] if isinstance(step, dict) and "uses" in step]
     assert any(step["uses"] == "./" for step in uses_steps)

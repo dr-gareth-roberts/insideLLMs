@@ -317,19 +317,15 @@ def test_compute_diff_exit_code_contract(tmp_path: Path) -> None:
     )
 
     assert compute_diff_exit_code(regression) == 0
-    assert compute_diff_exit_code(
-        regression, DiffGatePolicy(fail_on_regressions=True)
-    ) == 2
-    assert compute_diff_exit_code(
-        regression, DiffGatePolicy(fail_on_changes=True)
-    ) == 2
-    assert compute_diff_exit_code(
-        trace_violations, DiffGatePolicy(fail_on_trace_violations=True)
-    ) == 3
+    assert compute_diff_exit_code(regression, DiffGatePolicy(fail_on_regressions=True)) == 2
+    assert compute_diff_exit_code(regression, DiffGatePolicy(fail_on_changes=True)) == 2
+    assert (
+        compute_diff_exit_code(trace_violations, DiffGatePolicy(fail_on_trace_violations=True)) == 3
+    )
     assert compute_diff_exit_code(trace_drift, DiffGatePolicy(fail_on_trace_drift=True)) == 4
-    assert compute_diff_exit_code(
-        trajectory_drift, DiffGatePolicy(fail_on_trajectory_drift=True)
-    ) == 5
+    assert (
+        compute_diff_exit_code(trajectory_drift, DiffGatePolicy(fail_on_trajectory_drift=True)) == 5
+    )
 
 
 def test_interactive_helpers_contract(tmp_path: Path) -> None:

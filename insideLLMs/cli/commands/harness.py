@@ -196,9 +196,7 @@ def _generate_active_red_team_records(
     return records
 
 
-def _materialize_active_red_team_dataset(
-    config_path: Path, records: list[dict[str, Any]]
-) -> Path:
+def _materialize_active_red_team_dataset(config_path: Path, records: list[dict[str, Any]]) -> Path:
     """Write generated red-team records to a temporary JSONL dataset file."""
     with tempfile.NamedTemporaryFile(
         mode="w",

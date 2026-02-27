@@ -15,10 +15,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 def fetch_dataset(name: str, version: str, *, base_url: str = "") -> tuple[Path, dict[str, Any]]:
     """Fetch and verify dataset; return local path and verification proof."""
     try:
         from tuf.ngclient import Updater  # noqa: F401
+
         tuf_available = True
     except ImportError:
         tuf_available = False

@@ -21,10 +21,10 @@ from pydantic import (
     model_validator,
 )
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class Currency(str, Enum):
     USD = "USD"
@@ -84,8 +84,10 @@ class AlertSeverity(str, Enum):
 # Core entities
 # ---------------------------------------------------------------------------
 
+
 class Address(BaseModel):
     """Physical or registered address."""
+
     model_config = ConfigDict(frozen=True)
 
     street: str = Field(min_length=1)
@@ -97,6 +99,7 @@ class Address(BaseModel):
 
 class Entity(BaseModel):
     """A counterparty in a transaction — individual or organisation."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     entity_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
@@ -114,9 +117,33 @@ class Entity(BaseModel):
     @property
     def high_risk_jurisdiction(self) -> bool:
         """Automatically flag entities in FATF high-risk jurisdictions."""
-        HIGH_RISK = {"IR", "KP", "MM", "SY", "YE", "AF", "AL", "BF", "CM", "CD",
-                     "HT", "JM", "JO", "ML", "MZ", "NI", "PK", "PA", "PH", "SN",
-                     "SS", "TZ", "TR", "UG", "VU"}
+        HIGH_RISK = {
+            "IR",
+            "KP",
+            "MM",
+            "SY",
+            "YE",
+            "AF",
+            "AL",
+            "BF",
+            "CM",
+            "CD",
+            "HT",
+            "JM",
+            "JO",
+            "ML",
+            "MZ",
+            "NI",
+            "PK",
+            "PA",
+            "PH",
+            "SN",
+            "SS",
+            "TZ",
+            "TR",
+            "UG",
+            "VU",
+        }
         return self.country_code in HIGH_RISK
 
     @computed_field
@@ -145,6 +172,7 @@ class Entity(BaseModel):
 
 class Transaction(BaseModel):
     """A single financial transaction submitted for compliance review."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     transaction_id: str = Field(default_factory=lambda: f"TXN-{uuid.uuid4().hex[:10].upper()}")
@@ -175,9 +203,15 @@ class Transaction(BaseModel):
     def amount_usd_approx(self) -> float:
         """Rough USD equivalent for triage (real system would use live FX)."""
         FX = {
-            Currency.USD: 1.0, Currency.EUR: 1.08, Currency.GBP: 1.26,
-            Currency.CHF: 1.12, Currency.JPY: 0.0067, Currency.CNY: 0.14,
-            Currency.AED: 0.27, Currency.RUB: 0.011, Currency.BTC: 62_000.0,
+            Currency.USD: 1.0,
+            Currency.EUR: 1.08,
+            Currency.GBP: 1.26,
+            Currency.CHF: 1.12,
+            Currency.JPY: 0.0067,
+            Currency.CNY: 0.14,
+            Currency.AED: 0.27,
+            Currency.RUB: 0.011,
+            Currency.BTC: 62_000.0,
             Currency.ETH: 3_400.0,
         }
         return round(self.amount * FX.get(self.currency, 1.0), 2)
@@ -194,8 +228,10 @@ class Transaction(BaseModel):
 # Agent analysis outputs — discriminated union pattern
 # ---------------------------------------------------------------------------
 
+
 class KYCFinding(BaseModel):
     """Output of the KYC/AML deep agent."""
+
     agent: Literal["kyc_aml"] = "kyc_aml"
     entity_id: str
     identity_verified: bool
@@ -230,6 +266,7 @@ class KYCFinding(BaseModel):
 
 class TransactionPatternFinding(BaseModel):
     """Output of the Transaction Pattern Analysis deep agent."""
+
     agent: Literal["transaction_pattern"] = "transaction_pattern"
     pattern_type: str
     description: str
@@ -246,14 +283,16 @@ class TransactionPatternFinding(BaseModel):
     @computed_field
     @property
     def pattern_risk(self) -> RiskLevel:
-        flags = sum([
-            self.structuring_detected,
-            self.rapid_movement_detected,
-            self.round_tripping_detected,
-            self.layering_detected,
-            self.unusual_timing,
-            self.velocity_anomaly,
-        ])
+        flags = sum(
+            [
+                self.structuring_detected,
+                self.rapid_movement_detected,
+                self.round_tripping_detected,
+                self.layering_detected,
+                self.unusual_timing,
+                self.velocity_anomaly,
+            ]
+        )
         if flags >= 3 or self.round_tripping_detected or self.layering_detected:
             return RiskLevel.CRITICAL
         if flags >= 2 or self.structuring_detected:
@@ -265,6 +304,7 @@ class TransactionPatternFinding(BaseModel):
 
 class GeopoliticalFinding(BaseModel):
     """Output of the Geopolitical Risk deep agent."""
+
     agent: Literal["geopolitical"] = "geopolitical"
     corridor: str = Field(description="e.g. 'US → IR' for country corridor")
     sanctions_programs: list[str] = Field(default_factory=list)
@@ -295,8 +335,10 @@ AgentFinding = Annotated[
 # Risk scoring
 # ---------------------------------------------------------------------------
 
+
 class RiskScore(BaseModel):
     """Composite risk score produced by the Risk Scoring agent."""
+
     model_config = ConfigDict(frozen=True)
 
     overall_score: float = Field(ge=0.0, le=100.0)
@@ -324,8 +366,10 @@ class RiskScore(BaseModel):
 # Decision & compliance report
 # ---------------------------------------------------------------------------
 
+
 class ComplianceDecision(BaseModel):
     """Final decision from the Compliance Decision agent."""
+
     verdict: DecisionVerdict
     confidence: float = Field(ge=0.0, le=1.0)
     rationale: str
@@ -342,6 +386,7 @@ class ComplianceDecision(BaseModel):
 
 class Alert(BaseModel):
     """A single alert generated during processing."""
+
     alert_id: str = Field(default_factory=lambda: f"ALT-{uuid.uuid4().hex[:8].upper()}")
     severity: AlertSeverity
     title: str
@@ -351,6 +396,7 @@ class Alert(BaseModel):
 
 class ComplianceReport(BaseModel):
     """Full compliance report — the final artifact of the pipeline."""
+
     report_id: str = Field(default_factory=lambda: f"RPT-{uuid.uuid4().hex[:10].upper()}")
     transaction: Transaction
     findings: list[AgentFinding] = Field(default_factory=list)
@@ -384,11 +430,13 @@ class ComplianceReport(BaseModel):
 # LangGraph state (used as the shared state across nodes)
 # ---------------------------------------------------------------------------
 
+
 class PipelineState(BaseModel):
     """Mutable state flowing through the LangGraph workflow.
 
     This is the single source of truth for all nodes in the graph.
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     transaction: Transaction

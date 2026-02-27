@@ -34,7 +34,9 @@ def _item_detail(item: dict[str, Any]) -> str:
     return "changed"
 
 
-def _render_section(lines: list[str], title: str, items: list[dict[str, Any]], *, limit: int) -> None:
+def _render_section(
+    lines: list[str], title: str, items: list[dict[str, Any]], *, limit: int
+) -> None:
     lines.append(f"### {title} ({len(items)})")
     if not items:
         lines.append("- None")

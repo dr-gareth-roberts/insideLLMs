@@ -24,14 +24,30 @@ from insideLLMs.runtime.pipeline import PassthroughMiddleware
 
 def _request_hash(prompt: str, kwargs: dict[str, Any]) -> str:
     """Canonical hash of request (prompt + generation params)."""
-    payload = {"prompt": prompt, "params": {k: v for k, v in sorted(kwargs.items()) if k not in ("record_index", "example_id")}}
+    payload = {
+        "prompt": prompt,
+        "params": {
+            k: v for k, v in sorted(kwargs.items()) if k not in ("record_index", "example_id")
+        },
+    }
     return digest_bytes(canonical_json_bytes(payload))
 
 
 def _request_hash_chat(messages: list[Any], kwargs: dict[str, Any]) -> str:
     """Canonical hash of chat request (messages + params)."""
-    msgs = [{"role": getattr(m, "role", m.get("role")), "content": getattr(m, "content", m.get("content"))} for m in messages]
-    payload = {"messages": msgs, "params": {k: v for k, v in sorted(kwargs.items()) if k not in ("record_index", "example_id")}}
+    msgs = [
+        {
+            "role": getattr(m, "role", m.get("role")),
+            "content": getattr(m, "content", m.get("content")),
+        }
+        for m in messages
+    ]
+    payload = {
+        "messages": msgs,
+        "params": {
+            k: v for k, v in sorted(kwargs.items()) if k not in ("record_index", "example_id")
+        },
+    }
     return digest_bytes(canonical_json_bytes(payload))
 
 

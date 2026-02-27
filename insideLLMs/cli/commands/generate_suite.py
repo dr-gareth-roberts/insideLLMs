@@ -90,7 +90,11 @@ def cmd_generate_suite(args: argparse.Namespace) -> int:
 
     try:
         model_or_factory = model_registry.get(args.model)
-        model = model_or_factory(**model_args) if isinstance(model_or_factory, type) else model_or_factory
+        model = (
+            model_or_factory(**model_args)
+            if isinstance(model_or_factory, type)
+            else model_or_factory
+        )
     except Exception as exc:
         print_error(f"Could not initialize model '{args.model}': {exc}")
         return 1
@@ -141,4 +145,3 @@ def cmd_generate_suite(args: argparse.Namespace) -> int:
         f"after pointing dataset path to {colorize(str(output_path), Colors.CYAN)}"
     )
     return 0
-

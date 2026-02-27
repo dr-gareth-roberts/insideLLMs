@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check mypy type coverage and fail if below threshold."""
 
+import re
 import sys
 from pathlib import Path
 
@@ -21,23 +22,19 @@ def check_type_coverage(report_dir: str, threshold: float = 0.95) -> bool:
         print(f"Error: Report not found at {report_path}")
         return False
 
-    # Parse report (simplified - actual parsing would be more robust)
     with open(report_path) as f:
         content = f.read()
 
-    # Look for coverage percentage
-    # Format: "Total coverage: 95.2%"
-    import re
-    match = re.search(r'Total coverage:\s*(\d+\.?\d*)%', content)
+    match = re.search(r"Total coverage:\s*(\d+\.?\d*)%", content)
 
     if not match:
-        print("Warning: Could not parse coverage from report")
-        return True  # Don't fail if we can't parse
+        print("Error: Could not parse coverage from report — failing as a precaution")
+        return False
 
     coverage = float(match.group(1)) / 100.0
 
-    print(f"Type coverage: {coverage*100:.1f}%")
-    print(f"Threshold: {threshold*100:.1f}%")
+    print(f"Type coverage: {coverage * 100:.1f}%")
+    print(f"Threshold: {threshold * 100:.1f}%")
 
     if coverage < threshold:
         print("❌ Type coverage below threshold!")

@@ -6,7 +6,7 @@ PipelineState for validation at node boundaries.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from app.models import (
     Alert,
@@ -22,6 +22,7 @@ from app.models import (
 
 class GraphState(TypedDict, total=False):
     """LangGraph state — mirrors PipelineState but as TypedDict for graph compatibility."""
+
     transaction: Transaction
     kyc_findings: list[KYCFinding]
     pattern_finding: TransactionPatternFinding | None

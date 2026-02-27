@@ -42,11 +42,15 @@ def run_transaction_pattern(state: PipelineState) -> PipelineState:
 
     # Raise alerts for critical patterns
     if finding.pattern_risk.value in ("critical", "high"):
-        state.alerts.append(Alert(
-            severity=AlertSeverity.CRITICAL if finding.pattern_risk.value == "critical" else AlertSeverity.WARNING,
-            title=f"Suspicious Pattern Detected: {finding.pattern_type}",
-            description=finding.description,
-        ))
+        state.alerts.append(
+            Alert(
+                severity=AlertSeverity.CRITICAL
+                if finding.pattern_risk.value == "critical"
+                else AlertSeverity.WARNING,
+                title=f"Suspicious Pattern Detected: {finding.pattern_type}",
+                description=finding.description,
+            )
+        )
 
     state.processing_steps.append(
         f"[{_now()}] Pattern: analysis complete — type='{finding.pattern_type}', "
@@ -66,7 +70,9 @@ def _simulate_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
     structuring = False
     if 8_000 <= amount_usd <= 10_000:
         structuring = True
-        evidence.append(f"Amount ${amount_usd:,.2f} is within structuring range (80-100% of CTR threshold)")
+        evidence.append(
+            f"Amount ${amount_usd:,.2f} is within structuring range (80-100% of CTR threshold)"
+        )
 
     # Rapid movement (crypto or wire transfers with intermediaries)
     rapid = False
@@ -77,17 +83,23 @@ def _simulate_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
 
     # Round-tripping (same country, different entities, high value)
     round_trip = False
-    if (txn.source_entity.country_code == txn.destination_entity.country_code
-            and amount_usd > 100_000):
+    if (
+        txn.source_entity.country_code == txn.destination_entity.country_code
+        and amount_usd > 100_000
+    ):
         if random.random() > 0.6:
             round_trip = True
-            evidence.append("Potential round-tripping: high-value same-jurisdiction transfer with complex structure")
+            evidence.append(
+                "Potential round-tripping: high-value same-jurisdiction transfer with complex structure"
+            )
 
     # Layering (multiple intermediaries)
     layering = False
     if len(txn.intermediary_banks) >= 3:
         layering = True
-        evidence.append(f"Layering indicators: {len(txn.intermediary_banks)} intermediary banks in chain")
+        evidence.append(
+            f"Layering indicators: {len(txn.intermediary_banks)} intermediary banks in chain"
+        )
 
     # Unusual timing
     hour = txn.timestamp.hour
@@ -135,25 +147,30 @@ def _simulate_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
         unusual_timing=unusual_timing,
         velocity_anomaly=velocity,
         historical_deviation_score=round(deviation, 3),
-        similar_suspicious_cases=random.randint(0, 12) if any([structuring, rapid, round_trip, layering]) else 0,
+        similar_suspicious_cases=random.randint(0, 12)
+        if any([structuring, rapid, round_trip, layering])
+        else 0,
         evidence=evidence,
     )
 
 
 def _llm_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
     """LLM-powered pattern analysis."""
+    import json
+
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
-    import json
 
     llm = ChatOpenAI(model=settings.openai_model, temperature=0, api_key=settings.openai_api_key)
 
     messages = [
-        SystemMessage(content=(
-            "You are a financial crime analyst specializing in transaction pattern detection. "
-            "Analyze the transaction for: structuring, layering, round-tripping, rapid movement, "
-            "unusual timing, and velocity anomalies. Return structured JSON matching TransactionPatternFinding schema."
-        )),
+        SystemMessage(
+            content=(
+                "You are a financial crime analyst specializing in transaction pattern detection. "
+                "Analyze the transaction for: structuring, layering, round-tripping, rapid movement, "
+                "unusual timing, and velocity anomalies. Return structured JSON matching TransactionPatternFinding schema."
+            )
+        ),
         HumanMessage(content=f"Analyze this transaction:\n\n{txn.model_dump_json(indent=2)}"),
     ]
     response = llm.invoke(messages)

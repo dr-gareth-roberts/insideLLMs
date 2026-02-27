@@ -368,6 +368,7 @@ class ProbeRunner(_RunnerBase):
             receipt_sink = receipts_dir / "calls.jsonl"
             from insideLLMs.runtime.pipeline import ModelPipeline
             from insideLLMs.runtime.receipt import ReceiptMiddleware
+
             effective_model = ModelPipeline(
                 self.model,
                 middlewares=[ReceiptMiddleware(receipt_sink=receipt_sink)],
@@ -730,8 +731,10 @@ class ProbeRunner(_RunnerBase):
 
             if run_mode == "ultimate":
                 from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
+
                 try:
                     import insideLLMs as _pkg
+
                     _ver = getattr(_pkg, "__version__", None)
                 except ImportError:
                     _ver = None

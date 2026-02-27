@@ -217,7 +217,9 @@ def main() -> int:
     else:
         extension_readme = _read(extension_readme_path)
         if "Run insideLLMs probes" not in extension_readme:
-            failures.append("extensions/vscode-insidellms/README.md missing 'Run insideLLMs probes'")
+            failures.append(
+                "extensions/vscode-insidellms/README.md missing 'Run insideLLMs probes'"
+            )
 
     if failures:
         print("Documentation audit issues detected:", file=sys.stderr)
