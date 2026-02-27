@@ -7,12 +7,12 @@ help:
 	@echo "  make format        - ruff format . + ruff check --fix ."
 	@echo "  make format-check  - ruff format --check ."
 	@echo "  make typecheck     - mypy insideLLMs"
-	@echo "  make test          - pytest"
-	@echo "  make test-fast     - pytest -m \"not slow and not integration\""
-	@echo "  make test-determinism - pytest -m determinism"
-	@echo "  make test-contract - pytest -m contract"
-	@echo "  make test-adapter  - pytest -m adapter"
-	@echo "  make test-performance - pytest -m performance"
+	@echo "  make test          - python -m pytest"
+	@echo "  make test-fast     - python -m pytest -m \"not slow and not integration\""
+	@echo "  make test-determinism - python -m pytest -m determinism"
+	@echo "  make test-contract - python -m pytest -m contract"
+	@echo "  make test-adapter  - python -m pytest -m adapter"
+	@echo "  make test-performance - python -m pytest -m performance"
 	@echo "  make docs-audit    - markdown/docs coverage + wiki link checks"
 	@echo "  make check         - lint + format-check + typecheck + test"
 	@echo "  make check-fast    - lint + format-check + test-fast (quick pre-commit)"
@@ -54,22 +54,22 @@ typecheck-coverage:
 	@echo "Coverage report in ./mypy-coverage/"
 
 test:
-	pytest
+	python -m pytest
 
 test-fast:
-	pytest -m "not slow and not integration"
+	python -m pytest -m "not slow and not integration"
 
 test-determinism:
-	pytest -m determinism
+	python -m pytest -m determinism
 
 test-contract:
-	pytest -m contract
+	python -m pytest -m contract
 
 test-adapter:
-	pytest -m adapter
+	python -m pytest -m adapter
 
 test-performance:
-	pytest -m performance
+	python -m pytest -m performance
 
 docs-audit:
 	python scripts/audit_docs.py

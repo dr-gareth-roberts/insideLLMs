@@ -14,9 +14,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history needed to check out base ref
+          fetch-depth: 0
 
-      - uses: ./.github/actions/diff-gate
+      - name: Run insideLLMs action
+        id: insidellms
+        uses: ./
         with:
-          config: ci/harness.yaml
-          fail-on: regressions
+          harness-config: ci/harness.yaml
+          diff-args: --fail-on-regressions
+          fail-on-changes: "false"
+          post-pr-comment: "true"
+          comment-on-forks: "false"
+
+      - name: Upload diff artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: insidellms-diff-${{ github.sha }}
+          path: ${{ steps.insidellms.outputs.diff-json }}
+          if-no-files-found: warn
