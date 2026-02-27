@@ -81,9 +81,7 @@ def submit_statement(
             if e.code and 400 <= e.code < 500:
                 break
         except TimeoutError:
-            last_error = ScittTimeoutError(
-                f"SCITT request timed out after {timeout}s"
-            )
+            last_error = ScittTimeoutError(f"SCITT request timed out after {timeout}s")
         except OSError as e:
             last_error = ScittSubmissionError(f"SCITT request failed: {e}")
         if attempt < retries:

@@ -16,11 +16,11 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.graph.workflow import run_compliance_pipeline
-from app.models import ComplianceReport, Transaction
+from app.models import Transaction
 from app.scenarios import SCENARIOS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -32,6 +32,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# NOTE: Wildcard CORS is acceptable for this demo app only.
+# Production deployments must restrict origins to known domains.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,6 +47,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 # ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
+
 
 class ScenarioInfo(BaseModel):
     key: str
@@ -68,6 +71,7 @@ class AnalyzeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @app.get("/")
 async def serve_frontend():
@@ -98,7 +102,9 @@ async def list_scenarios():
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 async def analyze_scenario(req: AnalyzeRequest):
     if req.scenario_key not in SCENARIOS:
-        raise HTTPException(400, f"Unknown scenario: {req.scenario_key}. Available: {list(SCENARIOS.keys())}")
+        raise HTTPException(
+            400, f"Unknown scenario: {req.scenario_key}. Available: {list(SCENARIOS.keys())}"
+        )
 
     scenario = SCENARIOS[req.scenario_key]
     transaction = scenario["factory"]()
@@ -108,9 +114,9 @@ async def analyze_scenario(req: AnalyzeRequest):
 
     try:
         final_state = run_compliance_pipeline(transaction)
-    except Exception as e:
+    except Exception:
         logger.exception("Pipeline failed for scenario '%s'", req.scenario_key)
-        raise HTTPException(500, f"Pipeline error: {str(e)}")
+        raise HTTPException(500, "Pipeline error — see server logs for details")
 
     elapsed = (time.time() - start) * 1000
 
@@ -136,9 +142,9 @@ async def analyze_custom(transaction: Transaction):
 
     try:
         final_state = run_compliance_pipeline(transaction)
-    except Exception as e:
+    except Exception:
         logger.exception("Pipeline failed for custom TXN")
-        raise HTTPException(500, f"Pipeline error: {str(e)}")
+        raise HTTPException(500, "Pipeline error — see server logs for details")
 
     elapsed = (time.time() - start) * 1000
 

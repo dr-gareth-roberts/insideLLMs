@@ -7,8 +7,6 @@ to sanctions-violating cross-border wire transfers.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from app.models import (
     Address,
     Currency,
@@ -29,14 +27,18 @@ def scenario_low_risk() -> Transaction:
             name="Acme Manufacturing LLC",
             entity_type=EntityType.CORPORATION,
             country_code="US",
-            address=Address(street="123 Industrial Blvd", city="Detroit", country_code="US", postal_code="48201"),
+            address=Address(
+                street="123 Industrial Blvd", city="Detroit", country_code="US", postal_code="48201"
+            ),
             tax_id="12-3456789",
         ),
         destination_entity=Entity(
             name="Great Lakes Supply Co.",
             entity_type=EntityType.CORPORATION,
             country_code="US",
-            address=Address(street="456 Commerce Dr", city="Chicago", country_code="US", postal_code="60601"),
+            address=Address(
+                street="456 Commerce Dr", city="Chicago", country_code="US", postal_code="60601"
+            ),
             tax_id="98-7654321",
         ),
         description="Monthly supplier payment for raw materials — PO #2024-0891",
@@ -53,7 +55,9 @@ def scenario_medium_risk() -> Transaction:
             name="Meridian Capital Partners AG",
             entity_type=EntityType.CORPORATION,
             country_code="CH",
-            address=Address(street="Bahnhofstrasse 42", city="Zurich", country_code="CH", postal_code="8001"),
+            address=Address(
+                street="Bahnhofstrasse 42", city="Zurich", country_code="CH", postal_code="8001"
+            ),
         ),
         destination_entity=Entity(
             name="Hassan Al-Rashid",
@@ -103,7 +107,9 @@ def scenario_critical_sanctions() -> Transaction:
             name="Global Trade Facilitators GmbH",
             entity_type=EntityType.CORPORATION,
             country_code="DE",
-            address=Address(street="Friedrichstraße 123", city="Berlin", country_code="DE", postal_code="10117"),
+            address=Address(
+                street="Friedrichstraße 123", city="Berlin", country_code="DE", postal_code="10117"
+            ),
         ),
         destination_entity=Entity(
             name="Pars Oil & Gas Engineering Co.",
@@ -128,14 +134,18 @@ def scenario_structuring() -> Transaction:
             name="Maria Santos",
             entity_type=EntityType.INDIVIDUAL,
             country_code="US",
-            address=Address(street="789 Oak Street", city="Miami", country_code="US", postal_code="33101"),
+            address=Address(
+                street="789 Oak Street", city="Miami", country_code="US", postal_code="33101"
+            ),
         ),
         destination_entity=Entity(
             name="Sunshine Import Export Inc.",
             entity_type=EntityType.CORPORATION,
             country_code="US",
             adverse_media_hits=1,
-            address=Address(street="1200 Brickell Ave", city="Miami", country_code="US", postal_code="33131"),
+            address=Address(
+                street="1200 Brickell Ave", city="Miami", country_code="US", postal_code="33131"
+            ),
         ),
         description="Business operating deposit",
     )

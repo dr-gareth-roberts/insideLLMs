@@ -57,11 +57,13 @@ def run_decision(state: PipelineState) -> PipelineState:
     )
 
     if decision.verdict in (DecisionVerdict.BLOCK, DecisionVerdict.ESCALATE):
-        state.alerts.append(Alert(
-            severity=AlertSeverity.CRITICAL,
-            title=f"Transaction {decision.verdict.value.replace('_', ' ').title()}",
-            description=decision.rationale[:300],
-        ))
+        state.alerts.append(
+            Alert(
+                severity=AlertSeverity.CRITICAL,
+                title=f"Transaction {decision.verdict.value.replace('_', ' ').title()}",
+                description=decision.rationale[:300],
+            )
+        )
 
     state.status = "decision_complete"
     return state
@@ -79,9 +81,13 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
         return ComplianceDecision(
             verdict=DecisionVerdict.BLOCK,
             confidence=0.97,
-            rationale=_build_rationale("BLOCK", state, risk,
+            rationale=_build_rationale(
+                "BLOCK",
+                state,
+                risk,
                 "Transaction blocked due to sanctions/embargo match. "
-                "Immediate escalation to BSA/AML officer required."),
+                "Immediate escalation to BSA/AML officer required.",
+            ),
             regulatory_references=_get_regulatory_refs(state),
             recommended_actions=[
                 "Freeze transaction immediately",
@@ -99,8 +105,12 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
         return ComplianceDecision(
             verdict=DecisionVerdict.ESCALATE,
             confidence=0.88,
-            rationale=_build_rationale("ESCALATE", state, risk,
-                f"Critical risk score ({overall:.1f}/100). Multiple risk indicators triggered."),
+            rationale=_build_rationale(
+                "ESCALATE",
+                state,
+                risk,
+                f"Critical risk score ({overall:.1f}/100). Multiple risk indicators triggered.",
+            ),
             regulatory_references=_get_regulatory_refs(state),
             recommended_actions=[
                 "Escalate to Senior Compliance Analyst",
@@ -119,9 +129,13 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
             return ComplianceDecision(
                 verdict=DecisionVerdict.FLAG_FOR_REVIEW,
                 confidence=0.72,
-                rationale=_build_rationale("FLAG + REANALYSIS", state, risk,
+                rationale=_build_rationale(
+                    "FLAG + REANALYSIS",
+                    state,
+                    risk,
                     f"High risk score ({overall:.1f}/100) with moderate confidence. "
-                    "Requesting deeper analysis pass."),
+                    "Requesting deeper analysis pass.",
+                ),
                 regulatory_references=_get_regulatory_refs(state),
                 recommended_actions=[
                     "Conduct additional pattern analysis",
@@ -136,8 +150,12 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
         return ComplianceDecision(
             verdict=DecisionVerdict.FLAG_FOR_REVIEW,
             confidence=0.82,
-            rationale=_build_rationale("FLAG", state, risk,
-                f"Elevated risk score ({overall:.1f}/100). Flagged for manual review."),
+            rationale=_build_rationale(
+                "FLAG",
+                state,
+                risk,
+                f"Elevated risk score ({overall:.1f}/100). Flagged for manual review.",
+            ),
             regulatory_references=_get_regulatory_refs(state),
             recommended_actions=[
                 "Assign to compliance analyst for manual review",
@@ -152,8 +170,12 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
         return ComplianceDecision(
             verdict=DecisionVerdict.APPROVE,
             confidence=0.90,
-            rationale=_build_rationale("APPROVE (with monitoring)", state, risk,
-                f"Moderate risk score ({overall:.1f}/100). Approved with standard monitoring."),
+            rationale=_build_rationale(
+                "APPROVE (with monitoring)",
+                state,
+                risk,
+                f"Moderate risk score ({overall:.1f}/100). Approved with standard monitoring.",
+            ),
             regulatory_references=_get_regulatory_refs(state),
             recommended_actions=["Standard transaction monitoring", "Periodic KYC refresh"],
             sla_hours=72,
@@ -163,8 +185,12 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
     return ComplianceDecision(
         verdict=DecisionVerdict.APPROVE,
         confidence=0.95,
-        rationale=_build_rationale("APPROVE", state, risk,
-            f"Low risk score ({overall:.1f}/100). No significant risk indicators."),
+        rationale=_build_rationale(
+            "APPROVE",
+            state,
+            risk,
+            f"Low risk score ({overall:.1f}/100). No significant risk indicators.",
+        ),
         regulatory_references=[],
         recommended_actions=["Standard monitoring"],
         sla_hours=168,
@@ -218,18 +244,24 @@ def _llm_decision(state: PipelineState, risk) -> ComplianceDecision:
         "risk_score": risk.model_dump(),
         "kyc_findings": [k.model_dump() for k in state.kyc_findings],
         "pattern_finding": state.pattern_finding.model_dump() if state.pattern_finding else None,
-        "geopolitical_finding": state.geopolitical_finding.model_dump() if state.geopolitical_finding else None,
+        "geopolitical_finding": state.geopolitical_finding.model_dump()
+        if state.geopolitical_finding
+        else None,
         "alerts_count": len(state.alerts),
         "reanalysis_count": state.reanalysis_count,
     }
 
     messages = [
-        SystemMessage(content=(
-            "You are a Chief Compliance Officer. Based on the risk analysis, render a verdict: "
-            "approve, flag_for_review, escalate, block, or request_more_info. "
-            "Return JSON matching ComplianceDecision schema. Be conservative."
-        )),
-        HumanMessage(content=f"Render compliance decision:\n\n{json.dumps(context, indent=2, default=str)}"),
+        SystemMessage(
+            content=(
+                "You are a Chief Compliance Officer. Based on the risk analysis, render a verdict: "
+                "approve, flag_for_review, escalate, block, or request_more_info. "
+                "Return JSON matching ComplianceDecision schema. Be conservative."
+            )
+        ),
+        HumanMessage(
+            content=f"Render compliance decision:\n\n{json.dumps(context, indent=2, default=str)}"
+        ),
     ]
     response = llm.invoke(messages)
     try:

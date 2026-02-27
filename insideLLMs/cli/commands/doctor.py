@@ -214,7 +214,10 @@ def _build_capabilities(checks: list[dict[str, Any]]) -> dict[str, Any]:
         },
         {
             "name": "verifiable_evaluation",
-            "ready": all(_ok(check_name) for check_name in ("ultimate:tuf", "ultimate:cosign", "ultimate:oras")),
+            "ready": all(
+                _ok(check_name)
+                for check_name in ("ultimate:tuf", "ultimate:cosign", "ultimate:oras")
+            ),
             "checks": ["ultimate:tuf", "ultimate:cosign", "ultimate:oras"],
         },
     ]

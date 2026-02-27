@@ -34,7 +34,9 @@ from .._record_utils import _json_default, _read_jsonl_records
 def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
     """Render judge verdict details for terminal output."""
     summary = judge_report.get("summary") if isinstance(judge_report.get("summary"), dict) else {}
-    verdicts = judge_report.get("verdicts") if isinstance(judge_report.get("verdicts"), list) else []
+    verdicts = (
+        judge_report.get("verdicts") if isinstance(judge_report.get("verdicts"), list) else []
+    )
 
     print_subheader("Judge Verdict")
     print_key_value("Policy", judge_report.get("policy", "strict"))
@@ -107,7 +109,9 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print_error("--interactive requires text output; remove --format json")
         return 1
     if interactive and not sys.stdin.isatty():
-        print_warning("--interactive is running in a non-interactive shell; snapshot prompt may default")
+        print_warning(
+            "--interactive is running in a non-interactive shell; snapshot prompt may default"
+        )
     gate_policy = DiffGatePolicy(
         fail_on_regressions=bool(args.fail_on_regressions),
         fail_on_changes=bool(args.fail_on_changes),

@@ -13,12 +13,11 @@ import argparse
 import sys
 import time
 
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from rich.tree import Tree
-from rich import box
 
 console = Console()
 
@@ -48,12 +47,14 @@ def print_report(scenario_key: str, scenario_info: dict, state) -> None:
     console.rule(f"[bold]{scenario_info['name']}[/bold]", style="bright_blue")
 
     # Executive Summary
-    console.print(Panel(
-        report.executive_summary,
-        title="[bold]Executive Summary[/bold]",
-        border_style="bright_blue",
-        padding=(1, 2),
-    ))
+    console.print(
+        Panel(
+            report.executive_summary,
+            title="[bold]Executive Summary[/bold]",
+            border_style="bright_blue",
+            padding=(1, 2),
+        )
+    )
 
     # Risk Score Table
     if risk:
@@ -92,21 +93,27 @@ def print_report(scenario_key: str, scenario_info: dict, state) -> None:
     # Verdict
     if decision:
         verdict_text = decision.verdict.value.replace("_", " ").upper()
-        console.print(Panel(
-            f"[{vc}]{verdict_text}[/{vc}]  (confidence: {decision.confidence:.0%})\n\n"
-            f"{decision.rationale}",
-            title="[bold]Compliance Decision[/bold]",
-            border_style=vc.split()[0] if " " in vc else vc,
-        ))
+        console.print(
+            Panel(
+                f"[{vc}]{verdict_text}[/{vc}]  (confidence: {decision.confidence:.0%})\n\n"
+                f"{decision.rationale}",
+                title="[bold]Compliance Decision[/bold]",
+                border_style=vc.split()[0] if " " in vc else vc,
+            )
+        )
 
     # Alerts
     if report.alerts:
-        alert_table = Table(title=f"Alerts ({len(report.alerts)})", box=box.SIMPLE, border_style="dim")
+        alert_table = Table(
+            title=f"Alerts ({len(report.alerts)})", box=box.SIMPLE, border_style="dim"
+        )
         alert_table.add_column("Sev", width=8)
         alert_table.add_column("Title", style="white")
         alert_table.add_column("Description", style="dim")
         for alert in report.alerts:
-            sev_color = {"critical": "red", "warning": "yellow", "info": "blue"}.get(alert.severity.value, "white")
+            sev_color = {"critical": "red", "warning": "yellow", "info": "blue"}.get(
+                alert.severity.value, "white"
+            )
             alert_table.add_row(
                 f"[{sev_color}]{alert.severity.value.upper()}[/{sev_color}]",
                 alert.title,
@@ -122,9 +129,11 @@ def print_report(scenario_key: str, scenario_info: dict, state) -> None:
         console.print(tree)
 
     # Processing trace (condensed)
-    console.print(f"\n[dim]Processing time: {report.processing_time_ms:.0f}ms | "
-                  f"Re-analysis cycles: {report.reanalysis_count} | "
-                  f"Steps: {len(state.processing_steps)}[/dim]")
+    console.print(
+        f"\n[dim]Processing time: {report.processing_time_ms:.0f}ms | "
+        f"Re-analysis cycles: {report.reanalysis_count} | "
+        f"Steps: {len(state.processing_steps)}[/dim]"
+    )
 
 
 def main():
@@ -135,8 +144,8 @@ def main():
     args = parser.parse_args()
 
     # Import here so startup is fast for --help
-    from app.scenarios import SCENARIOS
     from app.graph.workflow import run_compliance_pipeline
+    from app.scenarios import SCENARIOS
 
     if args.list:
         table = Table(title="Available Scenarios", box=box.ROUNDED)
@@ -150,12 +159,14 @@ def main():
         return
 
     # Banner
-    console.print(Panel.fit(
-        "[bold bright_blue]Compliance Intelligence[/bold bright_blue]\n"
-        "[dim]Multi-Agent AML/KYC Transaction Monitoring[/dim]\n"
-        "[dim]LangGraph + Deep Agents + Pydantic v2[/dim]",
-        border_style="bright_blue",
-    ))
+    console.print(
+        Panel.fit(
+            "[bold bright_blue]Compliance Intelligence[/bold bright_blue]\n"
+            "[dim]Multi-Agent AML/KYC Transaction Monitoring[/dim]\n"
+            "[dim]LangGraph + Deep Agents + Pydantic v2[/dim]",
+            border_style="bright_blue",
+        )
+    )
 
     scenarios_to_run = {}
     if args.scenario:
@@ -170,9 +181,11 @@ def main():
     for key, info in scenarios_to_run.items():
         transaction = info["factory"]()
         console.print(f"\n[bright_blue]▶ Running:[/bright_blue] {info['name']}")
-        console.print(f"  [dim]TXN {transaction.transaction_id} | "
-                      f"{transaction.transaction_type.value} | "
-                      f"{transaction.currency.value} {transaction.amount:,.2f}[/dim]")
+        console.print(
+            f"  [dim]TXN {transaction.transaction_id} | "
+            f"{transaction.transaction_type.value} | "
+            f"{transaction.currency.value} {transaction.amount:,.2f}[/dim]"
+        )
 
         start = time.time()
         state = run_compliance_pipeline(transaction)

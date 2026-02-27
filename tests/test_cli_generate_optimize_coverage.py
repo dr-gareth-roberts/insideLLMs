@@ -87,4 +87,3 @@ def test_optimize_prompt_invalid_strategy_returns_error() -> None:
         no_color=True,
     )
     assert cmd_optimize_prompt(args) == 1
-

@@ -115,4 +115,3 @@ def test_shadow_fastapi_logs_error_records_before_reraising(tmp_path: Path) -> N
     assert record["run_id"] == "shadow-errors"
     assert record["status"] == "error"
     assert record["error_type"] == "RuntimeError"
-

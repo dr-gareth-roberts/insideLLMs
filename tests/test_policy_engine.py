@@ -13,7 +13,16 @@ def test_run_policy_passes_when_artifacts_present(tmp_path: Path) -> None:
     (tmp_path / "records.jsonl").write_text('{"id": 1}\n')
     att_dir = tmp_path / "attestations"
     att_dir.mkdir()
-    for name in ["00.source", "01.env", "02.dataset", "03.promptset", "04.execution", "05.scoring", "06.report", "07.claims"]:
+    for name in [
+        "00.source",
+        "01.env",
+        "02.dataset",
+        "03.promptset",
+        "04.execution",
+        "05.scoring",
+        "06.report",
+        "07.claims",
+    ]:
         (att_dir / f"{name}.dsse.json").write_text("{}")
 
     verdict = run_policy(tmp_path)
@@ -28,7 +37,16 @@ def test_run_policy_fails_when_manifest_missing(tmp_path: Path) -> None:
     (tmp_path / "records.jsonl").write_text("{}")
     att_dir = tmp_path / "attestations"
     att_dir.mkdir()
-    for name in ["00.source", "01.env", "02.dataset", "03.promptset", "04.execution", "05.scoring", "06.report", "07.claims"]:
+    for name in [
+        "00.source",
+        "01.env",
+        "02.dataset",
+        "03.promptset",
+        "04.execution",
+        "05.scoring",
+        "06.report",
+        "07.claims",
+    ]:
         (att_dir / f"{name}.dsse.json").write_text("{}")
 
     verdict = run_policy(tmp_path)
@@ -44,7 +62,15 @@ def test_run_policy_fails_when_attestation_missing(tmp_path: Path) -> None:
     att_dir = tmp_path / "attestations"
     att_dir.mkdir()
     # Only write 00-06, missing 07.claims
-    for name in ["00.source", "01.env", "02.dataset", "03.promptset", "04.execution", "05.scoring", "06.report"]:
+    for name in [
+        "00.source",
+        "01.env",
+        "02.dataset",
+        "03.promptset",
+        "04.execution",
+        "05.scoring",
+        "06.report",
+    ]:
         (att_dir / f"{name}.dsse.json").write_text("{}")
 
     verdict = run_policy(tmp_path)

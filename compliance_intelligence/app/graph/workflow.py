@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Node wrappers (PipelineState ↔ GraphState bridge)
 # ---------------------------------------------------------------------------
 
+
 def _to_pipeline(state: GraphState) -> PipelineState:
     """Convert LangGraph dict state to our validated Pydantic state."""
     return PipelineState(**state)
@@ -100,7 +101,9 @@ def reanalysis_node(state: GraphState) -> GraphState:
     ps.risk_score = None
     ps.decision = None
     ps.status = "reanalysis"
-    logger.info("♻ Re-analysis cycle #%d for TXN %s", ps.reanalysis_count, ps.transaction.transaction_id)
+    logger.info(
+        "♻ Re-analysis cycle #%d for TXN %s", ps.reanalysis_count, ps.transaction.transaction_id
+    )
     return _from_pipeline(ps)
 
 
@@ -108,16 +111,22 @@ def reanalysis_node(state: GraphState) -> GraphState:
 # Conditional edge: after decision → report OR re-analysis cycle
 # ---------------------------------------------------------------------------
 
+
 def should_reanalyze(state: GraphState) -> str:
     """Conditional edge function: decide whether to cycle back or finalize."""
     decision = state.get("decision")
     reanalysis_count = state.get("reanalysis_count", 0)
     max_reanalysis = state.get("max_reanalysis", 2)
 
-    if decision and hasattr(decision, "needs_reanalysis") and decision.needs_reanalysis:
-        if reanalysis_count < max_reanalysis:
-            logger.info("→ Routing to re-analysis (cycle %d/%d)", reanalysis_count + 1, max_reanalysis)
-            return "reanalyze"
+    needs_reanalysis = (
+        decision.get("needs_reanalysis", False)
+        if isinstance(decision, dict)
+        else getattr(decision, "needs_reanalysis", False)
+    )
+
+    if decision and needs_reanalysis and reanalysis_count < max_reanalysis:
+        logger.info("→ Routing to re-analysis (cycle %d/%d)", reanalysis_count + 1, max_reanalysis)
+        return "reanalyze"
 
     logger.info("→ Routing to report generation (final)")
     return "finalize"
@@ -126,6 +135,7 @@ def should_reanalyze(state: GraphState) -> str:
 # ---------------------------------------------------------------------------
 # Build the graph
 # ---------------------------------------------------------------------------
+
 
 def build_compliance_graph() -> StateGraph:
     """Construct the LangGraph compliance workflow.
@@ -188,6 +198,7 @@ def compile_graph():
 # ---------------------------------------------------------------------------
 # High-level runner
 # ---------------------------------------------------------------------------
+
 
 def run_compliance_pipeline(transaction) -> PipelineState:
     """Execute the full compliance pipeline for a transaction.

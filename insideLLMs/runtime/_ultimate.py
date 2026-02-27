@@ -72,10 +72,16 @@ def run_ultimate_post_artifact(
         _atomic_write_text(
             integrity_dir / "records.merkle.json",
             json.dumps(
-                {"root": records_merkle_root, "count": None, "algo": "sha256", "canon_version": "canon_v1"},
+                {
+                    "root": records_merkle_root,
+                    "count": None,
+                    "algo": "sha256",
+                    "canon_version": "canon_v1",
+                },
                 sort_keys=True,
                 separators=(",", ":"),
-            ) + "\n",
+            )
+            + "\n",
         )
 
     if receipts_merkle_root is None and receipts_path.exists():
@@ -89,10 +95,16 @@ def run_ultimate_post_artifact(
         _atomic_write_text(
             integrity_dir / "receipts.merkle.json",
             json.dumps(
-                {"root": receipts_merkle_root, "count": None, "algo": "sha256", "canon_version": "canon_v1"},
+                {
+                    "root": receipts_merkle_root,
+                    "count": None,
+                    "algo": "sha256",
+                    "canon_version": "canon_v1",
+                },
                 sort_keys=True,
                 separators=(",", ":"),
-            ) + "\n",
+            )
+            + "\n",
         )
 
     if dataset_merkle_root is not None:
@@ -102,7 +114,8 @@ def run_ultimate_post_artifact(
                 {"root": dataset_merkle_root, "algo": "sha256", "canon_version": "canon_v1"},
                 sort_keys=True,
                 separators=(",", ":"),
-            ) + "\n",
+            )
+            + "\n",
         )
     if promptset_merkle_root is not None:
         _atomic_write_text(
@@ -111,7 +124,8 @@ def run_ultimate_post_artifact(
                 {"root": promptset_merkle_root, "algo": "sha256", "canon_version": "canon_v1"},
                 sort_keys=True,
                 separators=(",", ":"),
-            ) + "\n",
+            )
+            + "\n",
         )
 
     # 2) Build attestations (minimal subjects; real impl would add file digests)
@@ -135,7 +149,10 @@ def run_ultimate_post_artifact(
 
     # Build and write attestations 00-07 first (policy checks these)
     steps_00_07 = [
-        ("00.source", build_attestation_00_source(subject_manifest, insidellms_version=insidellms_version)),
+        (
+            "00.source",
+            build_attestation_00_source(subject_manifest, insidellms_version=insidellms_version),
+        ),
         ("01.env", build_attestation_01_env(subject_manifest)),
         (
             "02.dataset",
@@ -146,7 +163,12 @@ def run_ultimate_post_artifact(
                 dataset_version=dataset_spec.get("version") if dataset_spec else None,
             ),
         ),
-        ("03.promptset", build_attestation_03_promptset(subject_manifest, promptset_merkle_root=promptset_merkle_root)),
+        (
+            "03.promptset",
+            build_attestation_03_promptset(
+                subject_manifest, promptset_merkle_root=promptset_merkle_root
+            ),
+        ),
         (
             "04.execution",
             build_attestation_04_execution(

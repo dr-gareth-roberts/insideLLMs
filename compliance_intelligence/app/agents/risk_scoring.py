@@ -103,7 +103,9 @@ def run_risk_scoring(state: PipelineState) -> PipelineState:
     if entity_risk >= 60:
         contributing.append(f"High entity risk score ({entity_risk:.0f}/100)")
     if txn_risk >= 50:
-        contributing.append(f"Elevated transaction risk ({txn_risk:.0f}/100) — amount ${amount_usd:,.2f}")
+        contributing.append(
+            f"Elevated transaction risk ({txn_risk:.0f}/100) — amount ${amount_usd:,.2f}"
+        )
     if pattern_risk >= 60:
         contributing.append(f"Suspicious transaction patterns detected ({pattern_risk:.0f}/100)")
     if geo_risk >= 60:

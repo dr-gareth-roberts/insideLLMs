@@ -23,9 +23,7 @@ def suppress_all_deprecations():
 def suppress_specific_module():
     """Suppress warnings from specific module only."""
     warnings.filterwarnings(
-        "ignore",
-        category=DeprecationWarning,
-        module="insideLLMs.visualization"
+        "ignore", category=DeprecationWarning, module="insideLLMs.visualization"
     )
 
     from insideLLMs.visualization import TraceVisualizer
@@ -64,8 +62,7 @@ def capture_and_log_warnings():
         for warning in w:
             if issubclass(warning.category, DeprecationWarning):
                 logger.warning(
-                    f"Deprecation in {warning.filename}:{warning.lineno}: "
-                    f"{warning.message}"
+                    f"Deprecation in {warning.filename}:{warning.lineno}: {warning.message}"
                 )
 
         TraceVisualizer()
@@ -80,7 +77,8 @@ def create_compatibility_layer():
 
     # Check insideLLMs version
     import insideLLMs
-    version = tuple(map(int, insideLLMs.__version__.split('.')[:2]))
+
+    version = tuple(map(int, insideLLMs.__version__.split(".")[:2]))
 
     if version >= (2, 0):
         # Use new import path
