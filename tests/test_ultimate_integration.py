@@ -11,6 +11,7 @@ from insideLLMs.config_types import RunConfig
 from insideLLMs.models import DummyModel
 from insideLLMs.probes import LogicProbe
 from insideLLMs.publish.oras import PushResult
+from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
 from insideLLMs.runtime.runner import ProbeRunner
 
 
@@ -110,3 +111,34 @@ def test_ultimate_mode_with_scitt_persists_receipts(mock_submit: object, tmp_pat
     assert (run_dir / "receipts" / "scitt" / "04.execution.receipt.json").exists()
     assert (run_dir / "receipts" / "scitt" / "07.claims.receipt.json").exists()
     assert mock_submit.call_count == 2
+
+
+def test_receipts_merkle_root_ignores_latency_variation(tmp_path: Path) -> None:
+    """Receipts Merkle commitment is stable when only latency_ms differs."""
+    run_a = tmp_path / "run_a"
+    run_b = tmp_path / "run_b"
+    for run_dir, latency in ((run_a, 12.345), (run_b, 98.765)):
+        (run_dir / "receipts").mkdir(parents=True, exist_ok=True)
+        (run_dir / "records.jsonl").write_text('{"input":"q","output":"a"}\n', encoding="utf-8")
+        (run_dir / "manifest.json").write_text('{"run_id":"test"}\n', encoding="utf-8")
+        (run_dir / "receipts" / "calls.jsonl").write_text(
+            json.dumps(
+                {
+                    "request_hash": "req",
+                    "response_hash": "resp",
+                    "latency_ms": latency,
+                    "cache_hit": False,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        run_ultimate_post_artifact(run_dir)
+
+    root_a = json.loads((run_a / "integrity" / "receipts.merkle.json").read_text(encoding="utf-8"))[
+        "root"
+    ]
+    root_b = json.loads((run_b / "integrity" / "receipts.merkle.json").read_text(encoding="utf-8"))[
+        "root"
+    ]
+    assert root_a == root_b

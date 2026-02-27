@@ -117,8 +117,9 @@ threading : Low-level thread-based parallelism
 
 import contextlib
 import hashlib
-import pickle
+import json
 import queue
+import re
 import tempfile
 import threading
 import time
@@ -2231,7 +2232,7 @@ class DistributedCheckpointManager:
     results to disk, allowing execution to resume from where it left off after
     a crash or interruption.
 
-    Checkpoints are stored as pickle files in a configurable directory. Each
+    Checkpoints are stored as JSON files in a configurable directory. Each
     checkpoint includes a unique ID, timestamp, pending tasks, completed results,
     and optional metadata.
 
@@ -2315,7 +2316,9 @@ class DistributedCheckpointManager:
     DistributedExperimentRunner : High-level experiment runner with checkpointing
     """
 
-    def __init__(self, checkpoint_dir: Optional[str] = None):
+    _CHECKPOINT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+
+    def __init__(self, checkpoint_dir: Optional[str] = None, *, allow_unsafe_pickle: bool = False):
         """
         Initialize the checkpoint manager.
 
@@ -2324,6 +2327,10 @@ class DistributedCheckpointManager:
         checkpoint_dir : str, optional
             Directory for storing checkpoint files. Creates the directory
             if it doesn't exist. Defaults to system temp directory.
+        allow_unsafe_pickle : bool, optional
+            If True, loading legacy pickle checkpoints is allowed. This is
+            unsafe for untrusted files because pickle can execute arbitrary code.
+            Defaults to False.
 
         Examples
         --------
@@ -2344,6 +2351,18 @@ class DistributedCheckpointManager:
             Path(checkpoint_dir or tempfile.gettempdir()) / "insidellms_checkpoints"
         )
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        self.allow_unsafe_pickle = allow_unsafe_pickle
+
+    def _validate_checkpoint_id(self, checkpoint_id: str) -> None:
+        """Validate checkpoint IDs to prevent path traversal and unsafe filenames."""
+        if not checkpoint_id:
+            raise ValueError("checkpoint_id must be non-empty")
+        if "/" in checkpoint_id or "\\" in checkpoint_id:
+            raise ValueError("Invalid checkpoint_id: path separators are not allowed")
+        if not self._CHECKPOINT_ID_PATTERN.fullmatch(checkpoint_id):
+            raise ValueError(
+                "Invalid checkpoint_id. Allowed characters: letters, numbers, '.', '_' and '-'."
+            )
 
     def _get_checkpoint_path(self, checkpoint_id: str) -> Path:
         """
@@ -2359,7 +2378,14 @@ class DistributedCheckpointManager:
         Path
             Path object for the checkpoint file.
         """
-        return self.checkpoint_dir / f"{checkpoint_id}.checkpoint"
+        self._validate_checkpoint_id(checkpoint_id)
+        base_dir = self.checkpoint_dir.resolve()
+        candidate = (base_dir / f"{checkpoint_id}.checkpoint").resolve()
+        try:
+            candidate.relative_to(base_dir)
+        except ValueError as exc:
+            raise ValueError("Invalid checkpoint_id: resolves outside checkpoint_dir") from exc
+        return candidate
 
     def save(
         self,
@@ -2425,8 +2451,14 @@ class DistributedCheckpointManager:
         }
 
         path = self._get_checkpoint_path(checkpoint_id)
-        with open(path, "wb") as f:
-            pickle.dump(checkpoint_data, f)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(checkpoint_data, sort_keys=True, separators=(",", ":")))
+        except TypeError as exc:
+            raise ValueError(
+                "Checkpoint data is not JSON-serializable. "
+                "Use JSON-compatible payloads for checkpointing."
+            ) from exc
 
         return str(path)
 
@@ -2491,8 +2523,21 @@ class DistributedCheckpointManager:
         if not path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_id}")
 
-        with open(path, "rb") as f:
-            data = pickle.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            if not self.allow_unsafe_pickle:
+                raise ValueError(
+                    "Checkpoint is not valid JSON. "
+                    "Legacy pickle checkpoints are blocked by default for security. "
+                    "To load trusted legacy checkpoints, initialize "
+                    "DistributedCheckpointManager(..., allow_unsafe_pickle=True)."
+                ) from exc
+            import pickle
+
+            with open(path, "rb") as f:
+                data = pickle.load(f)
 
         pending_tasks = [Task.from_dict(t) for t in data["pending_tasks"]]
         completed_results = [TaskResult(**r) for r in data["completed_results"]]
