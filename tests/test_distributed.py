@@ -1,5 +1,6 @@
 """Tests for the distributed execution module."""
 
+import pickle
 import tempfile
 import time
 
@@ -361,6 +362,52 @@ class TestCheckpointManager:
 
             manager.delete("checkpoint_1")
             assert "checkpoint_1" not in manager.list_checkpoints()
+
+    def test_checkpoint_rejects_path_traversal_id(self):
+        """Checkpoint IDs with path traversal are rejected."""
+        from insideLLMs.distributed import CheckpointManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = CheckpointManager(tmpdir)
+            with pytest.raises(ValueError, match="Invalid checkpoint_id"):
+                manager.save("../escape", [], [])
+
+    def test_checkpoint_rejects_path_separator(self):
+        """Checkpoint IDs with separators are rejected."""
+        from insideLLMs.distributed import CheckpointManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = CheckpointManager(tmpdir)
+            with pytest.raises(ValueError, match="path separators"):
+                manager.save("bad/name", [], [])
+
+    def test_checkpoint_legacy_pickle_blocked_by_default(self):
+        """Legacy pickle checkpoints are blocked unless explicitly enabled."""
+        from insideLLMs.distributed import CheckpointManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = CheckpointManager(tmpdir)
+            path = manager._get_checkpoint_path("legacy_pickle")
+            with open(path, "wb") as f:
+                pickle.dump({"pending_tasks": [], "completed_results": [], "metadata": {}}, f)
+
+            with pytest.raises(ValueError, match="Legacy pickle checkpoints are blocked"):
+                manager.load("legacy_pickle")
+
+    def test_checkpoint_legacy_pickle_allowed_when_opted_in(self):
+        """Trusted legacy pickle checkpoints can be loaded when explicitly enabled."""
+        from insideLLMs.distributed import CheckpointManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = CheckpointManager(tmpdir, allow_unsafe_pickle=True)
+            path = manager._get_checkpoint_path("legacy_pickle")
+            with open(path, "wb") as f:
+                pickle.dump({"pending_tasks": [], "completed_results": [], "metadata": {}}, f)
+
+            pending, completed, metadata = manager.load("legacy_pickle")
+            assert pending == []
+            assert completed == []
+            assert metadata == {}
 
 
 class TestMapReduceExecutor:

@@ -87,6 +87,7 @@ See Also:
 """
 
 import contextlib
+import ast
 import inspect
 import json
 import re
@@ -2974,6 +2975,47 @@ class AgentExecutor:
 # =============================================================================
 
 
+def _safe_eval_arithmetic(expression: str) -> Union[int, float]:
+    """Evaluate arithmetic expressions without using eval/exec."""
+    parsed = ast.parse(expression, mode="eval")
+
+    def _eval(node: ast.AST) -> Union[int, float]:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+                raise ValueError("Only numeric constants are allowed")
+            return node.value
+        if isinstance(node, ast.BinOp):
+            left = _eval(node.left)
+            right = _eval(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                return left / right
+            if isinstance(node.op, ast.FloorDiv):
+                return left // right
+            if isinstance(node.op, ast.Mod):
+                return left % right
+            if isinstance(node.op, ast.Pow):
+                return left**right
+            raise ValueError("Unsupported arithmetic operator")
+        if isinstance(node, ast.UnaryOp):
+            operand = _eval(node.operand)
+            if isinstance(node.op, ast.UAdd):
+                return +operand
+            if isinstance(node.op, ast.USub):
+                return -operand
+            raise ValueError("Unsupported unary operator")
+        raise ValueError("Unsupported expression")
+
+    return _eval(parsed)
+
+
 def create_calculator_tool() -> Tool:
     """Create a calculator tool for evaluating mathematical expressions.
 
@@ -3041,7 +3083,7 @@ def create_calculator_tool() -> Tool:
         if not all(c in allowed for c in expression):
             return "Error: Invalid characters in expression"
         try:
-            result = eval(expression)
+            result = _safe_eval_arithmetic(expression)
             return str(result)
         except Exception as e:
             return f"Error: {str(e)}"
@@ -3128,7 +3170,11 @@ def create_search_tool(search_fn: Optional[Callable] = None) -> Tool:
     )
 
 
-def create_python_tool(allow_exec: bool = False) -> Tool:
+def create_python_tool(
+    allow_exec: bool = False,
+    *,
+    sandbox_contract: Optional[str] = None,
+) -> Tool:
     """Create a Python code execution tool.
 
     Creates a tool that can execute Python code. By default, execution is
@@ -3138,6 +3184,8 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
         allow_exec: Whether to allow actual code execution. Default is False.
             WARNING: Setting this to True is dangerous and should only be
             done in fully trusted, sandboxed environments.
+        sandbox_contract: Explicit description/identifier of the sandbox boundary
+            used to contain execution (required when allow_exec=True).
 
     Returns:
         Tool: A Python execution tool instance.
@@ -3157,7 +3205,10 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
             >>> from insideLLMs.agents import create_python_tool
             >>>
             >>> # WARNING: Only use in trusted environments!
-            >>> python_tool = create_python_tool(allow_exec=True)
+            >>> python_tool = create_python_tool(
+            ...     allow_exec=True,
+            ...     sandbox_contract="isolated-unit-test-sandbox",
+            ... )
             >>> result = python_tool.execute("result = 2 + 2")
             >>> print(result.output)
             4
@@ -3175,7 +3226,10 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
 
             >>> from insideLLMs.agents import create_python_tool
             >>>
-            >>> python_tool = create_python_tool(allow_exec=True)
+            >>> python_tool = create_python_tool(
+            ...     allow_exec=True,
+            ...     sandbox_contract="isolated-unit-test-sandbox",
+            ... )
             >>> result = python_tool.execute("result = 1/0")
             >>> print("Error" in result.output)
             True
@@ -3183,7 +3237,8 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
     Warning:
         Enabling code execution (allow_exec=True) is inherently dangerous
         and can lead to arbitrary code execution vulnerabilities. Only use
-        in sandboxed environments with proper security controls.
+        in sandboxed environments with proper security controls, and always
+        provide an explicit sandbox_contract.
 
     See Also:
         :class:`Tool`: The base Tool class.
@@ -3193,6 +3248,11 @@ def create_python_tool(allow_exec: bool = False) -> Tool:
     def execute_python(code: str) -> str:
         if not allow_exec:
             return "Code execution disabled for safety"
+        if not sandbox_contract:
+            return (
+                "Code execution disabled: missing sandbox contract. "
+                "Pass sandbox_contract when allow_exec=True."
+            )
         try:
             # DANGEROUS: Only use in trusted environments
             local_vars: dict[str, Any] = {}

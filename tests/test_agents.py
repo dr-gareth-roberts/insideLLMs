@@ -841,6 +841,13 @@ class TestBuiltInTools:
         result = calc.execute("import os")
         assert "Invalid" in result.output or "Error" in result.output
 
+    def test_calculator_rejects_non_arithmetic_ast(self):
+        """Calculator rejects expressions outside arithmetic AST."""
+        calc = create_calculator_tool()
+        result = calc.execute("2**3")
+        assert result.success is True
+        assert result.output == "8"
+
     def test_search_tool(self):
         """Test search tool."""
         search = create_search_tool()
@@ -867,6 +874,12 @@ class TestBuiltInTools:
 
         result = python.execute("print('hello')")
         assert "disabled" in result.output.lower()
+
+    def test_python_tool_requires_sandbox_contract_when_enabled(self):
+        """Execution stays disabled without explicit sandbox contract."""
+        python = create_python_tool(allow_exec=True)
+        result = python.execute("result = 2 + 2")
+        assert "sandbox contract" in result.output.lower()
 
 
 # =============================================================================

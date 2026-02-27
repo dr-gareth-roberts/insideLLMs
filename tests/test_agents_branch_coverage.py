@@ -100,7 +100,7 @@ def test_calculator_and_python_tool_error_branches():
     assert bad_expr.success is True
     assert "Error:" in bad_expr.output
 
-    python_tool = create_python_tool(allow_exec=True)
+    python_tool = create_python_tool(allow_exec=True, sandbox_contract="unit-test-sandbox")
     success = python_tool.execute("result = 41 + 1")
     assert success.output == "42"
 

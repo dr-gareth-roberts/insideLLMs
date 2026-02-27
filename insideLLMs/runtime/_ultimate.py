@@ -24,11 +24,27 @@ from insideLLMs.attestations.steps.builders import (
     build_attestation_08_policy,
     build_attestation_09_publish,
 )
-from insideLLMs.crypto import digest_obj, merkle_root_from_jsonl, run_bundle_id
+from insideLLMs.crypto import digest_obj, merkle_root_from_items, merkle_root_from_jsonl, run_bundle_id
 from insideLLMs.policy.engine import run_policy
 from insideLLMs.publish.oras import push_run_oci
 from insideLLMs.runtime._artifact_utils import _atomic_write_text
 from insideLLMs.transparency.scitt_client import submit_statement
+
+
+def _load_normalized_receipts_for_merkle(receipts_path: Path) -> list[dict[str, Any]]:
+    """Load receipts JSONL and normalize volatile fields for deterministic Merkle roots."""
+    normalized: list[dict[str, Any]] = []
+    with open(receipts_path, "r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            receipt = json.loads(stripped)
+            if isinstance(receipt, dict) and "latency_ms" in receipt:
+                # Keep runtime latency in receipts file, but remove volatility from crypto commitments.
+                receipt["latency_ms"] = None
+            normalized.append(receipt)
+    return normalized
 
 
 def run_ultimate_post_artifact(
@@ -85,7 +101,8 @@ def run_ultimate_post_artifact(
         )
 
     if receipts_merkle_root is None and receipts_path.exists():
-        merkle_result = merkle_root_from_jsonl(receipts_path)
+        normalized_receipts = _load_normalized_receipts_for_merkle(receipts_path)
+        merkle_result = merkle_root_from_items(normalized_receipts)
         receipts_merkle_root = merkle_result["root"]
         _atomic_write_text(
             integrity_dir / "receipts.merkle.json",
