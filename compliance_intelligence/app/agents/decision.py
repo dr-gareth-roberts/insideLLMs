@@ -41,8 +41,6 @@ def run_decision(state: PipelineState) -> PipelineState:
         return state
 
     risk = state.risk_score
-    txn = state.transaction
-
     if settings.simulation_mode:
         decision = _rule_based_decision(state, risk)
     else:
@@ -73,8 +71,6 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
     """Deterministic rule-based decision engine."""
     overall = risk.overall_score
     level = risk.overall_level
-    txn = state.transaction
-
     # Check for hard blocks
     has_sanctions = any(k.sanctions_match for k in state.kyc_findings)
     has_embargo = state.geopolitical_finding and state.geopolitical_finding.embargo_active
@@ -211,9 +207,10 @@ def _get_regulatory_refs(state: PipelineState) -> list[str]:
 
 def _llm_decision(state: PipelineState, risk) -> ComplianceDecision:
     """LLM-powered decision (requires API key)."""
+    import json
+
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
-    import json
 
     llm = ChatOpenAI(model=settings.openai_model, temperature=0, api_key=settings.openai_api_key)
 

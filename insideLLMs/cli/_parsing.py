@@ -815,6 +815,61 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # =========================================================================
+    # Trend command
+    # =========================================================================
+    trend_parser = subparsers.add_parser(
+        "trend",
+        help="Show metric trends across indexed runs",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    trend_parser.add_argument(
+        "--index",
+        type=str,
+        required=True,
+        help="Path to run index JSONL file",
+    )
+    trend_parser.add_argument(
+        "--add",
+        type=str,
+        help="Add a completed run directory to the index before showing trends",
+    )
+    trend_parser.add_argument(
+        "--label",
+        type=str,
+        default="",
+        help="Optional config label when indexing with --add",
+    )
+    trend_parser.add_argument(
+        "--metric",
+        type=str,
+        default="accuracy",
+        help="Metric name to plot (default: accuracy)",
+    )
+    trend_parser.add_argument(
+        "--last",
+        type=int,
+        default=0,
+        help="Only show the most recent N runs (default: all)",
+    )
+    trend_parser.add_argument(
+        "--threshold",
+        type=float,
+        help="Threshold for metric alerts",
+    )
+    trend_parser.add_argument(
+        "--fail-on-threshold",
+        action="store_true",
+        help="Exit non-zero when threshold violations are detected",
+    )
+    trend_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+
+    # =========================================================================
     # List command
     # =========================================================================
     list_parser = subparsers.add_parser(

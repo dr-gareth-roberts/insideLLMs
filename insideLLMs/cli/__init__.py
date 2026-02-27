@@ -18,6 +18,7 @@ The CLI is organized into subcommands, each handling a specific workflow:
 - ``info``: Show detailed information about a specific resource
 - ``quicktest``: Quickly test a single prompt against a model
 - ``interactive``: Start an interactive exploration session
+- ``trend``: Show metric trajectories across indexed run history
 - ``validate``: Validate configuration files or run directories
 - ``export``: Export results to CSV, Markdown, or LaTeX formats
 - ``schema``: Inspect and validate versioned output schemas
@@ -97,6 +98,7 @@ from .commands.report import cmd_report as cmd_report
 from .commands.run import cmd_run as cmd_run
 from .commands.schema import cmd_schema as cmd_schema
 from .commands.sign import cmd_sign as cmd_sign
+from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
 from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
 
@@ -162,6 +164,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "diff": cmd_diff,
             "schema": cmd_schema,
             "doctor": cmd_doctor,
+            "trend": cmd_trend,
             "list": cmd_list,
             "init": cmd_init,
             "info": cmd_info,

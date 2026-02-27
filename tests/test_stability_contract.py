@@ -24,6 +24,7 @@ def test_stable_cli_commands_exist() -> None:
         "run",
         "harness",
         "diff",
+        "trend",
         "report",
         "schema",
         "attest",
@@ -55,6 +56,14 @@ def test_stable_diff_trajectory_gate_parse_contract() -> None:
     parser = create_parser()
     args = parser.parse_args(["diff", "run_a", "run_b", "--fail-on-trajectory-drift"])
     assert args.fail_on_trajectory_drift is True
+
+
+def test_stable_trend_parse_contract() -> None:
+    parser = create_parser()
+    args = parser.parse_args(["trend", "--index", ".tmp/index.jsonl", "--metric", "accuracy"])
+    assert args.command == "trend"
+    assert args.index == ".tmp/index.jsonl"
+    assert args.metric == "accuracy"
 
 
 def test_stable_run_determinism_flags_parse_contract() -> None:
