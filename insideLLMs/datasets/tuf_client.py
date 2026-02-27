@@ -7,7 +7,6 @@ real verification. Falls back to a mock implementation for testing/offline use.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
 import tempfile
@@ -16,11 +15,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-
 def fetch_dataset(name: str, version: str, *, base_url: str = "") -> tuple[Path, dict[str, Any]]:
     """Fetch and verify dataset; return local path and verification proof."""
-    tuf_available = importlib.util.find_spec("tuf.ngclient") is not None
-    if not tuf_available:
+    try:
+        from tuf.ngclient import Updater  # noqa: F401
+        tuf_available = True
+    except ImportError:
+        tuf_available = False
         logger.warning("tuf module not available, falling back to mock implementation")
 
     # For minimal functional implementation:

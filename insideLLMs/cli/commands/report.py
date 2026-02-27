@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from insideLLMs.analysis.statistics import generate_summary_report
-from insideLLMs.runtime import runner as runtime_runner
+from insideLLMs.runtime.runner import _deterministic_base_time, _deterministic_run_times
 
 from .._output import _cli_version_string, print_error, print_success, print_warning
 from .._record_utils import _json_default, _parse_datetime, _read_jsonl_records
@@ -48,8 +48,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     generated_at = None
     if run_id:
         try:
-            base_time = runtime_runner._deterministic_base_time(str(run_id))
-            _, generated_at = runtime_runner._deterministic_run_times(base_time, len(records))
+            base_time = _deterministic_base_time(str(run_id))
+            _, generated_at = _deterministic_run_times(base_time, len(records))
         except (ValueError, KeyError):
             generated_at = None
 

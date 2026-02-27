@@ -17,8 +17,7 @@ def write_plan(run_dir: Path | str, plan: dict[str, Any]) -> tuple[Path, str]:
     path = analysis_dir / "plan.json"
 
     from insideLLMs.crypto.canonical import digest_obj
-
-    plan_dict = json.loads(json.dumps(plan))  # normalize
+    plan_dict = json.loads(json.dumps(plan)) # normalize
     path.write_text(json.dumps(plan_dict, indent=2))
 
     digest_info = digest_obj(plan_dict, purpose="analysis_plan")

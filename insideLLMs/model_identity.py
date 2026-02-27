@@ -24,7 +24,10 @@ def run_fingerprint_suite(model: Any) -> dict[str, Any]:
     identity = collect_declared_identity(model)
 
     # Stable prompts designed to elicit deterministic responses
-    stable_prompts = ["What is 2+2?", "Count to 3: 1, 2, "]
+    stable_prompts = [
+        "What is 2+2?",
+        "Count to 3: 1, 2, "
+    ]
 
     fingerprints = []
 
@@ -40,30 +43,28 @@ def run_fingerprint_suite(model: Any) -> dict[str, Any]:
             resp_bytes = str(response).encode("utf-8")
             resp_hash = hashlib.sha256(resp_bytes).hexdigest()
 
-            fingerprints.append({"prompt": prompt, "response_hash": resp_hash})
+            fingerprints.append({
+                "prompt": prompt,
+                "response_hash": resp_hash
+            })
         except Exception as e:
-            fingerprints.append({"prompt": prompt, "error": str(e)})
+            fingerprints.append({
+                "prompt": prompt,
+                "error": str(e)
+            })
 
     return {
         "status": "success",
         "model_id": identity.get("model_id"),
         "provider": identity.get("provider"),
-        "fingerprints": fingerprints,
+        "fingerprints": fingerprints
     }
 
 
 def detect_drift(report_a: dict[str, Any], report_b: dict[str, Any]) -> dict[str, Any]:
     """Compare two fingerprint reports for drift."""
-    fps_a = {
-        fp["prompt"]: fp.get("response_hash")
-        for fp in report_a.get("fingerprints", [])
-        if "response_hash" in fp
-    }
-    fps_b = {
-        fp["prompt"]: fp.get("response_hash")
-        for fp in report_b.get("fingerprints", [])
-        if "response_hash" in fp
-    }
+    fps_a = {fp["prompt"]: fp.get("response_hash") for fp in report_a.get("fingerprints", []) if "response_hash" in fp}
+    fps_b = {fp["prompt"]: fp.get("response_hash") for fp in report_b.get("fingerprints", []) if "response_hash" in fp}
 
     differences = []
 
@@ -71,6 +72,14 @@ def detect_drift(report_a: dict[str, Any], report_b: dict[str, Any]) -> dict[str
         if prompt in fps_b:
             hash_b = fps_b[prompt]
             if hash_a != hash_b:
-                differences.append({"prompt": prompt, "hash_a": hash_a, "hash_b": hash_b})
+                differences.append({
+                    "prompt": prompt,
+                    "hash_a": hash_a,
+                    "hash_b": hash_b
+                })
 
-    return {"status": "success", "drift_detected": len(differences) > 0, "differences": differences}
+    return {
+        "status": "success",
+        "drift_detected": len(differences) > 0,
+        "differences": differences
+    }

@@ -222,7 +222,8 @@ with open("run_dir/records.jsonl") as f:
 ### Generating Summary
 
 ```bash
-insidellms report ./run_dir --summary-only
+# summary.json is emitted by run/harness; regenerate report artifacts if needed
+insidellms report ./run_dir
 ```
 
 ### Generating HTML Report

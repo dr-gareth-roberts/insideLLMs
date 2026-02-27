@@ -27,6 +27,8 @@ from insideLLMs.latency import (
     quick_performance_check,
 )
 
+pytestmark = pytest.mark.performance
+
 
 class TestLatencyMetric:
     """Tests for LatencyMetric enum."""

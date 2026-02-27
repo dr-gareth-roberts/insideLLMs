@@ -113,5 +113,6 @@ def iter_standard_run_artifacts(run_dir: Path) -> tuple[Path, ...]:
         run_dir / "records.jsonl",
         run_dir / "config.resolved.yaml",
         run_dir / "summary.json",
+        run_dir / "explain.json",
         run_dir / "report.html",
     )

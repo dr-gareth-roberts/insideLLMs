@@ -50,6 +50,9 @@ class TestSchemaRegistry:
         versions = registry.available_versions(SchemaRegistry.RESULT_RECORD)
         assert "1.0.0" in versions
         assert "1.0.1" in versions
+        explain_versions = registry.available_versions(SchemaRegistry.HARNESS_EXPLAIN)
+        assert "1.0.0" in explain_versions
+        assert "1.0.1" in explain_versions
         trace_versions = registry.available_versions(SchemaRegistry.CUSTOM_TRACE)
         assert trace_versions == ["insideLLMs.custom.trace@1"]
 
@@ -154,6 +157,7 @@ class TestSchemaRegistryConstants:
         assert SchemaRegistry.RUN_MANIFEST == "RunManifest"
         assert SchemaRegistry.HARNESS_RECORD == "HarnessRecord"
         assert SchemaRegistry.HARNESS_SUMMARY == "HarnessSummary"
+        assert SchemaRegistry.HARNESS_EXPLAIN == "HarnessExplain"
         assert SchemaRegistry.BENCHMARK_SUMMARY == "BenchmarkSummary"
         assert SchemaRegistry.COMPARISON_REPORT == "ComparisonReport"
         assert SchemaRegistry.DIFF_REPORT == "DiffReport"

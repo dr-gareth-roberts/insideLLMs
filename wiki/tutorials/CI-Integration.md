@@ -76,45 +76,26 @@ Create `.github/workflows/behavioural-test.yml`:
 name: Behavioural Tests
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   behavioural-diff:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Install insideLLMs
-        run: pip install -e ".[all]"
-
-      - name: Run candidate harness
-        run: |
-          insidellms harness ci/harness.yaml \
-            --run-dir ci/candidate \
-            --overwrite \
-            --skip-report
-
-      - name: Diff against baseline
-        run: |
-          insidellms diff ci/baseline ci/candidate \
-            --fail-on-changes \
-            --output ci/diff-report.json
-
-      - name: Upload diff report
-        if: failure()
-        uses: actions/upload-artifact@v4
+          fetch-depth: 0
+      - uses: dr-gareth-roberts/insideLLMs@v1
         with:
-          name: behavioural-diff
-          path: ci/diff-report.json
+          harness-config: ci/harness.yaml
 ```
+
+This action runs the harness on the PR branch and the PR base ref, generates a deterministic
+`diff.json`, and upserts a sticky pull-request comment with top regressions and changes.
 
 ## Step 5: Test the Workflow
 
@@ -165,17 +146,34 @@ Some fields are intentionally volatile. Ignore them:
 
 ```bash
 insidellms diff ci/baseline ci/candidate \
-  --ignore-fields latency_ms,timestamps \
+  --output-fingerprint-ignore latency_ms,timestamps \
   --fail-on-changes
 ```
 
-### Trace-Aware Diffing
+### Trace and Trajectory Gates
 
-For structured outputs with fingerprints:
+Use dedicated diff gates for trace contracts and agent/tool trajectories:
 
 ```bash
 insidellms diff ci/baseline ci/candidate \
-  --trace-aware \
+  --fail-on-trace-drift \
+  --fail-on-trace-violations
+```
+
+```bash
+insidellms diff ci/baseline ci/candidate \
+  --fail-on-trajectory-drift
+```
+
+### Judge-Assisted Triage
+
+Layer deterministic judge triage on top of the same core diff computation:
+
+```bash
+insidellms diff ci/baseline ci/candidate \
+  --judge \
+  --judge-policy balanced \
+  --judge-limit 50 \
   --fail-on-trace-violations
 ```
 

@@ -9,6 +9,10 @@ from __future__ import annotations
 import importlib.util
 import json
 
+import pytest
+
+pytestmark = pytest.mark.contract
+
 
 def _has_pydantic() -> bool:
     return importlib.util.find_spec("pydantic") is not None
@@ -95,3 +99,32 @@ def test_cli_schema_validate_strict_and_warn(tmp_path):
         )
         == 0
     )
+
+
+def test_harness_explain_schema_validation():
+    if not _has_pydantic():
+        import pytest
+
+        pytest.skip("pydantic not installed")
+
+    from insideLLMs.schemas import OutputValidator, SchemaRegistry
+
+    registry = SchemaRegistry()
+    validator = OutputValidator(registry)
+
+    payload = {
+        "schema_version": "1.0.1",
+        "kind": "HarnessExplain",
+        "generated_at": "2026-01-01T00:00:00+00:00",
+        "run_id": "run-123",
+        "config_resolution": {
+            "source_chain": [{"source": "config", "value": "harness.yaml"}],
+            "profile_applied": True,
+        },
+        "effective_config": {"model_types": ["dummy"], "probe_types": ["logic"]},
+        "execution": {"validate_output": True, "validation_mode": "strict"},
+        "determinism": {"strict_serialization_effective": True},
+        "summary": {"record_count": 1, "success_count": 1},
+    }
+
+    validator.validate(registry.HARNESS_EXPLAIN, payload, schema_version="1.0.1")

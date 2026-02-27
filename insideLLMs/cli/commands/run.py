@@ -170,7 +170,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(results_to_markdown(raw_results))
         elif args.format == "summary":
             # Minimal summary output
-            summary_text = f"OK {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
+            summary_text = (
+                f"OK {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
+            )
             if timeout_count:
                 summary_text += f", timeouts: {timeout_count}"
             print(summary_text)

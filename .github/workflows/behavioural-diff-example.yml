@@ -1,0 +1,37 @@
+name: Behavioural Diff (Example)
+
+on:
+  workflow_dispatch:
+  # Enable this block to run automatically on pull requests.
+  # pull_request:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  behavioural-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run insideLLMs Action
+        id: insidellms
+        uses: ./
+        with:
+          harness-config: ci/harness.yaml
+          post-pr-comment: "true"
+          comment-on-forks: "false"
+          fail-on-changes: "true"
+
+      - name: Upload diff artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: insidellms-diff-${{ github.sha }}
+          path: ${{ steps.insidellms.outputs.diff-json }}
+          if-no-files-found: warn

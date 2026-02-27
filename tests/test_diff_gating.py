@@ -3,7 +3,11 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from insideLLMs.cli import main
+
+pytestmark = pytest.mark.determinism
 
 
 def _write_minimal_run_config(tmp_path: Path, *, canned_response: str) -> Path:

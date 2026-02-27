@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from insideLLMs.runtime.runner import (
     _deterministic_base_time,
     _deterministic_item_times,
@@ -12,6 +14,8 @@ from insideLLMs.runtime.runner import (
     _replicate_key,
 )
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
+
+pytestmark = pytest.mark.determinism
 
 
 def _write_harness_records(

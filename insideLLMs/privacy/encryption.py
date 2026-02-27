@@ -14,7 +14,11 @@ except ImportError:
 
 
 def encrypt_jsonl(path: Path | str, *, key: bytes | None = None) -> None:
-    """Encrypt a JSONL file in place, line by line."""
+    """Encrypt a JSONL file in place line by line.
+
+    Each line is encrypted separately so the file can still be processed
+    line-by-line without loading the entire file into memory.
+    """
     if not CRYPTO_AVAILABLE:
         raise RuntimeError("cryptography library is required for encryption")
 

@@ -151,10 +151,10 @@ dataset:
 max_examples: 50  # Only use first 50
 ```
 
-Or via CLI:
+Then run normally:
 
 ```bash
-insidellms run config.yaml --max-examples 50
+insidellms run config.yaml
 ```
 
 ## Dataset Registry
