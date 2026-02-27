@@ -25,9 +25,7 @@ DEFAULT_ALGO = "sha256"
 SUPPORTED_ALGOS = ("sha256",)
 
 
-def canonical_json_bytes(
-    obj: Any, canon_version: str = DEFAULT_CANON_VERSION, *, strict: bool = False
-) -> bytes:
+def canonical_json_bytes(obj: Any, canon_version: str = DEFAULT_CANON_VERSION, *, strict: bool = False) -> bytes:
     """Return the canonical byte representation of an object for hashing.
 
     Uses insideLLMs stable JSON serialization so equivalent structures produce

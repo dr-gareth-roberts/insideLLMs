@@ -90,6 +90,9 @@ It uses `DummyModel` only (no API keys) and probes that accept dict inputs.
 - `--fail-on-changes`: fail on any difference (including additions/removals)
 - `--fail-on-trace-drift`: fail if trace fingerprints drift (when enabled)
 - `--fail-on-trace-violations`: fail if contract violations increase (when enabled)
+- `--fail-on-trajectory-drift`: fail when tool/agent execution trajectories drift
+- `--judge --judge-policy {strict,balanced}`: deterministic verdict layer for change triage
+- `--interactive`: local snapshot acceptance workflow for intentional updates
 - `--output-fingerprint-ignore`: ignore volatile keys when fingerprinting structured outputs
 
 ## Trace-aware diffing (optional)

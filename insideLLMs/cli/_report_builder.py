@@ -49,8 +49,12 @@ def _build_experiments_from_records(
             harness = first.get("custom", {}).get("harness", {})
             model_spec = first.get("model", {}) if isinstance(first.get("model"), dict) else {}
 
-            model_name = harness.get("model_name") or model_spec.get("model_id") or "model"
-            model_id = harness.get("model_id") or model_spec.get("model_id") or model_name
+            model_name = (
+                harness.get("model_name") or model_spec.get("model_id") or "model"
+            )
+            model_id = (
+                harness.get("model_id") or model_spec.get("model_id") or model_name
+            )
             provider = model_spec.get("provider") or harness.get("model_type") or "unknown"
             extra = model_spec.get("params") if isinstance(model_spec.get("params"), dict) else {}
 
@@ -81,7 +85,9 @@ def _build_experiments_from_records(
                     status=_status_from_record(record.get("status")),
                     error=record.get("error"),
                     latency_ms=record.get("latency_ms"),
-                    metadata=record.get("custom") if isinstance(record.get("custom"), dict) else {},
+                    metadata=record.get("custom")
+                    if isinstance(record.get("custom"), dict)
+                    else {},
                 )
                 for record in sorted_records
             ]

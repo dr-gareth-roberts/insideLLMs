@@ -34,23 +34,25 @@ def emit_openvex(run_dir: Path | str, context: dict[str, Any] | None = None) -> 
         )
 
     if probe := manifest.get("probe"):
-        components.append({"@id": f"pkg:insidellms/probe/{probe.get('probe_id', 'unknown')}"})
+        components.append(
+            {"@id": f"pkg:insidellms/probe/{probe.get('probe_id', 'unknown')}"}
+        )
 
     if dataset := manifest.get("dataset"):
-        components.append({"@id": f"pkg:data/{dataset.get('dataset_id', 'unknown')}"})
+        components.append(
+            {"@id": f"pkg:data/{dataset.get('dataset_id', 'unknown')}"}
+        )
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
     if components:
-        statements.append(
-            {
-                "vulnerability": {"name": "any"},  # Catch-all for basic attestation
-                "products": components,
-                "status": "not_affected",
-                "justification": "inline_mitigations_already_exist",
-                "impact_statement": "The evaluation framework runs the components in an isolated environment.",
-            }
-        )
+        statements.append({
+            "vulnerability": {"name": "any"}, # Catch-all for basic attestation
+            "products": components,
+            "status": "not_affected",
+            "justification": "inline_mitigations_already_exist",
+            "impact_statement": "The evaluation framework runs the components in an isolated environment."
+        })
 
     return {
         "@context": "https://openvex.dev/ns/v0.2.0",
@@ -58,5 +60,5 @@ def emit_openvex(run_dir: Path | str, context: dict[str, Any] | None = None) -> 
         "author": "InsideLLMs Framework",
         "timestamp": timestamp,
         "version": 1,
-        "statements": statements,
+        "statements": statements
     }

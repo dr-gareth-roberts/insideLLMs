@@ -929,6 +929,7 @@ class SchemaRegistry:
     RUN_MANIFEST = "RunManifest"  # manifest.json for run directories
     HARNESS_RECORD = "HarnessRecord"  # per-line JSONL record
     HARNESS_SUMMARY = "HarnessSummary"  # summary.json payload
+    HARNESS_EXPLAIN = "HarnessExplain"  # explain.json payload
     BENCHMARK_SUMMARY = "BenchmarkSummary"  # benchmark run output
     COMPARISON_REPORT = "ComparisonReport"  # comparison output
     DIFF_REPORT = "DiffReport"  # diff.json output
@@ -1160,6 +1161,7 @@ class SchemaRegistry:
             self.RUN_MANIFEST,
             self.HARNESS_RECORD,
             self.HARNESS_SUMMARY,
+            self.HARNESS_EXPLAIN,
             self.BENCHMARK_SUMMARY,
             self.COMPARISON_REPORT,
             self.DIFF_REPORT,

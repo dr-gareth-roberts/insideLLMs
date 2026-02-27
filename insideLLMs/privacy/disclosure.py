@@ -9,7 +9,32 @@ from insideLLMs.crypto.merkle import _hash_pair, merkle_root_from_items
 
 
 def merkle_inclusion_proof(leaf_index: int, leaves: list[Any], root: str) -> list[str]:
-    """Return the Merkle sibling path proving `leaf_index` is included in `root`."""
+    """Return sibling path for inclusion proof.
+
+    Generates a proof that the leaf at `leaf_index` is part of the Merkle tree
+    that hashes to `root`.
+
+    Parameters
+    ----------
+    leaf_index : int
+        Index of the leaf to prove.
+    leaves : list[Any]
+        The full list of items in the tree.
+    root : str
+        The expected Merkle root.
+
+    Returns
+    -------
+    list[str]
+        List of sibling hashes forming the inclusion proof path.
+
+    Raises
+    ------
+    IndexError
+        If leaf_index is out of bounds.
+    ValueError
+        If the computed root from the leaves does not match the provided root.
+    """
     if not leaves:
         raise ValueError("Cannot generate proof for empty leaves list")
 

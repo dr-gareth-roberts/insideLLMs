@@ -82,7 +82,9 @@ def test_ultimate_mode_with_publish_oci_populates_attestation_09(
 
 
 @patch("insideLLMs.runtime._ultimate.submit_statement")
-def test_ultimate_mode_with_scitt_persists_receipts(mock_submit: object, tmp_path: Path) -> None:
+def test_ultimate_mode_with_scitt_persists_receipts(
+    mock_submit: object, tmp_path: Path
+) -> None:
     """With scitt_service_url, submit 04 and 07, persist receipts to receipts/scitt/."""
     mock_submit.return_value = {
         "status": "success",

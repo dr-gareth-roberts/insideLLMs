@@ -8,7 +8,11 @@ from insideLLMs.safety import mask_pii
 
 
 def redact_pii(obj: Any) -> Any:
-    """Recursively redact PII in strings nested within dict/list/tuple structures."""
+    """Scrub PII from a structure recursively.
+
+    Uses PIIDetector to find and replace PII in strings with placeholder tokens.
+    Traverses dicts and lists to redact nested strings.
+    """
     if isinstance(obj, str):
         return mask_pii(obj)
 

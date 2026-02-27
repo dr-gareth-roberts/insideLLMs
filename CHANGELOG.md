@@ -2,111 +2,84 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
-- Stability contract matrix documentation (`docs/STABILITY_MATRIX.md`) defining Stable/Experimental/Internal surfaces and change policy
-- GitHub issue templates for bug reports and feature requests
-- Pull request template
-- Security policy (SECURITY.md)
-- Code of Conduct
-- Comprehensive CI/CD with multi-Python version testing (3.10-3.12)
-- Coverage reporting with Codecov integration
-- Cross-model behavioural harness command with JSONL outputs, summary, and HTML report
-- Versioned output schemas with optional Pydantic validation (runner/results/export) and `insidellms schema` CLI utilities
-
-## [0.2.0] - 2026-02-26
-
-### Removed
-- Deprecated import shims: `insideLLMs.cache`, `insideLLMs.caching`,
-  `insideLLMs.runner`, `insideLLMs.comparison`, `insideLLMs.statistics`,
-  `insideLLMs.trace_config`. Import from canonical paths instead
-  (`insideLLMs.caching`, `insideLLMs.runtime.runner`,
-  `insideLLMs.analysis.comparison`, `insideLLMs.analysis.statistics`,
-  `insideLLMs.trace.trace_config`).
+- International PII detection support (EU, UK regions)
+- Rate limiting integration via `RunConfig`
+- Schema version compatibility checking in diff command
+- Delimiter escape protection in defensive prompt builder
+- Comprehensive API key security documentation and pre-commit hooks
 
 ### Changed
-- Renamed `insideLLMs.caching_unified` to `insideLLMs.caching`.
-- `run_policy()` no longer accepts a `policy_yaml_path` parameter (was unused).
+- **DEPRECATION**: `insideLLMs.visualization` module is deprecated
+  - Use `insideLLMs.analysis.visualization` instead
+  - Compatibility layer will be removed in v2.0.0
+  - See migration guide below
 
-## [0.1.0] - 2025-01-18
+### Fixed
+- Delimiter escape vulnerability in prompt injection defense
+- Async determinism with concurrent execution
+- Config loading error messages now show line numbers and context
+
+### Security
+- Added delimiter escape sanitization to prevent injection bypass
+- Enhanced API key exposure prevention in documentation
+- Added pre-commit hook for secret detection
+
+### Docs changelog
+- Aligned `API_REFERENCE.md` with current runtime/CLI surfaces, including `insideLLMs.diffing`,
+  `DiffGatePolicy`, DiffReport schema-validation flow, `insideLLMs.shadow.fastapi`, and updated
+  `harness`/`diff`/`doctor`/`init` command coverage.
+- Audited and corrected long-form docs to match current CLI flags and behavior (notably
+  `wiki/reference/CLI.md`, CI integration, determinism, troubleshooting, and related guides).
+- Added dedicated guides for production shadow capture and VS Code/Cursor extension workflows:
+  `wiki/guides/Production-Shadow-Capture.md` and `wiki/guides/IDE-Extension-Workflow.md`.
+- Expanded `scripts/audit_docs.py` to enforce parser smoke checks, stale-option detection, and
+  API/docs-index parity checks for the new surfaces.
+
+## Migration Guide
+
+### Visualization Module (v1.1.0 → v2.0.0)
+
+**Old code (deprecated):**
+```python
+from insideLLMs.visualization import TraceVisualizer
+```
+
+**New code:**
+```python
+from insideLLMs.analysis.visualization import TraceVisualizer
+```
+
+**Timeline:**
+- v1.1.0 (current): Deprecation warnings issued, old imports still work
+- v1.2.0: Continued deprecation warnings
+- v2.0.0: Old import path removed, must use new path
+
+**Automated migration:**
+```bash
+# Find all deprecated imports
+grep -r "from insideLLMs.visualization import" .
+
+# Replace with new import (GNU sed)
+find . -name "*.py" -exec sed -i 's/from insideLLMs\.visualization import/from insideLLMs.analysis.visualization import/g' {} +
+
+# Replace with new import (macOS sed)
+find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/from insideLLMs.analysis.visualization import/g' {} +
+```
+
+## [1.0.0] - 2024-01-15
 
 ### Added
-- **Core Framework**
-  - Base `Model` and `Probe` abstractions with protocol-based design
-  - `ProbeRunner` and `AsyncProbeRunner` for batch evaluation
-  - Plugin registry system for models, probes, and datasets
-  - Configuration-driven experiments via YAML/JSON
+- Initial stable release
+- Deterministic probe runner
+- Multi-provider model support
+- Diff-gating for CI/CD
+- Comprehensive probe library
 
-- **Model Integrations**
-  - OpenAI (GPT-4, GPT-3.5, etc.)
-  - Anthropic (Claude 3 family)
-  - Google Gemini
-  - Cohere (Command, Command-R)
-  - HuggingFace Transformers
-  - Local models: Ollama, llama.cpp, vLLM
-  - `DummyModel` for testing without API calls
-
-- **Evaluation Probes**
-  - `LogicProbe` - Logical reasoning evaluation
-  - `BiasProbe` - Bias detection in responses
-  - `AttackProbe` - Adversarial robustness testing
-  - `FactualityProbe` - Factual accuracy assessment
-  - `PromptInjectionProbe` - Injection vulnerability testing
-  - `JailbreakProbe` - Jailbreak attempt detection
-  - Code probes: generation, explanation, debugging
-
-- **Production Infrastructure**
-  - Intelligent caching (LRU, LFU, TTL, semantic similarity)
-  - Rate limiting and throttling
-  - Cost tracking and budget management
-  - Context window management
-  - Streaming utilities
-
-- **Safety & Security**
-  - PII detection
-  - Content safety analysis
-  - Prompt injection detection
-  - Input sanitization
-
-- **Analysis Tools**
-  - Hallucination detection
-  - Reasoning chain extraction
-  - Model fingerprinting
-  - Calibration analysis
-  - Sensitivity analysis
-
-- **Experiment Tracking**
-  - W&B, MLflow, TensorBoard integration
-  - Full reproducibility with environment capture
-  - Multi-backend logging
-
-- **Visualization**
-  - Interactive dashboards
-  - Comparison charts
-  - HTML report generation
-
-- **CLI**
-  - `insidellms run` - Run experiments from config
-  - `insidellms benchmark` - Benchmark models
-  - `insidellms compare` - Compare models
-  - `insidellms list` - List available components
-
-- **NLP Utilities**
-  - 70+ text processing functions
-  - Similarity metrics
-  - Tokenization and chunking
-  - Keyword extraction
-
-### Documentation
-- Comprehensive README with examples
-- API Reference documentation
-- Architecture diagrams (Mermaid)
-- Quick Reference guide
-- Contributing guidelines
-
-[Unreleased]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/dr-gareth-roberts/insideLLMs/releases/tag/v0.1.0
+[Unreleased]: https://github.com/yourusername/insideLLMs/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/yourusername/insideLLMs/releases/tag/v1.0.0

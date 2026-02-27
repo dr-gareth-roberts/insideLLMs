@@ -17,27 +17,21 @@ def emit_cyclonedx(run_dir: Path | str) -> dict[str, Any]:
         try:
             manifest = json.loads(manifest_path.read_text())
             if "model" in manifest and "model_id" in manifest["model"]:
-                components.append(
-                    {
-                        "type": "machine-learning-model",
-                        "name": manifest["model"]["model_id"],
-                        "supplier": {"name": manifest["model"].get("provider", "unknown")},
-                    }
-                )
+                components.append({
+                    "type": "machine-learning-model",
+                    "name": manifest["model"]["model_id"],
+                    "supplier": {"name": manifest["model"].get("provider", "unknown")},
+                })
             if "probe" in manifest and "probe_id" in manifest["probe"]:
-                components.append(
-                    {
-                        "type": "application",
-                        "name": manifest["probe"]["probe_id"],
-                    }
-                )
+                components.append({
+                    "type": "application",
+                    "name": manifest["probe"]["probe_id"],
+                })
             if "dataset" in manifest and "dataset_id" in manifest["dataset"]:
-                components.append(
-                    {
-                        "type": "data",
-                        "name": manifest["dataset"]["dataset_id"],
-                    }
-                )
+                components.append({
+                    "type": "data",
+                    "name": manifest["dataset"]["dataset_id"],
+                })
         except Exception:
             pass
 
@@ -59,28 +53,22 @@ def emit_spdx3(run_dir: Path | str) -> dict[str, Any]:
         try:
             manifest = json.loads(manifest_path.read_text())
             if "model" in manifest and "model_id" in manifest["model"]:
-                elements.append(
-                    {
-                        "type": "Software",
-                        "name": manifest["model"]["model_id"],
-                        "primaryPurpose": "machine-learning-model",
-                    }
-                )
+                elements.append({
+                    "type": "Software",
+                    "name": manifest["model"]["model_id"],
+                    "primaryPurpose": "machine-learning-model",
+                })
             if "probe" in manifest and "probe_id" in manifest["probe"]:
-                elements.append(
-                    {
-                        "type": "Software",
-                        "name": manifest["probe"]["probe_id"],
-                        "primaryPurpose": "application",
-                    }
-                )
+                elements.append({
+                    "type": "Software",
+                    "name": manifest["probe"]["probe_id"],
+                    "primaryPurpose": "application",
+                })
             if "dataset" in manifest and "dataset_id" in manifest["dataset"]:
-                elements.append(
-                    {
-                        "type": "Dataset",
-                        "name": manifest["dataset"]["dataset_id"],
-                    }
-                )
+                elements.append({
+                    "type": "Dataset",
+                    "name": manifest["dataset"]["dataset_id"],
+                })
         except Exception:
             pass
 

@@ -1,0 +1,177 @@
+name: "insideLLMs PR Diff"
+description: "Run harness on base/head refs, diff deterministic outputs, and comment on pull requests."
+author: "insideLLMs Contributors"
+
+inputs:
+  harness-config:
+    description: "Harness config path relative to repository root."
+    required: false
+    default: "ci/harness.yaml"
+  baseline-ref:
+    description: "Git ref to compare against (defaults to pull request base ref or main)."
+    required: false
+    default: ""
+  python-version:
+    description: "Python version for the action runtime."
+    required: false
+    default: "3.11"
+  install-extras:
+    description: "Optional extras to install (for example: dev,nlp,visualization)."
+    required: false
+    default: ""
+  run-args:
+    description: "Extra arguments forwarded to each `insidellms harness` invocation."
+    required: false
+    default: ""
+  diff-args:
+    description: "Extra arguments forwarded to `insidellms diff`."
+    required: false
+    default: ""
+  fail-on-changes:
+    description: "When true, include --fail-on-changes and fail the action on behavior drift."
+    required: false
+    default: "true"
+  post-pr-comment:
+    description: "When true on pull_request events, post or update a sticky diff comment."
+    required: false
+    default: "true"
+  comment-on-forks:
+    description: "When true, attempt PR comments for forked pull_requests (requires token permission)."
+    required: false
+    default: "false"
+  github-token:
+    description: "Token used for pull request comments. Defaults to github.token."
+    required: false
+    default: ""
+
+outputs:
+  diff-json:
+    description: "Path to generated diff report JSON."
+    value: ${{ steps.run_diff.outputs.diff_json }}
+  baseline-run-dir:
+    description: "Path to generated baseline run directory."
+    value: ${{ steps.run_diff.outputs.baseline_run_dir }}
+  candidate-run-dir:
+    description: "Path to generated candidate run directory."
+    value: ${{ steps.run_diff.outputs.candidate_run_dir }}
+  diff-exit-code:
+    description: "Exit code returned by `insidellms diff`."
+    value: ${{ steps.run_diff.outputs.diff_exit_code }}
+  baseline-commit:
+    description: "Resolved baseline commit used for base-vs-head comparison."
+    value: ${{ steps.run_diff.outputs.baseline_commit }}
+  is-fork-pr:
+    description: "Whether the event pull_request head is from a fork."
+    value: ${{ steps.run_diff.outputs.is_fork_pr }}
+  comment-status:
+    description: "PR comment status (created, updated, skipped-fork, skipped-permissions, etc)."
+    value: ${{ steps.upsert_comment.outputs.comment_status || steps.comment_gate.outputs.comment_status }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Run base/head harness + diff
+      id: run_diff
+      shell: bash
+      env:
+        INPUT_HARNESS_CONFIG: ${{ inputs.harness-config }}
+        INPUT_BASELINE_REF: ${{ inputs.baseline-ref }}
+        INPUT_INSTALL_EXTRAS: ${{ inputs.install-extras }}
+        INPUT_RUN_ARGS: ${{ inputs.run-args }}
+        INPUT_DIFF_ARGS: ${{ inputs.diff-args }}
+        INPUT_FAIL_ON_CHANGES: ${{ inputs.fail-on-changes }}
+      run: bash "${{ github.action_path }}/scripts/github_action_run.sh"
+
+    - name: Determine Comment Eligibility
+      if: ${{ inputs.post-pr-comment == 'true' && github.event_name == 'pull_request' }}
+      id: comment_gate
+      shell: bash
+      env:
+        IS_FORK_PR: ${{ steps.run_diff.outputs.is_fork_pr }}
+        COMMENT_ON_FORKS: ${{ inputs.comment-on-forks }}
+      run: |
+        status="eligible"
+        if [[ "${IS_FORK_PR}" == "true" && "${COMMENT_ON_FORKS}" != "true" ]]; then
+          status="skipped-fork"
+          echo "Skipping PR comment for forked pull request (set comment-on-forks=true to override)." >&2
+        fi
+        echo "comment_status=${status}" >> "${GITHUB_OUTPUT}"
+
+    - name: Build PR comment markdown
+      if: ${{ inputs.post-pr-comment == 'true' && github.event_name == 'pull_request' && steps.comment_gate.outputs.comment_status == 'eligible' }}
+      id: build_comment
+      shell: bash
+      env:
+        DIFF_JSON_PATH: ${{ steps.run_diff.outputs.diff_json }}
+        DIFF_EXIT_CODE: ${{ steps.run_diff.outputs.diff_exit_code }}
+      run: |
+        COMMENT_PATH="${RUNNER_TEMP}/insidellms-pr-comment.md"
+        python "${{ github.action_path }}/scripts/github_action_build_comment.py" \
+          --diff-json "${DIFF_JSON_PATH}" \
+          --output "${COMMENT_PATH}" \
+          --diff-exit-code "${DIFF_EXIT_CODE}"
+        echo "comment_path=${COMMENT_PATH}" >> "${GITHUB_OUTPUT}"
+
+    - name: Upsert pull request comment
+      if: ${{ inputs.post-pr-comment == 'true' && github.event_name == 'pull_request' && steps.comment_gate.outputs.comment_status == 'eligible' }}
+      id: upsert_comment
+      uses: actions/github-script@v7
+      env:
+        INSIDELLMS_COMMENT_PATH: ${{ steps.build_comment.outputs.comment_path }}
+      with:
+        github-token: ${{ inputs.github-token || github.token }}
+        script: |
+          const fs = require("fs");
+          const marker = "<!-- insidellms-diff-comment -->";
+          const body = fs.readFileSync(process.env.INSIDELLMS_COMMENT_PATH, "utf8");
+          const issueNumber = context.payload.pull_request.number;
+          const { owner, repo } = context.repo;
+          try {
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.setOutput("comment_status", "updated");
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body,
+              });
+              core.setOutput("comment_status", "created");
+            }
+          } catch (error) {
+            const message = error && error.message ? error.message : String(error);
+            const status = error && error.status ? Number(error.status) : 0;
+            if (status === 403 || /Resource not accessible by integration/i.test(message)) {
+              core.warning(`Skipping PR comment due to token permissions: ${message}`);
+              core.setOutput("comment_status", "skipped-permissions");
+            } else {
+              core.warning(`Skipping PR comment due to unexpected error: ${message}`);
+              core.setOutput("comment_status", "skipped-error");
+            }
+          }
+
+    - name: Fail on diff gate
+      if: ${{ steps.run_diff.outputs.diff_exit_code != '0' }}
+      shell: bash
+      run: |
+        code="${{ steps.run_diff.outputs.diff_exit_code }}"
+        echo "insideLLMs diff exited with code ${code}" >&2
+        exit "${code}"

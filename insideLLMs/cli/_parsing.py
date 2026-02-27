@@ -47,7 +47,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except (ImportError, LookupError, OSError):
+    except (LookupError, OSError):
         return False
 
 
@@ -299,6 +299,49 @@ def create_parser() -> argparse.ArgumentParser:
         help="Skip generating the HTML report",
     )
     harness_parser.add_argument(
+        "--profile",
+        type=str,
+        choices=["healthcare-hipaa", "finance-sec", "eu-ai-act"],
+        help=(
+            "Apply a built-in compliance preset that replaces probes in the harness config "
+            "with a curated profile suite."
+        ),
+    )
+    harness_parser.add_argument(
+        "--active-red-team",
+        action="store_true",
+        help=(
+            "Enable active adversarial mode. Generates adaptive jailbreak/prompt-injection "
+            "traffic and overlays a red-team probe suite before running the harness."
+        ),
+    )
+    harness_parser.add_argument(
+        "--red-team-rounds",
+        type=int,
+        default=3,
+        help="Number of adaptive red-team rounds to synthesize (default: 3).",
+    )
+    harness_parser.add_argument(
+        "--red-team-attempts-per-round",
+        type=int,
+        default=50,
+        help="Number of generated attacks per round (default: 50).",
+    )
+    harness_parser.add_argument(
+        "--red-team-target-system-prompt",
+        type=str,
+        default=None,
+        help="Optional system prompt/context string to target during active red-team generation.",
+    )
+    harness_parser.add_argument(
+        "--explain",
+        action="store_true",
+        help=(
+            "Write explain.json with effective harness configuration and execution context "
+            "(including applied profile overlays)."
+        ),
+    )
+    harness_parser.add_argument(
         "--verbose",
         action="store_true",
         help="Show detailed progress and tracebacks",
@@ -412,6 +455,43 @@ def create_parser() -> argparse.ArgumentParser:
             "(even if output text stays the same)"
         ),
     )
+    diff_parser.add_argument(
+        "--fail-on-trajectory-drift",
+        action="store_true",
+        help=(
+            "Exit with non-zero status if agent/tool trajectory differs between baseline and candidate "
+            "(step count, tool sequence, or tool-call arguments)"
+        ),
+    )
+    _add_output_schema_args(diff_parser)
+    diff_parser.add_argument(
+        "--judge",
+        action="store_true",
+        help="Apply deterministic judge triage on top of diff output",
+    )
+    diff_parser.add_argument(
+        "--judge-policy",
+        choices=["strict", "balanced"],
+        default="strict",
+        help=(
+            "Judge policy: strict treats review items as breaking; "
+            "balanced only treats explicit regressions as breaking"
+        ),
+    )
+    diff_parser.add_argument(
+        "--judge-limit",
+        type=int,
+        default=25,
+        help="Maximum number of judged items to include (default: 25)",
+    )
+    diff_parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help=(
+            "Interactive snapshot workflow: review key diffs and optionally "
+            "accept candidate artifacts as the new baseline"
+        ),
+    )
 
     # =========================================================================
     # Schema command
@@ -478,6 +558,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit non-zero if any recommended dependency checks fail",
     )
+    doctor_parser.add_argument(
+        "--capabilities",
+        action="store_true",
+        help="Include a capability matrix for models, probes, datasets, plugins, and report outputs",
+    )
 
     # =========================================================================
     # Quick test command
@@ -524,6 +609,114 @@ def create_parser() -> argparse.ArgumentParser:
         type=int,
         default=1000,
         help="Maximum tokens in response",
+    )
+
+    # =========================================================================
+    # Generate-suite command
+    # =========================================================================
+    generate_suite_parser = subparsers.add_parser(
+        "generate-suite",
+        help="Generate a domain-targeted synthetic evaluation suite",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    generate_suite_parser.add_argument(
+        "--target",
+        type=str,
+        required=True,
+        help='Domain target for generated cases (for example: "customer support bot")',
+    )
+    generate_suite_parser.add_argument(
+        "--num-cases",
+        type=int,
+        default=50,
+        help="Number of generated cases (default: 50)",
+    )
+    generate_suite_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="data/generated_suite.jsonl",
+        help="Output path for generated suite (default: data/generated_suite.jsonl)",
+    )
+    generate_suite_parser.add_argument(
+        "--format",
+        choices=["jsonl", "json"],
+        default="jsonl",
+        help="Output format (default: jsonl)",
+    )
+    generate_suite_parser.add_argument(
+        "--include-adversarial",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include adversarial edge cases in generated suite (default: true)",
+    )
+    generate_suite_parser.add_argument(
+        "--model",
+        type=str,
+        default="dummy",
+        help="Model backend used for generation (default: dummy)",
+    )
+    generate_suite_parser.add_argument(
+        "--model-args",
+        type=str,
+        default="{}",
+        help="JSON object of model init args",
+    )
+    generate_suite_parser.add_argument(
+        "--seed-example",
+        action="append",
+        default=[],
+        help="Seed example to bootstrap generation (repeatable); defaults to built-in domain seeds",
+    )
+
+    # =========================================================================
+    # Optimize-prompt command
+    # =========================================================================
+    optimize_prompt_parser = subparsers.add_parser(
+        "optimize-prompt",
+        help="Optimize prompt text using built-in optimization strategies",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    optimize_prompt_parser.add_argument(
+        "prompt",
+        nargs="?",
+        default=None,
+        help="Prompt text to optimize",
+    )
+    optimize_prompt_parser.add_argument(
+        "--input-file",
+        type=str,
+        help="Read prompt text from file",
+    )
+    optimize_prompt_parser.add_argument(
+        "--strategies",
+        type=str,
+        help=(
+            "Comma-separated strategies "
+            "(compression,clarity,specificity,structure,example_selection)"
+        ),
+    )
+    optimize_prompt_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    optimize_prompt_parser.add_argument(
+        "--show-diff",
+        action="store_true",
+        help="Show original and optimized prompts in terminal output",
+    )
+    optimize_prompt_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        help=(
+            "When --format text: write optimized prompt to file. "
+            "When --format json: write full optimization report JSON."
+        ),
     )
 
     # =========================================================================
@@ -680,13 +873,9 @@ def create_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--template",
         type=str,
-        choices=["basic", "benchmark", "tracking", "full"],
+        choices=["basic", "benchmark", "tracking", "full", "harness"],
         default="basic",
-        help=(
-            "Configuration template: basic (model+probe+dataset), "
-            "benchmark (+ dataset suites), tracking (+ experiment logging), "
-            "full (all features with async and HTML reports)"
-        ),
+        help="Configuration template to use",
     )
 
     # =========================================================================
@@ -852,62 +1041,6 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Identity constraints for verification (e.g. issuer+subject)",
-    )
-
-    # =========================================================================
-    # Trend command
-    # =========================================================================
-    trend_parser = subparsers.add_parser(
-        "trend",
-        help="Show metric trends across indexed runs",
-        formatter_class=CustomFormatter,
-        parents=[common_parser],
-    )
-    trend_parser.add_argument(
-        "--index",
-        type=str,
-        default="run_index.jsonl",
-        help="Path to the run index file (default: run_index.jsonl)",
-    )
-    trend_parser.add_argument(
-        "--add",
-        type=str,
-        metavar="RUN_DIR",
-        help="Index a completed run directory before showing trends",
-    )
-    trend_parser.add_argument(
-        "--label",
-        type=str,
-        default="",
-        help="Config label for the run being indexed (used with --add)",
-    )
-    trend_parser.add_argument(
-        "--metric",
-        type=str,
-        default="accuracy",
-        help="Metric to track (default: accuracy)",
-    )
-    trend_parser.add_argument(
-        "--last",
-        type=int,
-        default=0,
-        help="Show only the last N runs (default: all)",
-    )
-    trend_parser.add_argument(
-        "--threshold",
-        type=float,
-        help="Alert if metric drops below this value",
-    )
-    trend_parser.add_argument(
-        "--fail-on-threshold",
-        action="store_true",
-        help="Exit with non-zero status if threshold is violated",
-    )
-    trend_parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format (default: text)",
     )
 
     return parser

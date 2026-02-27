@@ -393,6 +393,7 @@ insideLLMs.tracing : Low-level trace recording utilities
 """
 
 from insideLLMs.runtime.async_io import async_write_lines, async_write_text  # noqa: F401
+from insideLLMs.runtime.diffing import *  # noqa: F401,F403
 from insideLLMs.runtime.observability import *  # noqa: F401,F403
 from insideLLMs.runtime.pipeline import *  # noqa: F401,F403
 from insideLLMs.runtime.reproducibility import *  # noqa: F401,F403

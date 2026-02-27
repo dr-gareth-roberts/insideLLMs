@@ -23,7 +23,6 @@ The CLI is organized into subcommands, each handling a specific workflow:
 - ``schema``: Inspect and validate versioned output schemas
 - ``doctor``: Diagnose environment and optional dependencies
 - ``report``: Rebuild summary and HTML reports from records
-- ``trend``: Show metric trends across indexed runs
 """
 
 import sys
@@ -86,17 +85,18 @@ from .commands.compare import cmd_compare as cmd_compare
 from .commands.diff import cmd_diff as cmd_diff
 from .commands.doctor import cmd_doctor as cmd_doctor
 from .commands.export import cmd_export as cmd_export
+from .commands.generate_suite import cmd_generate_suite as cmd_generate_suite
 from .commands.harness import cmd_harness as cmd_harness
 from .commands.info import cmd_info as cmd_info
 from .commands.init_cmd import cmd_init as cmd_init
 from .commands.interactive import cmd_interactive as cmd_interactive
 from .commands.list_cmd import cmd_list as cmd_list
+from .commands.optimize_prompt import cmd_optimize_prompt as cmd_optimize_prompt
 from .commands.quicktest import cmd_quicktest as cmd_quicktest
 from .commands.report import cmd_report as cmd_report
 from .commands.run import cmd_run as cmd_run
 from .commands.schema import cmd_schema as cmd_schema
 from .commands.sign import cmd_sign as cmd_sign
-from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
 from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
 
@@ -149,11 +149,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             print()
             parser.print_help()
             print()
-            print(colorize("Getting started:", Colors.BOLD))
-            print('  1. Try it out:       insidellms quicktest "Hello world" --model dummy')
-            print("  2. Create a config:  insidellms init --template basic")
-            print("  3. Run experiment:   insidellms run experiment.yaml")
-            print("  4. Check your env:   insidellms doctor")
+            print(
+                colorize("Quick start: ", Colors.BOLD)
+                + 'insidellms quicktest "Hello world" --model dummy'
+            )
             return 0
 
         commands = {
@@ -167,6 +166,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             "init": cmd_init,
             "info": cmd_info,
             "quicktest": cmd_quicktest,
+            "generate-suite": cmd_generate_suite,
+            "optimize-prompt": cmd_optimize_prompt,
             "benchmark": cmd_benchmark,
             "compare": cmd_compare,
             "interactive": cmd_interactive,
@@ -175,7 +176,6 @@ def main(argv: Optional[list[str]] = None) -> int:
             "attest": cmd_attest,
             "sign": cmd_sign,
             "verify-signatures": cmd_verify_signatures,
-            "trend": cmd_trend,
         }
 
         handler = commands.get(args.command)

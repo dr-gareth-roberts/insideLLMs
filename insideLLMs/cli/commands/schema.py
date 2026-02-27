@@ -36,6 +36,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
             registry.RUN_MANIFEST,
             registry.HARNESS_RECORD,
             registry.HARNESS_SUMMARY,
+            registry.HARNESS_EXPLAIN,
             registry.BENCHMARK_SUMMARY,
             registry.COMPARISON_REPORT,
             registry.DIFF_REPORT,

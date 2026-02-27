@@ -22,6 +22,7 @@ Message and Spec Schemas:
 Harness Schemas:
     - :class:`HarnessRecord`: Per-line JSONL harness record
     - :class:`HarnessSummary`: Summary payload from harness CLI
+    - :class:`HarnessExplain`: Explainability payload from harness CLI
 
 Benchmark Schemas:
     - :class:`BenchmarkModelMetrics`: Per-model benchmark metrics
@@ -1083,6 +1084,20 @@ class HarnessSummary(_BaseSchema):
     config: dict[str, Any]
 
 
+class HarnessExplain(_BaseSchema):
+    """Explainability payload emitted by harness CLI when --explain is enabled."""
+
+    schema_version: str = Field(default=SCHEMA_VERSION)
+    kind: Literal["HarnessExplain"] = "HarnessExplain"
+    generated_at: datetime
+    run_id: str
+    config_resolution: dict[str, Any] = Field(default_factory=dict)
+    effective_config: dict[str, Any] = Field(default_factory=dict)
+    execution: dict[str, Any] = Field(default_factory=dict)
+    determinism: dict[str, Any] = Field(default_factory=dict)
+    summary: dict[str, Any] = Field(default_factory=dict)
+
+
 class BenchmarkModelMetrics(_BaseSchema):
     total_time: float
     avg_time_per_item: float
@@ -1210,6 +1225,15 @@ class DiffChangeEntry(DiffRecordIdentity):
     candidate_missing: Optional[list[str]] = None
     baseline_fingerprint: Optional[str] = None
     candidate_fingerprint: Optional[str] = None
+    baseline_trace_fingerprint: Optional[str] = None
+    candidate_trace_fingerprint: Optional[str] = None
+    baseline_violations: Optional[int] = None
+    candidate_violations: Optional[int] = None
+    candidate_violation_details: Optional[list[dict[str, Any]]] = None
+    baseline_trajectory_fingerprint: Optional[str] = None
+    candidate_trajectory_fingerprint: Optional[str] = None
+    baseline_trajectory: Optional[dict[str, Any]] = None
+    candidate_trajectory: Optional[dict[str, Any]] = None
 
 
 class DiffRunIds(_BaseSchema):
@@ -1224,6 +1248,9 @@ class DiffCounts(_BaseSchema):
     regressions: int
     improvements: int
     other_changes: int
+    trace_drifts: int = 0
+    trace_violation_increases: int = 0
+    trajectory_drifts: int = 0
 
 
 class DiffDuplicates(_BaseSchema):
@@ -1243,6 +1270,9 @@ class DiffReport(_BaseSchema):
     changes: list[DiffChangeEntry] = Field(default_factory=list)
     only_baseline: list[DiffRecordIdentity] = Field(default_factory=list)
     only_candidate: list[DiffRecordIdentity] = Field(default_factory=list)
+    trace_drifts: list[DiffChangeEntry] = Field(default_factory=list)
+    trace_violation_increases: list[DiffChangeEntry] = Field(default_factory=list)
+    trajectory_drifts: list[DiffChangeEntry] = Field(default_factory=list)
 
 
 class SchemaExportMetadata(_BaseSchema):
@@ -1309,6 +1339,7 @@ _SCHEMA_MAP = {
     "RunManifest": RunManifest,
     "HarnessRecord": HarnessRecord,
     "HarnessSummary": HarnessSummary,
+    "HarnessExplain": HarnessExplain,
     "BenchmarkSummary": BenchmarkSummary,
     "ComparisonReport": ComparisonReport,
     "DiffReport": DiffReport,
@@ -1331,6 +1362,7 @@ def get_schema_model(schema_name: str):
             - "RunManifest": Run directory manifest
             - "HarnessRecord": Harness per-line record
             - "HarnessSummary": Harness summary payload
+            - "HarnessExplain": Harness explainability payload
             - "BenchmarkSummary": Benchmark output
             - "ComparisonReport": Comparison output
             - "DiffReport": Diff analysis output

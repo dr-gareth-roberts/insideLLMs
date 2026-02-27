@@ -16,6 +16,8 @@ How-to guides for specific tasks and integrations.
 | [Rate Limiting](Rate-Limiting.md) | Handle API rate limits gracefully |
 | [Experiment Tracking](Experiment-Tracking.md) | Log runs to W&B, MLflow, TensorBoard |
 | [Local Models](Local-Models.md) | Run Ollama, llama.cpp, vLLM |
+| [Production Shadow Capture](Production-Shadow-Capture.md) | Capture sampled production traffic into canonical records |
+| [IDE Extension Workflow](IDE-Extension-Workflow.md) | Run probes from VS Code/Cursor CodeLens |
 | [Troubleshooting](Troubleshooting.md) | Common issues and solutions |
 
 ## Guides vs Tutorials
@@ -38,7 +40,7 @@ concurrency: 10
 ```
 
 ```bash
-insidellms harness config.yaml --async --concurrency 10
+insidellms run config.yaml --async --concurrency 10
 ```
 
 ### Reduce Costs
@@ -77,14 +79,14 @@ insidellms run config.yaml --verbose
 ### Development Workflow
 
 ```bash
-# 1. Test with dummy model
-insidellms run config.yaml --model-override dummy
+# 1. Generate and tune a local config
+insidellms init dev.yaml --model dummy
 
-# 2. Small sample with real model
-insidellms run config.yaml --max-examples 10
+# 2. Run a deterministic harness candidate
+insidellms harness dev.yaml --run-dir .tmp/runs/dev --overwrite
 
 # 3. Full run
-insidellms run config.yaml
+insidellms run config.yaml --run-dir .tmp/runs/full --overwrite
 ```
 
 ### CI Workflow
