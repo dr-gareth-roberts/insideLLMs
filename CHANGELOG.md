@@ -8,19 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Full CI pipeline: lint, typecheck, test (Python 3.10/3.11/3.12 matrix), determinism, and contract jobs
+- Optional dependency groups: `huggingface`, `signing`, `crypto`, `providers`
 - International PII detection support (EU, UK regions)
 - Rate limiting integration via `RunConfig`
 - Schema version compatibility checking in diff command
 - Delimiter escape protection in defensive prompt builder
-- Comprehensive API key security documentation and pre-commit hooks
 
 ### Changed
+- Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
+- Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
+- Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes
 - **DEPRECATION**: `insideLLMs.visualization` module is deprecated
   - Use `insideLLMs.analysis.visualization` instead
   - Compatibility layer will be removed in v2.0.0
   - See migration guide below
 
 ### Fixed
+- Removed duplicate "Verifiable Evaluation Commands" and "Schema Validation Commands" sections from README
 - Delimiter escape vulnerability in prompt injection defense
 - Async determinism with concurrent execution
 - Config loading error messages now show line numbers and context
@@ -29,17 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added delimiter escape sanitization to prevent injection bypass
 - Enhanced API key exposure prevention in documentation
 - Added pre-commit hook for secret detection
-
-### Docs changelog
-- Aligned `API_REFERENCE.md` with current runtime/CLI surfaces, including `insideLLMs.diffing`,
-  `DiffGatePolicy`, DiffReport schema-validation flow, `insideLLMs.shadow.fastapi`, and updated
-  `harness`/`diff`/`doctor`/`init` command coverage.
-- Audited and corrected long-form docs to match current CLI flags and behavior (notably
-  `wiki/reference/CLI.md`, CI integration, determinism, troubleshooting, and related guides).
-- Added dedicated guides for production shadow capture and VS Code/Cursor extension workflows:
-  `wiki/guides/Production-Shadow-Capture.md` and `wiki/guides/IDE-Extension-Workflow.md`.
-- Expanded `scripts/audit_docs.py` to enforce parser smoke checks, stale-option detection, and
-  API/docs-index parity checks for the new surfaces.
 
 ## Migration Guide
 
@@ -72,14 +66,31 @@ find . -name "*.py" -exec sed -i 's/from insideLLMs\.visualization import/from i
 find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/from insideLLMs.analysis.visualization import/g' {} +
 ```
 
-## [1.0.0] - 2024-01-15
+## [0.2.0] - 2025-01-15
 
 ### Added
-- Initial stable release
-- Deterministic probe runner
-- Multi-provider model support
-- Diff-gating for CI/CD
-- Comprehensive probe library
+- Deterministic artifact pipeline with SHA-256 run IDs
+- Schema versioning (v1.0.0, v1.0.1) with Pydantic-based validation
+- `insidellms diff` for cross-run comparison with CI diff-gating
+- `insidellms doctor` readiness checker
+- `insidellms schema validate` for artifact payload validation
+- DSSE attestation and cosign signing workflows
+- Golden-path determinism verification (`make golden-path`)
+- Provider adapters: OpenAI, Anthropic, HuggingFace, Gemini, Cohere, Ollama, llama.cpp, vLLM
+- Probe categories: logic, factuality, bias, attack, agent, code, instruction
+- `AsyncProbeRunner` for concurrent execution
+- Registry/plugin system with lazy loading
+- Trace configuration for deterministic CI enforcement
 
-[Unreleased]: https://github.com/yourusername/insideLLMs/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/yourusername/insideLLMs/releases/tag/v1.0.0
+## [0.1.0] - 2024-09-01
+
+### Added
+- Initial release
+- Core probe execution pipeline
+- `ProbeRunner` with config-driven execution
+- Basic model adapters (OpenAI, DummyModel)
+- JSONL record output format
+
+[Unreleased]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/dr-gareth-roberts/insideLLMs/releases/tag/v0.1.0
