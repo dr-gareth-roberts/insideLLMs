@@ -1083,7 +1083,7 @@ class ToxicityAnalyzer:
         re.compile(r"\bshut\s+up\b", re.I),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the toxicity analyzer.
 
         Creates a new ToxicityAnalyzer instance with an empty list of
@@ -1374,7 +1374,7 @@ class SafetyHallucinationIndicatorDetector:
         re.compile(r"\b(?:19|20)\d{2}\b"),  # Years
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the hallucination indicator detector.
 
         Creates a new SafetyHallucinationIndicatorDetector instance.
@@ -1656,7 +1656,7 @@ class BiasDetector:
         "no one",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the bias detector.
 
         Creates a new BiasDetector instance. All detection patterns
@@ -2010,7 +2010,7 @@ class ContentSafetyAnalyzer:
         True
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the content safety analyzer with all sub-analyzers.
 
         Creates instances of all specialized analyzers (PII, toxicity,

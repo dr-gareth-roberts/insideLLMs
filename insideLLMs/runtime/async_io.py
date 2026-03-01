@@ -27,7 +27,7 @@ async def async_write_text(
     """
     loop = asyncio.get_running_loop()
 
-    def _write():
+    def _write() -> None:
         with open(filepath, mode, encoding=encoding) as f:
             f.write(content)
             f.flush()
@@ -55,7 +55,7 @@ async def async_write_lines(
     """
     loop = asyncio.get_running_loop()
 
-    def _write():
+    def _write() -> None:
         with open(filepath, mode, encoding=encoding) as f:
             for line in lines:
                 f.write(line)

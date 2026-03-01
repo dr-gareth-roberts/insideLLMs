@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from insideLLMs import latency as latency_module
+import insideLLMs.contrib.latency as latency_module
 from insideLLMs.contrib.latency import (
     LatencyMetric,
     LatencyProfiler,

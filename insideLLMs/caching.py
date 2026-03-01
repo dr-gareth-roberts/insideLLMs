@@ -2727,9 +2727,11 @@ class CacheNamespace:
     ) -> PromptCache:
         """Get or create a named prompt cache."""
         with self._lock:
-            if name not in self._caches or not isinstance(self._caches[name], PromptCache):
-                self._caches[name] = PromptCache(config or self.default_config)
-            return self._caches[name]
+            existing = self._caches.get(name)
+            if not isinstance(existing, PromptCache):
+                existing = PromptCache(config or self.default_config)
+                self._caches[name] = existing
+            return existing
 
     def delete_cache(self, name: str) -> bool:
         """Delete a named cache."""
@@ -3361,7 +3363,7 @@ def cached_response(
 
     result = cache.get_response(prompt, model, params)
 
-    if result.hit:
+    if result.hit and result.value is not None:
         return result.value, True
 
     response = generator(prompt)

@@ -1737,7 +1737,7 @@ def required_sample_size(
     effect_size: float,
     power: float = 0.8,
     alpha: float = 0.05,
-) -> int:
+) -> float:
     """Calculate required sample size per group to achieve desired power.
 
     Args:
@@ -1746,7 +1746,7 @@ def required_sample_size(
         alpha: Significance level.
 
     Returns:
-        Required sample size per group.
+        Required sample size per group, or inf if effect_size is zero.
     """
     if effect_size == 0:
         return float("inf")

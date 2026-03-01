@@ -30,7 +30,7 @@ def _add_output_schema_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _module_version(dist_name: str):
+def _module_version(dist_name: str) -> str | None:
     try:
         return importlib.metadata.version(dist_name)
     except (ImportError, AttributeError):
@@ -56,7 +56,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Custom formatter that preserves formatting in epilog
     class CustomFormatter(argparse.RawDescriptionHelpFormatter):
-        def __init__(self, prog):
+        def __init__(self, prog: str) -> None:
             super().__init__(prog, max_help_position=40, width=100)
 
     common_parser = argparse.ArgumentParser(add_help=False)

@@ -2047,8 +2047,9 @@ def _normalize_events(
     if not events:
         return []
 
+    normalized: list[TraceEvent]
     if isinstance(events[0], TraceEvent):
-        normalized = list(events)
+        normalized = list(events)  # type: ignore[arg-type]
     else:
         normalized = [TraceEvent.from_dict(e) for e in events]
 

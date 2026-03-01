@@ -862,7 +862,7 @@ class ExtractionSchema:
         for field_schema in self.fields:
             value = data.get(field_schema.name)
             is_valid, error = field_schema.validate(value)
-            if not is_valid:
+            if not is_valid and error is not None:
                 errors.append(error)
 
         # Check for extra fields

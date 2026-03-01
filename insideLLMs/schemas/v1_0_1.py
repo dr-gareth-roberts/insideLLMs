@@ -123,7 +123,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from insideLLMs.schemas import v1_0_0
 
@@ -414,7 +414,7 @@ class RunManifest(v1_0_0._BaseSchema):
     custom: dict[str, Any] = Field(default_factory=dict)
 
 
-def get_schema_model(schema_name: str):
+def get_schema_model(schema_name: str) -> type[BaseModel]:
     """Retrieve a schema model class by its canonical name.
 
     This function provides name-based lookup of Pydantic schema model classes

@@ -1090,7 +1090,7 @@ class RedisCache:
         try:
             keys = self._client.keys(f"{self._prefix}*")
             if keys:
-                return self._client.delete(*keys)
+                return int(self._client.delete(*keys))
             return 0
         except Exception:
             return 0
@@ -1124,7 +1124,7 @@ class RedisCache:
 
     def ttl(self, key: str) -> int:
         """Get TTL for a key."""
-        return self._client.ttl(self._make_key(key))
+        return int(self._client.ttl(self._make_key(key)))
 
 
 # =============================================================================
