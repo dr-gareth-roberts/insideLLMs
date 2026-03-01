@@ -5,8 +5,11 @@ Project guidance for Claude Code when working in this repository.
 ## Quick Reference
 
 ```bash
-# Install (editable, all dev extras)
-pip install -e ".[dev,nlp,visualization]"
+# Install (editable, dev extras + providers)
+pip install -e ".[dev,providers,nlp,visualization]"
+
+# Or minimal (core only, no provider SDKs)
+pip install -e ".[dev]"
 
 # Lint & format
 make lint              # ruff check .
@@ -49,7 +52,7 @@ CLI (insideLLMs/cli/)
         └─> Infra (caching / rate_limiting / cost_tracking) [optional]
 ```
 
-**Key modules:**
+**Core modules (~38 top-level files):**
 - `insideLLMs/cli/` — CLI entrypoint and subcommands (`run`, `harness`, `report`, `diff`, `schema`, `doctor`)
 - `insideLLMs/runtime/runner.py` — Canonical execution engine (`ProbeRunner`, `AsyncProbeRunner`)
 - `insideLLMs/registry.py` — Model/probe/dataset registration and lookup
@@ -57,6 +60,12 @@ CLI (insideLLMs/cli/)
 - `insideLLMs/results.py`, `export.py`, `visualization.py` — Aggregation and report generation
 - `insideLLMs/models/` — Provider adapters (OpenAI, Anthropic, HuggingFace, Cohere, Gemini, local)
 - `insideLLMs/probes/` — Probe implementations (logic, bias, attack, code, instruction, agent, factuality)
+
+**Contrib modules (~39 files in `insideLLMs/contrib/`):**
+- Standalone research/analysis modules NOT part of the core pipeline
+- Includes: agents, hitl, deployment, routing, synthesis, calibration, hallucination, etc.
+- Still importable via lazy loading: `from insideLLMs import ReActAgent`
+- Tests live in `tests/contrib/`
 
 **Data flow:** config → runner/harness → `records.jsonl` → `summary.json` / `report.html` → `diff.json`
 
@@ -81,9 +90,12 @@ determinism:
 
 CI runs in `.github/workflows/ci.yml`:
 
-- **Lint job (Python 3.12):** Ruff lint, Ruff format check, Mypy, stability contract tests
-- **Test job (Python 3.10, 3.11, 3.12 matrix):** Full pytest with `--cov-fail-under=95`
-- Coverage threshold is **95%** — do not let it drop
+- **Lint job (Python 3.12):** Ruff lint + Ruff format check
+- **Typecheck job (Python 3.12):** Mypy (standard + strict on security modules)
+- **Test job (Python 3.10, 3.11, 3.12 matrix):** Full pytest with `--cov-fail-under=80`
+- **Determinism job:** `make golden-path` (needs lint + typecheck to pass first)
+- **Contracts job:** `pytest -m contract` (stability contract tests)
+- Coverage threshold is **80%** (will be raised incrementally)
 - Tests write artifacts under `INSIDELLMS_RUN_ROOT` when applicable
 - Ruff line-length is **100** characters (`pyproject.toml`)
 - Ruff selects: `E`, `W`, `F`, `I` (pycodestyle, pyflakes, isort)
@@ -92,9 +104,26 @@ CI runs in `.github/workflows/ci.yml`:
 
 - Python 3.10+ (no walrus operators or newer-only syntax beyond 3.10)
 - Ruff for linting and formatting (not black/isort directly, though they're in dev deps)
-- Mypy for type checking (lenient config — many error codes disabled)
+- Mypy for type checking (strict on core modules: runtime/, cli/, schemas/; lenient on contrib/)
 - `asyncio_mode = "auto"` in pytest (no need for `@pytest.mark.asyncio`)
 - Test markers: `@pytest.mark.slow`, `@pytest.mark.integration`
+
+## Dependencies
+
+Core has only `pyyaml` as a required dependency. Everything else is optional:
+
+```bash
+pip install insidellms                    # core only (pyyaml)
+pip install insidellms[openai]            # + OpenAI SDK
+pip install insidellms[anthropic]         # + Anthropic SDK
+pip install insidellms[huggingface]       # + transformers + huggingface-hub
+pip install insidellms[providers]         # all three providers
+pip install insidellms[signing]           # + tuf + oras
+pip install insidellms[crypto]            # + cryptography
+pip install insidellms[all]              # everything
+```
+
+All provider imports are lazy-guarded — the core package imports without provider SDKs installed.
 
 ## Common Development Patterns
 
