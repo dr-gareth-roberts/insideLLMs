@@ -24,7 +24,12 @@ from insideLLMs.attestations.steps.builders import (
     build_attestation_08_policy,
     build_attestation_09_publish,
 )
-from insideLLMs.crypto import digest_obj, merkle_root_from_items, merkle_root_from_jsonl, run_bundle_id
+from insideLLMs.crypto import (
+    digest_obj,
+    merkle_root_from_items,
+    merkle_root_from_jsonl,
+    run_bundle_id,
+)
 from insideLLMs.policy.engine import run_policy
 from insideLLMs.publish.oras import push_run_oci
 from insideLLMs.runtime._artifact_utils import _atomic_write_text

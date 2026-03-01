@@ -2,8 +2,8 @@
 
 
 def test_injection_facade_reexports_engine_symbols() -> None:
+    import insideLLMs.contrib.security.injection_engine as engine
     import insideLLMs.injection as facade
-    import insideLLMs.security.injection_engine as engine
 
     assert facade.InjectionDetector is engine.InjectionDetector
     assert facade.InputSanitizer is engine.InputSanitizer
