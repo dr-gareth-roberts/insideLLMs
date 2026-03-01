@@ -66,13 +66,14 @@ crypto = [
     "cryptography>=41.0.0",
 ]
 nlp = [
-    "nltk>=3.8.0",
+    "nltk>=3.9.3",
     "spacy>=3.5.0",
     "scikit-learn>=1.2.0",
     "gensim>=4.3.0",
 ]
 visualization = [
     "matplotlib>=3.7.0",
+    "pillow>=12.1.1",
     "pandas>=2.0.0",
     "seaborn>=0.12.0",
 ]
