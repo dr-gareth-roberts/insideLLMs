@@ -301,11 +301,11 @@ class GeminiModel(Model):
                 )
 
             genai.configure(api_key=self.api_key)
-            self._client = genai
-            self._model = genai.GenerativeModel(
+            self._client = genai  # type: ignore[assignment]
+            self._model = genai.GenerativeModel(  # type: ignore[assignment]
                 model_name=self.model_name,
-                safety_settings=self.safety_settings,
-                generation_config=self.default_generation_config,
+                safety_settings=self.safety_settings,  # type: ignore[arg-type]
+                generation_config=self.default_generation_config,  # type: ignore[arg-type]
             )
         return self._model
 

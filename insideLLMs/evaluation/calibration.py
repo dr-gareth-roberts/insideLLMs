@@ -2355,15 +2355,15 @@ class Calibrator:
         if self.method == CalibrationMethod.TEMPERATURE_SCALING:
             # Convert confidences to logits
             logits = [math.log(c / (1 - c + 1e-15) + 1e-15) for c in confidences]
-            self._scaler = TemperatureScaler()
+            self._scaler = TemperatureScaler()  # type: ignore[assignment]
             self._scaler.fit(logits, labels)
 
         elif self.method == CalibrationMethod.PLATT_SCALING:
-            self._scaler = PlattScaler()
+            self._scaler = PlattScaler()  # type: ignore[assignment]
             self._scaler.fit(confidences, labels)
 
         elif self.method == CalibrationMethod.HISTOGRAM_BINNING:
-            self._scaler: Optional[HistogramBinner] = HistogramBinner()
+            self._scaler = HistogramBinner()  # type: ignore[assignment]
             self._scaler.fit(confidences, labels)
 
         self._fitted = True

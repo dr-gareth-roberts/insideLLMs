@@ -680,7 +680,7 @@ class PromptExperimentResult:
         averages = self.get_average_scores()
         if not averages:
             return None
-        return max(averages, key=averages.get)
+        return max(averages, key=averages.get)  # type: ignore[arg-type]
 
 
 class PromptVariationGenerator:
@@ -3029,7 +3029,7 @@ def create_few_shot_variants(
     task: str,
     examples: list[dict[str, str]],
     query: str,
-    num_shots: list[int] = None,
+    num_shots: list[int] | None = None,
 ) -> list[PromptVariant]:
     """
     Create prompt variants with different numbers of few-shot examples.

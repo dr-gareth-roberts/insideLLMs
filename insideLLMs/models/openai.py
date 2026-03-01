@@ -428,7 +428,7 @@ class OpenAIModel(Model):
         try:
             response = self._client.chat.completions.create(
                 model=self.model_name,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 **kwargs,
             )
             return response.choices[0].message.content or ""

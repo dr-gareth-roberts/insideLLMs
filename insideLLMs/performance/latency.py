@@ -2737,7 +2737,7 @@ class PerformanceComparator:
 
         # Add ranking (higher is better for throughput)
         if results:
-            sorted_by_mean = sorted(results.items(), key=lambda x: x[1]["mean"], reverse=True)
+            sorted_by_mean = sorted(results.items(), key=lambda x: x[1]["mean"], reverse=True)  # type: ignore
             for rank, (name, _) in enumerate(sorted_by_mean, 1):
                 results[name]["rank"] = rank
 
@@ -2764,7 +2764,7 @@ class PerformanceComparator:
             comparison = self.compare_throughput()
             if not comparison:
                 return list(self._reports.items())[0]
-            best_name = max(comparison.items(), key=lambda x: x[1]["mean"])[0]
+            best_name = max(comparison.items(), key=lambda x: x[1]["mean"])[0]  # type: ignore[return-value]
 
         return best_name, self._reports[best_name]
 

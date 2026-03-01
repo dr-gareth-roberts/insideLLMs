@@ -225,7 +225,7 @@ class TestJudgeModel:
         # Score of 5 on 1-5 scale = 1.0 normalized
         # Score of 3 on 1-5 scale = 0.5 normalized
         scores = {"a": 5, "b": 3}
-        overall = judge._calculate_overall_score(scores)
+        overall = judge._calculate_overall_score(scores)  # type: ignore[arg-type]
 
         # Expected: (1.0 * 1.0 + 0.5 * 1.0) / 2.0 = 0.75
         assert abs(overall - 0.75) < 0.01
@@ -242,7 +242,7 @@ class TestJudgeModel:
         # a=5 (normalized 1.0) with weight 2.0
         # b=3 (normalized 0.5) with weight 1.0
         scores = {"a": 5, "b": 3}
-        overall = judge._calculate_overall_score(scores)
+        overall = judge._calculate_overall_score(scores)  # type: ignore[arg-type]
 
         # Expected: (1.0 * 2.0 + 0.5 * 1.0) / 3.0 = 2.5/3.0 = 0.833...
         assert abs(overall - 0.833) < 0.01

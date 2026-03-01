@@ -547,7 +547,7 @@ async def test_async_combined_middleware_stack():
     prompts = ["prompt1", "prompt2", "prompt1", "prompt3", "prompt2"]
     results = await pipeline.abatch_generate(prompts, max_concurrency=5)
 
-    assert len(results) == 5
+    assert len(results) == 5  # type: ignore[arg-type]
     info = pipeline.info()
     assert info["middleware_count"] == 4
 
@@ -642,7 +642,7 @@ async def test_async_model_pipeline_map_with_timeout():
     # Very generous timeout - should not expire
     results = await pipeline.amap(prompts, max_concurrency=2, timeout=10.0)
 
-    assert len(results) == 2
+    assert len(results) == 2  # type: ignore[arg-type]
     for _, response, error in results:
         assert response is not None
         assert error is None

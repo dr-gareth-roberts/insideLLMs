@@ -2542,7 +2542,7 @@ class FormatSensitivityTester:
             Dictionary with format sensitivity results
         """
         baseline = get_response(base_prompt)
-        results = {"baseline": baseline, "variations": {}}
+        results: dict[str, Any] = {"baseline": baseline, "variations": {}}
 
         comparator = OutputComparator()
 
@@ -2562,7 +2562,7 @@ class FormatSensitivityTester:
         adherence_scores = [v["format_followed"] for v in results["variations"].values()]
         results["format_adherence_rate"] = (
             sum(adherence_scores) / len(adherence_scores) if adherence_scores else 0
-        )
+        )  # type: ignore[assignment,operator]
 
         return results
 

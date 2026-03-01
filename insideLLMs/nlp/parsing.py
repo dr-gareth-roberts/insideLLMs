@@ -1556,7 +1556,7 @@ class CodeBlockParser:
         # Find fenced code blocks
         for match in cls.FENCED_PATTERN.finditer(text):
             language = match.group(1).lower()
-            language = cls.LANGUAGE_ALIASES.get(language, language)
+            language = cls.LANGUAGE_ALIASES.get(language, language)  # type: ignore[assignment]
             code = match.group(2)
 
             # Calculate line numbers
@@ -1704,7 +1704,7 @@ class CodeBlockParser:
         extract_sql : Convenience method for SQL code.
         """
         language = language.lower()
-        language = cls.LANGUAGE_ALIASES.get(language, language)
+        language = cls.LANGUAGE_ALIASES.get(language, language)  # type: ignore[assignment]
 
         blocks = cls.parse(text)
         return [b for b in blocks if b.language == language]

@@ -25,7 +25,7 @@ def test_run_experiment_from_config_uses_relative_dataset(tmp_path):
 
     results = run_experiment_from_config(str(config_path))
 
-    assert len(results) == 1
+    assert len(results) == 1  # type: ignore[arg-type]
     assert "Solve this logic problem" in results[0]["output"]
     # Confirm relative dataset path was respected
     assert results[0]["input"] == "If A then B. A is true; what about B?"

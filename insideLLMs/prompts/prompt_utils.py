@@ -1353,7 +1353,7 @@ class PromptValidator:
         Returns:
             Self for chaining.
         """
-        self._rules[name] = (rule, error_msg)
+        self._rules[name] = (rule, error_msg)  # type: ignore[assignment]
         return self
 
     def require_variables(self, *variables: str) -> "PromptValidator":

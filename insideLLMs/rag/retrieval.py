@@ -2676,9 +2676,9 @@ class RAGChain:
         >>> ids = rag.add_documents(["Short text"], chunk=False)
         """
         if texts and isinstance(texts[0], Document):
-            return self.retriever.add_documents(texts, chunk=chunk)
+            return self.retriever.add_documents(texts, chunk=chunk)  # type: ignore[arg-type]
         else:
-            return self.retriever.add_texts(texts, metadatas, chunk=chunk)
+            return self.retriever.add_texts(texts, metadatas, chunk=chunk)  # type: ignore[arg-type]
 
     def _format_context(self, results: list[RetrievalResult]) -> str:
         """Format retrieved documents into a context string for the prompt.
@@ -2878,7 +2878,7 @@ class RAGChain:
 
         # Generate answer
         if hasattr(self.model, "chat"):
-            answer = self.model.chat(messages, **model_kwargs)
+            answer = self.model.chat(messages, **model_kwargs)  # type: ignore[arg-type]
         else:
             # Fall back to generate if chat not supported
             full_prompt = "\n".join(m["content"] for m in messages)

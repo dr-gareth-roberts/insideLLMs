@@ -80,7 +80,7 @@ def test_classification_metrics_length_mismatch_raises():
 
 def test_evaluator_base_methods_edge_paths():
     # Exercise abstract method body directly (pass branch).
-    assert Evaluator.evaluate(object(), "prediction", "reference") is None
+    assert Evaluator.evaluate(object(), "prediction", "reference") is None  # type: ignore[arg-type]
 
     evaluator = ExactMatchEvaluator()
     assert evaluator.aggregate_results([]) == {"mean_score": 0.0, "pass_rate": 0.0}
@@ -112,7 +112,8 @@ def test_composite_evaluator_require_all_branch():
 def test_judge_model_parse_score_compare_branches():
     criterion = JudgeCriterion(name="quality", description="Quality", weight=0.0)
     judge = JudgeModel(
-        judge_model=_GenerateOnlyModel('{"overall_winner":"A"}'), criteria=[criterion]
+        judge_model=_GenerateOnlyModel('{"overall_winner":"A"}'),
+        criteria=[criterion],  # type: ignore[arg-type]
     )
 
     with pytest.raises(ValueError, match="Failed to parse judge response as JSON"):
@@ -123,7 +124,7 @@ def test_judge_model_parse_score_compare_branches():
     ok = judge.compare("p", "a", "b")
     assert ok["winner"] == "A"
 
-    bad_judge = JudgeModel(judge_model=_GenerateOnlyModel("nonsense"), criteria=[criterion])
+    bad_judge = JudgeModel(judge_model=_GenerateOnlyModel("nonsense"), criteria=[criterion])  # type: ignore[arg-type]
     failed = bad_judge.compare("p", "a", "b")
     assert failed["winner"] == "error"
     assert "Comparison failed" in failed["reasoning"]

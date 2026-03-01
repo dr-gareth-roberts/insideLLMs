@@ -695,7 +695,7 @@ class TextNormalizer:
         # Unicode normalization first
         if self.unicode_normalize:
             result = unicodedata.normalize(
-                self.unicode_form,
+                self.unicode_form,  # type: ignore[arg-type]
                 result,  # type: ignore[arg-type]
             )
 

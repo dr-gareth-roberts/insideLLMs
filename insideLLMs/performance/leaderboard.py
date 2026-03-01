@@ -1611,7 +1611,7 @@ class LeaderboardAnalyzer:
             "best_score": max(scores),
             "worst_score": min(scores),
             "avg_score": statistics.mean(scores),
-            "rank_trend": self._calculate_linear_trend(ranks),
+            "rank_trend": self._calculate_linear_trend(ranks),  # type: ignore[arg-type]
             "score_trend": self._calculate_linear_trend(scores),
         }
 

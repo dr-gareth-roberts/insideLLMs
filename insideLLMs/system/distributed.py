@@ -3067,7 +3067,7 @@ class DistributedExperimentRunner:
                 progress_callback=progress_callback,
             )
         else:
-            executor = LocalDistributedExecutor(
+            executor = LocalDistributedExecutor(  # type: ignore[assignment]
                 executor=FunctionExecutor(self._execute_prompt),
                 num_workers=self.num_workers,
             )

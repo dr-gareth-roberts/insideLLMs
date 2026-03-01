@@ -2701,7 +2701,7 @@ class DeploymentApp:
             @app.post(
                 self.config.generate_endpoint.path,
                 response_model=GenerateResponse,
-                tags=self.config.generate_endpoint.tags,
+                tags=self.config.generate_endpoint.tags,  # type: ignore[arg-type]
                 description=self.config.generate_endpoint.description,
             )
             async def generate(request: GenerateRequest, req: Request):
@@ -2728,6 +2728,9 @@ class DeploymentApp:
                         model_id=result.get("model_id"),
                         latency_ms=result["latency_ms"],
                         request_id=result["request_id"],
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        metadata={},
                     )
 
                 except Exception as e:
@@ -2740,7 +2743,7 @@ class DeploymentApp:
             @app.post(
                 self.config.batch_endpoint.path,
                 response_model=BatchResponse,
-                tags=self.config.batch_endpoint.tags,
+                tags=self.config.batch_endpoint.tags,  # type: ignore[arg-type]
                 description=self.config.batch_endpoint.description,
             )
             async def batch_generate(request: BatchRequest):
@@ -2771,7 +2774,7 @@ class DeploymentApp:
             @app.post(
                 self.config.probe_endpoint.path,
                 response_model=ProbeResponse,
-                tags=self.config.probe_endpoint.tags,
+                tags=self.config.probe_endpoint.tags,  # type: ignore[arg-type]
                 description=self.config.probe_endpoint.description,
             )
             async def run_probe(request: ProbeRequest):
@@ -2787,6 +2790,7 @@ class DeploymentApp:
                         results=result["results"],
                         latency_ms=result["latency_ms"],
                         request_id=result["request_id"],
+                        summary={},
                     )
 
                 except Exception as e:

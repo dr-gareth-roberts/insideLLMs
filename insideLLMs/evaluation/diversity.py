@@ -1712,7 +1712,7 @@ class LexicalDiversityAnalyzer:
 
             # Handle partial factor
             if factor_length > 0:
-                factor_count += (1 - current_ttr) / (1 - threshold)
+                factor_count += int((1 - current_ttr) / (1 - threshold))
 
             return len(tokens) / factor_count if factor_count > 0 else len(tokens)
 

@@ -2526,9 +2526,9 @@ class TraceComparator:
         # Duration comparison
         if trace1.duration_ms and trace2.duration_ms:
             comparison["duration_diff_ms"] = trace2.duration_ms - trace1.duration_ms  # type: ignore[assignment]
-            comparison["duration_diff_percent"] = (  # type: ignore[assignment]
-                (trace2.duration_ms - trace1.duration_ms) / trace1.duration_ms
-            )
+            comparison["duration_diff_percent"] = (
+                trace2.duration_ms - trace1.duration_ms
+            ) / trace1.duration_ms  # type: ignore[assignment]
 
         # Compare steps
         steps1 = {e.step_name: e for e in trace1.get_events_by_type(TraceEventType.STEP_END)}

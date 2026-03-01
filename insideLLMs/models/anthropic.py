@@ -556,7 +556,7 @@ class AnthropicModel(Model):
                 model=self.model_name,
                 max_tokens=kwargs.get("max_tokens", 1024),
                 temperature=kwargs.get("temperature", 0.7),
-                messages=anthropic_messages,
+                messages=anthropic_messages,  # type: ignore[arg-type]
             )
             return response.content[0].text
         except AnthropicRateLimitError as e:

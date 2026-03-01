@@ -1575,7 +1575,7 @@ class ResponseAggregator:
             avg_sim = statistics.mean(sims) if sims else 0
 
             if avg_sim > best_avg_sim:
-                best_avg_sim = avg_sim
+                best_avg_sim = avg_sim  # type: ignore[assignment]
                 best_output = output
 
         if best_output:
@@ -1686,7 +1686,7 @@ class ResponseAggregator:
             diversity = 1 - (statistics.mean(sims) if sims else 0)
 
             if diversity > best_diversity:
-                best_diversity = diversity
+                best_diversity = diversity  # type: ignore[assignment]
                 best_output = output
 
         if best_output:

@@ -62,7 +62,7 @@ class TestDummyModel:
             {"role": "user", "content": "How are you?"},
         ]
 
-        response = model.chat(messages)
+        response = model.chat(messages)  # type: ignore[arg-type]
         assert "How are you?" in response
 
     def test_dummy_model_stream(self):

@@ -850,7 +850,7 @@ class OllamaModel(Model):
             client_kwargs = {"host": self.base_url, "timeout": self.timeout}
             if self.headers:
                 client_kwargs["headers"] = self.headers
-            self._client = ollama.Client(**client_kwargs)
+            self._client = ollama.Client(**client_kwargs)  # type: ignore[arg-type,assignment]
         return self._client
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
@@ -1538,7 +1538,7 @@ class VLLMModel(Model):
             except ImportError:
                 raise ImportError("openai package required. Install with: pip install openai")
 
-            self._client = OpenAI(
+            self._client = OpenAI(  # type: ignore[assignment]
                 base_url=f"{self.base_url}/v1",
                 api_key=self.api_key or "dummy-key",
             )

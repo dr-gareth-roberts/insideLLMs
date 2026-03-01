@@ -2251,13 +2251,13 @@ class IntentClassifier:
 
         for intent, patterns in self._intent_patterns.items():
             score = sum(1 for p in patterns if p.lower() in query_lower)
-            score = score / len(patterns) if patterns else 0
+            score = (score / len(patterns)) if patterns else 0.0  # type: ignore[assignment]
             if score > best_score:
                 best_score = score
                 best_intent = intent
 
         if best_score > 0.5:
-            return best_intent, best_score
+            return best_intent or "", best_score
 
         # Use model if available and patterns didn't match well
         if self.model and self.intents:

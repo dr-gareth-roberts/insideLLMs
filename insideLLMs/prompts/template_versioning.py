@@ -2302,7 +2302,7 @@ class TemplateVersionManager:
             if not versions[0]:
                 raise ValueError(f"Version {version_id} not found")
         else:
-            versions = self.list_versions(name, include_archived=True)
+            versions = self.list_versions(name, include_archived=True)  # type: ignore[assignment]
 
         return {
             "template_name": name,

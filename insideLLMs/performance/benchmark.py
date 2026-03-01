@@ -588,9 +588,9 @@ class ModelBenchmark:
 
             # Calculate metrics from the results
             success_count = sum(1 for r in results if r.get("status") == "success")
-            error_count = len(results) - success_count
-            success_rate = success_count / len(results) if results else 0.0
-            error_rate = error_count / len(results) if results else 0.0
+            error_count = len(results) - success_count  # type: ignore[arg-type]
+            success_rate = success_count / len(results) if results else 0.0  # type: ignore[arg-type]
+            error_rate = error_count / len(results) if results else 0.0  # type: ignore[arg-type]
             latencies: list[float] = []
             for result in results:
                 latency = result.get("latency_ms")
@@ -1226,7 +1226,7 @@ class ProbeBenchmark:
                     if prompt_set
                     else 0,
                     "total_items": len(prompt_set),
-                    "success_rate": sum(1 for r in results if "error" not in r) / len(results)
+                    "success_rate": sum(1 for r in results if "error" not in r) / len(results)  # type: ignore[arg-type]
                     if results
                     else 0,
                 },

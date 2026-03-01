@@ -59,7 +59,7 @@ Examples:
         >>> from insideLLMs import DummyModel
         >>>
         >>> model = DummyModel()
-        >>> agent = ChainOfThoughtAgent(model)
+        >>> agent = ChainOfThoughtAgent(model)  # type: ignore[assignment]
         >>> result = agent.run("If I have 3 apples and buy 5 more, then eat 2, how many do I have?")
         >>> print(result.answer)
 
@@ -3533,9 +3533,9 @@ def quick_agent_run(
     if agent_type == "react":
         agent = create_react_agent(model, tools)
     elif agent_type == "simple":
-        agent = create_simple_agent(model, tools)
+        agent = create_simple_agent(model, tools)  # type: ignore[assignment]
     elif agent_type == "cot":
-        agent = ChainOfThoughtAgent(model)
+        agent = ChainOfThoughtAgent(model)  # type: ignore[assignment]
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
 
