@@ -1,18 +1,21 @@
-# Core dependencies (synced with pyproject.toml). Requires Python 3.10+.
+# Core dependency (synced with pyproject.toml). Requires Python 3.10+.
+pyyaml>=6.0
+
+# Provider SDKs (optional in pyproject.toml, pinned here for dev convenience)
 openai>=1.0.0
 anthropic>=0.18.0
 transformers>=4.30.0
 huggingface-hub>=0.16.0
-pyyaml>=6.0
 
 # NLP (synced with pyproject.toml [nlp] optional dependencies)
-nltk>=3.8.0
+nltk>=3.9.3
 spacy>=3.5.0
 scikit-learn>=1.2.0
 gensim>=4.3.0
 
 # Visualization (synced with pyproject.toml [visualization] optional dependencies)
 matplotlib>=3.7.0
+pillow>=12.1.1
 pandas>=2.0.0
 seaborn>=0.12.0
 
