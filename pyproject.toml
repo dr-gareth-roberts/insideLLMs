@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing :: Linguistic",
@@ -71,6 +72,9 @@ nlp = [
     "scikit-learn>=1.2.0",
     "gensim>=4.3.0",
 ]
+tokenization = [
+    "tiktoken>=0.5.0",
+]
 visualization = [
     "matplotlib>=3.7.0",
     "pillow>=12.1.1",
@@ -86,21 +90,25 @@ serving = [
     "fastapi>=0.100.0",
     "uvicorn>=0.22.0",
 ]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+]
 # Development
 dev = [
     "pytest>=7.3.0",
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.80.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
 ]
 # Everything
 all = [
-    "insideLLMs[providers,signing,crypto,nlp,visualization,dev,serving]",
+    "insideLLMs[providers,signing,crypto,nlp,visualization,dev,serving,otel,tokenization]",
 ]
 
 [project.scripts]
@@ -114,14 +122,11 @@ Documentation = "https://dr-gareth-roberts.github.io/insideLLMs/"
 "Bug Tracker" = "https://github.com/dr-gareth-roberts/insideLLMs/issues"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-include = ["insideLLMs*"]
-
-[tool.setuptools.package-data]
-"*" = ["py.typed"]
+[tool.hatch.build.targets.wheel]
+packages = ["insideLLMs"]
 
 [tool.ruff]
 line-length = 100
@@ -174,11 +179,10 @@ show_error_codes = true
 show_column_numbers = true
 # Progressively re-enabling error codes. Phase 1 keeps the most impactful
 # disabled; phase 2+ will remove more from this list.
+# Phase 2: re-enabled arg-type, assignment, call-arg (2026-03-02)
+# Phase 3 target: re-enable union-attr, operator, index
 disable_error_code = [
     "attr-defined",
-    "arg-type",
-    "assignment",
-    "call-arg",
     "call-overload",
     "dict-item",
     "exit-return",
@@ -206,6 +210,52 @@ module = [
 ]
 disallow_untyped_defs = true
 warn_return_any = true
+
+# Transitional: modules with known arg-type/assignment issues (fix incrementally)
+# These were surfaced when re-enabling arg-type, assignment, call-arg in Phase 2.
+# Target: resolve and remove this override by Phase 3.
+[[tool.mypy.overrides]]
+module = [
+    "insideLLMs.probes.instruction",
+    "insideLLMs.probes.code",
+    "insideLLMs.probes.bias",
+    "insideLLMs.probes.attack",
+    "insideLLMs.exceptions",
+    "insideLLMs.optimization",
+    "insideLLMs.structured",
+    "insideLLMs.analysis.export",
+    "insideLLMs.analysis.visualization",
+    "insideLLMs.analysis.evaluation",
+    "insideLLMs.analysis.comparison",
+    "insideLLMs.logging_utils",
+    "insideLLMs.semantic_cache",
+    "insideLLMs.retry",
+    "insideLLMs.async_utils",
+    "insideLLMs.experiment_tracking",
+    "insideLLMs.nlp.similarity",
+    "insideLLMs.nlp.text_cleaning",
+    "insideLLMs.nlp.keyword_extraction",
+    "insideLLMs.models.cohere",
+    "insideLLMs.models.__init__",
+    "insideLLMs.runtime._sync_runner",
+    "insideLLMs.runtime._async_runner",
+    "insideLLMs.runtime._high_level",
+    "insideLLMs.runtime._config_loader",
+    "insideLLMs.runtime._result_utils",
+    "insideLLMs.runtime._artifact_utils",
+    "insideLLMs.runtime.observability",
+    "insideLLMs.runtime.reproducibility",
+    "insideLLMs.runtime.diffing",
+    "insideLLMs.cli._report_builder",
+    "insideLLMs.cli.commands.run",
+    "insideLLMs.cli.commands.diff",
+    "insideLLMs.cli.commands.compare",
+    "insideLLMs.cli.commands.doctor",
+    "insideLLMs.trace.tracing",
+    "insideLLMs.trace.trace_contracts",
+    "insideLLMs.trace.trace_config",
+]
+disable_error_code = ["arg-type", "assignment"]
 
 # Lenient checking for contrib (disconnected modules)
 [[tool.mypy.overrides]]
@@ -248,3 +298,15 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
 ]
+
+[tool.bandit]
+# Skip B101 (assert_used) — asserts are used throughout the library for invariants
+skips = ["B101"]
+targets = [
+    "insideLLMs/injection.py",
+    "insideLLMs/safety.py",
+    "insideLLMs/contrib/distributed.py",
+    "insideLLMs/contrib/agents.py",
+    "insideLLMs/runtime/observability.py",
+]
+

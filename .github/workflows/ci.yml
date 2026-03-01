@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -17,26 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-lint-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-lint-
-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Ruff lint
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Ruff format check
-        run: ruff format --check .
+        run: uv run ruff format --check .
 
   typecheck:
     name: Type Check
@@ -44,33 +40,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-typecheck-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-typecheck-
-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Run mypy
-        run: make typecheck
+        run: uv run make typecheck
 
       - name: Run mypy (strict on security modules)
         run: |
-          mypy --strict insideLLMs/injection.py
-          mypy --strict insideLLMs/safety.py
+          uv run mypy --strict insideLLMs/injection.py
+          uv run mypy --strict insideLLMs/safety.py
+
+      - name: Run mypy (strict on critical modules)
+        run: |
+          uv run mypy --disallow-untyped-defs insideLLMs/models/base.py
+          uv run mypy --disallow-untyped-defs insideLLMs/types.py
 
       - name: Check type coverage
         run: |
-          mypy insideLLMs --any-exprs-report ./mypy-coverage
-          python scripts/check_type_coverage.py ./mypy-coverage
+          uv run mypy insideLLMs --any-exprs-report ./mypy-coverage
+          uv run python scripts/check_type_coverage.py ./mypy-coverage
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -78,32 +75,47 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-test-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-test-${{ matrix.python-version }}-
-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Run tests with coverage
         run: >
-          python -m pytest
+          uv run python -m pytest
           --cov
           --cov-report=term-missing
+          --cov-report=xml:coverage.xml
           --cov-fail-under=80
+          --junitxml=test-results.xml
           -m "not slow and not integration and not performance"
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: test-results.xml
 
   determinism:
     name: Determinism (golden-path)
@@ -112,23 +124,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-determinism-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-determinism-
-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Run golden-path determinism check
-        run: make golden-path
+        run: uv run make golden-path
 
   contracts:
     name: Stability Contracts
@@ -137,20 +145,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-contracts-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-contracts-
-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Run contract tests
-        run: python -m pytest -m contract -v
+        run: uv run python -m pytest -m contract -v

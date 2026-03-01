@@ -2527,17 +2527,13 @@ class DistributedCheckpointManager:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            if not self.allow_unsafe_pickle:
-                raise ValueError(
-                    "Checkpoint is not valid JSON. "
-                    "Legacy pickle checkpoints are blocked by default for security. "
-                    "To load trusted legacy checkpoints, initialize "
-                    "DistributedCheckpointManager(..., allow_unsafe_pickle=True)."
-                ) from exc
-            import pickle
-
-            with open(path, "rb") as f:
-                data = pickle.load(f)
+            raise ValueError(
+                "Checkpoint is not valid JSON and cannot be loaded. "
+                "Legacy pickle checkpoints are no longer supported due to "
+                "security risks (arbitrary code execution). "
+                "To migrate, load the checkpoint with an older version of "
+                "insideLLMs and re-save it using the current JSON-based format."
+            ) from exc
 
         pending_tasks = [Task.from_dict(t) for t in data["pending_tasks"]]
         completed_results = [TaskResult(**r) for r in data["completed_results"]]

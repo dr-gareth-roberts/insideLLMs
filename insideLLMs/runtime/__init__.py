@@ -392,10 +392,54 @@ insideLLMs.config_types : Configuration dataclasses (RunConfig, etc.)
 insideLLMs.tracing : Low-level trace recording utilities
 """
 
-from insideLLMs.runtime.async_io import async_write_lines, async_write_text  # noqa: F401
+from insideLLMs.runtime.async_io import async_write_lines, async_write_text
 from insideLLMs.runtime.diffing import *  # noqa: F401,F403
 from insideLLMs.runtime.observability import *  # noqa: F401,F403
 from insideLLMs.runtime.pipeline import *  # noqa: F401,F403
 from insideLLMs.runtime.reproducibility import *  # noqa: F401,F403
 from insideLLMs.runtime.runner import *  # noqa: F401,F403
-from insideLLMs.runtime.timeout_wrapper import run_with_timeout  # noqa: F401
+from insideLLMs.runtime.timeout_wrapper import run_with_timeout
+
+# Explicit public API definition.
+# This replaces implicit wildcard namespace pollution with a curated list.
+# Any symbol not in __all__ is considered internal.
+# ruff: noqa: F405 — __all__ intentionally references names from wildcard imports
+__all__ = [
+    # async_io
+    "async_write_lines",
+    "async_write_text",
+    # timeout
+    "run_with_timeout",
+    # runner (public)
+    "ProbeRunner",
+    "AsyncProbeRunner",
+    "run_experiment_from_config",
+    "run_harness_from_config",
+    # pipeline (public)
+    "Middleware",
+    "PassthroughMiddleware",
+    "ModelPipeline",
+    "AsyncModelPipeline",
+    "CacheMiddleware",
+    "RateLimitMiddleware",
+    "RetryMiddleware",
+    "CostTrackingMiddleware",
+    "TraceMiddleware",
+    # observability (public)
+    "TracingConfig",
+    "TelemetryCollector",
+    "CallRecord",
+    "TracedModel",
+    "OTelTracedModel",
+    "OTelMiddleware",
+    "instrument_model",
+    "get_collector",
+    "setup_otel_tracing",
+    "trace_call",
+    # reproducibility (public)
+    "SeedManager",
+    "ExperimentSnapshot",
+    "DeterministicExecutor",
+    "set_all_seeds",
+]
+

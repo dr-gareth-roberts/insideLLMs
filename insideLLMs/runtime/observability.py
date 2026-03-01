@@ -167,7 +167,7 @@ References
 
 import functools
 import logging
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -179,6 +179,7 @@ from typing import (
     TypeVar,
 )
 
+from insideLLMs.runtime.pipeline import Middleware
 from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 if TYPE_CHECKING:
@@ -2427,6 +2428,262 @@ class OTelTracedModel:
         return getattr(self._model, name)
 
 
+class OTelMiddleware(Middleware):
+    """Pipeline middleware for OpenTelemetry distributed tracing.
+
+    This middleware creates OpenTelemetry spans for all pipeline operations
+    (generate, chat, stream, and their async equivalents), allowing deep
+    tracing of the model executions within the pipeline.
+
+    Requires OpenTelemetry SDK to be installed.
+
+    Parameters
+    ----------
+    config : TracingConfig or None, default=None
+        Configuration for tracing behavior. If None, uses default
+        TracingConfig settings.
+
+    Examples
+    --------
+    Using in a pipeline:
+
+        >>> from insideLLMs.pipeline import ModelPipeline, OTelMiddleware
+        >>> from insideLLMs.models import OpenAIModel
+        >>> from insideLLMs.observability import setup_otel_tracing, TracingConfig
+        >>>
+        >>> config = TracingConfig(service_name="production-api")
+        >>> setup_otel_tracing(config)
+        >>>
+        >>> pipeline = ModelPipeline(
+        ...     OpenAIModel(model_name="gpt-4"),
+        ...     middlewares=[OTelMiddleware(config)]
+        ... )
+        >>> response = pipeline.generate("Hello world")
+    """
+
+    def __init__(self, config: Optional[TracingConfig] = None) -> None:
+        """Initialize the OpenTelemetry middleware.
+
+        Args:
+            config: Tracing configuration.
+
+        Raises:
+            ImportError: If OpenTelemetry is not installed.
+        """
+        super().__init__()
+        if not OTEL_AVAILABLE:
+            raise ImportError(
+                "OpenTelemetry is required. "
+                "Install with: pip install opentelemetry-api opentelemetry-sdk"
+            )
+        self._config = config or TracingConfig()
+        self._tracer = trace.get_tracer(__name__)
+
+    @property
+    def model_name(self) -> str:
+        """Helper to get the model name safely."""
+        return self.model.name if self.model else "unknown_model"
+
+    def process_generate(self, prompt: str, **kwargs: Any) -> str:
+        """Process a text generation request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.generate") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "generate")
+            span.set_attribute("llm.prompt_length", len(prompt))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", prompt[:1000])
+
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    response = self.next_middleware.process_generate(prompt, **kwargs)
+                elif self.model:
+                    response = self.model.generate(prompt, **kwargs)
+                else:
+                    raise RuntimeError("No model available in pipeline")
+
+                span.set_attribute("llm.response_length", len(response))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", response[:1000])
+                return response
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+    def process_chat(self, messages: list[Any], **kwargs: Any) -> str:
+        """Process a chat request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.chat") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "chat")
+            span.set_attribute("llm.message_count", len(messages))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", str(messages)[:1000])
+
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    response = self.next_middleware.process_chat(messages, **kwargs)
+                elif self.model and hasattr(self.model, "chat"):
+                    response = self.model.chat(messages, **kwargs)
+                else:
+                    raise RuntimeError("No model or chat support available in pipeline")
+
+                span.set_attribute("llm.response_length", len(response))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", response[:1000])
+                return response
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+    def process_stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
+        """Process a streaming generation request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.stream") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "stream")
+            span.set_attribute("llm.prompt_length", len(prompt))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", prompt[:1000])
+
+            chunks = []
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    stream = self.next_middleware.process_stream(prompt, **kwargs)
+                elif self.model and hasattr(self.model, "stream"):
+                    stream = self.model.stream(prompt, **kwargs)
+                else:
+                    raise RuntimeError("No model or stream support available in pipeline")
+
+                for chunk in stream:
+                    chunks.append(chunk)
+                    yield chunk
+
+                # Wait until the iterator completes successfully
+                full_response = "".join(chunks)
+                span.set_attribute("llm.response_length", len(full_response))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", full_response[:1000])
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+    async def aprocess_generate(self, prompt: str, **kwargs: Any) -> str:
+        """Process an async text generation request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.agenerate") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "agenerate")
+            span.set_attribute("llm.prompt_length", len(prompt))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", prompt[:1000])
+
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    response = await self.next_middleware.aprocess_generate(prompt, **kwargs)
+                elif self.model and hasattr(self.model, "agenerate"):
+                    response = await self.model.agenerate(prompt, **kwargs)
+                else:
+                    raise RuntimeError("No model or agenerate support available in pipeline")
+
+                span.set_attribute("llm.response_length", len(response))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", response[:1000])
+                return response
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+    async def aprocess_chat(self, messages: list[Any], **kwargs: Any) -> str:
+        """Process an async chat request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.achat") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "achat")
+            span.set_attribute("llm.message_count", len(messages))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", str(messages)[:1000])
+
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    response = await self.next_middleware.aprocess_chat(messages, **kwargs)
+                elif self.model and hasattr(self.model, "achat"):
+                    response = await self.model.achat(messages, **kwargs)
+                else:
+                    raise RuntimeError("No model or achat support available in pipeline")
+
+                span.set_attribute("llm.response_length", len(response))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", response[:1000])
+                return response
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+    async def aprocess_stream(self, prompt: str, **kwargs: Any) -> AsyncIterator[str]:
+        """Process an async streaming request with OpenTelemetry tracing."""
+        with self._tracer.start_as_current_span("llm.pipeline.astream") as span:
+            span.set_attribute("llm.model", self.model_name)
+            span.set_attribute("llm.operation", "astream")
+            span.set_attribute("llm.prompt_length", len(prompt))
+
+            if self._config.log_prompts:
+                span.set_attribute("llm.prompt", prompt[:1000])
+
+            chunks: list[str] = []
+            try:
+                # Delegate to the next middleware or the model
+                if self.next_middleware:
+                    astream = self.next_middleware.aprocess_stream(prompt, **kwargs)
+                elif self.model and hasattr(self.model, "astream"):
+                    astream = self.model.astream(prompt, **kwargs)
+                else:
+                    raise RuntimeError("No model or astream support available in pipeline")
+
+                async for chunk in astream:
+                    chunks.append(chunk)
+                    yield chunk
+
+                # After iterator completes successfully
+                full_response = "".join(chunks)
+                span.set_attribute("llm.response_length", len(full_response))
+                span.set_attribute("llm.chunk_count", len(chunks))
+                span.set_attribute("llm.success", True)
+                if self._config.log_responses:
+                    span.set_attribute("llm.response", full_response[:1000])
+
+            except Exception as e:
+                span.set_attribute("llm.success", False)
+                span.set_attribute("llm.error", str(e))
+                span.record_exception(e)
+                raise
+
+
 # =============================================================================
 # Convenience Decorators
 # =============================================================================
@@ -2513,6 +2770,7 @@ __all__ = [
     # OpenTelemetry
     "setup_otel_tracing",
     "OTelTracedModel",
+    "OTelMiddleware",
     "OTEL_AVAILABLE",
     # Token estimation
     "estimate_tokens",

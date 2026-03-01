@@ -1092,6 +1092,17 @@ class TokenEstimator:
         """
         if not text:
             return 0
+            
+        # Exact counting with tiktoken if available for OpenAI models
+        if self.tokenizer_type in (TokenizerType.GPT4, TokenizerType.GPT3):
+            try:
+                import tiktoken
+                encoding = "cl100k_base" if self.tokenizer_type == TokenizerType.GPT4 else "p50k_base"
+                enc = tiktoken.get_encoding(encoding)
+                return len(enc.encode(text, disallowed_special=()))
+            except ImportError:
+                pass  # Fall back to character-based estimation
+                
         char_count = len(text)
         adjustment = self.CONTENT_ADJUSTMENTS.get(content_type, 1.0)
         estimated = char_count / (self.chars_per_token * adjustment)

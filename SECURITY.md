@@ -33,22 +33,61 @@ We take security seriously at insideLLMs. If you discover a security vulnerabili
 
 The following are in scope for security reports:
 
-- Authentication/authorization vulnerabilities
-- Injection vulnerabilities (SQL, command, etc.)
-- Sensitive data exposure
+- Arbitrary code execution via deserialization or `eval`
+- Injection vulnerabilities (command, prompt, path traversal)
+- Sensitive data exposure (API keys, PII in logs)
+- Supply chain vulnerabilities in dependencies
 - Security misconfigurations
-- Vulnerabilities in dependencies
 
 ### Out of Scope
 
 - Vulnerabilities in third-party services/APIs (report to them directly)
 - Social engineering attacks
-- Physical security issues
 - Issues already known/reported
 
-## Security Best Practices
+## Threat Model
 
-When using insideLLMs:
+insideLLMs is a library for evaluating LLM behavior. Its primary threat vectors are:
+
+| Threat                         | Mitigation                                                     |
+| ------------------------------ | -------------------------------------------------------------- |
+| **Malicious checkpoint files** | Pickle deserialization fully removed; JSON only                |
+| **Code injection via tools**   | `safe_eval` restricts to arithmetic; no `eval()` on user input |
+| **Supply chain attacks**       | OIDC Trusted Publisher for PyPI; `pip-audit` in CI             |
+| **Credential leakage**         | Pre-commit hooks; `detect-private-key`; custom secret scanner  |
+| **Path traversal**             | Checkpoint IDs validated to reject `../` and separators        |
+
+## Security-Sensitive Modules
+
+These modules receive stricter static analysis (`bandit`, strict `mypy`):
+
+| Module                                | Concern                    |
+| ------------------------------------- | -------------------------- |
+| `insideLLMs/injection.py`             | Prompt injection detection |
+| `insideLLMs/safety.py`                | Content safety analysis    |
+| `insideLLMs/contrib/distributed.py`   | Checkpoint serialization   |
+| `insideLLMs/contrib/agents.py`        | Tool execution             |
+| `insideLLMs/runtime/observability.py` | Telemetry data handling    |
+
+## Security Hardening (Implemented)
+
+### Serialization Safety
+
+- **No `pickle.load`** anywhere in the codebase. Legacy pickle checkpoints are rejected with a clear error and migration instructions.
+- All serialization uses JSON exclusively.
+
+### Code Execution Safety
+
+- All docstring examples use `ast.literal_eval` or the library's `safe_eval` (arithmetic-only sandbox).
+- No use of `eval()`, `exec()`, or `compile()` on user-controlled input.
+
+### CI/CD Security
+
+- PyPI publishing uses **OIDC Trusted Publisher** (no API token secrets).
+- Dependencies audited via `pip-audit`.
+- `bandit` scans security-sensitive modules on every commit via pre-commit hook.
+
+## Security Best Practices for Users
 
 ### API Key Management
 
@@ -85,7 +124,7 @@ if pii_report.found:
 
 ## Dependency Security
 
-We regularly audit our dependencies for known vulnerabilities. You can check for vulnerabilities in your installation:
+We regularly audit our dependencies for known vulnerabilities:
 
 ```bash
 pip install pip-audit
@@ -94,7 +133,7 @@ pip-audit
 
 ## Security Updates
 
-Security updates will be released as patch versions (e.g., 0.1.1, 0.1.2). We recommend:
+Security updates will be released as patch versions. We recommend:
 
 1. Subscribing to GitHub releases for notifications
 2. Keeping your installation up to date

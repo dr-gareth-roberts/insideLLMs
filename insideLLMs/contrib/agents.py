@@ -1206,8 +1206,9 @@ def tool(
             >>>
             >>> @tool(name="calculator")
             ... def calculate(expression: str) -> str:
-            ...     '''Evaluate a math expression.'''
-            ...     return str(eval(expression))
+            ...     '''Evaluate a math expression safely.'''
+            ...     from insideLLMs.contrib.agents import safe_eval
+            ...     return str(safe_eval(expression))
             >>>
             >>> model = DummyModel()
             >>> agent = ReActAgent(model, tools=[calculate])
@@ -1751,8 +1752,9 @@ class BaseAgent(ABC):
             >>> print(len(agent.tools))
             0
             >>>
+            >>> from insideLLMs.contrib.agents import safe_eval
             >>> def calculate(expr: str) -> str:
-            ...     return str(eval(expr))
+            ...     return str(safe_eval(expr))
             >>>
             >>> agent.add_tool(Tool("calc", calculate))
             >>> print(len(agent.tools))

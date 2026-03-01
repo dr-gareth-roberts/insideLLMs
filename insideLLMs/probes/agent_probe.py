@@ -291,11 +291,12 @@ class ToolDefinition:
     Tool with a handler function:
 
         >>> def calculator_handler(expression: str) -> dict:
-        ...     \"\"\"Evaluate a mathematical expression.\"\"\"
+        ...     \"\"\"Evaluate a mathematical expression safely.\"\"\"
+        ...     import ast
         ...     try:
-        ...         result = eval(expression, {"__builtins__": {}})
+        ...         result = ast.literal_eval(expression)
         ...         return {"result": result, "success": True}
-        ...     except Exception as e:
+        ...     except (ValueError, SyntaxError) as e:
         ...         return {"error": str(e), "success": False}
         ...
         >>> calc_tool = ToolDefinition(
@@ -1617,7 +1618,8 @@ class AgentProbe(Probe[AgentProbeResult]):
         Executing a tool handler:
 
             >>> def calc_handler(expr: str) -> dict:
-            ...     return {"result": eval(expr)}
+            ...     import ast
+            ...     return {"result": ast.literal_eval(expr)}
             ...
             >>> calc_tool = ToolDefinition("calc", "Calculator", {}, calc_handler)
             >>> probe = MyAgentProbe(name="test", tools=[calc_tool])

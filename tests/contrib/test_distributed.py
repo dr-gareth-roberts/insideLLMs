@@ -382,7 +382,7 @@ class TestCheckpointManager:
                 manager.save("bad/name", [], [])
 
     def test_checkpoint_legacy_pickle_blocked_by_default(self):
-        """Legacy pickle checkpoints are blocked unless explicitly enabled."""
+        """Legacy pickle checkpoints are always rejected for security."""
         from insideLLMs.contrib.distributed import CheckpointManager
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -391,11 +391,11 @@ class TestCheckpointManager:
             with open(path, "wb") as f:
                 pickle.dump({"pending_tasks": [], "completed_results": [], "metadata": {}}, f)
 
-            with pytest.raises(ValueError, match="Legacy pickle checkpoints are blocked"):
+            with pytest.raises(ValueError, match="no longer supported"):
                 manager.load("legacy_pickle")
 
-    def test_checkpoint_legacy_pickle_allowed_when_opted_in(self):
-        """Trusted legacy pickle checkpoints can be loaded when explicitly enabled."""
+    def test_checkpoint_legacy_pickle_rejected_even_with_flag(self):
+        """Even with allow_unsafe_pickle flag, pickle loading is rejected (removed)."""
         from insideLLMs.contrib.distributed import CheckpointManager
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -404,10 +404,8 @@ class TestCheckpointManager:
             with open(path, "wb") as f:
                 pickle.dump({"pending_tasks": [], "completed_results": [], "metadata": {}}, f)
 
-            pending, completed, metadata = manager.load("legacy_pickle")
-            assert pending == []
-            assert completed == []
-            assert metadata == {}
+            with pytest.raises(ValueError, match="no longer supported"):
+                manager.load("legacy_pickle")
 
 
 class TestMapReduceExecutor:

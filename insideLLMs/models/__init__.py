@@ -315,7 +315,7 @@ insideLLMs.exceptions : Exception hierarchy for error handling
 """
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Optional
 
 # Import lightweight core components directly
 from insideLLMs.models.base import (
@@ -358,7 +358,7 @@ class DummyModel(Model):
         name: str = "DummyModel",
         response_prefix: str = "[DummyModel]",
         echo: bool = True,
-        canned_response: str = None,
+        canned_response: Optional[str] = None,
     ):
         """Initialize the dummy model.
 

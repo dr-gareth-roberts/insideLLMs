@@ -457,4 +457,15 @@ References
 - OpenTelemetry Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/
 """
 
-from insideLLMs.runtime.observability import *  # noqa: F401,F403
+import warnings as _warnings
+
+_warnings.warn(
+    "Importing from 'insideLLMs.observability' is deprecated. "
+    "Use 'from insideLLMs.runtime.observability import ...' instead. "
+    "This shim will be removed in v1.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from insideLLMs.runtime.observability import *  # noqa: E402,F401,F403
+

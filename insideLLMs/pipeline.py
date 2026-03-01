@@ -287,4 +287,15 @@ References
    https://en.wikipedia.org/wiki/Token_bucket
 """
 
-from insideLLMs.runtime.pipeline import *  # noqa: F401,F403
+import warnings as _warnings
+
+_warnings.warn(
+    "Importing from 'insideLLMs.pipeline' is deprecated. "
+    "Use 'from insideLLMs.runtime.pipeline import ...' instead. "
+    "This shim will be removed in v1.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from insideLLMs.runtime.pipeline import *  # noqa: E402,F401,F403
+

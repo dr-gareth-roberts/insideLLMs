@@ -1306,12 +1306,12 @@ def parse_to_type(data: Any, output_type: type[T]) -> T:
         return data
 
     elif output_type in (str, int, float, bool):
-        return output_type(data)
+        return output_type(data)  # type: ignore[call-arg]
 
     else:
         # Try direct instantiation
         try:
-            return output_type(**data) if isinstance(data, dict) else output_type(data)
+            return output_type(**data) if isinstance(data, dict) else output_type(data)  # type: ignore[call-arg]
         except Exception as e:
             raise ParsingError(f"Failed to create {output_type}: {e}", str(data)) from e
 
