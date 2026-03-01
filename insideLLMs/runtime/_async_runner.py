@@ -263,7 +263,7 @@ class AsyncProbeRunner(_RunnerBase):
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
 
         # Validate concurrency and batch_workers
-        if concurrency < 1:
+        if concurrency is None or concurrency < 1:
             raise ValueError(f"concurrency must be >= 1, got {concurrency}")
         if batch_workers is not None and batch_workers < 1:
             raise ValueError(f"batch_workers must be >= 1, got {batch_workers}")

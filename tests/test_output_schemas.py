@@ -24,7 +24,7 @@ def test_benchmark_outputs_validate_against_schemas(tmp_path):
 
         pytest.skip("pydantic not installed")
 
-    from insideLLMs.benchmark import ModelBenchmark, ProbeBenchmark
+    from insideLLMs.contrib.benchmark import ModelBenchmark, ProbeBenchmark
     from insideLLMs.models import DummyModel
     from insideLLMs.probes import BiasProbe, LogicProbe
     from insideLLMs.schemas import OutputValidator, SchemaRegistry

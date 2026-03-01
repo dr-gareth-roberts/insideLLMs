@@ -139,7 +139,7 @@ def test_simple_embedding_is_independent_of_python_hash_seed() -> None:
     code = "\n".join(
         [
             "import hashlib, json",
-            "from insideLLMs.retrieval import SimpleEmbedding",
+            "from insideLLMs.contrib.retrieval import SimpleEmbedding",
             "vec = SimpleEmbedding(dimension=64).embed('hello world hello')",
             "payload = json.dumps(vec, separators=(',', ':'))",
             "print(hashlib.sha256(payload.encode('utf-8')).hexdigest())",
@@ -156,7 +156,7 @@ def test_prompt_variant_hash_is_independent_of_python_hash_seed() -> None:
 
     code = "\n".join(
         [
-            "from insideLLMs.prompt_testing import PromptVariant",
+            "from insideLLMs.contrib.prompt_testing import PromptVariant",
             "v = PromptVariant(id='variant-a', content='hi')",
             "print(hash(v))",
         ]
@@ -179,7 +179,7 @@ def test_tracker_run_listing_is_sorted(tmp_path: Path) -> None:
 
 
 def test_checkpoint_listing_is_sorted(tmp_path: Path) -> None:
-    from insideLLMs.distributed import DistributedCheckpointManager
+    from insideLLMs.contrib.distributed import DistributedCheckpointManager
 
     manager = DistributedCheckpointManager(str(tmp_path))
     manager.save("cp_b", [], [])
