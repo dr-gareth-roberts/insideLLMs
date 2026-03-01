@@ -8,6 +8,7 @@ This directory contains runnable examples for common insideLLMs workflows.
 |---------|----------|-------------------|
 | `example_quickstart.py` | Yes | None |
 | `example_cli_golden_path.py` | Yes | None |
+| `demo_diff_pipeline.py` | Yes | None |
 | `example_harness_programmatic.py` | Yes | None |
 | `example_models.py` | Partial | Dummy/HF work offline; OpenAI needs `OPENAI_API_KEY` |
 | `example_factuality.py` | Partial | Skips OpenAI/Anthropic if keys missing |
@@ -25,6 +26,16 @@ This directory contains runnable examples for common insideLLMs workflows.
 
 ```bash
 python examples/example_quickstart.py
+```
+
+## Core diff pipeline demo (offline, narrated)
+
+Walks through 10 sections demonstrating deterministic artifacts, regression detection,
+output change detection, CI gating exit codes, schema validation, and report rebuilding.
+Single self-contained script, no external config files.
+
+```bash
+python examples/demo_diff_pipeline.py
 ```
 
 ## End-to-end CLI workflow (offline, deterministic)
@@ -53,6 +64,7 @@ python examples/example_harness_programmatic.py
 - `examples/example_nlp.py`: NLP utilities
 - `examples/example_ollama_cloud_harness_diff.py`: Ollama Cloud harness double-run + diff (Python)
 - `examples/example_openrouter_advanced.py`: OpenRouter advanced harness + stats + diff
+- `examples/demo_diff_pipeline.py`: full narrated diff pipeline demo (10 sections)
 - `examples/killer_feature_1_ci_gate.py`: deterministic behavioral CI gate workflow
 - `examples/killer_feature_2_trace_guard.py`: trace-aware drift + violation guardrails
 - `examples/killer_feature_3_model_selection.py`: model-selection workflow + statistical report
