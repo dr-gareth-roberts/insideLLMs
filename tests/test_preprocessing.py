@@ -1,6 +1,6 @@
 """Tests for data preprocessing utilities."""
 
-from insideLLMs.contrib.preprocessing import (
+from insideLLMs.nlp.preprocessing import (
     DataValidator,
     ProcessingPipeline,
     ProcessingStep,

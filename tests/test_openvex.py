@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from insideLLMs.contrib.security.openvex import emit_openvex
+from insideLLMs.security.openvex import emit_openvex
 
 
 def test_emit_openvex(tmp_path):

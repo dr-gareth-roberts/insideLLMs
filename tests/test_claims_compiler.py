@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from insideLLMs.contrib.claims.compiler import compile_claims
+from insideLLMs.attestations.claims.compiler import compile_claims
 
 
 def test_compile_claims(tmp_path):

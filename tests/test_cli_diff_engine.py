@@ -213,7 +213,7 @@ def test_runtime_package_re_exports_diffing_public_api() -> None:
 
 
 def test_public_diffing_facade_exports_symbols() -> None:
-    import insideLLMs.contrib.diffing as public_diffing
+    import insideLLMs.analysis.diffing as public_diffing
 
     assert callable(public_diffing.build_diff_computation)
     assert callable(public_diffing.compute_diff_exit_code)

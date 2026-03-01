@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from insideLLMs.contrib.synthesis import generate_test_dataset
+from insideLLMs.datasets.synthesis import generate_test_dataset
 from insideLLMs.registry import ensure_builtins_registered, model_registry
 
 from .._output import (

@@ -1394,11 +1394,11 @@ class SchemaRegistry:
         elif v == "1.0.0":
             from insideLLMs.schemas import v1_0_0
 
-            model = v1_0_0.get_schema_model(schema_name)
+            model = v1_0_0.get_schema_model(schema_name)  # type: ignore[assignment]
         elif v == "1.0.1":
             from insideLLMs.schemas import v1_0_1
 
-            model = v1_0_1.get_schema_model(schema_name)
+            model = v1_0_1.get_schema_model(schema_name)  # type: ignore[assignment]
         else:
             raise KeyError(f"Unknown schema version: {schema_name}@{v}")
 

@@ -1542,21 +1542,21 @@ class TestDistributedCoverage:
     """Additional coverage tests for distributed module."""
 
     def test_task_comparison_same_priority(self):
-        from insideLLMs.contrib.distributed import Task
+        from insideLLMs.system.distributed import Task
 
         t1 = Task(id="t1", payload="a", priority=5, created_at=100.0)
         t2 = Task(id="t2", payload="b", priority=5, created_at=200.0)
         assert t1 < t2  # earlier timestamp wins
 
     def test_task_comparison_different_priority(self):
-        from insideLLMs.contrib.distributed import Task
+        from insideLLMs.system.distributed import Task
 
         low = Task(id="low", payload="x", priority=1)
         high = Task(id="high", payload="x", priority=10)
         assert high < low  # higher priority "comes first"
 
     def test_work_queue_pending_count(self):
-        from insideLLMs.contrib.distributed import Task, WorkQueue
+        from insideLLMs.system.distributed import Task, WorkQueue
 
         q = WorkQueue()
         q.put(Task(id="t1", payload="a"))
@@ -1566,7 +1566,7 @@ class TestDistributedCoverage:
         assert q.pending_count == 1
 
     def test_work_queue_task_done(self):
-        from insideLLMs.contrib.distributed import Task, WorkQueue
+        from insideLLMs.system.distributed import Task, WorkQueue
 
         q = WorkQueue()
         q.put(Task(id="t1", payload="a"))
@@ -1574,7 +1574,7 @@ class TestDistributedCoverage:
         q.task_done()
 
     def test_result_collector_get_all(self):
-        from insideLLMs.contrib.distributed import ResultCollector, TaskResult
+        from insideLLMs.system.distributed import ResultCollector, TaskResult
 
         c = ResultCollector()
         c.add(TaskResult(task_id="t1", success=True, result=10))
@@ -1583,13 +1583,13 @@ class TestDistributedCoverage:
         assert len(results) == 2
 
     def test_result_collector_get_missing(self):
-        from insideLLMs.contrib.distributed import ResultCollector
+        from insideLLMs.system.distributed import ResultCollector
 
         c = ResultCollector()
         assert c.get("nonexistent") is None
 
     def test_result_collector_callback_exception_suppressed(self):
-        from insideLLMs.contrib.distributed import ResultCollector, TaskResult
+        from insideLLMs.system.distributed import ResultCollector, TaskResult
 
         c = ResultCollector()
 
@@ -1602,7 +1602,7 @@ class TestDistributedCoverage:
         assert c.count == 1
 
     def test_local_worker_lifecycle(self):
-        from insideLLMs.contrib.distributed import (
+        from insideLLMs.system.distributed import (
             FunctionExecutor,
             LocalWorker,
             ResultCollector,
@@ -1630,7 +1630,7 @@ class TestDistributedCoverage:
         assert worker.info.status == WorkerStatus.SHUTDOWN
 
     def test_local_worker_error_handling(self):
-        from insideLLMs.contrib.distributed import (
+        from insideLLMs.system.distributed import (
             FunctionExecutor,
             LocalWorker,
             ResultCollector,
@@ -1656,7 +1656,7 @@ class TestDistributedCoverage:
         worker.stop()
 
     def test_local_distributed_executor_get_results(self):
-        from insideLLMs.contrib.distributed import (
+        from insideLLMs.system.distributed import (
             FunctionExecutor,
             LocalDistributedExecutor,
             Task,
@@ -1674,7 +1674,7 @@ class TestDistributedCoverage:
             assert len(results) >= 0  # May or may not have completed yet
 
     def test_local_distributed_executor_get_worker_info(self):
-        from insideLLMs.contrib.distributed import FunctionExecutor, LocalDistributedExecutor
+        from insideLLMs.system.distributed import FunctionExecutor, LocalDistributedExecutor
 
         executor = LocalDistributedExecutor(
             executor=FunctionExecutor(lambda x: x),
@@ -1687,7 +1687,7 @@ class TestDistributedCoverage:
             assert info[0].id == "worker_0"
 
     def test_local_distributed_executor_auto_start(self):
-        from insideLLMs.contrib.distributed import FunctionExecutor, LocalDistributedExecutor, Task
+        from insideLLMs.system.distributed import FunctionExecutor, LocalDistributedExecutor, Task
 
         executor = LocalDistributedExecutor(
             executor=FunctionExecutor(lambda x: x * 2),
@@ -1700,7 +1700,7 @@ class TestDistributedCoverage:
         executor.stop()
 
     def test_local_distributed_executor_idempotent_start(self):
-        from insideLLMs.contrib.distributed import FunctionExecutor, LocalDistributedExecutor
+        from insideLLMs.system.distributed import FunctionExecutor, LocalDistributedExecutor
 
         executor = LocalDistributedExecutor(
             executor=FunctionExecutor(lambda x: x),
@@ -1712,14 +1712,14 @@ class TestDistributedCoverage:
         executor.stop()
 
     def test_distributed_checkpoint_manager_default_dir(self):
-        from insideLLMs.contrib.distributed import DistributedCheckpointManager
+        from insideLLMs.system.distributed import DistributedCheckpointManager
 
         mgr = DistributedCheckpointManager()
         assert "insidellms_checkpoints" in str(mgr.checkpoint_dir)
         assert mgr.checkpoint_dir.exists()
 
     def test_distributed_checkpoint_save_load_delete(self):
-        from insideLLMs.contrib.distributed import DistributedCheckpointManager, Task, TaskResult
+        from insideLLMs.system.distributed import DistributedCheckpointManager, Task, TaskResult
 
         with tempfile.TemporaryDirectory() as tmpdir:
             mgr = DistributedCheckpointManager(tmpdir)
@@ -1745,7 +1745,7 @@ class TestDistributedCoverage:
             mgr.delete("cp1")
 
     def test_distributed_checkpoint_load_not_found(self):
-        from insideLLMs.contrib.distributed import DistributedCheckpointManager
+        from insideLLMs.system.distributed import DistributedCheckpointManager
 
         with tempfile.TemporaryDirectory() as tmpdir:
             mgr = DistributedCheckpointManager(tmpdir)
@@ -1754,7 +1754,7 @@ class TestDistributedCoverage:
 
     @requires_process_spawn
     def test_process_pool_executor_basic(self):
-        from insideLLMs.contrib.distributed import ProcessPoolDistributedExecutor, Task
+        from insideLLMs.system.distributed import ProcessPoolDistributedExecutor, Task
 
         executor = ProcessPoolDistributedExecutor(_square, num_workers=2)
         executor.submit(Task(id="s1", payload=5))
@@ -1766,7 +1766,7 @@ class TestDistributedCoverage:
 
     @requires_process_spawn
     def test_process_pool_executor_progress_callback(self):
-        from insideLLMs.contrib.distributed import ProcessPoolDistributedExecutor, Task
+        from insideLLMs.system.distributed import ProcessPoolDistributedExecutor, Task
 
         progress = []
 
@@ -1780,7 +1780,7 @@ class TestDistributedCoverage:
 
     @requires_process_spawn
     def test_process_pool_executor_with_checkpoint(self):
-        from insideLLMs.contrib.distributed import (
+        from insideLLMs.system.distributed import (
             DistributedCheckpointManager,
             ProcessPoolDistributedExecutor,
             Task,
@@ -1799,7 +1799,7 @@ class TestDistributedCoverage:
 
     @requires_process_spawn
     def test_experiment_runner_run_experiments_with_processes(self):
-        from insideLLMs.contrib.distributed import DistributedExperimentRunner
+        from insideLLMs.system.distributed import DistributedExperimentRunner
 
         runner = DistributedExperimentRunner(
             model_func=_format_answer,
@@ -1811,7 +1811,7 @@ class TestDistributedCoverage:
         assert results[0]["success"] is True
 
     def test_experiment_runner_with_checkpoint_dir(self):
-        from insideLLMs.contrib.distributed import DistributedExperimentRunner
+        from insideLLMs.system.distributed import DistributedExperimentRunner
 
         with tempfile.TemporaryDirectory() as tmpdir:
             runner = DistributedExperimentRunner(
@@ -1823,13 +1823,13 @@ class TestDistributedCoverage:
 
     @requires_process_spawn
     def test_parallel_map_with_processes(self):
-        from insideLLMs.contrib.distributed import parallel_map
+        from insideLLMs.system.distributed import parallel_map
 
         results = parallel_map(_double, [1, 2, 3], num_workers=2, use_processes=True)
         assert results == [2, 4, 6]
 
     def test_checkpoint_manager_alias(self):
-        from insideLLMs.contrib.distributed import CheckpointManager, DistributedCheckpointManager
+        from insideLLMs.system.distributed import CheckpointManager, DistributedCheckpointManager
 
         assert CheckpointManager is DistributedCheckpointManager
 

@@ -1758,13 +1758,13 @@ def create_example_config() -> ExperimentConfig:
         name="Example Experiment",
         description="An example experiment configuration",
         model=ModelConfig(
-            provider=ModelProvider.OPENAI if PYDANTIC_AVAILABLE else "openai",
+            provider=ModelProvider.OPENAI if PYDANTIC_AVAILABLE else "openai",  # type: ignore[arg-type]
             model_id="gpt-4",
             temperature=0.7,
             max_tokens=1000,
         ),
         probe=ProbeConfig(
-            type=ProbeType.LOGIC if PYDANTIC_AVAILABLE else "logic",
+            type=ProbeType.LOGIC if PYDANTIC_AVAILABLE else "logic",  # type: ignore[arg-type]
             name="Logic Reasoning Test",
             params={"difficulty": "medium"},
         ),
