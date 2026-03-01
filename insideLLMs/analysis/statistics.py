@@ -746,9 +746,9 @@ def calculate_median(values: list[float]) -> float:
     if not values:
         return 0.0
     sorted_values = sorted(values)
-    n = len(sorted_values)
-    mid = n // 2
-    if n % 2 == 0:
+    count = len(sorted_values)
+    mid = count // 2
+    if count % 2 == 0:
         return (sorted_values[mid - 1] + sorted_values[mid]) / 2
     return sorted_values[mid]
 
@@ -810,25 +810,25 @@ def calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
         return 0.0
     sorted_values = sorted(values)
-    n = len(sorted_values)
-    k = (percentile / 100) * (n - 1)
-    f = math.floor(k)
-    c = math.ceil(k)
-    if f == c:
-        return sorted_values[int(k)]
-    return sorted_values[f] * (c - k) + sorted_values[c] * (k - f)
+    count = len(sorted_values)
+    fractional_index = (percentile / 100) * (count - 1)
+    lower_bound = math.floor(fractional_index)
+    upper_bound = math.ceil(fractional_index)
+    if lower_bound == upper_bound:
+        return sorted_values[int(fractional_index)]
+    return sorted_values[lower_bound] * (upper_bound - fractional_index) + sorted_values[upper_bound] * (fractional_index - lower_bound)
 
 
 def calculate_skewness(values: list[float]) -> float:
     """Calculate Fisher-Pearson coefficient of skewness."""
     if len(values) < 3:
         return 0.0
-    n = len(values)
+    count = len(values)
     mean = calculate_mean(values)
     std = calculate_std(values, ddof=0)
     if std == 0:
         return 0.0
-    m3 = sum((x - mean) ** 3 for x in values) / n
+    m3 = sum((x - mean) ** 3 for x in values) / count
     return m3 / (std**3)
 
 
@@ -836,12 +836,12 @@ def calculate_kurtosis(values: list[float]) -> float:
     """Calculate excess kurtosis (Fisher's definition)."""
     if len(values) < 4:
         return 0.0
-    n = len(values)
+    count = len(values)
     mean = calculate_mean(values)
     std = calculate_std(values, ddof=0)
     if std == 0:
         return 0.0
-    m4 = sum((x - mean) ** 4 for x in values) / n
+    m4 = sum((x - mean) ** 4 for x in values) / count
     return m4 / (std**4) - 3
 
 
@@ -983,14 +983,14 @@ def confidence_interval(
             method=method,
         )
 
-    n = len(values)
+    count = len(values)
     mean = calculate_mean(values)
     std = calculate_std(values)
-    se = std / math.sqrt(n) if n > 0 else 0
+    se = std / math.sqrt(count) if count > 0 else 0
 
     if method == "bootstrap":
         return bootstrap_confidence_interval(values, lambda x: calculate_mean(x), confidence_level)
-    elif method == "z" or n > 100:
+    elif method == "z" or count > 100:
         z = _z_score(confidence_level)
         margin = z * se
         return ConfidenceInterval(
@@ -1002,9 +1002,9 @@ def confidence_interval(
         )
     else:
         # Use t-distribution for small samples
-        df = n - 1
-        t = _t_score(confidence_level, df)
-        margin = t * se
+        df = count - 1
+        t_score = _t_score(confidence_level, df)
+        margin = t_score * se
         return ConfidenceInterval(
             point_estimate=mean,
             lower=mean - margin,
@@ -1091,12 +1091,12 @@ def bootstrap_confidence_interval(
             method="bootstrap",
         )
 
-    n = len(values)
+    count = len(values)
     point_estimate = statistic_fn(values)
     bootstrap_stats = []
 
     for _ in range(n_bootstrap):
-        sample = [random.choice(values) for _ in range(n)]
+        sample = [random.choice(values) for _ in range(count)]
         bootstrap_stats.append(statistic_fn(sample))
 
     bootstrap_stats.sort()
@@ -1351,10 +1351,10 @@ def paired_t_test(
     # Calculate differences
     differences = [v1 - v2 for v1, v2 in zip(values1, values2)]
 
-    n = len(differences)
+    count = len(differences)
     mean_diff = calculate_mean(differences)
     std_diff = calculate_std(differences)
-    se = std_diff / math.sqrt(n)
+    se = std_diff / math.sqrt(count)
 
     if se == 0:
         return HypothesisTestResult(
@@ -1655,26 +1655,26 @@ def multiple_comparison_correction(
     Returns:
         Tuple of (corrected p-values, significant flags).
     """
-    n = len(p_values)
-    if n == 0:
+    num_tests = len(p_values)
+    if num_tests == 0:
         return [], []
 
     if method == "bonferroni":
         # Simple Bonferroni correction
-        corrected = [min(p * n, 1.0) for p in p_values]
-        significant = [p < alpha / n for p in p_values]
+        corrected = [min(p * num_tests, 1.0) for p in p_values]
+        significant = [p < alpha / num_tests for p in p_values]
 
     elif method == "holm":
         # Holm-Bonferroni step-down method
         indexed = [(p, i) for i, p in enumerate(p_values)]
         indexed.sort(key=lambda x: x[0])
 
-        corrected = [0.0] * n
-        significant = [False] * n
+        corrected = [0.0] * num_tests
+        significant = [False] * num_tests
         max_corrected = 0.0
 
         for rank, (p, orig_idx) in enumerate(indexed):
-            k = n - rank
+            k = num_tests - rank
             adj_p = p * k
             max_corrected = max(max_corrected, adj_p)
             corrected[orig_idx] = min(max_corrected, 1.0)
@@ -1685,14 +1685,14 @@ def multiple_comparison_correction(
         indexed = [(p, i) for i, p in enumerate(p_values)]
         indexed.sort(key=lambda x: x[0])
 
-        corrected = [0.0] * n
-        significant = [False] * n
+        corrected = [0.0] * num_tests
+        significant = [False] * num_tests
         min_corrected = 1.0
 
-        for rank in range(n - 1, -1, -1):
+        for rank in range(num_tests - 1, -1, -1):
             p, orig_idx = indexed[rank]
             k = rank + 1
-            adj_p = p * n / k
+            adj_p = p * num_tests / k
             min_corrected = min(min_corrected, adj_p)
             corrected[orig_idx] = min(min_corrected, 1.0)
             significant[orig_idx] = corrected[orig_idx] < alpha

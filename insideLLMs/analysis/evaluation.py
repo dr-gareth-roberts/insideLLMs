@@ -1493,14 +1493,14 @@ def calculate_classification_metrics(
     # Calculate per-class metrics
     tp = dict.fromkeys(labels, 0)
     fp = dict.fromkeys(labels, 0)
-    fn = dict.fromkeys(labels, 0)
+    false_negatives = dict.fromkeys(labels, 0)
 
     for pred, ref in zip(predictions, references):
         if pred == ref:
             tp[pred] = tp.get(pred, 0) + 1
         else:
             fp[pred] = fp.get(pred, 0) + 1
-            fn[ref] = fn.get(ref, 0) + 1
+            false_negatives[ref] = false_negatives.get(ref, 0) + 1
 
     # Calculate accuracy
     correct = sum(1 for p, r in zip(predictions, references) if p == r)
@@ -1512,15 +1512,15 @@ def calculate_classification_metrics(
     f1s = []
 
     for label in labels:
-        p = tp[label] / (tp[label] + fp[label]) if tp[label] + fp[label] > 0 else 0.0
+        precision_score = tp[label] / (tp[label] + fp[label]) if tp[label] + fp[label] > 0 else 0.0
 
-        r = tp[label] / (tp[label] + fn[label]) if tp[label] + fn[label] > 0 else 0.0
+        recall_score = tp[label] / (tp[label] + false_negatives[label]) if tp[label] + false_negatives[label] > 0 else 0.0
 
-        f = 2 * p * r / (p + r) if p + r > 0 else 0.0
+        f1_score = 2 * precision_score * recall_score / (precision_score + recall_score) if precision_score + recall_score > 0 else 0.0
 
-        precisions.append(p)
-        recalls.append(r)
-        f1s.append(f)
+        precisions.append(precision_score)
+        recalls.append(recall_score)
+        f1s.append(f1_score)
 
     return {
         "accuracy": accuracy,

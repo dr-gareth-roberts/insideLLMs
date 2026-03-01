@@ -440,16 +440,16 @@ class Violation:
         >>> isinstance(json_str, str)
         True
         """
-        d = {
+        violation_dict = {
             "code": self.code,
             "event_seq": self.event_seq,
             "detail": self.detail,
         }
         if self.event_kind:
-            d["event_kind"] = self.event_kind
+            violation_dict["event_kind"] = self.event_kind
         if self.context:
-            d["context"] = self.context
-        return d
+            violation_dict["context"] = self.context
+        return violation_dict
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Violation":

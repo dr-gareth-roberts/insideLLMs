@@ -2564,9 +2564,14 @@ class ABTest:
 
         z = abs(z)
         # Taylor series approximation
-        t = 1.0 / (1.0 + 0.2316419 * z)
-        d = 0.3989423 * math.exp(-z * z / 2)
-        p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
+        polynomial_term = 1.0 / (1.0 + 0.2316419 * z)
+        normal_density = 0.3989423 * math.exp(-z * z / 2)
+        horner_inner = 0.3193815 + polynomial_term * (
+            -0.3565638 + polynomial_term * (
+                1.781478 + polynomial_term * (-1.821256 + polynomial_term * 1.330274)
+            )
+        )
+        p = normal_density * polynomial_term * horner_inner
         return 1 - 2 * p
 
     def get_results(self) -> ABTestResult:
