@@ -1697,7 +1697,7 @@ class FewShotSelector:
             )
 
         # Sort by relevance initially
-        scored_examples.sort(key=lambda x: x["relevance"], reverse=True)
+        scored_examples.sort(key=lambda x: float(x["relevance"]), reverse=True)
 
         # Select with diversity
         selected = []

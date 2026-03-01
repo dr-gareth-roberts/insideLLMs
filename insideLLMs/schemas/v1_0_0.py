@@ -1332,7 +1332,7 @@ class SchemaExportMetadata(_BaseSchema):
 ExportMetadata = SchemaExportMetadata
 
 
-_SCHEMA_MAP = {
+_SCHEMA_MAP: dict[str, type[BaseModel]] = {
     "ProbeResult": ProbeResult,
     "RunnerOutput": RunnerOutput,
     "ResultRecord": ResultRecord,
@@ -1347,7 +1347,7 @@ _SCHEMA_MAP = {
 }
 
 
-def get_schema_model(schema_name: str):
+def get_schema_model(schema_name: str) -> type[BaseModel]:
     """Get a schema model class by name.
 
     Retrieves the Pydantic model class for the specified schema name from

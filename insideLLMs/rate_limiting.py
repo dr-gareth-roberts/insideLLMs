@@ -2820,10 +2820,10 @@ class RateLimitedExecutor:
                 return result.result
             else:
                 try:
-                    result = func()
+                    direct_result = func()
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
-                    return result
+                    return direct_result
                 except Exception:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
@@ -2890,12 +2890,12 @@ class RateLimitedExecutor:
             else:
                 try:
                     if inspect.iscoroutinefunction(func):
-                        result = await func()
+                        direct_result = await func()
                     else:
-                        result = func()
+                        direct_result = func()
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
-                    return result
+                    return direct_result
                 except Exception:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()

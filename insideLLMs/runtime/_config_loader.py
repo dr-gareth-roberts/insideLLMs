@@ -583,9 +583,12 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
         except NotFoundError:
             from insideLLMs.dataset_utils import load_hf_dataset
 
-            return load_hf_dataset(
+            dataset = load_hf_dataset(
                 config["name"], split=config.get("split", "test"), **extra_kwargs
             )
+            if dataset is None:
+                raise ValueError(f"Failed to load HuggingFace dataset: {config['name']}")
+            return dataset
 
     else:
         raise ValueError(f"Unknown dataset format: {format_type}")

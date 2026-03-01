@@ -14,7 +14,8 @@ from typing import Optional
 
 def _cosign_path() -> Optional[Path]:
     """Return path to cosign binary or None if not found."""
-    return shutil.which("cosign")
+    result = shutil.which("cosign")
+    return Path(result) if result is not None else None
 
 
 def sign_blob(blob_path: Path | str, output_bundle_path: Path | str) -> None:

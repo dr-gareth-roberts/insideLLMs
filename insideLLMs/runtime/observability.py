@@ -183,6 +183,7 @@ from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 if TYPE_CHECKING:
     from insideLLMs.models.base import Model
+    from insideLLMs.types import ModelInfo
 
 # Try to import OpenTelemetry
 try:
@@ -2127,14 +2128,14 @@ class TracedModel:
             )
             self._collector.record(record)
 
-    def info(self):
+    def info(self) -> "ModelInfo":
         """Return model information from the wrapped model.
 
         Delegates to the underlying model's info() method.
 
         Returns
         -------
-        Any
+        ModelInfo
             Model information as returned by the wrapped model.
 
         Examples
@@ -2417,7 +2418,7 @@ class OTelTracedModel:
                 span.record_exception(e)
                 raise
 
-    def info(self):
+    def info(self) -> "ModelInfo":
         """Return model info."""
         return self._model.info()
 

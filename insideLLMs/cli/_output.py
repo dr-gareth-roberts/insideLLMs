@@ -8,7 +8,7 @@ import importlib.metadata
 import os
 import sys
 import time
-from typing import Any, Optional
+from typing import Any, Optional, TextIO
 
 # CLI output routing:
 # - "status" output (headers, warnings, progress) is routed via _CLI_STATUS_TO_STDERR
@@ -17,7 +17,7 @@ _CLI_QUIET = False
 _CLI_STATUS_TO_STDERR = False
 
 
-def _status_stream():
+def _status_stream() -> TextIO:
     # Avoid capturing a fixed sys.stdout/sys.stderr at import time. This ensures
     # pytest's capsys and other stdout/stderr redirection works as expected.
     return sys.stderr if _CLI_STATUS_TO_STDERR else sys.stdout

@@ -1094,7 +1094,7 @@ class ExperimentSnapshot:
     outputs: dict[str, Any] = field(default_factory=dict)
     checksum: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Calculate checksum after initialization."""
         if not self.checksum:
             self.checksum = self._calculate_checksum()
@@ -1205,7 +1205,7 @@ class ExperimentSnapshot:
 class ConfigVersionManager:
     """Manage versioned configurations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize version manager."""
         self._versions: dict[str, ConfigSnapshot] = {}
         self._current_version: Optional[str] = None
@@ -1295,7 +1295,7 @@ class ConfigVersionManager:
 class ExperimentReplayManager:
     """Manage experiment replay and verification."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize replay manager."""
         self._snapshots: dict[str, ExperimentSnapshot] = {}
 
@@ -1382,8 +1382,8 @@ class DeterministicExecutor:
     def execute(
         self,
         func: Callable,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> tuple[Any, dict[str, Any]]:
         """Execute a function deterministically."""
         # Set seeds before execution
@@ -1492,7 +1492,7 @@ class ReproducibilityReport:
 class ReproducibilityChecker:
     """Check and report on reproducibility status."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize checker."""
         self._checks: list[tuple[str, Callable[[], bool]]] = []
         self._setup_default_checks()
@@ -1546,7 +1546,7 @@ class ReproducibilityChecker:
 class ExperimentRegistry:
     """Registry for tracking experiments."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize registry."""
         self._experiments: dict[str, ExperimentSnapshot] = {}
         self._tags: dict[str, list[str]] = {}  # tag -> experiment_ids
@@ -1651,8 +1651,8 @@ def check_reproducibility(
 def run_deterministic(
     func: Callable,
     seed: int,
-    *args,
-    **kwargs,
+    *args: Any,
+    **kwargs: Any,
 ) -> tuple[Any, dict[str, Any]]:
     """Run a function deterministically with a fixed seed."""
     executor = DeterministicExecutor(seed=seed)

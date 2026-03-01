@@ -2683,7 +2683,7 @@ class CostTrackingMiddleware(Middleware):
         "claude-3-haiku": {"input": 0.00025, "output": 0.00125},
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize cost tracking."""
         super().__init__()
         self.total_requests = 0
