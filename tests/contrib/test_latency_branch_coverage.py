@@ -89,7 +89,7 @@ def test_throughput_profiler_calculate_rpm_branches(monkeypatch):
     profiler = ThroughputProfiler()
     assert profiler.calculate_rpm(window_seconds=60.0) == 0.0
 
-    monkeypatch.setattr("insideLLMs.latency.time.time", lambda: 100.0)
+    monkeypatch.setattr("insideLLMs.contrib.latency.time.time", lambda: 100.0)
 
     profiler._request_times = [99.0]
     assert profiler.calculate_rpm(window_seconds=60.0) == 1.0

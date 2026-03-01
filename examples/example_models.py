@@ -2,8 +2,8 @@
 
 import os
 
+from insideLLMs.contrib.prompt_utils import PromptTemplate
 from insideLLMs.models import DummyModel, HuggingFaceModel, OpenAIModel
-from insideLLMs.prompt_utils import PromptTemplate
 
 
 def main():

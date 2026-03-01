@@ -771,6 +771,7 @@ class PIIDetector:
             True
         """
         self.patterns = patterns or self.PATTERNS.copy()
+        self._masks = self.MASKS.copy()
 
     def add_pattern(self, name: str, pattern: str, mask: str = "[REDACTED]") -> None:
         """Add a custom PII detection pattern.
@@ -821,7 +822,7 @@ class PIIDetector:
             'My [REDACTED]'
         """
         self.patterns[name] = re.compile(pattern)
-        self.MASKS[name] = mask
+        self._masks[name] = mask
 
     def detect(self, text: str) -> PIIReport:
         """Detect PII in text without modifying it.
@@ -942,7 +943,7 @@ class PIIDetector:
         )
 
         for pii_type, pattern in patterns_to_use.items():
-            mask = self.MASKS.get(pii_type, "[REDACTED]")
+            mask = self._masks.get(pii_type, "[REDACTED]")
             result = pattern.sub(mask, result)
 
         return result

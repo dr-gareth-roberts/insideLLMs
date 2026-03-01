@@ -6,7 +6,7 @@ import builtins
 
 import pytest
 
-import insideLLMs.prompt_utils as prompt_utils
+import insideLLMs.contrib.prompt_utils as prompt_utils
 from insideLLMs.contrib.prompt_utils import (
     PromptBuilder,
     PromptLibrary,

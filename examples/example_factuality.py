@@ -3,7 +3,7 @@
 import json
 import os
 
-from insideLLMs.benchmark import ModelBenchmark
+from insideLLMs.contrib.benchmark import ModelBenchmark
 from insideLLMs.models import AnthropicModel, DummyModel, OpenAIModel
 from insideLLMs.probes import FactualityProbe
 from insideLLMs.visualization import create_html_report, plot_factuality_results

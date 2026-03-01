@@ -109,7 +109,7 @@ def test_select_route_strategy_branches():
     assert router_first.select_route(base_matches).route_name == "a"
 
     router_random = SemanticRouter(config=RouterConfig(strategy=RoutingStrategy.RANDOM))
-    with patch("insideLLMs.routing.random.choice", return_value=base_matches[1]):
+    with patch("insideLLMs.contrib.routing.random.choice", return_value=base_matches[1]):
         assert router_random.select_route(base_matches).route_name == "b"
 
     router_load = SemanticRouter(config=RouterConfig(strategy=RoutingStrategy.LOAD_BALANCED))
@@ -157,7 +157,7 @@ def test_router_retry_error_path_and_cache_expiry():
     router = SemanticRouter(config=config)
     router.add_route(Route(name="fail", model=model, patterns=["fail"]))
 
-    with patch("insideLLMs.routing.time.sleep", return_value=None):
+    with patch("insideLLMs.contrib.routing.time.sleep", return_value=None):
         result = router.route("fail query")
 
     assert result.route_name == "fail"
