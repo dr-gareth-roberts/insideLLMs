@@ -289,10 +289,10 @@ def _normalise_sha256_value(value: Optional[str]) -> Optional[str]:
     """
     if value is None:
         return None
-    v = value.strip()
-    if v.startswith("sha256:"):
-        v = v[len("sha256:") :]
-    return v
+    hash_value = value.strip()
+    if hash_value.startswith("sha256:"):
+        hash_value = hash_value[len("sha256:"):]
+    return hash_value
 
 
 class TraceCounts(BaseModel):
@@ -543,13 +543,13 @@ class TraceFingerprint(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def _validate_value(cls, v: Optional[str]) -> Optional[str]:
+    def _validate_value(cls, raw_hash_value: Optional[str]) -> Optional[str]:
         """
         Validate and normalise the fingerprint hash value.
 
         Parameters
         ----------
-        v : str or None
+        raw_hash_value : str or None
             The hash value to validate, optionally prefixed with "sha256:".
 
         Returns
@@ -581,14 +581,14 @@ class TraceFingerprint(BaseModel):
             ...
         ValueError: fingerprint.value must be a 64-hex sha256 ...
         """
-        v = _normalise_sha256_value(v)
-        if v is None:
+        normalised = _normalise_sha256_value(raw_hash_value)
+        if normalised is None:
             return None
-        if not HEX64_RE.match(v):
+        if not HEX64_RE.match(normalised):
             raise ValueError(
                 "fingerprint.value must be a 64-hex sha256 (optionally prefixed with 'sha256:')"
             )
-        return v.lower()
+        return normalised.lower()
 
     @model_validator(mode="after")
     def _validate_enabled_semantics(self) -> "TraceFingerprint":

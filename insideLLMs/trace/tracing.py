@@ -449,16 +449,16 @@ class TraceEvent:
         --------
         from_dict : Inverse operation to reconstruct TraceEvent from dict.
         """
-        d = {
+        event_dict = {
             "seq": self.seq,
             "kind": self.kind,
             "payload": self.payload,
         }
         if self.run_id is not None:
-            d["run_id"] = self.run_id
+            event_dict["run_id"] = self.run_id
         if self.example_id is not None:
-            d["example_id"] = self.example_id
-        return d
+            event_dict["example_id"] = self.example_id
+        return event_dict
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TraceEvent":

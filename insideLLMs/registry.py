@@ -1629,15 +1629,15 @@ def load_entrypoint_plugins(
 
     for ep in selected:
         try:
-            fn = ep.load()
-            if not callable(fn):
+            plugin_callable = ep.load()
+            if not callable(plugin_callable):
                 warnings.warn(
                     f"Plugin entry point {ep.name!r} did not resolve to a callable: {ep.value}",
                     RuntimeWarning,
                     stacklevel=2,
                 )
                 continue
-            _call_plugin_register(fn)
+            _call_plugin_register(plugin_callable)
             loaded[ep.name] = ep.value
         except Exception as e:
             warnings.warn(

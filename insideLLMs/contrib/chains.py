@@ -2641,10 +2641,10 @@ class ChainBuilder:
         model_fn: Optional[Callable[[str], str]] = None,
     ) -> "ChainBuilder":
         """Add LLM step."""
-        fn = model_fn or self.model_fn
-        if not fn:
+        model_callable = model_fn or self.model_fn
+        if not model_callable:
             raise ValueError("No model function provided")
-        self.chain.add_llm_step(name, prompt_template, fn, output_parser)
+        self.chain.add_llm_step(name, prompt_template, model_callable, output_parser)
         return self
 
     def transform(
