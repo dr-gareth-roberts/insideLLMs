@@ -258,30 +258,6 @@ insideLLMs.observability
     - TracedModel: Wrap models with automatic tracing
     - trace_function: Decorator for function-level tracing
 
-insideLLMs.agents
-    Autonomous agent frameworks:
-    - ReActAgent: Reasoning + Acting agent
-    - SimpleAgent: Basic agent implementation
-    - Tool, ToolRegistry: Tool definitions and management
-
-insideLLMs.synthesis
-    Synthetic data generation:
-    - PromptVariator: Generate prompt variations
-    - AdversarialGenerator: Create adversarial inputs
-    - DataAugmenter: Augment training data
-
-insideLLMs.routing
-    Model routing and selection:
-    - SemanticRouter: Route by semantic similarity
-    - ModelPool: Load balance across models
-    - IntentClassifier: Route by intent
-
-insideLLMs.hitl
-    Human-in-the-loop workflows:
-    - HITLSession: Interactive review sessions
-    - ReviewQueue: Queue items for human review
-    - FeedbackCollector: Collect human feedback
-
 insideLLMs.pipeline
     Model middleware:
     - ModelPipeline: Chain middleware together
@@ -299,10 +275,10 @@ insideLLMs.visualization
     - create_html_report: Generate HTML reports
     - text_comparison_table: Side-by-side text comparison
 
-insideLLMs.deployment (optional)
-    FastAPI deployment:
-    - create_app: Create a FastAPI app from models
-    - quick_deploy: One-line deployment
+insideLLMs.contrib
+    Research and analysis modules (agents, routing, deployment, synthesis,
+    HITL, etc.). Not part of the core eval pipeline but available via
+    lazy imports: ``from insideLLMs import ReActAgent``
 
 Configuration and Results
 -------------------------
@@ -698,20 +674,20 @@ def __getattr__(name: str):
         "create_html_report": "insideLLMs.visualization",
         "text_comparison_table": "insideLLMs.visualization",
         # Benchmarking
-        "ModelBenchmark": "insideLLMs.benchmark",
-        "ProbeBenchmark": "insideLLMs.benchmark",
+        "ModelBenchmark": "insideLLMs.contrib.benchmark",
+        "ProbeBenchmark": "insideLLMs.contrib.benchmark",
         # Synthetic Data Generation
-        "PromptVariator": "insideLLMs.synthesis",
-        "AdversarialGenerator": "insideLLMs.synthesis",
-        "DataAugmenter": "insideLLMs.synthesis",
-        "TemplateGenerator": "insideLLMs.synthesis",
-        "SyntheticDataset": "insideLLMs.synthesis",
-        "quick_variations": "insideLLMs.synthesis",
-        "quick_adversarial": "insideLLMs.synthesis",
-        "generate_test_dataset": "insideLLMs.synthesis",
-        "SynthesisConfig": "insideLLMs.synthesis",
-        "VariationStrategy": "insideLLMs.synthesis",
-        "AdversarialType": "insideLLMs.synthesis",
+        "PromptVariator": "insideLLMs.contrib.synthesis",
+        "AdversarialGenerator": "insideLLMs.contrib.synthesis",
+        "DataAugmenter": "insideLLMs.contrib.synthesis",
+        "TemplateGenerator": "insideLLMs.contrib.synthesis",
+        "SyntheticDataset": "insideLLMs.contrib.synthesis",
+        "quick_variations": "insideLLMs.contrib.synthesis",
+        "quick_adversarial": "insideLLMs.contrib.synthesis",
+        "generate_test_dataset": "insideLLMs.contrib.synthesis",
+        "SynthesisConfig": "insideLLMs.contrib.synthesis",
+        "VariationStrategy": "insideLLMs.contrib.synthesis",
+        "AdversarialType": "insideLLMs.contrib.synthesis",
         # Observability
         "TracingConfig": "insideLLMs.observability",
         "CallRecord": "insideLLMs.observability",
@@ -730,66 +706,66 @@ def __getattr__(name: str):
         "quick_semantic_cache": "insideLLMs.semantic_cache",
         "wrap_model_with_semantic_cache": "insideLLMs.semantic_cache",
         # Autonomous Agents
-        "ReActAgent": "insideLLMs.agents",
-        "SimpleAgent": "insideLLMs.agents",
-        "ChainOfThoughtAgent": "insideLLMs.agents",
-        "Tool": "insideLLMs.agents",
-        "ToolRegistry": "insideLLMs.agents",
-        "AgentExecutor": "insideLLMs.agents",
-        "AgentConfig": "insideLLMs.agents",
-        "AgentResult": "insideLLMs.agents",
-        "create_react_agent": "insideLLMs.agents",
-        "create_simple_agent": "insideLLMs.agents",
-        "create_calculator_tool": "insideLLMs.agents",
-        "quick_agent_run": "insideLLMs.agents",
+        "ReActAgent": "insideLLMs.contrib.agents",
+        "SimpleAgent": "insideLLMs.contrib.agents",
+        "ChainOfThoughtAgent": "insideLLMs.contrib.agents",
+        "Tool": "insideLLMs.contrib.agents",
+        "ToolRegistry": "insideLLMs.contrib.agents",
+        "AgentExecutor": "insideLLMs.contrib.agents",
+        "AgentConfig": "insideLLMs.contrib.agents",
+        "AgentResult": "insideLLMs.contrib.agents",
+        "create_react_agent": "insideLLMs.contrib.agents",
+        "create_simple_agent": "insideLLMs.contrib.agents",
+        "create_calculator_tool": "insideLLMs.contrib.agents",
+        "quick_agent_run": "insideLLMs.contrib.agents",
         # Human-in-the-Loop
-        "HITLSession": "insideLLMs.hitl",
-        "InteractiveSession": "insideLLMs.hitl",
-        "ApprovalWorkflow": "insideLLMs.hitl",
-        "ReviewWorkflow": "insideLLMs.hitl",
-        "AnnotationWorkflow": "insideLLMs.hitl",
-        "ReviewQueue": "insideLLMs.hitl",
-        "PriorityReviewQueue": "insideLLMs.hitl",
-        "HumanValidator": "insideLLMs.hitl",
-        "ConsensusValidator": "insideLLMs.hitl",
-        "FeedbackCollector": "insideLLMs.hitl",
-        "AnnotationCollector": "insideLLMs.hitl",
-        "HITLConfig": "insideLLMs.hitl",
-        "FeedbackType": "insideLLMs.hitl",
-        "ReviewStatus": "insideLLMs.hitl",
-        "Priority": "insideLLMs.hitl",
-        "Feedback": "insideLLMs.hitl",
-        "ReviewItem": "insideLLMs.hitl",
-        "Annotation": "insideLLMs.hitl",
-        "create_hitl_session": "insideLLMs.hitl",
-        "quick_review": "insideLLMs.hitl",
-        "collect_feedback": "insideLLMs.hitl",
+        "HITLSession": "insideLLMs.contrib.hitl",
+        "InteractiveSession": "insideLLMs.contrib.hitl",
+        "ApprovalWorkflow": "insideLLMs.contrib.hitl",
+        "ReviewWorkflow": "insideLLMs.contrib.hitl",
+        "AnnotationWorkflow": "insideLLMs.contrib.hitl",
+        "ReviewQueue": "insideLLMs.contrib.hitl",
+        "PriorityReviewQueue": "insideLLMs.contrib.hitl",
+        "HumanValidator": "insideLLMs.contrib.hitl",
+        "ConsensusValidator": "insideLLMs.contrib.hitl",
+        "FeedbackCollector": "insideLLMs.contrib.hitl",
+        "AnnotationCollector": "insideLLMs.contrib.hitl",
+        "HITLConfig": "insideLLMs.contrib.hitl",
+        "FeedbackType": "insideLLMs.contrib.hitl",
+        "ReviewStatus": "insideLLMs.contrib.hitl",
+        "Priority": "insideLLMs.contrib.hitl",
+        "Feedback": "insideLLMs.contrib.hitl",
+        "ReviewItem": "insideLLMs.contrib.hitl",
+        "Annotation": "insideLLMs.contrib.hitl",
+        "create_hitl_session": "insideLLMs.contrib.hitl",
+        "quick_review": "insideLLMs.contrib.hitl",
+        "collect_feedback": "insideLLMs.contrib.hitl",
         # Model Routing
-        "SemanticRouter": "insideLLMs.routing",
-        "Route": "insideLLMs.routing",
-        "RouteMatch": "insideLLMs.routing",
-        "ModelPool": "insideLLMs.routing",
-        "IntentClassifier": "insideLLMs.routing",
-        "RouterConfig": "insideLLMs.routing",
-        "RoutingStrategy": "insideLLMs.routing",
-        "create_router": "insideLLMs.routing",
-        "quick_route": "insideLLMs.routing",
+        "SemanticRouter": "insideLLMs.contrib.routing",
+        "Route": "insideLLMs.contrib.routing",
+        "RouteMatch": "insideLLMs.contrib.routing",
+        "ModelPool": "insideLLMs.contrib.routing",
+        "IntentClassifier": "insideLLMs.contrib.routing",
+        "RouterConfig": "insideLLMs.contrib.routing",
+        "RoutingStrategy": "insideLLMs.contrib.routing",
+        "create_router": "insideLLMs.contrib.routing",
+        "quick_route": "insideLLMs.contrib.routing",
         # Deployment (FastAPI)
-        "create_app": "insideLLMs.deployment",
-        "DeploymentApp": "insideLLMs.deployment",
-        "AppConfig": "insideLLMs.deployment",
-        "ModelEndpoint": "insideLLMs.deployment",
-        "ProbeEndpoint": "insideLLMs.deployment",
-        "BatchEndpoint": "insideLLMs.deployment",
-        "DeploymentConfig": "insideLLMs.deployment",
-        "EndpointConfig": "insideLLMs.deployment",
-        "RateLimiter": "insideLLMs.deployment",
-        "APIKeyAuth": "insideLLMs.deployment",
-        "MetricsCollector": "insideLLMs.deployment",
-        "HealthChecker": "insideLLMs.deployment",
-        "quick_deploy": "insideLLMs.deployment",
-        "create_model_endpoint": "insideLLMs.deployment",
-        "create_probe_endpoint": "insideLLMs.deployment",
+        "create_app": "insideLLMs.contrib.deployment",
+        "DeploymentApp": "insideLLMs.contrib.deployment",
+        "AppConfig": "insideLLMs.contrib.deployment",
+        "ModelEndpoint": "insideLLMs.contrib.deployment",
+        "ProbeEndpoint": "insideLLMs.contrib.deployment",
+        "BatchEndpoint": "insideLLMs.contrib.deployment",
+        "DeploymentConfig": "insideLLMs.contrib.deployment",
+        "EndpointConfig": "insideLLMs.contrib.deployment",
+        "RateLimiter": "insideLLMs.contrib.deployment",
+        "APIKeyAuth": "insideLLMs.contrib.deployment",
+        "MetricsCollector": "insideLLMs.contrib.deployment",
+        "HealthChecker": "insideLLMs.contrib.deployment",
+        "quick_deploy": "insideLLMs.contrib.deployment",
+        "create_model_endpoint": "insideLLMs.contrib.deployment",
+        "create_probe_endpoint": "insideLLMs.contrib.deployment",
     }
 
     if name in _LAZY_IMPORTS:
