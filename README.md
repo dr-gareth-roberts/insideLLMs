@@ -10,7 +10,7 @@
   <p align="center">
     <a href="#why-insidellms">Why</a> &bull;
     <a href="#how-it-works">How It Works</a> &bull;
-    <a href="#quickstart">Quickstart</a> &bull;
+    <a href="#quick-start">Quickstart</a> &bull;
     <a href="https://dr-gareth-roberts.github.io/insideLLMs/">Docs</a>
   </p>
 </div>
@@ -120,7 +120,16 @@ jobs:
 ```
 
 Blocks the deploy if behaviour changed:
+
 ```
+Changes detected:
+  example_id: 47
+  field: output
+  baseline: "Consult a doctor for medical advice."
+  candidate: "Here's what you should do..."
+```
+
+### 4. Shadow Production Traffic (Optional)
 
 Capture sampled production FastAPI traffic directly into `records.jsonl`:
 
@@ -133,144 +142,33 @@ app.middleware("http")(
     shadow.fastapi(output_path="./shadow/records.jsonl", sample_rate=0.01)
 )
 ```
-Changes detected:
-  example_id: 47
-  field: output
-  baseline: "Consult a doctor for medical advice."
-  candidate: "Here's what you should do..."
-```
 
 ## Quick Start
-
-> **⚠️ SECURITY WARNING**: Never hardcode API keys in your code or commit them to version control.
-> Always use environment variables or a `.env` file. See [Security Best Practices](#security-best-practices) below.
 
 ### Installation
 
 ```bash
 pip install insidellms
-```
 
-### Setup API Keys (Secure Method)
-
-Create a `.env` file in your project root:
-
-```bash
-# .env (add this to .gitignore!)
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-Load environment variables in your code:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()  # Loads from .env file
-
-# API keys are now available from environment
-from insideLLMs.models import OpenAIModel
-
-model = OpenAIModel()  # Automatically uses OPENAI_API_KEY from environment
+# With optional extras
+pip install insidellms[nlp]            # NLP probes (nltk, spacy)
+pip install insidellms[visualization]  # Charts and reports (matplotlib, seaborn)
+pip install insidellms[nlp,visualization]  # Everything
 ```
 
 ### Basic Usage
 
+```bash
+# Set API keys via environment (never hardcode)
+export OPENAI_API_KEY=sk-...
+```
+
 ```python
-from insideLLMs.models import OpenAIModel
-from insideLLMs.probes import LogicProbe
-from insideLLMs.runtime.runner import run_probe
+from insideLLMs import OpenAIModel, LogicProbe, run_probe
 
-# Create model (uses environment variable)
-model = OpenAIModel(model_name="gpt-3.5-turbo")
-
-# Create probe
+model = OpenAIModel(model_name="gpt-4o-mini")
 probe = LogicProbe()
-
-# Run probe
 results = run_probe(model, probe, ["What is 2+2?"])
-```
-
-## Security Best Practices
-
-### ✅ DO: Use Environment Variables
-
-```python
-import os
-from dotenv import load_dotenv
-
-load_dotenv()  # Load from .env file
-api_key = os.getenv("OPENAI_API_KEY")
-
-if not api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment")
-
-model = OpenAIModel(api_key=api_key)
-```
-
-### ❌ DON'T: Hardcode API Keys
-
-```python
-# NEVER DO THIS - Keys will be committed to git!
-model = OpenAIModel(api_key="sk-...")  # ❌ DANGEROUS
-```
-
-### Protect Your .env File
-
-Add to `.gitignore`:
-
-```
-# .gitignore
-.env
-.env.local
-*.key
-secrets/
-```
-
-## Verifiable Evaluation Commands
-
-For attestation/signature workflows, use the built-in Ultimate-mode commands:
-
-```bash
-# 1) Generate DSSE attestations from an existing run directory
-insidellms attest ./baseline
-
-# 2) Sign attestations (requires cosign)
-insidellms sign ./baseline
-
-# 3) Verify signature bundles
-insidellms verify-signatures ./baseline
-```
-
-**Prerequisites**
-- `cosign` is required for signing and verification commands.
-- `oras` is required when publishing artifacts to OCI registries in Ultimate workflows.
-- `tuf` support is used by dataset security utilities.
-
-Run readiness checks with:
-
-```bash
-insidellms doctor --format text
-```
-
-## Schema Validation Commands
-
-Use `insidellms schema` to inspect and validate artifact payloads against versioned contracts.
-
-```bash
-# List available schema names and versions
-insidellms schema list
-
-# Validate manifest.json (single JSON object)
-insidellms schema validate --name RunManifest --input ./baseline/manifest.json
-
-# Validate records.jsonl (one ResultRecord per line)
-insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl
-```
-
-For non-blocking validation during exploratory workflows:
-
-```bash
-insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl --mode warn
 ```
 
 ## Key Features
@@ -337,6 +235,36 @@ Build domain-specific tests without forking the framework.
 | OpenAI Evals | Conversational tasks | Response-level granularity, provider-agnostic |
 
 **insideLLMs is for teams shipping LLM products who need to know what changed, not just what scored well.**
+
+<details>
+<summary><strong>Advanced: Schema Validation</strong></summary>
+
+```bash
+# List available schema names and versions
+insidellms schema list
+
+# Validate records.jsonl against versioned contracts
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl
+
+# Non-blocking validation for exploratory workflows
+insidellms schema validate --name ResultRecord --input ./baseline/records.jsonl --mode warn
+```
+</details>
+
+<details>
+<summary><strong>Advanced: Verifiable Evaluation</strong></summary>
+
+For attestation/signature workflows:
+
+```bash
+insidellms attest ./baseline            # Generate DSSE attestations
+insidellms sign ./baseline              # Sign with cosign
+insidellms verify-signatures ./baseline  # Verify signature bundles
+insidellms doctor --format text          # Check prerequisites
+```
+
+Requires `cosign` for signing/verification and `oras` for OCI registry publishing.
+</details>
 
 ## Contributing
 
