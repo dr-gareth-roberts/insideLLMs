@@ -117,7 +117,7 @@ See Also:
     - HuggingFace Transformers: https://huggingface.co/docs/transformers
 """
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -493,7 +493,7 @@ class HuggingFaceModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
         """Engage in a multi-turn chat conversation.
 
         Converts a list of chat messages into a prompt by concatenating

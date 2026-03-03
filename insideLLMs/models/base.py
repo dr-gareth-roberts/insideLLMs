@@ -71,7 +71,7 @@ See Also:
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator, Sequence
 from functools import wraps
 from typing import (
     Any,
@@ -550,7 +550,7 @@ class ChatModelProtocol(ModelProtocol, Protocol):
         ...         return response
     """
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat.
 
         Args:
@@ -974,7 +974,7 @@ class Model(ABC):
             latency_ms=latency_ms,
         )
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Maintains conversation context by passing the full message history

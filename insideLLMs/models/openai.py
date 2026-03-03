@@ -1,7 +1,7 @@
 """OpenAI model implementation for insideLLMs.
 
 This module provides a Model implementation that wraps OpenAI's API for
-GPT models (GPT-4, GPT-3.5-turbo, etc.). It handles authentication,
+GPT models (GPT-5.2, o3, etc.). It handles authentication,
 error mapping, streaming, and chat mode.
 
 Requires:
@@ -17,7 +17,7 @@ Example - Basic Usage:
 
 Example - With Custom Configuration:
     >>> model = OpenAIModel(
-    ...     model_name="gpt-4-turbo",
+    ...     model_name="gpt-5.2",
     ...     api_key="sk-...",  # Or use OPENAI_API_KEY env var
     ...     timeout=120.0,
     ...     max_retries=5
@@ -42,7 +42,7 @@ See Also:
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any, Optional
 
 from openai import APIError, APITimeoutError, OpenAI
@@ -76,14 +76,14 @@ class OpenAIModel(Model):
         - All OpenAI API parameters (temperature, max_tokens, etc.)
 
     Attributes:
-        model_name: The OpenAI model identifier (e.g., "gpt-4", "gpt-3.5-turbo").
+        model_name: The OpenAI model identifier (e.g., "gpt-5.2", "gpt-3.5-turbo").
         api_key: The OpenAI API key (from argument or environment).
         _client: The underlying openai.OpenAI client instance.
         _supports_streaming: True - streaming is supported.
         _supports_chat: True - chat mode is supported.
 
     Example - Basic Generation:
-        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> model = OpenAIModel(model_name="gpt-5.2")
         >>> response = model.generate("Explain quantum computing.")
         >>> print(response)
         'Quantum computing is a type of computation...'
@@ -97,7 +97,7 @@ class OpenAIModel(Model):
         ... )
 
     Example - Multi-Turn Chat:
-        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> model = OpenAIModel(model_name="gpt-5.2")
         >>> conversation = [
         ...     {"role": "system", "content": "You are a pirate."},
         ...     {"role": "user", "content": "Hello!"},
@@ -107,7 +107,7 @@ class OpenAIModel(Model):
         'Ahoy, matey! What brings ye to these waters?'
 
     Example - Streaming Output:
-        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> model = OpenAIModel(model_name="gpt-5.2")
         >>> for chunk in model.stream("Count from 1 to 10"):
         ...     print(chunk, end="", flush=True)
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -115,7 +115,7 @@ class OpenAIModel(Model):
     Example - Error Handling:
         >>> from insideLLMs.exceptions import RateLimitError, TimeoutError
         >>>
-        >>> model = OpenAIModel(model_name="gpt-4")
+        >>> model = OpenAIModel(model_name="gpt-5.2")
         >>> try:
         ...     response = model.generate("Hello!")
         ... except RateLimitError as e:
@@ -126,7 +126,7 @@ class OpenAIModel(Model):
     Example - Using Azure OpenAI:
         >>> # Use base_url for Azure or other OpenAI-compatible endpoints
         >>> model = OpenAIModel(
-        ...     model_name="gpt-4",
+        ...     model_name="gpt-5.2",
         ...     base_url="https://your-resource.openai.azure.com/",
         ...     api_key="your-azure-key"
         ... )
@@ -134,7 +134,7 @@ class OpenAIModel(Model):
     Example - Via Registry:
         >>> from insideLLMs.registry import model_registry, ensure_builtins_registered
         >>> ensure_builtins_registered()
-        >>> model = model_registry.get("openai", model_name="gpt-4")
+        >>> model = model_registry.get("openai", model_name="gpt-5.2")
 
     Raises:
         ModelInitializationError: If API key is missing or client init fails.
@@ -173,8 +173,8 @@ class OpenAIModel(Model):
             name: Human-readable name for this model instance.
                 Used for logging and identification. Default: "OpenAIModel".
             model_name: The OpenAI model identifier to use.
-                Common options: "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo".
-                Default: "gpt-3.5-turbo".
+                Common options: "o3", "gpt-4.1", "gpt-5.".
+                Default: "gpt-5.2".
             api_key: OpenAI API key. If not provided, reads from the
                 environment variable specified by ``api_key_env``.
             base_url: Override the default OpenAI API base URL.
@@ -195,17 +195,17 @@ class OpenAIModel(Model):
 
         Example - Basic Initialization:
             >>> # Uses OPENAI_API_KEY from environment
-            >>> model = OpenAIModel(model_name="gpt-4")
+            >>> model = OpenAIModel(model_name="gpt-5.2")
 
         Example - With Explicit API Key:
             >>> model = OpenAIModel(
-            ...     model_name="gpt-4",
+            ...     model_name="gpt-5.2",
             ...     api_key="sk-..."
             ... )
 
         Example - With Organization:
             >>> model = OpenAIModel(
-            ...     model_name="gpt-4",
+            ...     model_name="gpt-5.2",
             ...     organization="org-...",
             ...     project="proj-..."
             ... )
@@ -213,14 +213,14 @@ class OpenAIModel(Model):
         Example - Custom Timeout:
             >>> # Longer timeout for complex prompts
             >>> model = OpenAIModel(
-            ...     model_name="gpt-4",
+            ...     model_name="gpt-5.2",
             ...     timeout=120.0,  # 2 minutes
             ...     max_retries=5
             ... )
 
         Example - Azure OpenAI:
             >>> model = OpenAIModel(
-            ...     model_name="gpt-4",
+            ...     model_name="gpt-5.2",
             ...     base_url="https://myresource.openai.azure.com/",
             ...     api_key=os.getenv("AZURE_OPENAI_KEY")
             ... )
@@ -363,7 +363,7 @@ class OpenAIModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
         """Engage in a multi-turn chat conversation.
 
         Sends the full conversation history to OpenAI's chat completions API.

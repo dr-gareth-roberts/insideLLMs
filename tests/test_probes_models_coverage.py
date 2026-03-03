@@ -806,7 +806,7 @@ class TestOpenAIModelChatErrorHandling:
                 request=MagicMock(),
                 body=None,
             )
-            mock_error.status_code = 500
+            mock_error.status_code = 500  # type: ignore[attr-defined]
             mock_client.chat.completions.create.side_effect = mock_error
             MockOpenAI.return_value = mock_client
 
@@ -880,7 +880,7 @@ class TestOpenAIModelStreamErrorHandling:
                 request=MagicMock(),
                 body=None,
             )
-            mock_error.status_code = 400
+            mock_error.status_code = 400  # type: ignore[attr-defined]
             mock_client.chat.completions.create.side_effect = mock_error
             MockOpenAI.return_value = mock_client
 
@@ -980,7 +980,7 @@ class TestAnthropicModelChatErrorHandling:
                 request=MagicMock(),
                 body=None,
             )
-            mock_error.status_code = 500
+            mock_error.status_code = 500  # type: ignore[attr-defined]
             mock_client.messages.create.side_effect = mock_error
             MockAnthropic.return_value = mock_client
 
@@ -1054,7 +1054,7 @@ class TestAnthropicModelStreamErrorHandling:
                 request=MagicMock(),
                 body=None,
             )
-            mock_error.status_code = 500
+            mock_error.status_code = 500  # type: ignore[attr-defined]
             mock_client.messages.stream.side_effect = mock_error
             MockAnthropic.return_value = mock_client
 
@@ -1097,7 +1097,7 @@ class TestAnthropicModelChatRoleConversion:
                 {"role": "system", "content": "Be helpful"},
                 {"role": "user", "content": "Hello"},
             ]
-            model.chat(messages)
+            model.chat(messages)  # type: ignore[arg-type]
 
             call_kwargs = mock_client.messages.create.call_args[1]
             sent_messages = call_kwargs["messages"]
@@ -1204,7 +1204,7 @@ class TestCohereModelMultiTurnChat:
             {"role": "assistant", "content": "Hi there!"},
             {"role": "user", "content": "How are you?"},
         ]
-        model.chat(messages)
+        model.chat(messages)  # type: ignore[arg-type]
 
         call_kwargs = mock_client.chat.call_args[1]
         assert call_kwargs["message"] == "How are you?"
@@ -1250,7 +1250,7 @@ class TestCohereModelMultiTurnChat:
             {"role": "assistant", "content": "Answer"},
             {"role": "assistant", "content": "Continued"},
         ]
-        model.chat(messages)
+        model.chat(messages)  # type: ignore[arg-type]
         call_kwargs = mock_client.chat.call_args[1]
         assert call_kwargs["message"] == "First question"
 
@@ -1404,7 +1404,7 @@ class TestGeminiModelChatMultiTurn:
             {"role": "system", "content": "Be helpful"},
             {"role": "user", "content": "Hello"},
         ]
-        result = model.chat(messages)
+        result = model.chat(messages)  # type: ignore[arg-type]
         assert result == "Response"
 
         # The system message should be prepended to the user message
@@ -1430,7 +1430,7 @@ class TestGeminiModelChatMultiTurn:
             {"role": "assistant", "content": "Hi there!"},
             {"role": "user", "content": "How are you?"},
         ]
-        model.chat(messages)
+        model.chat(messages)  # type: ignore[arg-type]
 
         # start_chat should be called with history (first 2 messages)
         start_chat_kwargs = mock_genai_model.start_chat.call_args[1]
@@ -1616,7 +1616,7 @@ class TestGeminiModelChatExtra:
             {"role": "system", "content": "This should be skipped"},
             {"role": "user", "content": "How are you?"},
         ]
-        result = model.chat(messages)
+        result = model.chat(messages)  # type: ignore[arg-type]
         assert result == "Response"
 
         # The system message should be ignored; only 3 history entries
@@ -1949,7 +1949,7 @@ class TestVLLMModelChat:
         model._client = mock_client
 
         messages = [{"role": "user", "content": "Hello"}]
-        result = model.chat(messages)
+        result = model.chat(messages)  # type: ignore[arg-type]
         assert result == "Chat response"
 
         call_kwargs = mock_client.chat.completions.create.call_args[1]

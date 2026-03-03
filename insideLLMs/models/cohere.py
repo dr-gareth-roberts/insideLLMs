@@ -88,7 +88,7 @@ Cohere offers different model tiers:
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
@@ -547,7 +547,7 @@ class CohereModel(Model):
         self._call_count += 1
         return response.text
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation with the Cohere model.
 
         Processes a conversation history and generates the next assistant

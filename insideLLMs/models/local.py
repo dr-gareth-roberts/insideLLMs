@@ -58,7 +58,7 @@ Streaming responses for real-time output:
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
@@ -397,7 +397,7 @@ class LlamaCppModel(Model):
         self._call_count += 1
         return response["choices"][0]["text"]
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Sends a list of messages representing a conversation history to the
@@ -953,7 +953,7 @@ class OllamaModel(Model):
         self._call_count += 1
         return response["response"]
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Sends a conversation history to the model and returns the assistant's
@@ -1629,7 +1629,7 @@ class VLLMModel(Model):
         self._call_count += 1
         return response.choices[0].text
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Sends a conversation history to the model using the chat completions

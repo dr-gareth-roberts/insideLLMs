@@ -101,7 +101,7 @@ insideLLMs.exceptions : Exception classes for error handling
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Optional
 
 import anthropic
@@ -434,7 +434,7 @@ class AnthropicModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: list[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
         """Conduct a multi-turn chat conversation with the model.
 
         Sends a list of messages representing a conversation history to the

@@ -314,7 +314,7 @@ insideLLMs.registry : Model registration and discovery
 insideLLMs.exceptions : Exception hierarchy for error handling
 """
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 # Import lightweight core components directly
@@ -387,7 +387,7 @@ class DummyModel(Model):
             return self.canned_response
         return f"{self.response_prefix} You said: {prompt}"
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Simulate a chat response.
 
         Args:

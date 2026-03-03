@@ -64,7 +64,7 @@ See Also:
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any, Optional
 
 from insideLLMs.models.base import ChatMessage, Model
@@ -250,8 +250,8 @@ class GeminiModel(Model):
                 "or pass api_key parameter."
             )
 
-        self._client = None
-        self._model = None
+        self._client: Any = None
+        self._model: Any = None
 
     def _get_client(self):
         """Lazily initialize and return the Google AI GenerativeModel client.
@@ -408,7 +408,7 @@ class GeminiModel(Model):
         self._call_count += 1
         return response.text
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation with the Gemini model.
 
         Processes a list of chat messages representing a conversation history
