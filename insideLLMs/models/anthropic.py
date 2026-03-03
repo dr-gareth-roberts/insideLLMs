@@ -409,7 +409,8 @@ class AnthropicModel(Model):
                 temperature=kwargs.get("temperature", 0.7),
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text
+            block = response.content[0]
+            return getattr(block, "text", str(block))
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
@@ -558,7 +559,8 @@ class AnthropicModel(Model):
                 temperature=kwargs.get("temperature", 0.7),
                 messages=anthropic_messages,
             )
-            return response.content[0].text
+            block = response.content[0]
+            return getattr(block, "text", str(block))
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,

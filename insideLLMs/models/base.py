@@ -122,9 +122,9 @@ class ProviderExceptionMap:
 
     def __init__(
         self,
-        rate_limit_errors: tuple[type, ...] = (),
-        timeout_errors: tuple[type, ...] = (),
-        api_errors: tuple[type, ...] = (),
+        rate_limit_errors: tuple[type[BaseException], ...] = (),
+        timeout_errors: tuple[type[BaseException], ...] = (),
+        api_errors: tuple[type[BaseException], ...] = (),
     ):
         self.rate_limit_errors = rate_limit_errors
         self.timeout_errors = timeout_errors
@@ -350,7 +350,14 @@ def translate_provider_error(
         )
 
 
-class ChatMessage(TypedDict, total=False):
+class _ChatMessageRequired(TypedDict):
+    """Required fields for a chat message."""
+
+    role: str
+    content: str
+
+
+class ChatMessage(_ChatMessageRequired, total=False):
     """A single message in a chat conversation.
 
     Represents one turn in a multi-turn chat, following the standard
@@ -400,9 +407,7 @@ class ChatMessage(TypedDict, total=False):
         documentation for supported message fields.
     """
 
-    role: str  # "system", "user", "assistant"
-    content: str
-    name: Optional[str]
+    name: str
 
 
 @runtime_checkable
@@ -745,6 +750,9 @@ class Model(ABC):
         - ModelWrapper: For adding retry logic and caching
         - insideLLMs.registry: For discovering and instantiating models
     """
+
+    _supports_streaming: bool = False
+    _supports_chat: bool = False
 
     def __init__(self, name: str, model_id: Optional[str] = None):
         """Initialize the model.

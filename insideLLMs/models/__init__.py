@@ -315,7 +315,7 @@ insideLLMs.exceptions : Exception hierarchy for error handling
 """
 
 from collections.abc import Iterator, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
 
 # Import lightweight core components directly
 from insideLLMs.models.base import (
@@ -331,6 +331,17 @@ from insideLLMs.models.base import (
     translate_provider_error,
 )
 from insideLLMs.types import ModelInfo
+
+if TYPE_CHECKING:
+    from insideLLMs.models.anthropic import AnthropicModel as AnthropicModel
+    from insideLLMs.models.cohere import CohereModel as CohereModel
+    from insideLLMs.models.gemini import GeminiModel as GeminiModel
+    from insideLLMs.models.huggingface import HuggingFaceModel as HuggingFaceModel
+    from insideLLMs.models.local import LlamaCppModel as LlamaCppModel
+    from insideLLMs.models.local import OllamaModel as OllamaModel
+    from insideLLMs.models.local import VLLMModel as VLLMModel
+    from insideLLMs.models.openai import OpenAIModel as OpenAIModel
+    from insideLLMs.models.openrouter import OpenRouterModel as OpenRouterModel
 
 # Note: __all__ is defined at the end of this file to include lazy-loaded models
 
@@ -358,7 +369,7 @@ class DummyModel(Model):
         name: str = "DummyModel",
         response_prefix: str = "[DummyModel]",
         echo: bool = True,
-        canned_response: str = None,
+        canned_response: Optional[str] = None,
     ):
         """Initialize the dummy model.
 
