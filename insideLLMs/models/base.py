@@ -212,22 +212,6 @@ def handle_provider_errors(
 
             try:
                 return func(self, *args, **kwargs)
-            except exception_map.rate_limit_errors as e:
-                raise RateLimitError(
-                    model_id=model_id,
-                    retry_after=getattr(e, "retry_after", None),
-                ) from e
-            except exception_map.timeout_errors:
-                raise InsideLLMsTimeoutError(
-                    model_id=model_id,
-                    timeout_seconds=timeout,
-                )
-            except exception_map.api_errors as e:
-                raise InsideLLMsAPIError(
-                    model_id=model_id,
-                    status_code=getattr(e, "status_code", None),
-                    message=str(e),
-                ) from e
             except Exception as e:
                 # Avoid re-wrapping insideLLMs exceptions
                 if isinstance(
@@ -240,6 +224,24 @@ def handle_provider_errors(
                     ),
                 ):
                     raise
+                if exception_map.rate_limit_errors and isinstance(
+                    e, exception_map.rate_limit_errors
+                ):
+                    raise RateLimitError(
+                        model_id=model_id,
+                        retry_after=getattr(e, "retry_after", None),
+                    ) from e
+                if exception_map.timeout_errors and isinstance(e, exception_map.timeout_errors):
+                    raise InsideLLMsTimeoutError(
+                        model_id=model_id,
+                        timeout_seconds=timeout,
+                    ) from e
+                if exception_map.api_errors and isinstance(e, exception_map.api_errors):
+                    raise InsideLLMsAPIError(
+                        model_id=model_id,
+                        status_code=getattr(e, "status_code", None),
+                        message=str(e),
+                    ) from e
                 raise ModelGenerationError(
                     model_id=model_id,
                     prompt=str(prompt)[:500] if prompt else "",
@@ -1233,8 +1235,8 @@ class Model(ABC):
             name=self.name,
             provider=self.__class__.__name__.replace("Model", ""),
             model_id=self.model_id,
-            supports_streaming=hasattr(self, "_supports_streaming") and self._supports_streaming,
-            supports_chat=hasattr(self, "_supports_chat") and self._supports_chat,
+            supports_streaming=self._supports_streaming,
+            supports_chat=self._supports_chat,
         )
 
     def __repr__(self) -> str:

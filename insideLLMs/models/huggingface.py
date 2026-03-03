@@ -599,7 +599,7 @@ class HuggingFaceModel(Model):
             outputs = self.generator(prompt, **kwargs)
             return outputs[0]["generated_text"]
         except Exception as e:
-            first_msg = messages[0]["content"] if messages else ""
+            first_msg = messages[0].get("content", "") if messages else ""
             raise ModelGenerationError(
                 model_id=self.model_name,
                 prompt=first_msg,

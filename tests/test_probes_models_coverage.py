@@ -1755,6 +1755,7 @@ class TestOllamaModelHeadersApiKey:
             api_key="should-be-ignored",
             headers={"Authorization": "Bearer existing-key"},
         )
+        assert model.headers is not None
         assert model.headers["Authorization"] == "Bearer existing-key"
 
     def test_init_no_api_key(self):

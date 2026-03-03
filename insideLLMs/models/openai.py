@@ -450,7 +450,7 @@ class OpenAIModel(Model):
             )
         except Exception as e:
             # Get first message content for error context
-            first_msg = messages[0]["content"] if messages else ""
+            first_msg = messages[0].get("content", "") if messages else ""
             raise ModelGenerationError(
                 model_id=self.model_name,
                 prompt=first_msg,
