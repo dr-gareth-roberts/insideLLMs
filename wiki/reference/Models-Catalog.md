@@ -328,7 +328,7 @@ models:
   - type: dummy
     args:
       name: test_model
-      response: "This is a test response."
+      canned_response: "This is a test response."
 ```
 
 ### Python
@@ -336,7 +336,7 @@ models:
 ```python
 from insideLLMs.models import DummyModel
 
-model = DummyModel(name="test", response="Fixed response")
+model = DummyModel(name="test", canned_response="Fixed response")
 ```
 
 ### Use Cases
@@ -386,14 +386,14 @@ for chunk in model.stream("prompt"):
 
 # Model info
 info = model.info()
-# {"name": "gpt-4o", "provider": "openai", "model_id": "gpt-4o", ...}
+# ModelInfo(name="gpt-4o", provider="OpenAI", model_id="gpt-4o", ...)
 ```
 
 ---
 
 ## Creating Custom Models
 
-See [API Reference](API.md) for the full Model interface.
+See the [API Reference](../../API_REFERENCE.md) for the full Model interface.
 
 Basic structure:
 
@@ -408,6 +408,5 @@ class MyModel(Model):
         # Your implementation
         return "response"
     
-    def info(self) -> dict:
-        return {"name": self.name, "provider": "custom"}
+    # info() is inherited from Model and returns ModelInfo automatically
 ```

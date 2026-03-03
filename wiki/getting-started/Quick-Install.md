@@ -29,14 +29,14 @@ pip install -e ".[all]"
 
 ```bash
 insidellms --version
-# insidellms 0.1.0
+# insidellms 0.2.0
 ```
 
 ## Extras (Optional)
 
 ```bash
 pip install -e ".[nlp]"           # Text processing
-pip install -e ".[visualisation]" # Charts
+pip install -e ".[visualization]" # Charts
 pip install -e ".[dev]"           # Development tools
 ```
 

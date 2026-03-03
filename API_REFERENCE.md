@@ -69,12 +69,12 @@ print(response)  # "2+2 equals 4."
 
 **Optional Methods:**
 
-##### `chat(messages: List[ChatMessage], **kwargs) -> str`
+##### `chat(messages: Sequence[ChatMessage], **kwargs) -> str`
 
 Engage in a multi-turn chat conversation.
 
 **Parameters:**
-- `messages` (List[ChatMessage]): List of message dicts with 'role' and 'content' keys
+- `messages` (Sequence[ChatMessage]): Sequence of message dicts with 'role' and 'content' keys
   - Roles: "system", "user", or "assistant"
 - `**kwargs`: Additional arguments specific to the model provider
 
@@ -975,7 +975,7 @@ asyncio.run(main())
 
 Comprehensive benchmarking system for evaluating models across multiple probes.
 
-**Module:** `insideLLMs.benchmark`
+**Module:** `insideLLMs.contrib.benchmark`
 
 **Constructor:**
 ```python
@@ -1010,7 +1010,7 @@ Run the benchmark.
 
 **Example:**
 ```python
-from insideLLMs.benchmark import ModelBenchmark
+from insideLLMs.contrib.benchmark import ModelBenchmark
 from insideLLMs.models import OpenAIModel, AnthropicModel
 from insideLLMs.probes import LogicProbe, BiasProbe
 
@@ -2334,7 +2334,7 @@ import os
 from insideLLMs.models import OpenAIModel, AnthropicModel, DummyModel
 from insideLLMs.probes import LogicProbe, BiasProbe, AttackProbe
 from insideLLMs.runtime.runner import ProbeRunner, run_probe
-from insideLLMs.benchmark import ModelBenchmark
+from insideLLMs.contrib.benchmark import ModelBenchmark
 from insideLLMs.registry import model_registry, probe_registry
 from insideLLMs.dataset_utils import load_jsonl_dataset
 from insideLLMs.nlp import clean_text, cosine_similarity_texts

@@ -31,7 +31,7 @@ python --version
 
 ```bash
 pip install -e ".[nlp]"           # NLP features
-pip install -e ".[visualisation]" # Charts and reports
+pip install -e ".[visualization]" # Charts and reports
 pip install -e ".[all]"           # Everything
 ```
 

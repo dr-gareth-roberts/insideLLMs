@@ -223,7 +223,7 @@ model:
   type: dummy
   args:
     name: test_model
-    response: "Fixed test response"
+    canned_response: "Fixed test response"
 ```
 
 ---

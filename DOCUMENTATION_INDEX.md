@@ -258,7 +258,7 @@ for CLI, artifacts, schemas, and extension points.
 → [API_REFERENCE.md - Configuration-Based Execution](API_REFERENCE.md#configuration-based-execution)
 
 #### **Run a cross-model behavioural harness**
-→ [README.md](README.md#behavioural-harness), [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
+→ [README.md](README.md#how-it-works), [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
 #### **Capture and replay production traffic safely**
 → [wiki/guides/Production-Shadow-Capture.md](wiki/guides/Production-Shadow-Capture.md), [API_REFERENCE.md - Production Shadow Capture](API_REFERENCE.md#production-shadow-capture)
@@ -279,7 +279,7 @@ for CLI, artifacts, schemas, and extension points.
 → [wiki/advanced/Verifiable-Evaluation.md](wiki/advanced/Verifiable-Evaluation.md), [API_REFERENCE.md - CLI Verifiable Evaluation Commands](API_REFERENCE.md#cli-verifiable-evaluation-commands)
 
 #### **Validate JSON/JSONL artifacts against schemas**
-→ [README.md - Schema Validation Commands](README.md#schema-validation-commands), [wiki/reference/CLI.md](wiki/reference/CLI.md#schema)
+→ [README.md - Schema Validation](README.md#advanced-schema-validation), [wiki/reference/CLI.md](wiki/reference/CLI.md#schema)
 
 #### **Find a quick code example**
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)

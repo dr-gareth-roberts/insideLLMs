@@ -11,14 +11,18 @@ nav_order: 1
 ## Interface
 
 ```python
+from collections.abc import Sequence
+from insideLLMs.models.base import ChatMessage
+from insideLLMs.types import ModelInfo
+
 class Model:
     def generate(self, prompt: str, **kwargs) -> str:
         """Text completion."""
 
-    def chat(self, messages: list[dict], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
         """Multi-turn conversation."""
 
-    def info(self) -> dict:
+    def info(self) -> ModelInfo:
         """Model metadata."""
 ```
 
@@ -51,7 +55,7 @@ from insideLLMs.models import OpenAIModel, AnthropicModel, DummyModel
 
 openai = OpenAIModel(model_name="gpt-4o", temperature=0.7)
 claude = AnthropicModel(model_name="claude-3-5-sonnet-20241022")
-dummy = DummyModel(response="test response")
+dummy = DummyModel(canned_response="test response")
 ```
 
 ### From Config
@@ -70,14 +74,13 @@ Every model provides metadata:
 
 ```python
 info = model.info()
-# {
-#   "name": "gpt-4o",
-#   "provider": "openai",
-#   "model_id": "gpt-4o",
-#   "supports_streaming": True,
-#   "supports_chat": True,
-#   "max_tokens": 128000
-# }
+# ModelInfo(
+#   name="gpt-4o",
+#   provider="OpenAI",
+#   model_id="gpt-4o",
+#   supports_streaming=True,
+#   supports_chat=True,
+# )
 ```
 
 This info is included in run artifacts for reproducibility.
@@ -110,13 +113,6 @@ class MyModel(Model):
     def generate(self, prompt: str, **kwargs) -> str:
         # Your API call here
         return response
-
-    def info(self) -> dict:
-        return {
-            "name": self.name,
-            "provider": "custom",
-            "endpoint": self.endpoint
-        }
 ```
 
 ## See Also

@@ -243,7 +243,7 @@ result = probe.run(model, {"question": "When did World War II end?"})
 
 Tests code synthesis capabilities.
 
-**Category:** `ProbeCategory.CODE`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -283,7 +283,7 @@ result = probe.run(model, {
 
 Tests code comprehension and explanation.
 
-**Category:** `ProbeCategory.CODE`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -308,7 +308,7 @@ probes:
 
 Tests bug detection and fixing capabilities.
 
-**Category:** `ProbeCategory.CODE`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -334,7 +334,7 @@ probes:
 
 Tests adherence to specific instructions.
 
-**Category:** `ProbeCategory.INSTRUCTION`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -360,7 +360,7 @@ probes:
 
 Tests complex multi-step task completion.
 
-**Category:** `ProbeCategory.INSTRUCTION`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -390,7 +390,7 @@ probes:
 
 Tests adherence to output constraints.
 
-**Category:** `ProbeCategory.INSTRUCTION`
+**Category:** `ProbeCategory.CUSTOM`
 
 ### Input Format
 
@@ -441,9 +441,10 @@ class MyProbe(Probe[dict]):
 | Category | Value | Description |
 |----------|-------|-------------|
 | `LOGIC` | `"logic"` | Reasoning and deduction |
-| `BIAS` | `"bias"` | Fairness and demographic parity |
-| `SAFETY` | `"safety"` | Security and safety |
 | `FACTUALITY` | `"factuality"` | Factual accuracy |
-| `CODE` | `"code"` | Programming tasks |
-| `INSTRUCTION` | `"instruction"` | Instruction following |
-| `CUSTOM` | `"custom"` | User-defined probes |
+| `BIAS` | `"bias"` | Fairness and demographic parity |
+| `ATTACK` | `"attack"` | Adversarial robustness and prompt injection |
+| `SAFETY` | `"safety"` | Security and safety guardrails |
+| `REASONING` | `"reasoning"` | Multi-step reasoning and problem solving |
+| `KNOWLEDGE` | `"knowledge"` | Domain-specific or general knowledge |
+| `CUSTOM` | `"custom"` | User-defined probes (also used for code and instruction probes) |

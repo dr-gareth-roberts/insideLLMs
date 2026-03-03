@@ -380,7 +380,7 @@ insidellms doctor [options]
 
 - Python version
 - Required dependencies
-- Optional dependencies (nlp, visualisation)
+- Optional dependencies (nlp, visualization)
 - API key environment variables
 - Write permissions for run root
 
@@ -392,79 +392,6 @@ insidellms doctor
 
 # Capability matrix as JSON
 insidellms doctor --format json --capabilities
-```
-
----
-
-## attest
-
-Generate attestation artifacts for an existing run directory.
-
-```bash
-insidellms attest <run-dir>
-```
-
-### Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `run-dir` | Path to run directory (must contain `manifest.json`) |
-
-### Examples
-
-```bash
-insidellms attest ./baseline
-```
-
----
-
-## sign
-
-Sign attestation envelopes in a run directory using Sigstore (`cosign`).
-
-```bash
-insidellms sign <run-dir>
-```
-
-### Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `run-dir` | Path to run directory (must contain `attestations/`) |
-
-### Examples
-
-```bash
-insidellms sign ./baseline
-```
-
----
-
-## verify-signatures
-
-Verify attestation signatures against Sigstore bundles.
-
-```bash
-insidellms verify-signatures <run-dir> [--identity ...]
-```
-
-### Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `run-dir` | Path to run directory (must contain `attestations/` and `signing/`) |
-
-### Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--identity CONSTRAINTS` | Identity constraints passed to verifier | None |
-
-### Examples
-
-```bash
-insidellms verify-signatures ./baseline
-insidellms verify-signatures ./baseline --identity "issuer=https://token.actions.githubusercontent.com"
 ```
 
 ---

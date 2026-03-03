@@ -298,8 +298,8 @@ sequenceDiagram
 
 - **Registry** (`insideLLMs/registry.py`): Central registration system for models, probes, and dataset loaders.
 - **Results & Export** (`insideLLMs/results.py`, `insideLLMs/types.py`): Structured experiment results and export helpers.
-- **Infra Utilities** (`insideLLMs/caching_unified.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`, `insideLLMs/streaming.py`): Optional utilities that can be wired into model wrappers.
-- **Prompt Tooling** (`insideLLMs/templates.py`, `insideLLMs/prompt_utils.py`, `insideLLMs/template_versioning.py`): Templates and versioning for prompt engineering workflows.
+- **Infra Utilities** (`insideLLMs/caching.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`, `insideLLMs/streaming.py`): Optional utilities that can be wired into model wrappers.
+- **Prompt Tooling** (`insideLLMs/contrib/templates.py`, `insideLLMs/contrib/prompt_utils.py`, `insideLLMs/contrib/template_versioning.py`): Templates and versioning for prompt engineering workflows.
 
 ## Extension Points
 

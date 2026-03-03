@@ -74,7 +74,7 @@ OpenAI, Anthropic, Cohere, Google, local models (Ollama, llama.cpp, vLLM). One i
 probes:
   - type: logic      # Reasoning consistency
   - type: bias       # Fairness across demographics
-  - type: safety     # Jailbreak resistance
+  - type: attack     # Jailbreak resistance
 ```
 
 **2. Run across models**

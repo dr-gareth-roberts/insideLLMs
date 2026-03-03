@@ -32,12 +32,13 @@ class Probe:
 | Category | Tests For | Example Probes |
 |----------|-----------|----------------|
 | `LOGIC` | Reasoning, deduction | LogicProbe |
-| `BIAS` | Demographic fairness | BiasProbe |
-| `SAFETY` | Security, jailbreaks | AttackProbe, JailbreakProbe |
 | `FACTUALITY` | Factual accuracy | FactualityProbe |
-| `CODE` | Programming tasks | CodeGenerationProbe |
-| `INSTRUCTION` | Following instructions | InstructionFollowingProbe |
-| `CUSTOM` | User-defined | Your probes |
+| `BIAS` | Demographic fairness | BiasProbe |
+| `ATTACK` | Adversarial robustness | AttackProbe, PromptInjectionProbe, JailbreakProbe |
+| `SAFETY` | Safety guardrails | (category available for custom probes) |
+| `REASONING` | Multi-step reasoning | AgentProbe |
+| `KNOWLEDGE` | Domain knowledge | (category available for custom probes) |
+| `CUSTOM` | User-defined | CodeGenerationProbe, InstructionFollowingProbe, your probes |
 
 ## How Probes Work
 

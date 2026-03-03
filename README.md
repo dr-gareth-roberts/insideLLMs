@@ -49,10 +49,10 @@ insideLLMs provides **deterministic, diffable, CI-gateable behavioural testing**
 ### 1. Define Behavioural Tests (Probes)
 
 ```python
-from insideLLMs import LogicProbe, BiasProbe, SafetyProbe
+from insideLLMs import LogicProbe, BiasProbe, AttackProbe
 
 # Test specific behaviours, not broad benchmarks
-probes = [LogicProbe(), BiasProbe(), SafetyProbe()]
+probes = [LogicProbe(), BiasProbe(), AttackProbe()]
 ```
 
 ### 2. Run Across Models
@@ -223,7 +223,7 @@ Build domain-specific tests without forking the framework.
 | Model upgrade breaks production | Catch it in CI with `--fail-on-changes` |
 | Need to compare GPT-4 vs Claude | Run harness, get side-by-side report |
 | Detect bias in salary advice | Use BiasProbe with paired prompts |
-| Test jailbreak resistance | Use SafetyProbe with attack patterns |
+| Test jailbreak resistance | Use AttackProbe with attack patterns |
 | Custom domain evaluation | Extend Probe base class |
 
 ## Comparison with Other Frameworks

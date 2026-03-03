@@ -199,7 +199,7 @@ Use `docs/STABILITY.md` and `docs/STABILITY_MATRIX.md` as the source of truth fo
        def generate(self, prompt: str, **kwargs) -> str:
            ...
 
-       def chat(self, messages: List[ChatMessage], **kwargs) -> str:
+       def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
            ...
 
        def stream(self, prompt: str, **kwargs) -> Iterator[str]:

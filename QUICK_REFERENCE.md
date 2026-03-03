@@ -195,7 +195,7 @@ asyncio.run(main())
 ### Benchmarking
 
 ```python
-from insideLLMs.benchmark import ModelBenchmark
+from insideLLMs.contrib.benchmark import ModelBenchmark
 
 benchmark = ModelBenchmark(
     models=[gpt, claude],
