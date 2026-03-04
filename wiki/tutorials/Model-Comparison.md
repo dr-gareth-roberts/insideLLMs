@@ -41,8 +41,7 @@ probes:
 dataset:
   format: jsonl
   path: test.jsonl
-async: true
-concurrency: 5
+output_dir: comparison_results
 ```
 
 ## Step 3: Run
@@ -163,17 +162,18 @@ Compare specific model outputs:
 
 ```bash
 # Extract single-model runs
-insidellms harness model_comparison.yaml \
-  --model-filter gpt-4o \
+insidellms harness gpt4o_only.yaml \
   --run-dir ./gpt4o_only
 
-insidellms harness model_comparison.yaml \
-  --model-filter claude-3-5-sonnet \
+insidellms harness claude_only.yaml \
   --run-dir ./claude_only
 
 # Diff the outputs
 insidellms diff ./gpt4o_only ./claude_only --output model_diff.json
 ```
+
+`gpt4o_only.yaml` and `claude_only.yaml` should use the same probes/dataset,
+each with exactly one model in `models:`.
 
 ---
 

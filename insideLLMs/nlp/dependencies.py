@@ -203,6 +203,12 @@ def ensure_nltk(resources: Iterable[str] = ()):
         if first_path:
             download_dir = first_path
             Path(download_dir).mkdir(parents=True, exist_ok=True)
+            # NLTK reads NLTK_DATA at import time.  If NLTK was imported *before*
+            # the environment variable was set (e.g. during pytest collection), the
+            # download directory won't be in nltk.data.path.  Insert it explicitly
+            # so that resources downloaded here are immediately findable.
+            if download_dir not in nltk.data.path:
+                nltk.data.path.insert(0, download_dir)
 
     for resource in expanded_resources:
         try:

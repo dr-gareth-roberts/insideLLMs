@@ -175,9 +175,9 @@ probes:
 ```python
 # Test customer service agent
 tools = [
-    ToolDefinition(name="check_order", ...),
-    ToolDefinition(name="process_refund", ...),
-    ToolDefinition(name="send_email", ...)
+    ToolDefinition(name="check_order", description="Check order status", parameters={"order_id": "string"}),
+    ToolDefinition(name="process_refund", description="Process a refund", parameters={"order_id": "string"}),
+    ToolDefinition(name="send_email", description="Send an email", parameters={"to": "string", "body": "string"}),
 ]
 
 probe = AgentProbe(tools=tools)

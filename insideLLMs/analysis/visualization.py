@@ -153,6 +153,7 @@ insideLLMs.export : Functions for exporting results to various formats
 import hashlib
 import html
 import re
+import warnings as _warnings
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
@@ -1201,7 +1202,9 @@ def plot_latency_distribution(
             for lat in lats:
                 data.append({"Model": model, "Latency (ms)": lat})
         df = pd.DataFrame(data)
-        sns.boxplot(x="Model", y="Latency (ms)", data=df)
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings("ignore", category=PendingDeprecationWarning, module="seaborn")
+            sns.boxplot(x="Model", y="Latency (ms)", data=df)
     else:
         # Simple box plot with matplotlib
         plt.boxplot(
@@ -1669,7 +1672,9 @@ def plot_factuality_results(
 
     df = pd.DataFrame(response_data)
     if SEABORN_AVAILABLE:
-        sns.boxplot(x="Category", y="Response Length", data=df)
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings("ignore", category=PendingDeprecationWarning, module="seaborn")
+            sns.boxplot(x="Category", y="Response Length", data=df)
     else:
         by_cat = {}
         for row in response_data:

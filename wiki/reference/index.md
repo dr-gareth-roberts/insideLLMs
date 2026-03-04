@@ -16,7 +16,7 @@ Complete reference documentation for insideLLMs.
 | [Configuration](Configuration.md) | Complete config file reference |
 | [Probes Catalog](Probes-Catalog.md) | Every built-in probe with examples |
 | [Models Catalog](Models-Catalog.md) | Every model provider with config |
-| [Schemas](Schemas.md) | Output artifact schemas |
+| [Artifact Schemas](../concepts/Artifacts.md) | Output artifact schemas |
 
 ## Quick Links
 
@@ -71,4 +71,4 @@ from insideLLMs.dataset_utils import load_jsonl_dataset, load_csv_dataset
 | Configure a model | [Models Catalog](Models-Catalog.md) |
 | Choose a probe | [Probes Catalog](Probes-Catalog.md) |
 | Write a config file | [Configuration](Configuration.md) |
-| Understand output format | [Schemas](Schemas.md) |
+| Understand output format | [Artifact Schemas](../concepts/Artifacts.md) |

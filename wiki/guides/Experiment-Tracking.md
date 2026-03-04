@@ -19,26 +19,21 @@ Log runs to external tracking systems for visualisation and comparison.
 
 ## Enabling Tracking
 
-### In Config
+### Via CLI Flags
 
-```yaml
-tracking:
-  enabled: true
-  backend: wandb
-  project: my-llm-evaluation
-  tags:
-    - experiment
-    - v1
+```bash
+insidellms run experiment.yaml --track wandb --track-project my-llm-evaluation
+insidellms harness harness.yaml --track local --track-project my-llm-evaluation
 ```
 
 ### Programmatically
 
 ```python
-from insideLLMs.tracking import get_tracker
+from insideLLMs.experiment_tracking import create_tracker
 
-tracker = get_tracker("wandb", project="my-llm-evaluation")
+tracker = create_tracker("wandb", project="my-llm-evaluation")
 
-with tracker.start_run(name="bias-test"):
+with tracker:
     # Run your experiment
     results = runner.run(prompt_set)
     
@@ -49,7 +44,7 @@ with tracker.start_run(name="bias-test"):
     })
     
     # Log artifacts
-    tracker.log_artifact("results", results)
+    tracker.log_artifact("./runs/bias-test/summary.json")
 ```
 
 ---
@@ -58,24 +53,27 @@ with tracker.start_run(name="bias-test"):
 
 Simple file-based logging for local analysis.
 
-### Config
+### CLI
 
-```yaml
-tracking:
-  enabled: true
-  backend: local
-  output_dir: ./tracking_logs
+```bash
+insidellms run experiment.yaml --track local --track-project my-llm-evaluation
 ```
+
+Local tracking is written under `<run_dir_parent>/tracking/<track-project>/<run-id>/`.
 
 ### What Gets Logged
 
 ```
-tracking_logs/
-├── run_abc123/
-│   ├── metrics.json
-│   ├── params.json
-│   └── artifacts/
-│       └── results.json
+tracking/
+└── my-llm-evaluation/
+    └── <run_id>/
+        ├── metadata.json
+        ├── metrics.json
+        ├── params.json
+        ├── artifacts.json
+        ├── final_state.json
+        └── artifacts/
+            └── <copied files>
 ```
 
 ---
@@ -91,16 +89,10 @@ pip install wandb
 wandb login
 ```
 
-### Config
+### CLI
 
-```yaml
-tracking:
-  enabled: true
-  backend: wandb
-  project: llm-evaluation
-  entity: my-team  # Optional
-  tags:
-    - production
+```bash
+insidellms run experiment.yaml --track wandb --track-project llm-evaluation
 ```
 
 ### Features
@@ -132,14 +124,13 @@ pip install mlflow
 mlflow server --host 127.0.0.1 --port 5000
 ```
 
-### Config
+### CLI
 
-```yaml
-tracking:
-  enabled: true
-  backend: mlflow
-  tracking_uri: http://localhost:5000
-  experiment_name: llm-evaluation
+```bash
+# Optional: set remote tracking server
+export MLFLOW_TRACKING_URI=http://localhost:5000
+
+insidellms run experiment.yaml --track mlflow --track-project llm-evaluation
 ```
 
 ### Features
@@ -168,19 +159,19 @@ TensorFlow's visualisation toolkit.
 pip install tensorboard
 ```
 
-### Config
+### CLI
 
-```yaml
-tracking:
-  enabled: true
-  backend: tensorboard
-  log_dir: ./tb_logs
+```bash
+insidellms run experiment.yaml --track tensorboard --track-project llm-evaluation
 ```
+
+TensorBoard logs are written under
+`<run_dir_parent>/tracking/tensorboard/<track-project>/<run-id>/`.
 
 ### Viewing Results
 
 ```bash
-tensorboard --logdir ./tb_logs
+tensorboard --logdir ~/.insidellms/runs/tracking/tensorboard/llm-evaluation
 # Open http://localhost:6006
 ```
 

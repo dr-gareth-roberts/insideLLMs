@@ -125,7 +125,7 @@ Notes:
 ### Python API (minimal)
 
 ```python
-from insideLLMs import create_tracker
+from insideLLMs.experiment_tracking import create_tracker
 
 with create_tracker("local", output_dir="./experiments") as tracker:
     tracker.log_params({"model": "gpt-4"})
@@ -142,7 +142,7 @@ Backend-specific construction:
 Auto-track a function:
 
 ```python
-from insideLLMs import LocalFileTracker, auto_track
+from insideLLMs.experiment_tracking import LocalFileTracker, auto_track
 
 @auto_track(LocalFileTracker(output_dir="./experiments"), experiment_name="baseline")
 def run_eval():
@@ -152,7 +152,7 @@ def run_eval():
 Log an ExperimentResult:
 
 ```python
-from insideLLMs import LocalFileTracker
+from insideLLMs.experiment_tracking import LocalFileTracker
 
 # result = ... (ExperimentResult)
 with LocalFileTracker(output_dir="./experiments") as tracker:

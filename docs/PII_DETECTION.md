@@ -30,14 +30,13 @@ insideLLMs provides comprehensive PII (Personally Identifiable Information) dete
 
 **Legend:**
 - ✅ Comprehensive coverage
-- ⚠️ Basic coverage (may have false positives/negatives)
 
 ## Usage Examples
 
 ### Basic US Detection
 
 ```python
-from insideLLMs.safety import PIIDetector, PIIRegion
+from insideLLMs.safety import PIIDetector
 
 # US + Global patterns (default)
 detector = PIIDetector()
@@ -53,15 +52,15 @@ for match in report.matches:
 ### Multi-Region Detection
 
 ```python
-# Enable US, EU, and Global patterns
-detector = PIIDetector(regions={PIIRegion.US, PIIRegion.EU, PIIRegion.GLOBAL})
+detector = PIIDetector()
 
-text = "IBAN: GB82WEST12345698765432, Email: test@example.com"
+# Add region-specific patterns explicitly (examples only)
+detector.add_pattern("iban", r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b", "[IBAN]")
+detector.add_pattern("uk_postcode", r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b", "[UK_POSTCODE]")
+
+text = "IBAN: GB82WEST12345698765432, Postcode: SW1A 1AA, Email: test@example.com"
 report = detector.detect(text)
-
-# Filter by region
-eu_matches = report.get_by_region("eu")
-print(f"Found {len(eu_matches)} EU PII items")
+print(f"Found {len(report.matches)} PII items")
 ```
 
 ### Custom Patterns
@@ -71,11 +70,9 @@ detector = PIIDetector()
 
 # Add company-specific pattern
 detector.add_pattern(
-    pii_type="employee_id",
+    name="employee_id",
     pattern=r"EMP-\d{6}",
-    mask_token="[EMP_ID]",
-    region=PIIRegion.GLOBAL,
-    description="Company Employee ID"
+    mask="[EMP_ID]",
 )
 
 text = "Employee EMP-123456 submitted the report"

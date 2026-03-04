@@ -11,51 +11,65 @@ nav_order: 1
 ## Enable
 
 ```yaml
-cache:
-  enabled: true
-  backend: sqlite
-  path: .cache/insidellms.db
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
+  pipeline:
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 1000
+          ttl_seconds: 86400
 ```
 
-## Cache Backends
+## Cache Approaches
 
-| Backend | Persistence | Speed | Use Case |
-|---------|-------------|-------|----------|
-| `memory` | Session only | Fastest | Testing |
-| `sqlite` | Disk | Fast | Development |
-| `redis` | Network | Medium | Team sharing |
+| Approach | Persistence | Use Case |
+|----------|-------------|----------|
+| `CacheMiddleware` in `model.pipeline` | Process memory | CLI/YAML runs |
+| `InMemoryCache` + `CachedModel` | Process memory | Python scripts/tests |
+| `DiskCache` + `CachedModel` | SQLite on disk | Persistent local caching |
 
-### Memory Cache
+### In-Memory Cache (YAML/CLI)
 
 ```yaml
-cache:
-  enabled: true
-  backend: memory
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
+  pipeline:
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 1000
 ```
 
 Session-only; cleared when process exits.
 
-### SQLite Cache
+### Programmatic In-Memory Cache
 
-```yaml
-cache:
-  enabled: true
-  backend: sqlite
-  path: .cache/responses.db
+```python
+from insideLLMs.caching import CachedModel, InMemoryCache
+
+cache = InMemoryCache(max_size=1000, default_ttl=3600)
+cached_model = CachedModel(base_model, cache=cache)
+
+response = cached_model.generate("Hello")
 ```
 
-Persistent; survives restarts.
+### Programmatic Persistent Disk Cache
 
-### Redis Cache
+```python
+from pathlib import Path
 
-```yaml
-cache:
-  enabled: true
-  backend: redis
-  url: redis://localhost:6379/0
+from insideLLMs.caching import CachedModel, DiskCache
+
+cache = DiskCache(path=Path(".cache/responses.db"), max_size_mb=200, default_ttl=86400)
+cached_model = CachedModel(base_model, cache=cache)
 ```
 
-Shared across machines; requires Redis server.
+Persists across process restarts.
 
 ## Cache Key Generation
 
@@ -76,8 +90,8 @@ This means:
 
 ### Clear All
 
-```bash
-rm -rf .cache/insidellms.db
+```python
+cache.clear()
 ```
 
 ### Clear Programmatically
@@ -89,10 +103,16 @@ cache.clear()
 ### TTL-based Expiration
 
 ```yaml
-cache:
-  enabled: true
-  backend: sqlite
-  ttl_seconds: 86400  # 24 hours
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
+  pipeline:
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 1000
+          ttl_seconds: 86400  # 24 hours
 ```
 
 ## When to Disable Caching
@@ -102,23 +122,25 @@ cache:
 - **Production benchmarks**: Measure actual latency
 
 ```yaml
-cache:
-  enabled: false
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
 ```
 
-Or via CLI:
-
-```bash
-insidellms run config.yaml --no-cache
-```
+Or programmatically, use the uncached base model directly instead of `CachedModel`.
 
 ## Cache Statistics
 
 ```python
+# CacheMiddleware stats (pipeline usage)
+print(f"Hits: {cache_middleware.hits}")
+print(f"Misses: {cache_middleware.misses}")
+print(f"Hit rate: {cache_middleware.hit_rate:.1%}")
+
+# InMemoryCache / DiskCache stats (programmatic usage)
 stats = cache.stats()
-print(f"Hits: {stats['hits']}")
-print(f"Misses: {stats['misses']}")
-print(f"Hit rate: {stats['hit_rate']:.1%}")
+print(f"Hit rate: {stats.hit_rate:.1%}")
 ```
 
 ## Best Practices

@@ -78,12 +78,8 @@ For small datasets directly in config:
 
 ```yaml
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-      expected: "4"
-    - question: "What colour is the sky?"
-      expected: "blue"
+  format: jsonl
+  path: data/test.jsonl
 ```
 
 ## HuggingFace Datasets
@@ -92,22 +88,21 @@ Load standard benchmarks:
 
 ```yaml
 dataset:
-  format: huggingface
+  format: hf
   name: cais/mmlu
   split: test
-  subset: abstract_algebra
-  max_examples: 100
+
+max_examples: 100
 ```
 
 ### Programmatically
 
 ```python
-from insideLLMs.dataset_utils import load_huggingface_dataset
+from insideLLMs.dataset_utils import load_hf_dataset
 
-items = load_huggingface_dataset(
-    name="cais/mmlu",
+items = load_hf_dataset(
+    dataset_name="cais/mmlu",
     split="test",
-    subset="abstract_algebra"
 )
 ```
 

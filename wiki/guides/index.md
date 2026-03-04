@@ -33,12 +33,6 @@ How-to guides for specific tasks and integrations.
 
 ### Speed Up Runs
 
-```yaml
-# Enable async execution
-async: true
-concurrency: 10
-```
-
 ```bash
 insidellms run config.yaml --async --concurrency 10
 ```
@@ -46,11 +40,13 @@ insidellms run config.yaml --async --concurrency 10
 ### Reduce Costs
 
 ```yaml
-# Limit examples and enable caching
+# Limit examples and enable cache middleware
 max_examples: 50
-cache:
-  enabled: true
-  backend: sqlite
+pipeline:
+  middlewares:
+    - type: cache
+      args:
+        cache_size: 1000
 ```
 
 ### Run Offline

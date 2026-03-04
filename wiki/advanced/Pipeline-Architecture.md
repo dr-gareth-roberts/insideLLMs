@@ -76,18 +76,17 @@ pipeline = ModelPipeline(model)
 
 # Add middleware in order
 pipeline.add_middleware(CacheMiddleware(
-    backend="sqlite",
-    path=".cache/responses.db",
+    cache_size=5000,
     ttl_seconds=3600
 ))
 
 pipeline.add_middleware(RateLimitMiddleware(
     requests_per_minute=60,
-    tokens_per_minute=90000
+    burst_size=10
 ))
 
 pipeline.add_middleware(RetryMiddleware(
-    max_attempts=3,
+    max_retries=3,
     initial_delay=1.0,
     exponential_base=2.0
 ))
@@ -97,8 +96,9 @@ pipeline.add_middleware(CostTrackingMiddleware())
 # Use like normal model
 response = pipeline.generate("What is quantum computing?")
 
-# Check cost
-print(f"Cost: ${pipeline.get_total_cost():.4f}")
+# Check cost tracking stats
+print(f"Requests: {cost_mw.total_requests}")
+print(f"Estimated cost: ${cost_mw.estimated_cost:.4f}")
 ```
 
 ## Async Support
@@ -134,19 +134,24 @@ pipeline.add_middleware(LoggingMiddleware())
 ## Configuration
 
 ```yaml
-# In harness config
-pipeline:
-  middleware:
-    - type: cache
-      args:
-        backend: sqlite
-        ttl_seconds: 3600
-    - type: rate_limit
-      args:
-        requests_per_minute: 60
-    - type: retry
-      args:
-        max_attempts: 3
+# Per-model pipeline middleware (in run/harness config)
+model:
+  type: openai
+  args:
+    model_name: gpt-4o
+  pipeline:
+    middlewares:
+      - type: cache
+        args:
+          cache_size: 5000
+          ttl_seconds: 3600
+      - type: rate_limit
+        args:
+          requests_per_minute: 60
+          burst_size: 10
+      - type: retry
+        args:
+          max_retries: 3
 ```
 
 ## Why This Matters

@@ -88,14 +88,11 @@ This continues from where it left off using existing `records.jsonl`.
 
 ### Can I run multiple models in parallel?
 
-Yes, with async execution:
+Yes. Use async CLI execution:
 
-```yaml
-async: true
-concurrency: 10
+```bash
+insidellms run config.yaml --async --concurrency 10
 ```
-
-Or via CLI: `--async --concurrency 10`
 
 ---
 
@@ -136,28 +133,34 @@ OpenAI, Anthropic, Google/Gemini, Cohere, HuggingFace, Ollama, vLLM, llama.cpp, 
 ### How do I reduce API costs?
 
 1. **Limit examples**: `max_examples: 50`
-2. **Enable caching**: `cache: {enabled: true}`
+2. **Enable caching**: Add `cache` middleware in `pipeline.middlewares`
 3. **Use cheaper models**: Start with `gpt-4o-mini`
 4. **Test with DummyModel**: No cost for framework testing
 
 ### How do I speed up runs?
 
 ```yaml
-async: true
-concurrency: 20
-cache:
-  enabled: true
+pipeline:
+  middlewares:
+    - type: cache
+      args:
+        cache_size: 1000
 ```
+
+Run with concurrency: `insidellms run config.yaml --async --concurrency 20`
 
 ### I'm hitting rate limits. What do I do?
 
 ```yaml
-rate_limit:
-  enabled: true
-  requests_per_minute: 60
-
-concurrency: 5  # Lower this
+pipeline:
+  middlewares:
+    - type: rate_limit
+      args:
+        requests_per_minute: 60
+        burst_size: 10
 ```
+
+Also lower concurrency: `insidellms run config.yaml --async --concurrency 5`
 
 See [Rate Limiting Guide](guides/Rate-Limiting.md).
 
@@ -210,7 +213,7 @@ Model responses are non-deterministic. For deterministic CI:
 models:
   - type: dummy
     args:
-      response: "Fixed response"
+      canned_response: "Fixed response"
 ```
 
 ### How do I update the baseline after intentional changes?

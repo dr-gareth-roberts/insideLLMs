@@ -53,7 +53,7 @@ def _lc_messages_to_insidellms(messages: Sequence[Any]) -> list[ChatMessage]:
 
         content = _message_content_to_text(getattr(msg, "content", None))
         name = getattr(msg, "name", None)
-        converted.append({"role": role, "content": content, "name": name})
+        converted.append({"role": role, "content": content, "name": name})  # type: ignore[typeddict-item]
     return converted
 
 

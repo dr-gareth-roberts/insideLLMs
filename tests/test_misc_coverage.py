@@ -1752,7 +1752,6 @@ class TestDistributedCoverage:
             with pytest.raises(FileNotFoundError):
                 mgr.load("nonexistent")
 
-    @requires_process_spawn
     def test_process_pool_executor_basic(self):
         from insideLLMs.contrib.distributed import ProcessPoolDistributedExecutor, Task
 
@@ -1764,7 +1763,6 @@ class TestDistributedCoverage:
         assert results_by_id["s1"].result == 25
         assert results_by_id["s2"].result == 9
 
-    @requires_process_spawn
     def test_process_pool_executor_progress_callback(self):
         from insideLLMs.contrib.distributed import ProcessPoolDistributedExecutor, Task
 
@@ -1778,7 +1776,6 @@ class TestDistributedCoverage:
         executor.run(progress_callback=on_progress)
         assert len(progress) == 3
 
-    @requires_process_spawn
     def test_process_pool_executor_with_checkpoint(self):
         from insideLLMs.contrib.distributed import (
             DistributedCheckpointManager,
@@ -1797,7 +1794,6 @@ class TestDistributedCoverage:
             # Checkpoint should be deleted on success
             assert "cp_test" not in mgr.list_checkpoints()
 
-    @requires_process_spawn
     def test_experiment_runner_run_experiments_with_processes(self):
         from insideLLMs.contrib.distributed import DistributedExperimentRunner
 
@@ -1821,7 +1817,6 @@ class TestDistributedCoverage:
             )
             assert runner.checkpoint_manager is not None
 
-    @requires_process_spawn
     def test_parallel_map_with_processes(self):
         from insideLLMs.contrib.distributed import parallel_map
 

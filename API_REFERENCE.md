@@ -155,10 +155,7 @@ Model implementation for OpenAI's GPT models via API.
 
 **Constructor:**
 ```python
-OpenAIModel(
-    name: str = "OpenAIModel",
-    model_name: str = "gpt-3.5-turbo"
-)
+"""OpenAIModel(name: str = 'OpenAIModel', model_name: str = 'gpt-3.5-turbo')"""
 ```
 
 **Parameters:**
@@ -205,10 +202,7 @@ Model implementation for Anthropic's Claude models via API.
 
 **Constructor:**
 ```python
-AnthropicModel(
-    name: str = "AnthropicModel",
-    model_name: str = "claude-3-opus-20240229"
-)
+"""AnthropicModel(name: str = 'AnthropicModel', model_name: str = 'claude-3-opus-20240229')"""
 ```
 
 **Parameters:**
@@ -249,11 +243,7 @@ Model implementation for HuggingFace Transformers models.
 
 **Constructor:**
 ```python
-HuggingFaceModel(
-    name: str = "HuggingFaceModel",
-    model_name: str = "gpt2",
-    device: int = -1
-)
+"""HuggingFaceModel(name: str = 'HuggingFaceModel', model_name: str = 'gpt2', device: int = -1)"""
 ```
 
 **Parameters:**
@@ -293,12 +283,7 @@ A simple model for testing that echoes the prompt or returns canned responses.
 
 **Constructor:**
 ```python
-DummyModel(
-    name: str = "DummyModel",
-    response_prefix: str = "[DummyModel]",
-    echo: bool = True,
-    canned_response: str = None
-)
+"""DummyModel(name: str = 'DummyModel', response_prefix: str = '[DummyModel]', echo: bool = True, canned_response: str | None = None)"""
 ```
 
 **Parameters:**
@@ -461,11 +446,7 @@ Probe to test LLMs' zero-shot ability at logic problems.
 
 **Constructor:**
 ```python
-LogicProbe(
-    name: str = "LogicProbe",
-    prompt_template: Optional[str] = None,
-    extract_answer: bool = True
-)
+"""LogicProbe(name: str = 'LogicProbe', prompt_template: Optional[str] = None, extract_answer: bool = True)"""
 ```
 
 **Parameters:**
@@ -531,11 +512,7 @@ Probe to test LLMs' propensity for bias through comparative analysis.
 
 **Constructor:**
 ```python
-BiasProbe(
-    name: str = "BiasProbe",
-    bias_dimension: str = "general",
-    analyze_sentiment: bool = True
-)
+"""BiasProbe(name: str = 'BiasProbe', bias_dimension: str = 'general', analyze_sentiment: bool = True)"""
 ```
 
 **Parameters:**
@@ -622,12 +599,7 @@ Probe to test LLMs' vulnerability to adversarial attacks and prompt injection.
 
 **Constructor:**
 ```python
-AttackProbe(
-    name: str = "AttackProbe",
-    attack_type: str = "general",
-    success_indicators: Optional[List[str]] = None,
-    safety_indicators: Optional[List[str]] = None
-)
+"""AttackProbe(name: str = 'AttackProbe', attack_type: str = 'general', success_indicators: Optional[List[str]] = None, safety_indicators: Optional[List[str]] = None)"""
 ```
 
 **Parameters:**
@@ -734,7 +706,7 @@ Probe to test LLMs' factual accuracy.
 
 **Constructor:**
 ```python
-FactualityProbe(name: str = "FactualityProbe")
+"""FactualityProbe(name: str = 'FactualityProbe')"""
 ```
 
 **Input Format:**
@@ -805,11 +777,7 @@ Synchronous runner for executing probes on models.
 
 **Constructor:**
 ```python
-ProbeRunner(
-    model: Model,
-    probe: Probe,
-    verbose: bool = False
-)
+"""ProbeRunner(model: Model, probe: Probe, verbose: bool = False)"""
 ```
 
 **Parameters:**
@@ -870,11 +838,7 @@ Asynchronous runner for concurrent probe execution.
 
 **Constructor:**
 ```python
-AsyncProbeRunner(
-    model: Model,
-    probe: Probe,
-    verbose: bool = False
-)
+"""AsyncProbeRunner(model: Model, probe: Probe, verbose: bool = False)"""
 ```
 
 **Parameters:**
@@ -979,13 +943,7 @@ Comprehensive benchmarking system for evaluating models across multiple probes.
 
 **Constructor:**
 ```python
-ModelBenchmark(
-    models: List[Model],
-    probes: List[Probe],
-    dataset: Optional[List[Any]] = None,
-    name: str = "Benchmark",
-    verbose: bool = True
-)
+"""ModelBenchmark(models: List[Model], probes: List[Probe], dataset: Optional[List[Any]] = None, name: str = 'Benchmark', verbose: bool = True)"""
 ```
 
 **Parameters:**
@@ -1274,18 +1232,18 @@ Capture sampled production traffic in canonical `records.jsonl` format using Fas
 
 **Signature (abridged):**
 ```python
-fastapi(
+"""fastapi(
     *,
-    output_path: str | Path = "records.jsonl",
+    output_path: str | Path = 'records.jsonl',
     sample_rate: float = 0.01,
     run_id: str | None = None,
-    model_id: str = "production-shadow",
-    model_provider: str = "insideLLMs",
-    probe_id: str = "shadow_capture",
-    dataset_id: str = "production-traffic",
+    model_id: str = 'production-shadow',
+    model_provider: str = 'insideLLMs',
+    probe_id: str = 'shadow_capture',
+    dataset_id: str = 'production-traffic',
     include_request_headers: bool = False,
     strict_serialization: bool = False,
-)
+)"""
 ```
 
 **Notes:**
@@ -2409,7 +2367,7 @@ The following sections document the advanced modules for production-grade LLM ap
 
 ### Context Window Management
 
-**Module:** `insideLLMs.context_window`
+**Module:** `insideLLMs.contrib.context_window`
 
 Provides smart context management for LLM applications including token budget allocation, truncation strategies, and conversation history management.
 
@@ -2420,7 +2378,7 @@ Provides smart context management for LLM applications including token budget al
 Main context window manager with automatic truncation and compression.
 
 ```python
-from insideLLMs import (
+from insideLLMs.contrib.context_window import (
     ContextWindow,
     ContentType,
     PriorityLevel,
@@ -2454,7 +2412,7 @@ messages = window.get_messages()
 Multi-turn conversation management with automatic summarization.
 
 ```python
-from insideLLMs import ConversationManager, create_conversation_manager
+from insideLLMs.contrib.context_window import ConversationManager, create_conversation_manager
 
 manager = create_conversation_manager(
     max_tokens=100000,
@@ -2478,7 +2436,7 @@ print(f"Turns: {stats['total_turns']}, Tokens: {stats['context_tokens']}")
 Allocate token budgets across different content types.
 
 ```python
-from insideLLMs import TokenBudget, create_budget
+from insideLLMs.contrib.context_window import TokenBudget, create_budget
 
 budget = create_budget(
     total=128000,
@@ -2514,7 +2472,7 @@ Intelligent caching for LLM operations with multiple eviction strategies and res
 Specialized cache for LLM prompts and responses.
 
 ```python
-from insideLLMs import (
+from insideLLMs.caching import (
     PromptCache,
     CacheConfig,
     CacheStrategy,
@@ -2557,7 +2515,7 @@ similar = cache.find_similar("What is artificial intelligence?")
 Memoize expensive function calls.
 
 ```python
-from insideLLMs import memoize
+from insideLLMs.caching import memoize
 
 @memoize(max_size=100, ttl_seconds=600)
 def expensive_computation(prompt: str) -> str:
@@ -2573,7 +2531,7 @@ result2 = expensive_computation("Hello")  # Uses cache
 Simple pattern for caching LLM responses.
 
 ```python
-from insideLLMs import cached_response, create_prompt_cache
+from insideLLMs.caching import cached_response, create_prompt_cache
 
 cache = create_prompt_cache()
 
@@ -2593,7 +2551,7 @@ response, was_cached = cached_response(
 Preload cache with common prompts.
 
 ```python
-from insideLLMs import CacheWarmer, create_cache_warmer, create_prompt_cache
+from insideLLMs.caching import CacheWarmer, create_cache_warmer, create_prompt_cache
 
 cache = create_prompt_cache()
 
@@ -2620,7 +2578,7 @@ results = warmer.warm(batch_size=10)
 
 ### Model Adapter Factory
 
-**Module:** `insideLLMs.adapters`
+**Module:** `insideLLMs.contrib.adapters`
 
 Unified interface for different LLM providers with fallback chains and connection monitoring.
 
@@ -2631,7 +2589,7 @@ Unified interface for different LLM providers with fallback chains and connectio
 Create adapters for different providers.
 
 ```python
-from insideLLMs import (
+from insideLLMs.contrib.adapters import (
     AdapterFactory,
     Provider,
     GenerationParams,
@@ -2640,8 +2598,7 @@ from insideLLMs import (
 
 # Simple adapter creation
 adapter = create_adapter(
-    provider=Provider.OPENAI,
-    model="gpt-4",
+    model_id="gpt-4",
     api_key="sk-...",
 )
 
@@ -2655,7 +2612,7 @@ print(result.text)
 
 # Using factory
 factory = AdapterFactory()
-adapter = factory.create(Provider.ANTHROPIC, model="claude-3-opus")
+adapter = factory.create(model_id="claude-3-opus", provider=Provider.ANTHROPIC)
 ```
 
 ##### `FallbackChain`
@@ -2663,12 +2620,11 @@ adapter = factory.create(Provider.ANTHROPIC, model="claude-3-opus")
 Chain multiple providers with automatic fallback.
 
 ```python
-from insideLLMs import FallbackChain, create_fallback_chain, create_adapter
+from insideLLMs.contrib.adapters import FallbackChain, create_fallback_chain, create_adapter
 
-primary = create_adapter(Provider.OPENAI, model="gpt-4")
-fallback = create_adapter(Provider.ANTHROPIC, model="claude-3-opus")
-
-chain = create_fallback_chain([primary, fallback])
+chain = create_fallback_chain(
+    model_ids=["gpt-4", "claude-3-opus"],
+)
 
 # Automatically falls back if primary fails
 result = chain.generate("Hello!")
@@ -2680,14 +2636,9 @@ print(f"Used adapter: {result.metadata.get('adapter_index')}")
 Pool of adapters for load balancing.
 
 ```python
-from insideLLMs import AdapterPool, create_adapter_pool, create_adapter
+from insideLLMs.contrib.adapters import AdapterPool, create_adapter_pool, create_adapter
 
-adapters = [
-    create_adapter(Provider.OPENAI, model="gpt-4"),
-    create_adapter(Provider.OPENAI, model="gpt-4"),  # Multiple instances
-]
-
-pool = create_adapter_pool(adapters)
+pool = create_adapter_pool(["gpt-4", "gpt-4"])  # Multiple instances
 
 # Round-robin load balancing
 result = pool.generate("Query 1")
@@ -2699,9 +2650,9 @@ result = pool.generate("Query 2")  # Uses next adapter
 Track available models and capabilities.
 
 ```python
-from insideLLMs import AdapterModelRegistry, ModelCapability
+from insideLLMs.contrib.adapters import ModelCapability, ModelRegistry
 
-registry = AdapterModelRegistry()
+registry = ModelRegistry()
 
 # List models by capability
 chat_models = registry.get_by_capability(ModelCapability.CHAT)
@@ -2729,18 +2680,14 @@ Ensure reproducible experiments with seed management, environment capture, and c
 Manage random seeds for reproducibility.
 
 ```python
-from insideLLMs import SeedManager, create_seed_manager, set_global_seed
+from insideLLMs.reproducibility import SeedManager, create_seed_manager, set_global_seed
 
 # Set global seed
 set_global_seed(42)
 
 # Create seed manager
-manager = create_seed_manager(base_seed=42)
-
-# Get deterministic seeds
-seed1 = manager.get_seed("experiment_1")
-seed2 = manager.get_seed("experiment_1")  # Same seed
-seed3 = manager.get_seed("experiment_2")  # Different seed
+manager = create_seed_manager(seed=42)
+manager.set_all_seeds()
 ```
 
 ##### `ExperimentSnapshot`
@@ -2748,7 +2695,7 @@ seed3 = manager.get_seed("experiment_2")  # Different seed
 Capture and restore experiment state.
 
 ```python
-from insideLLMs import (
+from insideLLMs.reproducibility import (
     ExperimentSnapshot,
     capture_snapshot,
     save_snapshot,
@@ -2774,13 +2721,13 @@ loaded = load_snapshot("experiment_snapshot.json")
 Capture environment details.
 
 ```python
-from insideLLMs import EnvironmentCapture, capture_environment
+from insideLLMs.reproducibility import EnvironmentCapture, capture_environment
 
 env = capture_environment()
 
 print(f"Python: {env.python_version}")
 print(f"Packages: {env.packages}")
-print(f"GPU available: {env.gpu_info}")
+print(f"Platform: {env.platform_info}")
 ```
 
 ##### `DeterministicExecutor`
@@ -2788,7 +2735,7 @@ print(f"GPU available: {env.gpu_info}")
 Run code with guaranteed reproducibility.
 
 ```python
-from insideLLMs import DeterministicExecutor, run_deterministic
+from insideLLMs.reproducibility import DeterministicExecutor, run_deterministic
 
 def experiment():
     import random
@@ -2804,7 +2751,7 @@ assert result1 == result2
 
 ### Prompt Debugging and Tracing
 
-**Module:** `insideLLMs.debugging`
+**Module:** `insideLLMs.contrib.debugging`
 
 Debug and visualize prompt execution with detailed tracing.
 
@@ -2815,19 +2762,15 @@ Debug and visualize prompt execution with detailed tracing.
 Debug prompt execution with breakpoints and inspection.
 
 ```python
-from insideLLMs import PromptDebugger, create_debugger, DebugLevel
+from insideLLMs.contrib.debugging import DebugLevel, create_debugger
 
-debugger = create_debugger(level=DebugLevel.VERBOSE)
+debugger = create_debugger(level=DebugLevel.DETAILED)
 
-# Start debugging session
-session = debugger.start_session("test_prompt")
-
-# Add events
-debugger.log_prompt_sent("What is 2+2?")
-debugger.log_response_received("4")
-
-# Analyze session
-issues = debugger.analyze_session(session)
+with debugger.trace(metadata={"name": "test_prompt"}) as trace:
+    debugger.step_start("step1", "Ask")
+    debugger.log_prompt("What is 2+2?", step_id="step1")
+    debugger.log_response("4", step_id="step1")
+    debugger.step_end("step1", "Ask", duration_ms=1)
 ```
 
 ##### `TraceVisualizer`
@@ -2835,18 +2778,15 @@ issues = debugger.analyze_session(session)
 Visualize execution traces.
 
 ```python
-from insideLLMs import TraceVisualizer, create_visualizer, ExecutionTrace
+from insideLLMs.contrib.debugging import ExecutionTrace, TraceVisualizer, create_visualizer, export_trace
 
 visualizer = create_visualizer()
-
-# Render trace as text
-text = visualizer.render_text(trace)
 
 # Render as timeline
 timeline = visualizer.render_timeline(trace)
 
 # Export to JSON
-json_data = visualizer.export_json(trace)
+json_data = export_trace(trace, format="json")
 ```
 
 ##### `PromptInspector`
@@ -2854,7 +2794,7 @@ json_data = visualizer.export_json(trace)
 Inspect prompts for potential issues.
 
 ```python
-from insideLLMs import PromptInspector, inspect_prompt
+from insideLLMs.contrib.debugging import PromptInspector, inspect_prompt
 
 inspector = PromptInspector()
 
@@ -2869,7 +2809,7 @@ print(f"Has questions: {result['has_questions']}")
 
 ### Prompt Chain Orchestration
 
-**Module:** `insideLLMs.chains`
+**Module:** `insideLLMs.contrib.chains`
 
 Build complex prompt workflows with sequential, parallel, and conditional execution.
 
@@ -2880,30 +2820,20 @@ Build complex prompt workflows with sequential, parallel, and conditional execut
 Build multi-step prompt workflows.
 
 ```python
-from insideLLMs import (
-    Chain,
-    ChainBuilder,
-    create_chain,
-    create_llm_step,
-    create_transform_step,
+from insideLLMs.contrib.chains import create_chain
+
+def mock_llm(prompt: str) -> str:
+    return f"Response to: {prompt}"
+
+chain = (
+    create_chain("analysis_chain", model_fn=mock_llm)
+    .llm("analyze", "Analyze this text: {input}")
+    .transform("extract", lambda d, s: str(d).split("\\n")[0])
+    .build()
 )
 
-# Build chain
-builder = ChainBuilder()
-builder.add_llm_step(
-    name="analyze",
-    prompt_template="Analyze this text: {input}",
-)
-builder.add_transform_step(
-    name="extract",
-    transform_fn=lambda x: x.split('\n')[0],
-)
-
-chain = builder.build()
-
-# Execute
-result = chain.execute({"input": "Sample text to analyze"})
-print(result.output)
+result = chain.run("Sample text to analyze")
+print(result.final_output)
 ```
 
 ##### `ParallelStep`
@@ -2911,20 +2841,18 @@ print(result.output)
 Run multiple steps in parallel.
 
 ```python
-from insideLLMs import ChainBuilder, ParallelStep
+from insideLLMs.contrib.chains import ChainState, ParallelStep, TransformStep
 
-builder = ChainBuilder()
-builder.add_parallel_step(
-    name="multi_analysis",
-    steps=[
-        create_llm_step("sentiment", "Analyze sentiment: {input}"),
-        create_llm_step("topics", "Extract topics: {input}"),
-    ],
+steps = [
+    TransformStep("sentiment", lambda d, s: f"sentiment({d})"),
+    TransformStep("topics", lambda d, s: f"topics({d})"),
+]
+step = ParallelStep(
+    "multi_analysis",
+    steps=steps,
+    aggregator=lambda r: {"sentiment": r[0], "topics": r[1]},
 )
-
-chain = builder.build()
-result = chain.execute({"input": "Great product!"})
-# result.output = {"sentiment": "...", "topics": "..."}
+output = step.execute("Great product!", ChainState())
 ```
 
 ##### `ConditionalStep`
@@ -2932,17 +2860,13 @@ result = chain.execute({"input": "Great product!"})
 Execute steps based on conditions.
 
 ```python
-from insideLLMs import ChainBuilder, ConditionalStep
+from insideLLMs.contrib.chains import ChainState, ConditionalStep, TransformStep
 
-builder = ChainBuilder()
-builder.add_conditional_step(
-    name="route",
-    condition=lambda ctx: len(ctx["input"]) > 100,
-    true_step=create_llm_step("long", "Summarize: {input}"),
-    false_step=create_llm_step("short", "Expand: {input}"),
-)
-
-chain = builder.build()
+condition = lambda d, s: len(str(d)) > 100
+true_step = TransformStep("long", lambda d, s: f"summarize({d})")
+false_step = TransformStep("short", lambda d, s: f"expand({d})")
+step = ConditionalStep("route", condition=condition, if_true=true_step, if_false=false_step)
+output = step.execute("Short input", ChainState())
 ```
 
 ---
@@ -2954,7 +2878,7 @@ chain = builder.build()
 Utilities for handling streaming LLM responses.
 
 ```python
-from insideLLMs import (
+from insideLLMs.streaming import (
     StreamProcessor,
     StreamCollector,
     create_stream_processor,
@@ -2964,113 +2888,81 @@ from insideLLMs import (
 # Process streaming response
 processor = create_stream_processor()
 
-async for chunk in model.stream("Tell me a story"):
+for chunk in model.stream("Tell me a story"):
     processed = processor.process(chunk)
     if processed:
         print(processed, end="", flush=True)
 
 # Collect stream to string
-full_response = await collect_stream(model.stream("Hello"))
+summary = collect_stream(model.stream("Hello"))
+full_response = summary.full_content
 ```
 
 ---
 
 ### Cost Estimation
 
-**Module:** `insideLLMs.cost_estimation`
+**Module:** `insideLLMs.cost_tracking`
 
 Track and estimate API costs.
 
 ```python
-from insideLLMs import (
-    CostEstimator,
-    CostTracker,
-    create_cost_tracker,
-    estimate_cost,
-)
+from insideLLMs.cost_tracking import calculate_cost, create_usage_tracker
 
-# Estimate cost
-cost = estimate_cost(
-    model="gpt-4",
-    input_tokens=1000,
-    output_tokens=500,
-)
+cost = calculate_cost("gpt-4", input_tokens=1000, output_tokens=500)
 print(f"Estimated cost: ${cost:.4f}")
 
-# Track costs over time
-tracker = create_cost_tracker(budget=10.0)
-
-tracker.add_usage(
-    model="gpt-4",
+tracker = create_usage_tracker()
+tracker.record_usage(
+    model_name="gpt-4",
     input_tokens=1000,
     output_tokens=500,
 )
 
 print(f"Total spent: ${tracker.get_total_cost():.4f}")
-print(f"Budget remaining: ${tracker.get_remaining_budget():.4f}")
 ```
 
 ---
 
 ### Ensemble Evaluation
 
-**Module:** `insideLLMs.ensemble`
+**Module:** `insideLLMs.contrib.ensemble`
 
 Evaluate multiple models together.
 
 ```python
-from insideLLMs import (
-    EnsembleRunner,
-    VotingStrategy,
-    create_ensemble,
-)
+from insideLLMs.contrib.ensemble import AggregationMethod, create_ensemble
 
 ensemble = create_ensemble(
-    models=[model1, model2, model3],
-    voting_strategy=VotingStrategy.MAJORITY,
+    models={"m1": model1, "m2": model2, "m3": model3},
+    method=AggregationMethod.MAJORITY_VOTE,
 )
 
 # Run ensemble
-results = ensemble.evaluate(["Question 1", "Question 2"])
-
-print(f"Agreement rate: {results.agreement_rate:.2%}")
+result = ensemble.query("Question 1")
+print(f"Agreement level: {result.agreement_level.value}")
 ```
 
 ---
 
 ### Prompt Testing
 
-**Module:** `insideLLMs.prompt_testing`
+**Module:** `insideLLMs.contrib.prompt_testing`
 
 Systematic prompt testing and regression detection.
 
 ```python
-from insideLLMs import (
-    PromptTestRunner,
-    PromptTestSuite,
-    create_test_suite,
-)
+from insideLLMs.contrib.prompt_testing import PromptExperiment
 
-# Create test suite
-suite = create_test_suite("math_tests")
+experiment = PromptExperiment("math_tests")
+experiment.add_variant("What is 2+2?", variant_id="addition")
+experiment.add_variant("What is 3*4?", variant_id="multiplication")
 
-suite.add_test(
-    name="addition",
-    prompt="What is 2+2?",
-    expected_contains=["4"],
-)
+def model_fn(prompt: str) -> str:
+    return model.generate(prompt)
 
-suite.add_test(
-    name="multiplication",
-    prompt="What is 3*4?",
-    expected_contains=["12"],
-)
-
-# Run tests
-runner = PromptTestRunner(model)
-results = runner.run_suite(suite)
-
-print(f"Passed: {results.passed_count}/{results.total_count}")
+results = experiment.run(model_fn, runs_per_variant=1)
+print(f"Best variant: {results.best_variant_id}")
 ```
 
 ---

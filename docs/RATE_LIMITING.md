@@ -6,49 +6,56 @@ insideLLMs provides automatic rate limiting to prevent hitting API provider limi
 
 ## Quick Start
 
-### Via RunConfig (Recommended)
+### Via ModelPipeline + RunConfig (Recommended)
 
 ```python
+from insideLLMs.config_types import RunConfig
 from insideLLMs.models import OpenAIModel
+from insideLLMs.pipeline import ModelPipeline, RateLimitMiddleware
 from insideLLMs.probes import LogicProbe
 from insideLLMs.runtime.runner import ProbeRunner
-from insideLLMs.config import RunConfig, RateLimitConfig
 
-model = OpenAIModel()
-probe = LogicProbe()
-
-# Configure rate limiting
-config = RunConfig(
-    run_id="rate_limited_run",
-    rate_limit=RateLimitConfig(
-        requests_per_minute=60,      # 60 RPM
-        tokens_per_minute=90000,     # 90K TPM
-        requests_per_day=10000       # Optional daily limit
-    )
+# Wrap your base model with rate-limiting middleware
+base_model = OpenAIModel()
+model = ModelPipeline(
+    base_model,
+    middlewares=[RateLimitMiddleware(requests_per_minute=60, burst_size=10)],
 )
 
-runner = ProbeRunner(model, probe, config=config)
-results = runner.run(prompts)  # Automatically rate limited
+probe = LogicProbe()
+runner = ProbeRunner(model, probe)
+
+# Run config controls runner behavior (artifacts, validation, etc.)
+config = RunConfig(run_root="./runs/rate_limited")
+
+results = runner.run(prompts, config=config)
 ```
 
 ### Via YAML Config
 
 ```yaml
 # config.yaml
-model_id: gpt-3.5-turbo
-probe_id: logic
-dataset:
-  - prompt: "What is 2+2?"
-  - prompt: "What is 3+3?"
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
+  pipeline:
+    middlewares:
+      - type: rate_limit
+        args:
+          requests_per_minute: 60
+          burst_size: 10
 
-rate_limit:
-  requests_per_minute: 60
-  tokens_per_minute: 90000
-  requests_per_day: 10000
+probe:
+  type: logic
+
+dataset:
+  format: jsonl
+  path: data/prompts.jsonl
 ```
 
 ```bash
-insidellms harness config.yaml --run-dir ./runs/limited
+insidellms run config.yaml --run-dir ./runs/limited
 ```
 
 ## Provider Limits
@@ -74,15 +81,22 @@ insidellms harness config.yaml --run-dir ./runs/limited
 ### 1. Set Conservative Limits
 
 ```python
+from insideLLMs.config_types import RunConfig
+from insideLLMs.models import OpenAIModel
+from insideLLMs.pipeline import ModelPipeline, RateLimitMiddleware
+from insideLLMs.probes import LogicProbe
+from insideLLMs.runtime.runner import ProbeRunner
+
 # For free tier, use conservative limits
-config = RunConfig(
-    run_id="free_tier",
-    rate_limit=RateLimitConfig(
-        requests_per_minute=2,  # Below limit
-        tokens_per_minute=30000,
-        requests_per_day=150
-    )
+base_model = OpenAIModel()
+model = ModelPipeline(
+    base_model,
+    middlewares=[RateLimitMiddleware(requests_per_minute=2, burst_size=1)],
 )
+
+probe = LogicProbe()
+runner = ProbeRunner(model, probe)
+results = runner.run(prompts, config=RunConfig(run_id="free_tier"))
 ```
 
 ### 2. Monitor Usage
@@ -92,8 +106,8 @@ config = RunConfig(
 import logging
 logging.basicConfig(level=logging.INFO)
 
-runner = ProbeRunner(model, probe, config=config)
-results = runner.run(prompts)
+runner = ProbeRunner(model, probe)
+results = runner.run(prompts, config=config)
 # Logs: "RPM limit reached, sleeping 5.2s"
 ```
 
@@ -115,23 +129,26 @@ for i in range(0, len(prompts), batch_size):
 ### Custom Rate Limiter
 
 ```python
-from insideLLMs.rate_limiting import RateLimitedModel
+from insideLLMs.models import OpenAIModel
+from insideLLMs.rate_limiting import create_rate_limiter
 
-# Wrap model directly
+# Standalone limiter for custom call flows
 base_model = OpenAIModel()
-limited_model = RateLimitedModel(
-    model=base_model,
-    requests_per_minute=100,
-    tokens_per_minute=150000,
-    burst_size=10  # Allow bursts of 10 requests
-)
+limiter = create_rate_limiter(rate=100 / 60, capacity=10)
 
-response = limited_model.generate("Hello")
+if limiter.acquire(tokens=1, block=True):
+    response = base_model.generate("Hello")
 ```
 
 ### Dynamic Limits
 
 ```python
+from insideLLMs.config_types import RunConfig
+from insideLLMs.models import OpenAIModel
+from insideLLMs.pipeline import ModelPipeline, RateLimitMiddleware
+from insideLLMs.probes import LogicProbe
+from insideLLMs.runtime.runner import ProbeRunner
+
 # Adjust limits based on time of day
 import datetime
 
@@ -142,10 +159,12 @@ if 9 <= hour <= 17:  # Business hours
 else:
     rpm = 100  # Aggressive
 
-config = RunConfig(
-    run_id="dynamic",
-    rate_limit=RateLimitConfig(requests_per_minute=rpm)
-)
+base_model = OpenAIModel()
+rate_middleware = RateLimitMiddleware(requests_per_minute=rpm)
+model = ModelPipeline(base_model, middlewares=[rate_middleware])
+probe = LogicProbe()
+runner = ProbeRunner(model, probe)
+results = runner.run(prompts, config=RunConfig(run_id="dynamic"))
 ```
 
 ## Troubleshooting
@@ -169,10 +188,11 @@ logging.getLogger("insideLLMs.rate_limiting").setLevel(logging.DEBUG)
 3. **Use async runner** for better throughput
 
 ```python
+from insideLLMs.config_types import RunConfig
 from insideLLMs.runtime.runner import AsyncProbeRunner
 
-runner = AsyncProbeRunner(model, probe, config=config)
-results = await runner.run(prompts, concurrency=10)
+runner = AsyncProbeRunner(model, probe)
+results = await runner.run(prompts, config=RunConfig(concurrency=10))
 ```
 
 ## See Also

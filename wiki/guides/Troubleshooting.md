@@ -63,13 +63,16 @@ echo $OPENAI_API_KEY
 
 **Solutions:**
 ```yaml
-# Reduce concurrency
-async: true
-concurrency: 3  # Lower number
+# Reduce concurrency via CLI
+# insidellms run config.yaml --async --concurrency 3
 
-# Add rate limiting
-rate_limit:
-  requests_per_minute: 60
+# Add rate-limiting middleware
+pipeline:
+  middlewares:
+    - type: rate_limit
+      args:
+        requests_per_minute: 60
+        burst_size: 5
 ```
 
 ---

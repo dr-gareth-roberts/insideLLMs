@@ -15,10 +15,10 @@ The `insideLLMs.visualization` module has been moved to `insideLLMs.analysis.vis
 
 ```python
 # Before (v1.x)
-from insideLLMs.visualization import TraceVisualizer, create_visualizer
+from insideLLMs.visualization import text_bar_chart, create_html_report
 
 # After (v2.0+)
-from insideLLMs.analysis.visualization import TraceVisualizer, create_visualizer
+from insideLLMs.analysis.visualization import text_bar_chart, create_html_report
 ```
 
 **Automated migration:**
@@ -50,14 +50,14 @@ If you need to suppress deprecation warnings temporarily while migrating a large
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="insideLLMs.visualization")
 
-from insideLLMs.visualization import TraceVisualizer  # No warning
+from insideLLMs.visualization import text_bar_chart  # No warning
 
 # Option 2: Context manager for temporary suppression
 import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
-    from insideLLMs.visualization import TraceVisualizer
+    from insideLLMs.visualization import text_bar_chart
 
 # Option 3: Command-line suppression for testing
 # python -W ignore::DeprecationWarning your_script.py
@@ -75,7 +75,7 @@ warnings.simplefilter("always", DeprecationWarning)
 
 # Test import
 try:
-    from insideLLMs.analysis.visualization import TraceVisualizer
+    from insideLLMs.analysis.visualization import text_bar_chart
     print("✓ New import path works")
 except ImportError as e:
     print(f"✗ New import failed: {e}")
@@ -83,7 +83,7 @@ except ImportError as e:
 # Verify old import triggers warning
 with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("always")
-    from insideLLMs.visualization import TraceVisualizer as OldViz
+    from insideLLMs.visualization import text_bar_chart as old_text_bar_chart
     
     if w and issubclass(w[0].category, DeprecationWarning):
         print("✓ Old import triggers deprecation warning")
@@ -148,15 +148,15 @@ import sys
 
 if sys.version_info >= (2, 0):
     # v2.0+ imports
-    from insideLLMs.analysis.visualization import TraceVisualizer
+    from insideLLMs.analysis.visualization import text_bar_chart
 else:
     # v1.x imports (with warning suppression)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        from insideLLMs.visualization import TraceVisualizer
+        from insideLLMs.visualization import text_bar_chart
 
 # Use in your code
-from my_project.compat import TraceVisualizer
+# from your_project.compat import text_bar_chart
 ```
 
 ### 4. CI/CD Integration

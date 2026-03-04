@@ -41,12 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Old code (deprecated):**
 ```python
-from insideLLMs.visualization import TraceVisualizer
+from insideLLMs.visualization import text_bar_chart
 ```
 
 **New code:**
 ```python
-from insideLLMs.analysis.visualization import TraceVisualizer
+from insideLLMs.analysis.visualization import text_bar_chart
 ```
 
 **Timeline:**

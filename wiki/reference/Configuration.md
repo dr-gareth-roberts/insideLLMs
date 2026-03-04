@@ -50,14 +50,22 @@ probe:
 
 # dataset: Input data
 dataset:
-  format: jsonl          # Format: jsonl, csv, inline, huggingface
+  format: jsonl          # Format: jsonl, csv, hf
   path: data/test.jsonl  # Path to dataset file
 
 # Optional settings
-max_examples: 100        # Limit number of examples
-output_dir: ./results    # Output directory
-async: false             # Enable async execution
-concurrency: 1           # Concurrent requests (if async)
+generation:              # Passed to probe/model generate call
+  temperature: 0.7
+  max_tokens: 800
+```
+
+For execution controls (validation/resume/overwrite/async), use CLI flags:
+
+```bash
+insidellms run config.yaml --async --concurrency 10
+insidellms run config.yaml --validate-output --validation-mode warn
+insidellms run config.yaml --resume
+insidellms run config.yaml --overwrite
 ```
 
 ### Minimal Example
@@ -70,9 +78,8 @@ probe:
   type: logic
 
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
+  format: jsonl
+  path: data/test.jsonl
 ```
 
 ---
@@ -107,8 +114,7 @@ output_dir: ./comparison_results
 
 # Optional settings
 max_examples: 50
-async: true
-concurrency: 10
+confidence_level: 0.95
 ```
 
 ---
@@ -140,27 +146,15 @@ dataset:
     expected: answer_column
 ```
 
-### Inline
-
-```yaml
-dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-      expected: "4"
-    - question: "What colour is the sky?"
-      expected: "blue"
-```
-
 ### HuggingFace
 
 ```yaml
 dataset:
-  format: huggingface
+  format: hf
   name: cais/mmlu
   split: test
-  subset: abstract_algebra
-  max_examples: 100
+
+max_examples: 100
 ```
 
 ---
@@ -289,24 +283,22 @@ model:
 ## Execution Options
 
 ```yaml
-# Async execution
-async: true
-concurrency: 10
-
 # Limit dataset
 max_examples: 100
 
-# Output control
-output_dir: ./results
-skip_report: false
+# Optional generation kwargs passed through to probes/models
+generation:
+  temperature: 0.3
+  max_tokens: 500
+```
 
-# Validation
-validate_output: true
-schema_version: "1.0.0"
+Execution controls are CLI flags:
 
-# Resume/overwrite
-overwrite: false
-resume: false
+```bash
+insidellms run config.yaml --async --concurrency 10
+insidellms run config.yaml --validate-output --schema-version 1.0.0
+insidellms run config.yaml --resume
+insidellms run config.yaml --overwrite
 ```
 
 ---
@@ -321,9 +313,8 @@ model:
 probe:
   type: logic
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
+  format: jsonl
+  path: data/test.jsonl
 ```
 
 ### Production Harness
@@ -350,10 +341,8 @@ dataset:
   path: data/evaluation_set.jsonl
 
 output_dir: ./evaluation_results
-async: true
-concurrency: 20
 max_examples: 500
-validate_output: true
+confidence_level: 0.95
 ```
 
 ### CI Baseline Config
@@ -372,7 +361,6 @@ dataset:
   path: ci/test_data.jsonl
 
 output_dir: ci/baseline
-skip_report: true
 ```
 
 ---

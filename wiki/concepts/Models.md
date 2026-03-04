@@ -117,6 +117,5 @@ class MyModel(Model):
 
 ## See Also
 
-- [Models Catalog](../reference/Models-Catalog.md) - All available models
-- [Providers and Models](../Providers-and-Models.md) - Detailed provider setup
+- [Models Catalog](../reference/Models-Catalog.md) - All available models and provider setup
 - [Custom Probe Tutorial](../tutorials/Custom-Probe.md) - Using models in probes

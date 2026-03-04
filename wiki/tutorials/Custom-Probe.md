@@ -208,17 +208,8 @@ probes:
     args: {}
 
 dataset:
-  format: inline
-  items:
-    - prompt: "Explain machine learning"
-      min_words: 50
-      max_words: 100
-    - prompt: "What is a neural network?"
-      min_words: 30
-      max_words: 75
-    - prompt: "Define AI briefly"
-      min_words: 5
-      max_words: 20
+  format: jsonl
+  path: data/word_count.jsonl
 
 output_dir: ./word_count_results
 ```
@@ -335,5 +326,5 @@ class ConversationProbe(Probe[dict]):
 ## What's Next?
 
 - [Probes Catalog](../reference/Probes-Catalog.md) - See built-in probe implementations
-- [API Reference](../reference/API.md) - Full Probe API documentation
-- [Plugins Guide](../guides/Plugins.md) - Package and distribute your probe
+- [API Reference](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/API_REFERENCE.md) - Full Probe API documentation
+- [Development](../Development.md) - Set up dev environment and contribute

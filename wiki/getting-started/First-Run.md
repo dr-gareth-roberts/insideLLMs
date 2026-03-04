@@ -39,10 +39,8 @@ model:
 probe:
   type: logic
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-    - question: "What colour is the sky?"
+  format: jsonl
+  path: data/test.jsonl
 ```
 
 ```bash

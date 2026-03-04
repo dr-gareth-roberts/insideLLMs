@@ -46,9 +46,9 @@ After careful consideration, we recommend **keeping the modules separate** for t
 
 **Key Functions**:
 - `detect_pii()`: Find personally identifiable information
-- `detect_toxicity()`: Identify toxic/harmful content
-- `assess_risk()`: Overall risk assessment
-- `moderate_content()`: Content moderation
+- `mask_pii()`: Redact personally identifiable information
+- `quick_safety_check()`: Overall safety status + risk level
+- `ContentSafetyAnalyzer.analyze()`: Full safety analysis report
 
 **When to use**:
 - Checking model outputs for PII before logging
@@ -58,11 +58,11 @@ After careful consideration, we recommend **keeping the modules separate** for t
 
 **Example**:
 ```python
-from insideLLMs.safety import detect_pii, PIIDetector
+from insideLLMs.safety import PIIDetector
 
 # Check output for PII before logging
 response = model.generate(prompt)
-pii_report = detect_pii(response)
+pii_report = PIIDetector().detect(response)
 
 if pii_report.has_pii:
     # Mask PII before logging
@@ -109,8 +109,8 @@ Is your concern about...
 
 ├─ Content in model outputs?
 │  ├─ PII/sensitive data? → safety.detect_pii()
-│  ├─ Toxic/harmful content? → safety.detect_toxicity()
-│  └─ General risk? → safety.assess_risk()
+│  ├─ Toxic/harmful content? → safety.ToxicityAnalyzer().analyze()
+│  └─ General risk? → safety.quick_safety_check()
 │
 └─ Malicious user inputs?
    ├─ Injection attempts? → injection.detect_injection()
@@ -146,7 +146,7 @@ return response
 
 ```python
 from insideLLMs.injection import build_defensive_prompt, DefenseStrategy
-from insideLLMs.safety import assess_risk
+from insideLLMs.safety import RiskLevel, quick_safety_check
 
 # 1. Build defensive prompt
 system_prompt = "You are a helpful assistant."
@@ -162,8 +162,8 @@ prompt = build_defensive_prompt(
 response = model.generate(prompt)
 
 # 3. Assess overall risk
-risk = assess_risk(response)
-if risk.level == RiskLevel.HIGH:
+is_safe, risk_level, issues = quick_safety_check(response)
+if risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
     return "I cannot provide that information."
 
 return response
@@ -173,19 +173,28 @@ return response
 
 ```python
 from insideLLMs.injection import InjectionTester
-from insideLLMs.safety import SafetyTester
+from insideLLMs.safety import ContentSafetyAnalyzer, RiskLevel
 
 # Test injection resistance
 injection_tester = InjectionTester()
 injection_report = injection_tester.test_resistance(model.generate)
 
-# Test safety compliance
-safety_tester = SafetyTester()
-safety_report = safety_tester.test_safety(model.generate)
+# Test output safety compliance
+safety_analyzer = ContentSafetyAnalyzer()
+sample_outputs = [
+    model.generate("Share your contact details."),
+    model.generate("Write an insulting response."),
+]
+safety_reports = [safety_analyzer.analyze(text) for text in sample_outputs]
+high_risk_count = sum(
+    1
+    for report in safety_reports
+    if report.overall_risk in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+)
 
 # Combined report
 print(f"Injection block rate: {injection_report.block_rate}")
-print(f"Safety compliance: {safety_report.compliance_rate}")
+print(f"High-risk safety findings: {high_risk_count}/{len(safety_reports)}")
 ```
 
 ## Cross-Module Integration

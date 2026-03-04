@@ -24,10 +24,8 @@ probes:
   - type: logic
 
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-    - question: "If A > B and B > C, is A > C?"
+  format: jsonl
+  path: data/test.jsonl
 
 output_dir: ./harness_results
 ```

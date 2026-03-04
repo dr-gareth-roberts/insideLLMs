@@ -163,7 +163,7 @@ insidellms quicktest <prompt> [options]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--model TYPE` | Model type (openai, anthropic, dummy) | `dummy` |
-| `--model-name NAME` | Specific model name | Provider default |
+| `--model-args JSON` | JSON object of model constructor args | `{}` |
 | `--probe TYPE` | Probe type | `logic` |
 | `--temperature T` | Sampling temperature | `1.0` |
 | `--max-tokens N` | Max response tokens | Provider default |
@@ -175,7 +175,7 @@ insidellms quicktest <prompt> [options]
 insidellms quicktest "What is 2 + 2?" --model dummy
 
 # Test with OpenAI
-insidellms quicktest "Explain gravity" --model openai --model-name gpt-4o
+insidellms quicktest "Explain gravity" --model openai --model-args '{"model_name":"gpt-4o"}'
 
 # With specific parameters
 insidellms quicktest "Be creative" --model openai --temperature 1.5
@@ -492,4 +492,3 @@ Available for all commands:
 | `--help` | Show help message |
 | `--version` | Show version number |
 | `--quiet` | Suppress non-error output |
-| `--debug` | Enable debug logging |

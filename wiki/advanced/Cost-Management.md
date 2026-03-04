@@ -120,31 +120,34 @@ print(f"Trend: {forecast.trend}")  # increasing/decreasing/stable
 ```python
 from insideLLMs.pipeline import ModelPipeline, CostTrackingMiddleware
 
+cost_mw = CostTrackingMiddleware()
 pipeline = ModelPipeline(model)
-pipeline.add_middleware(CostTrackingMiddleware(
-    budget_limit=1000.0,
-    alert_threshold=0.8
-))
+pipeline.add_middleware(cost_mw)
 
 # Automatic cost tracking
 response = pipeline.generate(prompt)
 
 # Check spend
-print(f"Total cost: ${pipeline.get_total_cost():.4f}")
+stats = cost_mw.get_stats()
+print(f"Requests: {cost_mw.total_requests}")
+print(f"Estimated cost: ${cost_mw.estimated_cost:.4f}")
 ```
 
 ## Configuration
 
+Cost tracking is configured programmatically via the `CostTrackingMiddleware` and the
+`insideLLMs.cost_tracking` module. There is no top-level `cost_tracking:` config key in
+YAML/JSON run configs; use the Python API above or add `CostTrackingMiddleware()` to the
+pipeline middleware list in your model config:
+
 ```yaml
-# In harness config
-cost_tracking:
-  enabled: true
-  budget:
-    limit: 1000.0
-    period: monthly
-    alert_thresholds:
-      warning: 0.8
-      critical: 0.95
+model:
+  type: openai
+  args:
+    model_name: gpt-4o
+  pipeline:
+    middlewares:
+      - type: cost_tracking
 ```
 
 ## Pricing Data

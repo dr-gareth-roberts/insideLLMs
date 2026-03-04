@@ -19,13 +19,17 @@ Automatic retry with exponential backoff and circuit breakers.
 ```python
 from insideLLMs.pipeline import ModelPipeline, RetryMiddleware
 
-pipeline = ModelPipeline(model)
-pipeline.add_middleware(RetryMiddleware(
-    max_attempts=3,
-    initial_delay=1.0,
-    exponential_base=2.0,
-    max_delay=60.0
-))
+pipeline = ModelPipeline(
+    model,
+    middlewares=[
+        RetryMiddleware(
+            max_retries=3,
+            initial_delay=1.0,
+            exponential_base=2.0,
+            max_delay=60.0,
+        ),
+    ],
+)
 
 # Automatically retries on failure
 response = pipeline.generate(prompt)
@@ -37,12 +41,12 @@ response = pipeline.generate(prompt)
 from insideLLMs.retry import RetryConfig
 
 config = RetryConfig(
-    max_attempts=3,           # Try up to 3 times
+    max_retries=3,            # Try up to 3 times
     initial_delay=1.0,        # Start with 1 second delay
     exponential_base=2.0,     # Double delay each retry
     max_delay=60.0,           # Cap at 60 seconds
     jitter=True,              # Add randomness to prevent thundering herd
-    retry_on=[TimeoutError, RateLimitError]  # Which errors to retry
+    retryable_exceptions=(TimeoutError, RateLimitError),
 )
 ```
 
@@ -54,7 +58,7 @@ config = RetryConfig(
 # Delays: 1s, 2s, 4s, 8s, ...
 RetryMiddleware(
     initial_delay=1.0,
-    exponential_base=2.0
+    exponential_base=2.0,
 )
 ```
 
@@ -64,7 +68,7 @@ RetryMiddleware(
 # Delays: 1s, 2s, 3s, 4s, ...
 RetryMiddleware(
     initial_delay=1.0,
-    exponential_base=1.0
+    exponential_base=1.0,
 )
 ```
 
@@ -75,7 +79,7 @@ RetryMiddleware(
 RetryMiddleware(
     initial_delay=2.0,
     exponential_base=1.0,
-    max_delay=2.0
+    max_delay=2.0,
 )
 ```
 
@@ -84,20 +88,17 @@ RetryMiddleware(
 Prevent cascade failures by stopping requests after repeated failures.
 
 ```python
-from insideLLMs.retry import CircuitBreaker
+from insideLLMs.retry import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpen
 
-breaker = CircuitBreaker(
-    failure_threshold=5,      # Open after 5 failures
-    recovery_timeout=60.0,    # Try again after 60s
-    half_open_max_calls=3     # Test with 3 calls before fully closing
+config = CircuitBreakerConfig(
+    failure_threshold=5,
+    reset_timeout=60.0,
+    half_open_max_calls=3,
 )
+breaker = CircuitBreaker("api_service", config)
 
-# Use with pipeline
-pipeline.add_middleware(RetryMiddleware(circuit_breaker=breaker))
-
-# Circuit opens after failures
 try:
-    response = pipeline.generate(prompt)
+    response = breaker.execute(lambda: pipeline.generate(prompt))
 except CircuitBreakerOpen:
     print("Circuit open - too many failures")
 ```
@@ -105,55 +106,52 @@ except CircuitBreakerOpen:
 ## Selective Retry
 
 ```python
-from insideLLMs.exceptions import RateLimitError, TimeoutError, ValidationError
+from insideLLMs.exceptions import RateLimitError, TimeoutError
+from insideLLMs.pipeline import RetryMiddleware
 
-# Retry only specific errors
-RetryMiddleware(
-    max_attempts=3,
-    retry_on=[RateLimitError, TimeoutError],  # Retry these
-    no_retry_on=[ValidationError]             # Don't retry these
-)
+# RetryMiddleware retries RateLimitError, TimeoutError, and ModelError.
+# For fine-grained control, use insideLLMs.retry.retry(...) on a specific call site.
+retry_mw = RetryMiddleware(max_retries=3)
 ```
 
 ## Retry with Backpressure
 
 ```python
-# Reduce concurrency on retry
-RetryMiddleware(
-    max_attempts=3,
-    reduce_concurrency_on_retry=True,
-    min_concurrency=1
-)
+# Backpressure is handled via rate limiting and concurrency control.
+# Use RateLimitMiddleware and AsyncModelPipeline(max_concurrency=...) for throughput tuning.
 ```
 
 ## Monitoring Retries
 
 ```python
-from insideLLMs.retry import RetryStats
+# RetryMiddleware exposes counters directly.
+retry_mw = RetryMiddleware(max_retries=3)
+pipeline = ModelPipeline(model, middlewares=[retry_mw])
 
-stats = pipeline.get_retry_stats()
-print(f"Total retries: {stats.total_retries}")
-print(f"Success after retry: {stats.retry_successes}")
-print(f"Failed after retries: {stats.retry_failures}")
-print(f"Average attempts: {stats.avg_attempts:.1f}")
+pipeline.generate(prompt)
+print(f"Total retries attempted: {retry_mw.total_retries}")
 ```
 
 ## Configuration
 
 ```yaml
-# In harness config
-retry:
-  enabled: true
-  max_attempts: 3
-  initial_delay: 1.0
-  exponential_base: 2.0
-  max_delay: 60.0
-  jitter: true
-  circuit_breaker:
-    enabled: true
-    failure_threshold: 5
-    recovery_timeout: 60.0
+# Via model pipeline middleware in run/harness config:
+model:
+  type: openai
+  args:
+    model_name: gpt-4o-mini
+  pipeline:
+    middlewares:
+      - type: retry
+        args:
+          max_retries: 3
+          initial_delay: 1.0
+          exponential_base: 2.0
+          max_delay: 60.0
 ```
+
+For advanced retry control (circuit breaker, custom exceptions, per-call retry), use the
+programmatic API directly:
 
 ## Best Practices
 

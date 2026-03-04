@@ -30,11 +30,8 @@ probes:
   - type: logic
 
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-    - question: "Is the sky blue?"
-    - question: "What comes next: 1, 2, 3, ?"
+  format: jsonl
+  path: ci/dataset.jsonl
 EOF
 
 # Run the baseline
@@ -120,17 +117,14 @@ models:
   - type: dummy
     args:
       name: baseline_model
-      response: "CHANGED RESPONSE"  # This changes outputs!
+      canned_response: "CHANGED RESPONSE"  # This changes outputs!
 
 probes:
   - type: logic
 
 dataset:
-  format: inline
-  items:
-    - question: "What is 2 + 2?"
-    - question: "Is the sky blue?"
-    - question: "What comes next: 1, 2, 3, ?"
+  format: jsonl
+  path: ci/dataset.jsonl
 EOF
 ```
 

@@ -57,8 +57,8 @@ Timestamps are **derived from the run_id**, not wall-clock time:
 
 ```python
 base_time = hash_to_datetime(run_id)
-item_started_at = base_time + (index * 2) microseconds
-item_completed_at = base_time + (index * 2 + 1) microseconds
+item_started_at = base_time + timedelta(microseconds=index * 2)
+item_completed_at = base_time + timedelta(microseconds=index * 2 + 1)
 ```
 
 This ensures identical timestamps for identical runs.
