@@ -1108,11 +1108,13 @@ def execute_with_retry(
             time.sleep(delay)
             total_delay += delay
 
-        except Exception:
+        except Exception as _:
             # Non-retryable exception
             raise
 
     # All retries exhausted
+    if last_exception is None:
+        last_exception = RuntimeError("Retry exhausted without captured exception")
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
         attempts=len(history) + 1,
@@ -1256,8 +1258,11 @@ async def execute_with_retry_async(
             await asyncio.sleep(delay)
             total_delay += delay
 
-        except Exception:
+        except Exception as _:
             raise
+
+    if last_exception is None:
+        last_exception = RuntimeError("Retry exhausted without captured exception")
 
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
@@ -1882,7 +1887,7 @@ class CircuitBreaker:
             self._record_success()
             return result
 
-        except Exception:
+        except Exception as _:
             self._record_failure()
             raise
 
@@ -2315,3 +2320,6 @@ async def with_timeout_async(
         return await asyncio.wait_for(coro, timeout=timeout)
     except asyncio.TimeoutError:
         raise ModelTimeoutError("coroutine", timeout)
+
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

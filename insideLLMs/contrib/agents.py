@@ -1207,7 +1207,7 @@ def tool(
             >>> @tool(name="calculator")
             ... def calculate(expression: str) -> str:
             ...     '''Evaluate a math expression.'''
-            ...     return str(eval(expression))
+            ...     return str(_safe_eval_arithmetic(expression))
             >>>
             >>> model = DummyModel()
             >>> agent = ReActAgent(model, tools=[calculate])
@@ -1752,7 +1752,7 @@ class BaseAgent(ABC):
             0
             >>>
             >>> def calculate(expr: str) -> str:
-            ...     return str(eval(expr))
+            ...     return str(_safe_eval_arithmetic(expr))
             >>>
             >>> agent.add_tool(Tool("calc", calculate))
             >>> print(len(agent.tools))
@@ -3014,6 +3014,71 @@ def _safe_eval_arithmetic(expression: str) -> Union[int, float]:
         raise ValueError("Unsupported expression")
 
     return _eval(parsed)
+
+
+def _apply_binary_operator(
+    op: ast.operator, left: Union[int, float], right: Union[int, float]
+) -> Union[int, float]:
+    if isinstance(op, ast.Add):
+        return left + right
+    if isinstance(op, ast.Sub):
+        return left - right
+    if isinstance(op, ast.Mult):
+        return left * right
+    if isinstance(op, ast.Div):
+        return left / right
+    if isinstance(op, ast.FloorDiv):
+        return left // right
+    if isinstance(op, ast.Mod):
+        return left % right
+    if isinstance(op, ast.Pow):
+        return left**right
+    raise ValueError("Unsupported arithmetic operator")
+
+
+def _apply_unary_operator(op: ast.unaryop, operand: Union[int, float]) -> Union[int, float]:
+    if isinstance(op, ast.UAdd):
+        return +operand
+    if isinstance(op, ast.USub):
+        return -operand
+    raise ValueError("Unsupported unary operator")
+
+
+def _eval_exec_expression(
+    node: ast.AST, variables: dict[str, Union[int, float]]
+) -> Union[int, float]:
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+            raise ValueError("Only numeric constants are allowed")
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id not in variables:
+            raise ValueError(f"Unknown variable: {node.id}")
+        return variables[node.id]
+    if isinstance(node, ast.BinOp):
+        left = _eval_exec_expression(node.left, variables)
+        right = _eval_exec_expression(node.right, variables)
+        return _apply_binary_operator(node.op, left, right)
+    if isinstance(node, ast.UnaryOp):
+        return _apply_unary_operator(node.op, _eval_exec_expression(node.operand, variables))
+    raise ValueError("Unsupported expression")
+
+
+def _safe_exec_python_subset(code: str) -> dict[str, Union[int, float]]:
+    """Execute a tightly restricted Python subset (assignments + arithmetic)."""
+    parsed = ast.parse(code, mode="exec")
+    variables: dict[str, Union[int, float]] = {}
+    for statement in parsed.body:
+        if isinstance(statement, ast.Assign):
+            if len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
+                raise ValueError("Only simple variable assignments are supported")
+            variables[statement.targets[0].id] = _eval_exec_expression(statement.value, variables)
+            continue
+        if isinstance(statement, ast.Expr):
+            _eval_exec_expression(statement.value, variables)
+            continue
+        raise ValueError("Only arithmetic expressions and assignments are supported")
+    return variables
 
 
 def create_calculator_tool() -> Tool:

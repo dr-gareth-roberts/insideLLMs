@@ -41,7 +41,7 @@ class SimpleTestProbe(Probe[str]):
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
         return model.generate(data)
 
-    def score(self, results: list) -> ProbeScore:
+    def score(self, results: list[ProbeResult[str]]) -> ProbeScore:
         success_count = sum(1 for r in results if r.status == ResultStatus.SUCCESS)
         return ProbeScore(accuracy=success_count / len(results) if results else 0.0)
 
@@ -54,7 +54,7 @@ class ScoredProbeImpl(ScoredProbe[str]):
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
         return model.generate(data)
 
-    def evaluate_single(self, model_output, reference, input_data):
+    def evaluate_single(self, model_output: str, reference: Any, input_data: Any) -> dict[str, Any]:
         is_correct = model_output.strip().lower() == str(reference).strip().lower()
         return {"is_correct": is_correct}
 

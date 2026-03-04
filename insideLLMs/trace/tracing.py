@@ -925,7 +925,7 @@ class TraceRecorder:
         else:
             try:
                 payload_snapshot = copy.deepcopy(payload)
-            except Exception:
+            except Exception as _:
                 # Fall back to a JSON-safe snapshot to avoid mutability leaks.
                 normalized = serialize_value(payload)
                 payload_snapshot = (
@@ -1001,7 +1001,7 @@ class TraceRecorder:
         --------
         record_generate_end : Record the end of a generation.
         """
-        payload = {"prompt": prompt}
+        payload: dict[str, Any] = {"prompt": prompt}
         if kwargs:
             payload["params"] = kwargs
         return self.record(TraceEventKind.GENERATE_START, payload)
@@ -1135,7 +1135,7 @@ class TraceRecorder:
         record_stream_chunk : Record an individual stream chunk.
         record_stream_end : Record the end of streaming.
         """
-        payload = {"prompt": prompt}
+        payload: dict[str, Any] = {"prompt": prompt}
         if kwargs:
             payload["params"] = kwargs
         return self.record(TraceEventKind.STREAM_START, payload)
@@ -1865,10 +1865,15 @@ def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
     insideLLMs.trace.trace_config.TracePayloadNormaliser : Normalise payloads before fingerprinting.
     """
     # Normalize to list of dicts
-    if events and isinstance(events[0], TraceEvent):
-        event_dicts = [e.to_dict() for e in events]
-    else:
-        event_dicts = list(events)
+    event_dicts: list[dict[str, Any]] = []
+    for event in events:
+        if isinstance(event, TraceEvent):
+            event_dicts.append(event.to_dict())
+            continue
+        if isinstance(event, dict):
+            event_dicts.append(event)
+            continue
+        raise TypeError(f"Unsupported trace event type: {type(event).__name__}")
 
     # Sort events by sequence to ensure deterministic ordering
     sorted_events = sorted(event_dicts, key=lambda e: e.get("seq", 0))
