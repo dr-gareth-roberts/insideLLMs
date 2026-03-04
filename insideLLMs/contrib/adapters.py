@@ -2378,7 +2378,7 @@ class OpenAIAdapter(BaseAdapter):
             self._status = AdapterStatus.READY
         except ImportError:
             self._status = AdapterStatus.ERROR
-        except Exception:
+        except Exception as _:
             self._status = AdapterStatus.ERROR
 
     def generate(
@@ -2516,9 +2516,13 @@ class OpenAIAdapter(BaseAdapter):
         params = params or GenerationParams()
 
         start = time.time()
+        client = self._client
+        if client is None:
+            self._record_error()
+            raise RuntimeError("OpenAI client not initialized")
 
         try:
-            response = self._client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=self.model_id,
                 messages=messages,
                 temperature=params.temperature,
@@ -2567,7 +2571,7 @@ class AnthropicAdapter(BaseAdapter):
             self._status = AdapterStatus.READY
         except ImportError:
             self._status = AdapterStatus.ERROR
-        except Exception:
+        except Exception as _:
             self._status = AdapterStatus.ERROR
 
     def generate(
@@ -2591,9 +2595,13 @@ class AnthropicAdapter(BaseAdapter):
         params = params or GenerationParams()
 
         start = time.time()
+        client = self._client
+        if client is None:
+            self._record_error()
+            raise RuntimeError("Anthropic client not initialized")
 
         try:
-            response = self._client.messages.create(
+            response = client.messages.create(
                 model=self.model_id,
                 messages=messages,
                 max_tokens=params.max_tokens,

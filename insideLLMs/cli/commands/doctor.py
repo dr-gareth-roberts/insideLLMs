@@ -90,7 +90,7 @@ def _entrypoint_plugins(group: str) -> list[dict[str, str]]:
             selected = list(eps.select(group=group))
         else:  # pragma: no cover (older Python)
             selected = list(eps.get(group, []))  # type: ignore[attr-defined]
-    except Exception:
+    except Exception as _:
         return []
 
     normalized = [

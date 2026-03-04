@@ -80,7 +80,7 @@ def _invoke_progress_callback(
             callback_style = "legacy"
         try:
             setattr(callback, "_insidellms_progress_style", callback_style)
-        except Exception:
+        except Exception as _:
             pass
 
     if callback_style == "legacy":

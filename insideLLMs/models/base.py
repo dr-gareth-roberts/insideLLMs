@@ -1745,7 +1745,7 @@ class ModelWrapper:
         if self._cache_responses and cache_key in self._cache:
             return self._cache[cache_key]
 
-        last_error = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries):
             try:
                 result = self._model.generate(prompt, **kwargs)
@@ -1757,7 +1757,9 @@ class ModelWrapper:
                 if attempt < self._max_retries - 1:
                     time.sleep(self._retry_delay * (attempt + 1))
 
-        raise last_error or RuntimeError("Max retries exceeded")
+        if last_error is None:
+            raise RuntimeError("Max retries exceeded")
+        raise last_error
 
     def info(self) -> ModelInfo:
         """Return model metadata/info from the underlying model.
