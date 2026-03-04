@@ -59,6 +59,7 @@ from insideLLMs.exceptions import (
 from insideLLMs.exceptions import (
     TimeoutError as InsideLLMsTimeoutError,
 )
+from insideLLMs.types import ModelInfo
 
 from .base import ChatMessage, Model
 
@@ -273,7 +274,7 @@ class OpenAIModel(Model):
                 redacted[key_str] = value
         return redacted
 
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate a response from the OpenAI model.
 
         Sends the prompt to OpenAI's chat completions API as a single user message
@@ -363,7 +364,7 @@ class OpenAIModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Sends the full conversation history to OpenAI's chat completions API.
@@ -450,7 +451,7 @@ class OpenAIModel(Model):
             )
         except Exception as e:
             # Get first message content for error context
-            first_msg = messages[0].get("content", "") if messages else ""
+            first_msg = messages[0]["content"] if messages else ""
             raise ModelGenerationError(
                 model_id=self.model_name,
                 prompt=first_msg,
@@ -458,7 +459,7 @@ class OpenAIModel(Model):
                 original_error=e,
             )
 
-    def stream(self, prompt: str, **kwargs) -> Iterator[str]:
+    def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Stream the response from the model as it is generated.
 
         Returns a generator that yields response chunks (typically individual
@@ -548,7 +549,7 @@ class OpenAIModel(Model):
                 original_error=e,
             )
 
-    def info(self):
+    def info(self) -> ModelInfo:
         """Return model metadata/info.
 
         Extends the base Model.info() with OpenAI-specific details.

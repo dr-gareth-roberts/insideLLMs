@@ -139,13 +139,13 @@ def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
         # pydantic v1 compatibility
         try:
             return info_obj.dict()
-        except Exception:
+        except Exception as _:
             return {}
     if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
         # pydantic v2 compatibility
         try:
             return info_obj.model_dump()
-        except Exception:
+        except Exception as _:
             return {}
     return {}
 
@@ -626,7 +626,7 @@ def _coerce_model_info(model: Any) -> ModelInfo:
     info_obj: Any = {}
     try:
         info_obj = model.info() or {}
-    except Exception:
+    except Exception as _:
         info_obj = {}
 
     # If it's already the canonical type, keep it.

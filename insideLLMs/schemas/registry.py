@@ -469,7 +469,7 @@ def semver_tuple(version: str) -> tuple[int, int, int]:
     parts = v.split(".")
     try:
         return (int(parts[0]), int(parts[1]), int(parts[2]))
-    except Exception:
+    except Exception as _:
         return (0, 0, 0)
 
 

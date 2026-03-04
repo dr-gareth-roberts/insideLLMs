@@ -104,6 +104,7 @@ insideLLMs.types.ProbeScore : Score metrics extracted for logging
 TrackingConfig : Configuration dataclass for tracker settings
 """
 
+import importlib
 import json
 import os
 from abc import ABC, abstractmethod
@@ -114,34 +115,33 @@ from typing import Any, Optional
 
 from insideLLMs.types import ExperimentResult, ProbeScore
 
+
+def _load_optional_module(module_name: str) -> Any | None:
+    """Load optional dependency module, returning None when unavailable."""
+    try:
+        return importlib.import_module(module_name)
+    except ImportError:
+        return None
+
+
 # Check for optional dependencies
-try:
-    import wandb
+wandb: Any | None = _load_optional_module("wandb")
+WANDB_AVAILABLE = wandb is not None
 
-    WANDB_AVAILABLE = True
-except ImportError:
-    WANDB_AVAILABLE = False
-
-try:
-    import mlflow
-
-    MLFLOW_AVAILABLE = True
-except ImportError:
-    MLFLOW_AVAILABLE = False
+mlflow: Any | None = _load_optional_module("mlflow")
+MLFLOW_AVAILABLE = mlflow is not None
 
 SummaryWriter: Any | None = None
-try:
-    from torch.utils.tensorboard import SummaryWriter as _TorchSummaryWriter
-
-    SummaryWriter = _TorchSummaryWriter
+_torch_tensorboard = _load_optional_module("torch.utils.tensorboard")
+if _torch_tensorboard is not None and hasattr(_torch_tensorboard, "SummaryWriter"):
+    SummaryWriter = getattr(_torch_tensorboard, "SummaryWriter")
     TENSORBOARD_AVAILABLE = True
-except ImportError:
-    try:
-        from tensorboardX import SummaryWriter as _TBXSummaryWriter
-
-        SummaryWriter = _TBXSummaryWriter
+else:
+    _tensorboardx = _load_optional_module("tensorboardX")
+    if _tensorboardx is not None and hasattr(_tensorboardx, "SummaryWriter"):
+        SummaryWriter = getattr(_tensorboardx, "SummaryWriter")
         TENSORBOARD_AVAILABLE = True
-    except ImportError:
+    else:
         TENSORBOARD_AVAILABLE = False
 
 
@@ -967,7 +967,8 @@ class WandBTracker(ExperimentTracker):
         ...     tags=["production"]
         ... )  # doctest: +SKIP
         """
-        if not WANDB_AVAILABLE:
+        wandb_module = wandb
+        if not WANDB_AVAILABLE or wandb_module is None:
             raise ImportError("wandb is required for WandBTracker. Install with: pip install wandb")
 
         if config is None:
@@ -978,6 +979,7 @@ class WandBTracker(ExperimentTracker):
         super().__init__(config)
         self.entity = entity
         self.wandb_kwargs = wandb_kwargs
+        self._wandb: Any = wandb_module
         self._run = None
 
     def start_run(
@@ -1012,10 +1014,11 @@ class WandBTracker(ExperimentTracker):
         >>> run_id = tracker.start_run("my-experiment")  # doctest: +SKIP
         >>> print(f"Run ID: {run_id}")  # doctest: +SKIP
         """
+        wb = self._wandb
         if self._run_active and not nested:
-            wandb.finish()
+            wb.finish()
 
-        self._run = wandb.init(
+        self._run = wb.init(
             project=self.config.project,
             entity=self.entity,
             name=run_name or self.config.experiment_name,
@@ -1027,10 +1030,14 @@ class WandBTracker(ExperimentTracker):
         )
 
         self._run_active = True
-        self._run_id = self._run.id
+        run_id_value = getattr(self._run, "id", None)
+        if run_id_value is None:
+            raise RuntimeError("W&B did not return a run id")
+        resolved_run_id = str(run_id_value)
+        self._run_id = resolved_run_id
         self._step = 0
 
-        return self._run_id
+        return resolved_run_id
 
     def end_run(self, status: str = "finished") -> None:
         """End the W&B run.
@@ -1049,8 +1056,9 @@ class WandBTracker(ExperimentTracker):
         >>> tracker.log_metrics({"accuracy": 0.95})  # doctest: +SKIP
         >>> tracker.end_run()  # doctest: +SKIP
         """
+        wb = self._wandb
         if self._run_active:
-            wandb.finish(exit_code=0 if status == "finished" else 1)
+            wb.finish(exit_code=0 if status == "finished" else 1)
             self._run_active = False
             self._run = None
 
@@ -1089,7 +1097,7 @@ class WandBTracker(ExperimentTracker):
             step = self._step
             self._step += 1
 
-        wandb.log(metrics, step=step)
+        self._wandb.log(metrics, step=step)
 
     def log_params(self, params: dict[str, Any]) -> None:
         """Log params to W&B config.
@@ -1119,7 +1127,7 @@ class WandBTracker(ExperimentTracker):
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
 
-        wandb.config.update(params)
+        self._wandb.config.update(params)
 
     def log_artifact(
         self,
@@ -1161,9 +1169,9 @@ class WandBTracker(ExperimentTracker):
         artifact_type = artifact_type or "file"
         artifact_name = artifact_name or Path(artifact_path).name
 
-        artifact = wandb.Artifact(artifact_name, type=artifact_type)
+        artifact = self._wandb.Artifact(artifact_name, type=artifact_type)
         artifact.add_file(artifact_path)
-        wandb.log_artifact(artifact)
+        self._wandb.log_artifact(artifact)
 
     def log_table(
         self,
@@ -1221,12 +1229,12 @@ class WandBTracker(ExperimentTracker):
             return
 
         columns = columns or list(data[0].keys())
-        table = wandb.Table(columns=columns)
+        table = self._wandb.Table(columns=columns)
 
         for row in data:
             table.add_data(*[row.get(c) for c in columns])
 
-        wandb.log({table_name: table})
+        self._wandb.log({table_name: table})
 
     def watch_model(self, model: Any, log_freq: int = 100) -> None:
         """Watch a model for gradient/parameter logging.
@@ -1266,7 +1274,7 @@ class WandBTracker(ExperimentTracker):
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
 
-        wandb.watch(model, log_freq=log_freq)
+        self._wandb.watch(model, log_freq=log_freq)
 
 
 class MLflowTracker(ExperimentTracker):
@@ -1374,7 +1382,8 @@ class MLflowTracker(ExperimentTracker):
         ...     experiment_name="my-experiment"
         ... )  # doctest: +SKIP
         """
-        if not MLFLOW_AVAILABLE:
+        mlflow_module = mlflow
+        if not MLFLOW_AVAILABLE or mlflow_module is None:
             raise ImportError(
                 "mlflow is required for MLflowTracker. Install with: pip install mlflow"
             )
@@ -1383,9 +1392,10 @@ class MLflowTracker(ExperimentTracker):
             config = TrackingConfig(experiment_name=experiment_name)
 
         super().__init__(config)
+        self._mlflow: Any = mlflow_module
 
         if tracking_uri:
-            mlflow.set_tracking_uri(tracking_uri)
+            self._mlflow.set_tracking_uri(tracking_uri)
 
         self.tracking_uri = tracking_uri
         self._experiment_id: Optional[str] = None
@@ -1419,12 +1429,13 @@ class MLflowTracker(ExperimentTracker):
         >>> tracker = MLflowTracker()  # doctest: +SKIP
         >>> run_id = tracker.start_run("evaluation-001")  # doctest: +SKIP
         """
+        mlflow_client = self._mlflow
         # Set experiment
         exp_name = self.config.experiment_name or self.config.project
-        mlflow.set_experiment(exp_name)
+        mlflow_client.set_experiment(exp_name)
 
         # Start run
-        run = mlflow.start_run(
+        run = mlflow_client.start_run(
             run_name=run_name,
             run_id=run_id,
             nested=nested,
@@ -1433,11 +1444,17 @@ class MLflowTracker(ExperimentTracker):
         )
 
         self._run_active = True
-        self._run_id = run.info.run_id
-        self._experiment_id = run.info.experiment_id
+        run_id_value = getattr(run.info, "run_id", None)
+        if run_id_value is None:
+            raise RuntimeError("MLflow did not return a run id")
+        resolved_run_id = str(run_id_value)
+        self._run_id = resolved_run_id
+
+        experiment_id_value = getattr(run.info, "experiment_id", None)
+        self._experiment_id = None if experiment_id_value is None else str(experiment_id_value)
         self._step = 0
 
-        return self._run_id
+        return resolved_run_id
 
     def end_run(self, status: str = "finished") -> None:
         """End the MLflow run.
@@ -1461,7 +1478,7 @@ class MLflowTracker(ExperimentTracker):
                 "failed": "FAILED",
                 "killed": "KILLED",
             }
-            mlflow.end_run(status=status_map.get(status, "FINISHED"))
+            self._mlflow.end_run(status=status_map.get(status, "FINISHED"))
             self._run_active = False
 
     def log_metrics(
@@ -1497,7 +1514,7 @@ class MLflowTracker(ExperimentTracker):
             step = self._step
             self._step += 1
 
-        mlflow.log_metrics(metrics, step=step)
+        self._mlflow.log_metrics(metrics, step=step)
 
     def log_params(self, params: dict[str, Any]) -> None:
         """Log params to MLflow.
@@ -1525,7 +1542,7 @@ class MLflowTracker(ExperimentTracker):
 
         # Convert non-string values to strings
         str_params = {k: str(v) for k, v in params.items()}
-        mlflow.log_params(str_params)
+        self._mlflow.log_params(str_params)
 
     def log_artifact(
         self,
@@ -1559,7 +1576,7 @@ class MLflowTracker(ExperimentTracker):
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
 
-        mlflow.log_artifact(artifact_path)
+        self._mlflow.log_artifact(artifact_path)
 
     def log_model(
         self,
@@ -1608,11 +1625,11 @@ class MLflowTracker(ExperimentTracker):
             raise RuntimeError("No active run. Call start_run() first.")
 
         if model_flavor == "pytorch":
-            mlflow.pytorch.log_model(model, model_name)
+            self._mlflow.pytorch.log_model(model, model_name)
         elif model_flavor == "tensorflow":
-            mlflow.tensorflow.log_model(model, model_name)
+            self._mlflow.tensorflow.log_model(model, model_name)
         else:
-            mlflow.pyfunc.log_model(model_name, python_model=model)
+            self._mlflow.pyfunc.log_model(model_name, python_model=model)
 
     def register_model(
         self,
@@ -1645,7 +1662,7 @@ class MLflowTracker(ExperimentTracker):
         --------
         log_model : Log a model before registering
         """
-        mlflow.register_model(model_uri, model_name)
+        self._mlflow.register_model(model_uri, model_name)
 
 
 class TensorBoardTracker(ExperimentTracker):
@@ -1727,13 +1744,15 @@ class TensorBoardTracker(ExperimentTracker):
         >>> tracker = TensorBoardTracker()  # doctest: +SKIP
         >>> tracker = TensorBoardTracker(log_dir="./experiments/tensorboard")  # doctest: +SKIP
         """
-        if not TENSORBOARD_AVAILABLE:
+        writer_cls = SummaryWriter
+        if not TENSORBOARD_AVAILABLE or writer_cls is None:
             raise ImportError(
                 "tensorboard or tensorboardX is required. Install with: pip install tensorboard"
             )
 
         super().__init__(config)
         self.log_dir = log_dir
+        self._summary_writer_cls: Any = writer_cls
         self._writer: Optional[Any] = None
 
     def start_run(
@@ -1769,12 +1788,12 @@ class TensorBoardTracker(ExperimentTracker):
         run_name = run_name or self.config.experiment_name or datetime.now().isoformat()
         run_dir = os.path.join(self.log_dir, run_name)
 
-        self._writer = SummaryWriter(log_dir=run_dir)
+        self._writer = self._summary_writer_cls(log_dir=run_dir)
         self._run_active = True
         self._run_id = run_name
         self._step = 0
 
-        return self._run_id
+        return run_name
 
     def end_run(self, status: str = "finished") -> None:
         """End the TensorBoard run.
@@ -2047,7 +2066,7 @@ class LocalFileTracker(ExperimentTracker):
         self._run_dir: Optional[Path] = None
         self._metrics: list[dict[str, Any]] = []
         self._params: dict[str, Any] = {}
-        self._artifacts: list[str] = []
+        self._artifacts: list[dict[str, str]] = []
 
     def start_run(
         self,
@@ -2251,6 +2270,7 @@ class LocalFileTracker(ExperimentTracker):
         import shutil
 
         artifact_name = artifact_name or Path(artifact_path).name
+        artifact_type = artifact_type or "file"
         artifacts_dir = self._run_dir / "artifacts"
         artifacts_dir.mkdir(exist_ok=True)
 
@@ -2446,6 +2466,9 @@ class MultiTracker(ExperimentTracker):
         >>> tracker2 = LocalFileTracker(output_dir="./logs2")
         >>> multi = MultiTracker([tracker1, tracker2])
         """
+        if not trackers:
+            raise ValueError("MultiTracker requires at least one tracker")
+
         super().__init__(config)
         self.trackers = trackers
 
@@ -2483,9 +2506,10 @@ class MultiTracker(ExperimentTracker):
             rid = tracker.start_run(run_name=run_name, run_id=run_id, nested=nested)
             run_ids.append(rid)
 
+        first_run_id = run_ids[0]
         self._run_active = True
-        self._run_id = run_ids[0] if run_ids else None
-        return self._run_id or ""
+        self._run_id = first_run_id
+        return first_run_id
 
     def end_run(self, status: str = "finished") -> None:
         """End runs on all trackers.
@@ -2735,18 +2759,21 @@ def auto_track(
 
                 # If result is a dict of metrics, log them
                 if isinstance(result, dict):
-                    numeric_metrics = {
-                        k: v for k, v in result.items() if isinstance(v, (int, float))
+                    numeric_metrics: dict[str, float] = {
+                        str(k): float(v) for k, v in result.items() if isinstance(v, (int, float))
                     }
                     if numeric_metrics:
                         tracker.log_metrics(numeric_metrics)
 
                 tracker.end_run(status="finished")
                 return result
-            except Exception:
+            except Exception as _:
                 tracker.end_run(status="failed")
                 raise
 
         return wrapper
 
     return decorator
+
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

@@ -182,7 +182,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from insideLLMs._serialization import serialize_value as _serialize_value
 from insideLLMs._serialization import stable_json_dumps as _stable_json_dumps
@@ -933,7 +933,7 @@ class SeedManager:
     def set_tensorflow_seed(self) -> bool:
         """Set TensorFlow's random seed if available."""
         try:
-            import tensorflow as tf
+            import tensorflow as tf  # pyright: ignore[reportMissingImports]
 
             tf.random.set_seed(self.global_seed)
             self._libraries_seeded.append("tensorflow")
@@ -1045,7 +1045,7 @@ class EnvironmentCapture:
 
             for dist in importlib.metadata.distributions():
                 packages[dist.metadata["Name"]] = dist.version
-        except Exception:
+        except Exception as _:
             pass
         return packages
 
@@ -1576,7 +1576,7 @@ class ExperimentRegistry:
         """Find experiments by name."""
         return [exp for exp in self._experiments.values() if exp.metadata.name == name]
 
-    def list_all(self) -> list[dict[str, str]]:
+    def list_all(self) -> list[dict[str, Union[str, float]]]:
         """List all experiments."""
         return [
             {
