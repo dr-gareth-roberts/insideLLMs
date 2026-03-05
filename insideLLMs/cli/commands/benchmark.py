@@ -137,7 +137,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             output_dir.mkdir(parents=True, exist_ok=True)
 
             results_file = output_dir / "benchmark_results.json"
-            with open(results_file, "w") as f:
+            with open(results_file, "w", encoding="utf-8") as f:
                 json.dump(results_all, f, indent=2)
             print_success(f"Results saved to: {results_file}")
 

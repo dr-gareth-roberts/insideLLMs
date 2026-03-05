@@ -701,7 +701,7 @@ class ModelBenchmark:
         See Also:
             run: Execute the benchmark to populate results before saving.
         """
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.results, f, indent=2)
 
     def compare_models(self) -> dict[str, Any]:
@@ -1321,5 +1321,5 @@ class ProbeBenchmark:
         See Also:
             run: Execute the benchmark to populate results before saving.
         """
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.results, f, indent=2)

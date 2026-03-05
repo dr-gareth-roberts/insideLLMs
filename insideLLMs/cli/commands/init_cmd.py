@@ -160,7 +160,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 },
                 {"question": "What is the chemical symbol for water?", "reference_answer": "H2O"},
             ]
-        with open(sample_data_path, "w") as f:
+        with open(sample_data_path, "w", encoding="utf-8") as f:
             for item in sample_data:
                 f.write(json.dumps(item) + "\n")
         print_success(f"Created sample data: {sample_data_path}")

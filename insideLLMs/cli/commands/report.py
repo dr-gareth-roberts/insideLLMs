@@ -75,7 +75,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     }
 
     summary_path = run_dir / "summary.json"
-    with open(summary_path, "w") as f:
+    with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary_payload, f, indent=2, default=_json_default, sort_keys=True)
     print_success(f"Summary written to: {summary_path}")
 
@@ -97,7 +97,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             report_title,
             generated_at=generated_at,
         )
-        with open(report_path, "w") as f:
+        with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_html)
 
     print_success(f"Report written to: {report_path}")

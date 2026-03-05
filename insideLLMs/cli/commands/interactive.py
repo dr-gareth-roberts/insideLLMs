@@ -47,7 +47,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
     # Load history file
     history_path = Path(args.history_file)
     if history_path.exists():
-        with open(history_path) as f:
+        with open(history_path, encoding="utf-8") as f:
             history = [line.strip() for line in f.readlines()]
 
     print()
@@ -65,7 +65,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
 
         # Save to history
         history.append(prompt)
-        with open(history_path, "a") as f:
+        with open(history_path, "a", encoding="utf-8") as f:
             f.write(prompt + "\n")
 
         # Handle commands

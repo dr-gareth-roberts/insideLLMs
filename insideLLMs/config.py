@@ -1334,7 +1334,7 @@ def load_config_from_yaml(path: Union[str, Path]) -> ExperimentConfig:
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     return _parse_config_dict(data)
@@ -1408,7 +1408,7 @@ def load_config_from_json(path: Union[str, Path]) -> ExperimentConfig:
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
     return _parse_config_dict(data)
@@ -1657,7 +1657,7 @@ def save_config_to_json(config: ExperimentConfig, path: Union[str, Path]) -> Non
 
     data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
 
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 

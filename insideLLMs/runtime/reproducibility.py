@@ -1150,7 +1150,7 @@ class ExperimentSnapshot:
     @classmethod
     def load(cls, path: str) -> "ExperimentSnapshot":
         """Load snapshot from file."""
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         return cls(

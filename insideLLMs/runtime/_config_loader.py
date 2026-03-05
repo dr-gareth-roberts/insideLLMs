@@ -88,10 +88,10 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
         raise FileNotFoundError(f"Config file not found: {path}")
 
     if path.suffix in (".yaml", ".yml"):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     elif path.suffix == ".json":
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
     else:
         raise ValueError(f"Unsupported config file format: {path.suffix}")

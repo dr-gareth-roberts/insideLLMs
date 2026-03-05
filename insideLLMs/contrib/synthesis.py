@@ -945,7 +945,7 @@ class SyntheticDataset:
             True
             >>> os.unlink(filepath)  # cleanup
         """
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.to_json())
 
     def to_jsonl(self) -> str:
@@ -1003,7 +1003,7 @@ class SyntheticDataset:
             2
             >>> os.unlink(filepath)  # cleanup
         """
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.to_jsonl())
 
     def filter(self, predicate: Callable[[dict[str, Any]], bool]) -> "SyntheticDataset":

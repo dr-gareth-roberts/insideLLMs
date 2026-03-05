@@ -740,7 +740,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     report_title,
                     generated_at=created_at,
                 )
-                with open(report_path, "w") as f:
+                with open(report_path, "w", encoding="utf-8") as f:
                     f.write(report_html)
 
             print_success(f"Report written to: {report_path}")

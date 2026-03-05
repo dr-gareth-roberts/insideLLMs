@@ -145,7 +145,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         import yaml
 
         # Load config
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f) if config_path.suffix in (".yaml", ".yml") else json.load(f)
 
         config_errors: list[str] = []

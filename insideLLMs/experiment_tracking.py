@@ -2283,7 +2283,7 @@ class LocalFileTracker(ExperimentTracker):
         >>> tracker = LocalFileTracker()
         >>> # tracker._save_json(Path("test.json"), {"key": "value"})
         """
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str)
 
     def load_run(self, run_id: str) -> dict[str, Any]:
@@ -2341,7 +2341,7 @@ class LocalFileTracker(ExperimentTracker):
         ]:
             filepath = run_dir / filename
             if filepath.exists():
-                with open(filepath) as f:
+                with open(filepath, encoding="utf-8") as f:
                     key = filename.replace(".json", "")
                     data[key] = json.load(f)
 
