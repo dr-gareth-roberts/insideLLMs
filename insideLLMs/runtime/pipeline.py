@@ -244,7 +244,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from insideLLMs.exceptions import ModelError, RateLimitError, TimeoutError
+from insideLLMs.exceptions import ModelError, ModelTimeoutError, RateLimitError
 from insideLLMs.models.base import (
     AsyncModelProtocol,
     ChatMessage,
@@ -2614,7 +2614,7 @@ class RetryMiddleware(Middleware):
                 if self.model:
                     return self.model.generate(prompt, **kwargs)
                 raise ModelError("No model available in pipeline")
-            except (RateLimitError, TimeoutError, ModelError) as e:
+            except (RateLimitError, ModelTimeoutError, ModelError) as e:
                 last_error = e
 
                 if attempt < self.max_retries:
@@ -2648,7 +2648,7 @@ class RetryMiddleware(Middleware):
                         None, lambda: self.model.generate(prompt, **kwargs)
                     )
                 raise ModelError("No model available in pipeline")
-            except (RateLimitError, TimeoutError, ModelError) as e:
+            except (RateLimitError, ModelTimeoutError, ModelError) as e:
                 last_error = e
 
                 if attempt < self.max_retries:

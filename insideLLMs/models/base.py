@@ -197,7 +197,7 @@ def handle_provider_errors(
         RateLimitError,
     )
     from insideLLMs.exceptions import (
-        TimeoutError as InsideLLMsTimeoutError,
+        ModelTimeoutError as InsideLLMsTimeoutError,
     )
 
     def decorator(func: F) -> F:
@@ -318,7 +318,7 @@ def translate_provider_error(
         RateLimitError,
     )
     from insideLLMs.exceptions import (
-        TimeoutError as InsideLLMsTimeoutError,
+        ModelTimeoutError as InsideLLMsTimeoutError,
     )
 
     # Check if already an insideLLMs exception

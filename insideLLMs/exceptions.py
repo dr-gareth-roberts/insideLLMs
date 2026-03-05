@@ -94,6 +94,7 @@ __all__ = [
     "ModelGenerationError",
     "RateLimitError",
     "APIError",
+    "ModelTimeoutError",
     "TimeoutError",
     # Probe errors
     "ProbeError",
@@ -676,7 +677,7 @@ class APIError(ModelError):
         self.status_code = status_code
 
 
-class TimeoutError(ModelError):
+class ModelTimeoutError(ModelError):
     """Raised when a model request times out.
 
     This exception indicates that a request to the model exceeded the
@@ -756,6 +757,10 @@ class TimeoutError(ModelError):
             f"Request to {model_id} timed out after {timeout_seconds}s",
             {"model_id": model_id, "timeout_seconds": timeout_seconds},
         )
+
+
+# Backward-compatible alias
+TimeoutError = ModelTimeoutError
 
 
 # Probe-related errors
@@ -2439,7 +2444,11 @@ def is_retryable(error: Exception) -> bool:
     return isinstance(error, retryable_types)
 
 
-def get_retry_delay(error: Exception, attempt: int = 1) -> float:
+def get_retry_delay(
+    error: Exception,
+    attempt: int = 1,
+    seed: int | None = None,
+) -> float:
     """Get the recommended retry delay for an error.
 
     Calculates an appropriate wait time before retrying a failed
@@ -2453,6 +2462,10 @@ def get_retry_delay(error: Exception, attempt: int = 1) -> float:
     attempt : int, default 1
         The current attempt number (1-indexed). Used for calculating
         exponential backoff.
+    seed : int or None, default None
+        Optional random seed for deterministic jitter.  When provided,
+        a dedicated ``random.Random(seed)`` instance is used instead of
+        the global ``random`` module, making the delay reproducible.
 
     Returns
     -------
@@ -2523,5 +2536,6 @@ def get_retry_delay(error: Exception, attempt: int = 1) -> float:
     base_delay = 1.0
     max_delay = 60.0
     delay = min(base_delay * (2**attempt), max_delay)
-    jitter = random.uniform(0, delay * 0.1)
+    rng = random.Random(seed) if seed is not None else random
+    jitter = rng.uniform(0, delay * 0.1)
     return delay + jitter

@@ -113,7 +113,7 @@ from insideLLMs.exceptions import (
     RateLimitError,
 )
 from insideLLMs.exceptions import (
-    TimeoutError as ModelTimeoutError,
+    ModelTimeoutError,
 )
 
 logger = logging.getLogger("insideLLMs.retry")
