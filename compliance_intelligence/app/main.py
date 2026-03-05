@@ -114,7 +114,7 @@ async def analyze_scenario(req: AnalyzeRequest):
 
     try:
         final_state = run_compliance_pipeline(transaction)
-    except Exception:
+    except Exception as _:
         logger.exception("Pipeline failed for scenario '%s'", req.scenario_key)
         raise HTTPException(500, "Pipeline error — see server logs for details")
 
@@ -142,7 +142,7 @@ async def analyze_custom(transaction: Transaction):
 
     try:
         final_state = run_compliance_pipeline(transaction)
-    except Exception:
+    except Exception as _:
         logger.exception("Pipeline failed for custom TXN")
         raise HTTPException(500, "Pipeline error — see server logs for details")
 
