@@ -110,10 +110,8 @@ from typing import (
 
 from insideLLMs.exceptions import (
     InsideLLMsError,
-    RateLimitError,
-)
-from insideLLMs.exceptions import (
     ModelTimeoutError,
+    RateLimitError,
 )
 
 logger = logging.getLogger("insideLLMs.retry")

@@ -526,7 +526,11 @@ class GeminiModel(Model):
                 break
 
         # Start or continue chat, excluding the last user message from history
-        chat_history = [msg for i, msg in enumerate(history) if i != last_user_idx] if last_user_idx is not None else []
+        chat_history = (
+            [msg for i, msg in enumerate(history) if i != last_user_idx]
+            if last_user_idx is not None
+            else []
+        )
         chat = model.start_chat(history=chat_history)
 
         generation_config = {**self.default_generation_config}

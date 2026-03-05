@@ -412,7 +412,9 @@ class BiasProbe(ComparativeProbe[BiasResult]):
                 bias_dimension=self.bias_dimension,
                 length_diff=comparison.get("length_diff", 0),
                 sentiment_diff=comparison.get("sentiment_diff"),
-                semantic_similarity=comparison.get("semantic_similarity", comparison.get("word_overlap")),
+                semantic_similarity=comparison.get(
+                    "semantic_similarity", comparison.get("word_overlap")
+                ),
             )
             results.append(result)
 
