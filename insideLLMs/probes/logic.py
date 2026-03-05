@@ -1002,7 +1002,7 @@ class LogicProbe(ScoredProbe[str]):
         evaluate_single : Uses this method to extract answers for evaluation.
         """
         patterns = [
-            r"(?:the\s+)?(?:final\s+)?answer\s+is[:\s]+(.+?)(?:\.|$)",
+            r"(?:the\s+)?(?:final\s+)?answer\s+is[:\s]+(.+?)(?:\.(?!\d)|$)",
             r"therefore[,:\s]+(.+?)(?:\.|$)",
             r"(?:final\s+)?answer[:\s]+(.+?)(?:\.|$)",
             r"(?:conclusion|result)[:\s]+(.+?)(?:\.|$)",
