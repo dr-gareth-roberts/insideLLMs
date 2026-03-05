@@ -38,7 +38,10 @@ def _module_version(dist_name: str) -> str | None:
 
 
 def _has_module(module: str) -> bool:
-    return importlib.util.find_spec(module) is not None
+    try:
+        return importlib.util.find_spec(module) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 def _check_nltk_resource(path: str) -> bool:
@@ -47,7 +50,7 @@ def _check_nltk_resource(path: str) -> bool:
 
         nltk.data.find(path)
         return True
-    except (LookupError, OSError):
+    except (ImportError, LookupError, OSError):
         return False
 
 
