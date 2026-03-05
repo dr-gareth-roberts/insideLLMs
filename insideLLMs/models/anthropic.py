@@ -118,7 +118,7 @@ from insideLLMs.exceptions import (
     RateLimitError,
 )
 from insideLLMs.exceptions import (
-    TimeoutError as InsideLLMsTimeoutError,
+    ModelTimeoutError as InsideLLMsTimeoutError,
 )
 
 from .base import ChatMessage, Model
@@ -409,6 +409,8 @@ class AnthropicModel(Model):
                 temperature=kwargs.get("temperature", 0.7),
                 messages=[{"role": "user", "content": prompt}],
             )
+            if not response.content:
+                return ""
             block = response.content[0]
             return getattr(block, "text", str(block))
         except AnthropicRateLimitError as e:
@@ -559,6 +561,8 @@ class AnthropicModel(Model):
                 temperature=kwargs.get("temperature", 0.7),
                 messages=anthropic_messages,
             )
+            if not response.content:
+                return ""
             block = response.content[0]
             return getattr(block, "text", str(block))
         except AnthropicRateLimitError as e:

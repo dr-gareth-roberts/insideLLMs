@@ -57,7 +57,7 @@ from insideLLMs.exceptions import (
     RateLimitError,
 )
 from insideLLMs.exceptions import (
-    TimeoutError as InsideLLMsTimeoutError,
+    ModelTimeoutError as InsideLLMsTimeoutError,
 )
 
 from .base import ChatMessage, Model
@@ -338,6 +338,8 @@ class OpenAIModel(Model):
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs,
             )
+            if not response.choices:
+                return ""
             return response.choices[0].message.content or ""
         except OpenAIRateLimitError as e:
             raise RateLimitError(
@@ -431,6 +433,8 @@ class OpenAIModel(Model):
                 messages=list(messages),  # type: ignore[arg-type]
                 **kwargs,
             )
+            if not response.choices:
+                return ""
             return response.choices[0].message.content or ""
         except OpenAIRateLimitError as e:
             raise RateLimitError(
