@@ -290,10 +290,12 @@ class ToolDefinition:
 
     Tool with a handler function:
 
+        >>> from insideLLMs.contrib.agents import _safe_eval_arithmetic
+        >>>
         >>> def calculator_handler(expression: str) -> dict:
-        ...     \"\"\"Evaluate a mathematical expression.\"\"\"
+        ...     '''Evaluate a mathematical expression.'''
         ...     try:
-        ...         result = eval(expression, {"__builtins__": {}})
+        ...         result = _safe_eval_arithmetic(expression)
         ...         return {"result": result, "success": True}
         ...     except Exception as e:
         ...         return {"error": str(e), "success": False}
@@ -1616,8 +1618,10 @@ class AgentProbe(Probe[AgentProbeResult]):
 
         Executing a tool handler:
 
+            >>> from insideLLMs.contrib.agents import _safe_eval_arithmetic
+            >>>
             >>> def calc_handler(expr: str) -> dict:
-            ...     return {"result": eval(expr)}
+            ...     return {"result": _safe_eval_arithmetic(expr)}
             ...
             >>> calc_tool = ToolDefinition("calc", "Calculator", {}, calc_handler)
             >>> probe = MyAgentProbe(name="test", tools=[calc_tool])

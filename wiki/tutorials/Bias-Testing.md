@@ -51,6 +51,7 @@ probes:
 dataset:
   format: jsonl
   path: bias_test.jsonl
+output_dir: bias_results
 ```
 
 ## Step 3: Run

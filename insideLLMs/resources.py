@@ -374,7 +374,7 @@ def open_records_file(
         try:
             fp.flush()
             fp.close()
-        except Exception:
+        except Exception as _:
             pass
 
 
@@ -551,7 +551,7 @@ def atomic_write_text(path: Path, text: str) -> None:
         f.flush()
         try:
             os.fsync(f.fileno())
-        except Exception:
+        except Exception as _:
             pass
     os.replace(tmp, path)
 
@@ -921,7 +921,7 @@ def ensure_run_sentinel(run_dir: Path) -> None:
     if not marker.exists():
         try:
             marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:
+        except Exception as _:
             pass
 
 

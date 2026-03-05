@@ -1033,7 +1033,7 @@ class RedisCache:
             ) / self._stats.total_lookups
 
             return json.loads(data)
-        except Exception:
+        except Exception as _:
             self._stats.misses += 1
             return None
 
@@ -1073,7 +1073,7 @@ class RedisCache:
                 self._client.expire(f"{redis_key}:meta", ttl)
 
             return True
-        except Exception:
+        except Exception as _:
             return False
 
     def delete(self, key: str) -> bool:
@@ -1082,7 +1082,7 @@ class RedisCache:
         try:
             self._client.delete(redis_key, f"{redis_key}:meta")
             return True
-        except Exception:
+        except Exception as _:
             return False
 
     def clear(self) -> int:
@@ -1092,7 +1092,7 @@ class RedisCache:
             if keys:
                 return int(self._client.delete(*keys))
             return 0
-        except Exception:
+        except Exception as _:
             return 0
 
     def stats(self) -> SemanticCacheStats:
@@ -1101,7 +1101,7 @@ class RedisCache:
             keys = self._client.keys(f"{self._prefix}*")
             # Count only value keys, not metadata keys
             self._stats.entry_count = len([k for k in keys if not k.endswith(":meta")])
-        except Exception:
+        except Exception as _:
             pass
         return self._stats
 
@@ -1115,7 +1115,7 @@ class RedisCache:
                 if not k.endswith(":meta"):
                     result.append(k.replace(self._prefix, "", 1))
             return result
-        except Exception:
+        except Exception as _:
             return []
 
     def exists(self, key: str) -> bool:
