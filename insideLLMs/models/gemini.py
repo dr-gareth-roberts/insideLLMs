@@ -406,7 +406,10 @@ class GeminiModel(Model):
         )
 
         self._call_count += 1
-        return response.text
+        try:
+            return response.text
+        except (ValueError, IndexError):
+            return ""
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation with the Gemini model.
@@ -513,11 +516,18 @@ class GeminiModel(Model):
             elif role == "assistant":
                 history.append({"role": "model", "parts": [content]})
 
-        # Start or continue chat
-        chat = model.start_chat(history=history[:-1] if len(history) > 1 else [])
+        # Find the last user message in history
+        last_user_msg = ""
+        last_user_idx = None
+        for idx in range(len(history) - 1, -1, -1):
+            if history[idx].get("role") == "user":
+                last_user_msg = history[idx]["parts"][0] if history[idx].get("parts") else ""
+                last_user_idx = idx
+                break
 
-        # Send the last user message
-        last_user_msg = history[-1]["parts"][0] if history else ""
+        # Start or continue chat, excluding the last user message from history
+        chat_history = [msg for i, msg in enumerate(history) if i != last_user_idx] if last_user_idx is not None else []
+        chat = model.start_chat(history=chat_history)
 
         generation_config = {**self.default_generation_config}
         if "temperature" in kwargs:
