@@ -116,7 +116,7 @@ import re
 from typing import Any
 
 from insideLLMs.probes.base import ScoredProbe
-from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
+from insideLLMs.types import ProbeCategory
 
 
 class CodeGenerationProbe(ScoredProbe[str]):
@@ -498,8 +498,9 @@ class CodeGenerationProbe(ScoredProbe[str]):
         self,
         model_output: str,
         reference: Any,
+        input_data: Any = None,
         **kwargs: Any,
-    ) -> ProbeResult[str]:
+    ) -> dict[str, Any]:
         """Evaluate a single code generation result against reference criteria.
 
         Performs multi-criteria evaluation of generated code including:
@@ -521,33 +522,33 @@ class CodeGenerationProbe(ScoredProbe[str]):
             - A string: treated as a single pattern to search for
             - A dict with 'patterns' key: list of patterns to check
             - None: only syntax and style checks are performed
+        input_data : Any, optional
+            The original input data that was passed to run. Default is None.
         **kwargs : Any
             Additional evaluation parameters (currently unused but available
             for future extensibility).
 
         Returns
         -------
-        ProbeResult[str]
-            A result object containing:
-            - input: Truncated model output (first 100 chars)
-            - output: The extracted code
-            - status: SUCCESS if score >= 0.5, ERROR otherwise
-            - metadata: Dict with detailed scoring breakdown including:
+        dict[str, Any]
+            A dictionary with detailed scoring breakdown including:
                 - syntax_valid: bool
                 - pattern_match_score: float (if patterns provided)
                 - has_docstring: bool (if require_docstrings=True)
                 - has_type_hints: bool (if require_type_hints=True)
                 - score: float (overall score 0.0-1.0)
                 - label: str (excellent/good/acceptable/poor/failing)
+                - is_correct: bool (True if score >= 0.5)
+                - status: str ("success" or "error")
 
         Example: Evaluate with String Pattern
         -------------------------------------
         >>> probe = CodeGenerationProbe()
         >>> code = "def factorial(n):\\n    return 1 if n <= 1 else n * factorial(n-1)"
         >>> result = probe.evaluate_single(code, reference="def factorial")
-        >>> print(result.metadata["syntax_valid"])
+        >>> print(result["syntax_valid"])
         True
-        >>> print(result.metadata["pattern_match_score"])
+        >>> print(result["pattern_match_score"])
         1.0
 
         Example: Evaluate with Multiple Patterns
@@ -566,7 +567,7 @@ class CodeGenerationProbe(ScoredProbe[str]):
         ...     code,
         ...     reference={"patterns": ["def is_prime", "return True", "return False"]}
         ... )
-        >>> print(f"Pattern score: {result.metadata['pattern_match_score']:.2f}")
+        >>> print(f"Pattern score: {result['pattern_match_score']:.2f}")
         Pattern score: 1.00
 
         Example: Evaluate with Style Requirements
@@ -574,23 +575,23 @@ class CodeGenerationProbe(ScoredProbe[str]):
         >>> probe = CodeGenerationProbe(require_docstrings=True)
         >>> code_without_doc = "def add(a, b):\\n    return a + b"
         >>> result = probe.evaluate_single(code_without_doc, reference=None)
-        >>> print(f"Has docstring: {result.metadata['has_docstring']}")
+        >>> print(f"Has docstring: {result['has_docstring']}")
         Has docstring: False
-        >>> print(f"Score: {result.metadata['score']:.2f}")  # Penalized score
+        >>> print(f"Score: {result['score']:.2f}")  # Penalized score
 
         Example: Check Result Status
         ----------------------------
         >>> probe = CodeGenerationProbe()
         >>> invalid_code = "def broken(:\\n    pass"
         >>> result = probe.evaluate_single(invalid_code, reference=None)
-        >>> print(result.status)
-        ResultStatus.ERROR
-        >>> print(result.metadata["syntax_valid"])
+        >>> print(result["status"])
+        error
+        >>> print(result["syntax_valid"])
         False
         """
         code = self.extract_code(model_output)
         score_components = []
-        details = {}
+        details: dict[str, Any] = {}
 
         # Check for syntax validity (basic)
         syntax_valid = self._check_syntax(code)
@@ -600,8 +601,6 @@ class CodeGenerationProbe(ScoredProbe[str]):
         # Check for expected patterns
         if isinstance(reference, dict):
             expected_patterns = reference.get("patterns", [])
-            # expected_output could be used for exact match checking if needed
-            # expected_output = reference.get("expected_output")
         elif isinstance(reference, str):
             expected_patterns = [reference]
         else:
@@ -630,13 +629,10 @@ class CodeGenerationProbe(ScoredProbe[str]):
 
         details["score"] = overall_score
         details["label"] = self._score_to_label(overall_score)
+        details["is_correct"] = overall_score >= 0.5
+        details["status"] = "success" if overall_score >= 0.5 else "error"
 
-        return ProbeResult(
-            input=model_output[:100] + "..." if len(model_output) > 100 else model_output,
-            output=code,
-            status=ResultStatus.SUCCESS if overall_score >= 0.5 else ResultStatus.ERROR,
-            metadata=details,
-        )
+        return details
 
     def _check_syntax(self, code: str) -> bool:
         """Perform basic syntax validation on the generated code.
@@ -1005,8 +1001,9 @@ class CodeExplanationProbe(ScoredProbe[str]):
         self,
         model_output: str,
         reference: Any,
+        input_data: Any = None,
         **kwargs: Any,
-    ) -> ProbeResult[str]:
+    ) -> dict[str, Any]:
         """Evaluate a code explanation against reference criteria.
 
         Performs multi-criteria evaluation of the explanation including:
@@ -1027,23 +1024,23 @@ class CodeExplanationProbe(ScoredProbe[str]):
             - A list: treated as a list of expected concepts
             - A string: treated as a single expected concept
             - None: only length and structure are evaluated (concept score = 0.5)
+        input_data : Any, optional
+            The original input data that was passed to run. Default is None.
         **kwargs : Any
             Additional evaluation parameters (currently unused).
 
         Returns
         -------
-        ProbeResult[str]
-            A result object containing:
-            - input: Truncated explanation (first 100 chars)
-            - output: The full explanation
-            - status: Always SUCCESS for explanations
-            - metadata: Dict with detailed scoring breakdown including:
+        dict[str, Any]
+            A dictionary with detailed scoring breakdown including:
                 - word_count: int
                 - concepts_covered: int (if concepts provided)
                 - total_concepts: int (if concepts provided)
                 - has_structure: bool
                 - score: float (overall score 0.0-1.0)
                 - label: "clear" or "unclear"
+                - is_correct: bool (True if score >= 0.7)
+                - status: str ("success")
 
         Example: Evaluate with Concept List
         -----------------------------------
@@ -1053,7 +1050,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         ...     explanation,
         ...     reference={"concepts": ["recursive", "factorial", "multiply"]}
         ... )
-        >>> print(f"Covered: {result.metadata['concepts_covered']}/{result.metadata['total_concepts']}")
+        >>> print(f"Covered: {result['concepts_covered']}/{result['total_concepts']}")
 
         Example: Evaluate with Simple List
         ----------------------------------
@@ -1063,7 +1060,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         ...     explanation,
         ...     reference=["sort", "lambda", "key"]
         ... )
-        >>> print(result.metadata["score"])
+        >>> print(result["score"])
 
         Example: Evaluate Structure Only
         --------------------------------
@@ -1075,7 +1072,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         ... 3. Returns the result
         ... '''
         >>> result = probe.evaluate_single(explanation, reference=None)
-        >>> print(f"Has structure: {result.metadata['has_structure']}")
+        >>> print(f"Has structure: {result['has_structure']}")
         True
 
         Example: Check Explanation Quality Label
@@ -1086,10 +1083,10 @@ class CodeExplanationProbe(ScoredProbe[str]):
         ...     good_explanation,
         ...     reference=["binary", "search"]
         ... )
-        >>> print(result.metadata["label"])
+        >>> print(result["label"])
         clear
         """
-        details = {}
+        details: dict[str, Any] = {}
 
         # Length check
         word_count = len(model_output.split())
@@ -1127,13 +1124,10 @@ class CodeExplanationProbe(ScoredProbe[str]):
 
         details["score"] = overall_score
         details["label"] = "clear" if overall_score >= 0.7 else "unclear"
+        details["is_correct"] = overall_score >= 0.7
+        details["status"] = "success"
 
-        return ProbeResult(
-            input=model_output[:100] + "...",
-            output=model_output,
-            status=ResultStatus.SUCCESS,
-            metadata=details,
-        )
+        return details
 
 
 class CodeDebugProbe(ScoredProbe[str]):
@@ -1426,8 +1420,9 @@ class CodeDebugProbe(ScoredProbe[str]):
         self,
         model_output: str,
         reference: Any,
+        input_data: Any = None,
         **kwargs: Any,
-    ) -> ProbeResult[str]:
+    ) -> dict[str, Any]:
         """Evaluate a debugging response against reference criteria.
 
         Performs multi-criteria evaluation of the debugging response including:
@@ -1449,23 +1444,22 @@ class CodeDebugProbe(ScoredProbe[str]):
             - A list: treated as a list of expected fix patterns
             - A string: treated as a single expected pattern
             - None: only explanation and code fix presence are evaluated
-
+        input_data : Any, optional
+            The original input data that was passed to run. Default is None.
         **kwargs : Any
             Additional evaluation parameters (currently unused).
 
         Returns
         -------
-        ProbeResult[str]
-            A result object containing:
-            - input: Truncated response (first 100 chars)
-            - output: The full debugging response
-            - status: SUCCESS if score >= 0.5, ERROR otherwise
-            - metadata: Dict with detailed scoring breakdown including:
+        dict[str, Any]
+            A dictionary with detailed scoring breakdown including:
                 - has_explanation: bool
                 - has_code_fix: bool
                 - fix_patterns_found: int (if patterns provided)
                 - score: float (overall score 0.0-1.0)
                 - label: "fixed" or "partially_fixed"
+                - is_correct: bool (True if score >= 0.5)
+                - status: str ("success" or "error")
 
         Notes
         -----
@@ -1492,9 +1486,9 @@ class CodeDebugProbe(ScoredProbe[str]):
         ...     response,
         ...     reference={"fix_patterns": ["if b == 0", "ValueError"]}
         ... )
-        >>> print(f"Has explanation: {result.metadata['has_explanation']}")
+        >>> print(f"Has explanation: {result['has_explanation']}")
         True
-        >>> print(f"Fix patterns found: {result.metadata['fix_patterns_found']}")
+        >>> print(f"Fix patterns found: {result['fix_patterns_found']}")
         2
 
         Example: Evaluate with Pattern List
@@ -1505,7 +1499,7 @@ class CodeDebugProbe(ScoredProbe[str]):
         ...     response,
         ...     reference=["len(arr)", "bounds"]
         ... )
-        >>> print(result.metadata["score"])
+        >>> print(result["score"])
 
         Example: No Reference Patterns
         -------------------------------
@@ -1515,7 +1509,7 @@ class CodeDebugProbe(ScoredProbe[str]):
         ... Fix: Initialize x = 0 before the loop.
         ... '''
         >>> result = probe.evaluate_single(response, reference=None)
-        >>> print(f"Has explanation: {result.metadata['has_explanation']}")
+        >>> print(f"Has explanation: {result['has_explanation']}")
         True
         >>> # Score based only on explanation and code fix presence
 
@@ -1524,12 +1518,12 @@ class CodeDebugProbe(ScoredProbe[str]):
         >>> probe = CodeDebugProbe()
         >>> poor_response = "I don't know what's wrong."
         >>> result = probe.evaluate_single(poor_response, reference=["fix"])
-        >>> print(result.status)
-        ResultStatus.ERROR
-        >>> print(result.metadata["label"])
+        >>> print(result["status"])
+        error
+        >>> print(result["label"])
         partially_fixed
         """
-        details = {}
+        details: dict[str, Any] = {}
 
         # Check for explanation
         explanation_indicators = [
@@ -1576,10 +1570,7 @@ class CodeDebugProbe(ScoredProbe[str]):
 
         details["score"] = overall_score
         details["label"] = "fixed" if overall_score >= 0.7 else "partially_fixed"
+        details["is_correct"] = overall_score >= 0.5
+        details["status"] = "success" if overall_score >= 0.5 else "error"
 
-        return ProbeResult(
-            input=model_output[:100] + "...",
-            output=model_output,
-            status=ResultStatus.SUCCESS if overall_score >= 0.5 else ResultStatus.ERROR,
-            metadata=details,
-        )
+        return details

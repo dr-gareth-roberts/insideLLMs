@@ -1742,6 +1742,7 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         limit = reference if isinstance(reference, int) else self.limit
         details = {}
         compliant = True
+        score = 1.0
 
         if self.constraint_type == "word_limit":
             word_count = len(model_output.split())
