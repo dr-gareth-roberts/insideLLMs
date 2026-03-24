@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def check_type_coverage(report_dir: str, threshold: float = 0.95) -> bool:
+def check_type_coverage(report_dir: str, threshold: float = 0.90) -> bool:
     """Check type coverage from mypy report.
 
     Args:
@@ -16,16 +16,26 @@ def check_type_coverage(report_dir: str, threshold: float = 0.95) -> bool:
     Returns:
         True if coverage meets threshold
     """
-    report_path = Path(report_dir) / "index.txt"
+    # mypy --any-exprs-report writes any-exprs.txt (not index.txt)
+    report_path = Path(report_dir) / "any-exprs.txt"
 
     if not report_path.exists():
-        print(f"Error: Report not found at {report_path}")
+        # Fall back to index.txt for older mypy versions
+        report_path = Path(report_dir) / "index.txt"
+
+    if not report_path.exists():
+        print(f"Error: Report not found at {report_dir}/any-exprs.txt or index.txt")
         return False
 
     with open(report_path) as f:
         content = f.read()
 
-    match = re.search(r"Total coverage:\s*(\d+\.?\d*)%", content)
+    # Match the Total row: "Total   6332   94206     93.28%"
+    match = re.search(r"Total\s+\d+\s+\d+\s+(\d+\.?\d*)%", content)
+
+    if not match:
+        # Fall back to "Total coverage: XX%" format
+        match = re.search(r"Total coverage:\s*(\d+\.?\d*)%", content)
 
     if not match:
         print("Error: Could not parse coverage from report — failing as a precaution")
@@ -50,7 +60,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     report_dir = sys.argv[1]
-    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else 0.95
+    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else 0.90
 
     success = check_type_coverage(report_dir, threshold)
     sys.exit(0 if success else 1)

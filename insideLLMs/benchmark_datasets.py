@@ -1203,16 +1203,6 @@ def load_dataset(path: Union[str, Path]) -> BenchmarkDataset:
     return BenchmarkDataset.load(path)
 
 
-def save_dataset(dataset: BenchmarkDataset, path: Union[str, Path]) -> None:
-    """Save dataset to file.
-
-    Args:
-        dataset: Dataset to save
-        path: Path to save to
-    """
-    dataset.save(path)
-
-
 def create_dataset(
     name: str,
     examples: list[dict[str, Any]],
@@ -2020,52 +2010,6 @@ def create_comprehensive_benchmark_suite(
                 difficulty=example.difficulty,
                 metadata={"source_dataset": name, **example.metadata},
             )
-
-    return builder.build()
-
-
-def create_difficulty_stratified_suite(
-    difficulty: str,
-    max_total_examples: int = 100,
-    seed: Optional[int] = None,
-) -> BenchmarkDataset:
-    """Create a benchmark suite with examples of a specific difficulty.
-
-    Args:
-        difficulty: Difficulty level (easy, medium, hard)
-        max_total_examples: Maximum total examples
-        seed: Random seed
-
-    Returns:
-        BenchmarkDataset with only the specified difficulty
-    """
-    all_datasets = get_all_builtin_datasets()
-
-    builder = DatasetBuilder(f"{difficulty}_difficulty_benchmark")
-    builder.with_category(DatasetCategory.CUSTOM)
-    builder.with_description(f"Benchmark suite with {difficulty} difficulty examples")
-
-    all_examples = []
-    for name, dataset in all_datasets.items():
-        for example in dataset:
-            if example.difficulty == difficulty:
-                example.source = name
-                all_examples.append(example)
-
-    # Sample if needed
-    if len(all_examples) > max_total_examples:
-        if seed is not None:
-            random.seed(seed)
-        all_examples = random.sample(all_examples, max_total_examples)
-
-    for example in all_examples:
-        builder.add_example(
-            input_text=example.input_text,
-            expected_output=example.expected_output,
-            category=example.category,
-            difficulty=example.difficulty,
-            metadata={"source_dataset": example.source, **example.metadata},
-        )
 
     return builder.build()
 
