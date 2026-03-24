@@ -145,7 +145,7 @@ app.middleware("http")(
 
 ## Quick Start
 
-### Installation
+### 1. Install
 
 ```bash
 pip install insidellms
@@ -156,12 +156,35 @@ pip install insidellms[visualization]  # Charts and reports (matplotlib, seaborn
 pip install insidellms[nlp,visualization]  # Everything
 ```
 
-### Basic Usage
+### 2. Get Started
+
+Run the `welcome` command to get an overview of the toolkit:
 
 ```bash
-# Set API keys via environment (never hardcode)
-export OPENAI_API_KEY=sk-...
+insidellms welcome
 ```
+
+### 3. Run a Quick Test (no config needed)
+
+```bash
+insidellms quicktest "Hello world" --model dummy
+```
+
+### 4. Initialize an Experiment
+
+Start an interactive experiment setup:
+
+```bash
+insidellms init
+```
+
+Then run your experiment:
+
+```bash
+insidellms run experiment.yaml
+```
+
+## Basic Usage (Python API)
 
 ```python
 from insideLLMs import OpenAIModel, LogicProbe, run_probe
