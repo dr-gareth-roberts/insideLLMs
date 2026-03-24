@@ -1309,15 +1309,6 @@ class TokenAnalyzer:
         )
 
 
-@dataclass
-class EmbeddingSimilarity:
-    """Results of embedding similarity comparison."""
-
-    similarity: float
-    method: str
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
 class EmbeddingUtils:
     """Utilities for working with text embeddings."""
 
