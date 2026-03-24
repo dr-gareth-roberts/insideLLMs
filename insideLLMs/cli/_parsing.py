@@ -568,6 +568,16 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # =========================================================================
+    # Welcome command
+    # =========================================================================
+    subparsers.add_parser(
+        "welcome",
+        help="Show a friendly welcome message and get started",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+
+    # =========================================================================
     # Quick test command
     # =========================================================================
     quicktest_parser = subparsers.add_parser(
@@ -934,6 +944,12 @@ def create_parser() -> argparse.ArgumentParser:
         choices=["basic", "benchmark", "tracking", "full", "harness"],
         default="basic",
         help="Configuration template to use",
+    )
+    init_parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Run in interactive mode to configure the experiment",
     )
 
     # =========================================================================

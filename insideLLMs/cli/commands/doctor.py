@@ -351,9 +351,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     )
 
     # API keys (informational)
-    add_check(name="OPENAI_API_KEY", ok=bool(os.environ.get("OPENAI_API_KEY")), hint="set env var")
     add_check(
-        name="ANTHROPIC_API_KEY", ok=bool(os.environ.get("ANTHROPIC_API_KEY")), hint="set env var"
+        name="OPENAI_API_KEY",
+        ok=bool(os.environ.get("OPENAI_API_KEY")),
+        hint="export OPENAI_API_KEY=sk-...",
+    )
+    add_check(
+        name="ANTHROPIC_API_KEY",
+        ok=bool(os.environ.get("ANTHROPIC_API_KEY")),
+        hint="export ANTHROPIC_API_KEY=sk-ant-...",
     )
 
     run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
@@ -399,7 +405,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             print_success(item["name"])
         else:
             hint = f" ({item['hint']})" if item.get("hint") else ""
-            print_warning(f"{item['name']}{hint}")
+            if item["name"] in {"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "INSIDELLMS_RUN_ROOT"}:
+                print_info(f"{item['name']}{hint}")
+            else:
+                print_warning(f"{item['name']}{hint}")
 
     if capabilities is not None:
         print()
