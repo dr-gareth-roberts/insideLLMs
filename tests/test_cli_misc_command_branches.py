@@ -35,6 +35,8 @@ def _init_args(**kwargs):
         "template": "basic",
         "model": "dummy",
         "probe": "dummy",
+        "interactive": False,
+        "quiet": False,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)

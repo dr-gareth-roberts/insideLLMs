@@ -267,7 +267,7 @@ def _llm_decision(state: PipelineState, risk) -> ComplianceDecision:
     try:
         data = json.loads(response.content)
         return ComplianceDecision(**data)
-    except Exception:
+    except Exception as _:
         logger.warning("LLM decision parsing failed, falling back to rules")
         return _rule_based_decision(state, risk)
 
