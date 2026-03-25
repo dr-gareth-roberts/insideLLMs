@@ -35,9 +35,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     except ValueError:
         args_after_init = 0
 
-    if args.interactive or (
-        args_after_init == 0 and sys.stdin.isatty() and not args.quiet
-    ):
+    if args.interactive or (args_after_init == 0 and sys.stdin.isatty() and not args.quiet):
         try:
             print("  Welcome to the interactive experiment setup!")
             print("  Press Enter to use [defaults].\n")
@@ -53,11 +51,15 @@ def cmd_init(args: argparse.Namespace) -> int:
                 template = q_template
 
             if template != "harness":
-                q_model = input(f"  Choose a model (dummy, openai, anthropic, ollama) [{model}]: ").strip()
+                q_model = input(
+                    f"  Choose a model (dummy, openai, anthropic, ollama) [{model}]: "
+                ).strip()
                 if q_model:
                     model = q_model
 
-                q_probe = input(f"  Choose a probe (logic, bias, attack, factuality) [{probe}]: ").strip()
+                q_probe = input(
+                    f"  Choose a probe (logic, bias, attack, factuality) [{probe}]: "
+                ).strip()
                 if q_probe:
                     probe = q_probe
             print()
