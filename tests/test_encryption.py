@@ -1,10 +1,12 @@
 import json
-from pathlib import Path
 
 import pytest
-from cryptography.fernet import Fernet
 
-from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl
+pytest.importorskip("cryptography", reason="cryptography not installed")
+
+from cryptography.fernet import Fernet  # noqa: E402
+
+from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl  # noqa: E402
 
 
 def test_encrypt_decrypt_jsonl(tmp_path):
