@@ -1,5 +1,7 @@
 import argparse
+
 from insideLLMs.cli.commands.welcome import cmd_welcome
+
 
 def test_welcome_command(capsys):
     args = argparse.Namespace()

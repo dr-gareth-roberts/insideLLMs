@@ -1,14 +1,15 @@
 """Welcome command: friendly introduction for new users."""
 
 import argparse
+
 from .._output import (
     Colors,
     colorize,
     print_header,
-    print_info,
     print_subheader,
     print_success,
 )
+
 
 def cmd_welcome(args: argparse.Namespace) -> int:
     """Execute the welcome command."""
@@ -21,7 +22,7 @@ def cmd_welcome(args: argparse.Namespace) -> int:
 
     print_subheader("🚀 Quick Start")
     print("  The easiest way to see insideLLMs in action is to run a quick test:")
-    print(f"  {colorize('insidellms quicktest \"Hello world\" --model dummy', Colors.GREEN)}")
+    print(f"  {colorize('insidellms quicktest Hello world --model dummy', Colors.GREEN)}")
     print()
 
     print_subheader("🛠️ Setting up your first experiment")

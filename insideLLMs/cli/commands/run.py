@@ -192,7 +192,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                 latencies = [
                     r.get("latency_ms")
                     for r in raw_results
-                    if r.get("status") == "success" and isinstance(r.get("latency_ms"), (int, float))
+                    if r.get("status") == "success"
+                    and isinstance(r.get("latency_ms"), (int, float))
                 ]
                 if latencies:
                     avg_latency = sum(latencies) / len(latencies)

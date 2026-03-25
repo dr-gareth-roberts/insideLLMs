@@ -20,6 +20,7 @@ from insideLLMs.registry import (
 
 from .._output import (
     print_header,
+    print_info,
     print_key_value,
     print_subheader,
     print_success,
