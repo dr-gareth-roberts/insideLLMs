@@ -170,23 +170,23 @@ determinism declarations) on top of current entry-point registration.
 
 ### [docs/STABILITY_MATRIX.md](docs/STABILITY_MATRIX.md)
 **Surface-by-surface compatibility contract matrix** (Stable / Experimental / Internal)
-for CLI, artifacts, schemas, and extension points.
+for CLI, artefacts, schemas, and extension points.
 
 **Best for:** PR review, release planning, deprecation decisions, contract governance
 
 ---
 
 ### [docs/DETERMINISM.md](docs/DETERMINISM.md)
-**Deterministic artifact guarantees** for CI diff-gating.
+**Deterministic artefact guarantees** for CI diff-gating.
 
 **Best for:** Reproducibility expectations, deterministic controls, local verification workflow
 
 ---
 
 ### [docs/ARTIFACT_CONTRACT.md](docs/ARTIFACT_CONTRACT.md)
-**Field-level contract for canonical run artifacts** (`records.jsonl`, `manifest.json`, `summary.json`, `report.html`).
+**Field-level contract for canonical run artefacts** (`records.jsonl`, `manifest.json`, `summary.json`, `report.html`).
 
-**Best for:** Contributor implementation checks, artifact compatibility reviews, schema-change impact
+**Best for:** Contributor implementation checks, artefact compatibility reviews, schema-change impact
 
 ---
 
@@ -205,9 +205,9 @@ for CLI, artifacts, schemas, and extension points.
 ---
 
 ### [wiki/Experiment-Tracking.md](wiki/Experiment-Tracking.md)
-**Experiment tracking backends** for logging metrics/params/artifacts (local, W&B, MLflow, TensorBoard).
+**Experiment tracking backends** for logging metrics/params/artefacts (local, W&B, MLflow, TensorBoard).
 
-**Best for:** Logging runs to dashboards, correlating metadata outside deterministic artifacts
+**Best for:** Logging runs to dashboards, correlating metadata outside deterministic artefacts
 
 ---
 
@@ -278,7 +278,7 @@ for CLI, artifacts, schemas, and extension points.
 #### **Run verifiable-evaluation workflows (attest/sign/verify)**
 → [wiki/advanced/Verifiable-Evaluation.md](wiki/advanced/Verifiable-Evaluation.md), [API_REFERENCE.md - CLI Verifiable Evaluation Commands](API_REFERENCE.md#cli-verifiable-evaluation-commands)
 
-#### **Validate JSON/JSONL artifacts against schemas**
+#### **Validate JSON/JSONL artefacts against schemas**
 → [README.md - Schema Validation](README.md#advanced-schema-validation), [wiki/reference/CLI.md](wiki/reference/CLI.md#schema)
 
 #### **Find a quick code example**

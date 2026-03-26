@@ -69,11 +69,11 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 ## [0.2.0] - 2025-01-15
 
 ### Added
-- Deterministic artifact pipeline with SHA-256 run IDs
+- Deterministic artefact pipeline with SHA-256 run IDs
 - Schema versioning (v1.0.0, v1.0.1) with Pydantic-based validation
 - `insidellms diff` for cross-run comparison with CI diff-gating
 - `insidellms doctor` readiness checker
-- `insidellms schema validate` for artifact payload validation
+- `insidellms schema validate` for artefact payload validation
 - DSSE attestation and cosign signing workflows
 - Golden-path determinism verification (`make golden-path`)
 - Provider adapters: OpenAI, Anthropic, HuggingFace, Gemini, Cohere, Ollama, llama.cpp, vLLM
