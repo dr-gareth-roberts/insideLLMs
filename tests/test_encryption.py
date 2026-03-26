@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
-from cryptography.fernet import Fernet
 
 from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl
+
+fernet_module = pytest.importorskip("cryptography.fernet")
+Fernet = fernet_module.Fernet
 
 
 def test_encrypt_decrypt_jsonl(tmp_path):
