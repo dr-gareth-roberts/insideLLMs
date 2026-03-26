@@ -1,6 +1,6 @@
 # API tiers
 
-This document defines compatibility tiers for Python imports, CLI behavior, and extension points.
+This document defines compatibility tiers for Python imports, CLI behaviour, and extension points.
 Use it together with [docs/STABILITY.md](../STABILITY.md), [docs/STABILITY_MATRIX.md](../STABILITY_MATRIX.md), and [docs/IMPORT_PATHS.md](../IMPORT_PATHS.md).
 
 ## Why this exists
@@ -20,7 +20,7 @@ insideLLMs has grown into a platform-scale project. Explicit API tiering helps c
 | Surface | Tier | Notes |
 |---|---|---|
 | CLI deterministic spine: `insidellms run`, `harness`, `report`, `diff`, `schema validate` | Tier 1 | Primary CI diff-gating workflow. |
-| Canonical run artifacts (`records.jsonl`, `manifest.json`, `summary.json`, `diff.json`) and schema names | Tier 1 | Governed by versioned schema contracts. |
+| Canonical run artefacts (`records.jsonl`, `manifest.json`, `summary.json`, `diff.json`) and schema names | Tier 1 | Governed by versioned schema contracts. |
 | Core runtime entry points: `insideLLMs.runtime.runner` (`ProbeRunner`, `AsyncProbeRunner`, config-driven execution helpers) | Tier 1 | Canonical programmatic execution interface. |
 | Runtime diffing API: `insideLLMs.runtime.diffing` (`build_diff_computation`, `compute_diff_exit_code`) | Tier 1 | Canonical programmatic diff + gate surface shared by CLI/integrations. |
 | Public diff facade: `insideLLMs.diffing` | Tier 1 | Narrow import surface for diff computation, gate policy, and interactive snapshot helpers. |
@@ -44,7 +44,7 @@ insideLLMs has grown into a platform-scale project. Explicit API tiering helps c
 4. When touching Tier 1:
    - update changelog and docs,
    - add/adjust compatibility tests,
-   - provide migration guidance for any behavior changes.
+   - provide migration guidance for any behaviour changes.
 
 ## Practical import guidance
 

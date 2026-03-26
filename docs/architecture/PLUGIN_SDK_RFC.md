@@ -10,13 +10,13 @@ insideLLMs already supports entry-point plugins via `insidellms.plugins`, but cu
 
 - compatibility expectations,
 - capability declaration,
-- deterministic-behavior declaration.
+- deterministic-behaviour declaration.
 
 This makes ecosystem growth possible, but operational governance (CI policy, preflight diagnostics, and upgrade planning) harder than necessary.
 
 ## Goals
 
-1. Keep existing plugin loading behavior working.
+1. Keep existing plugin loading behaviour working.
 2. Add a lightweight metadata contract that tools can consume.
 3. Make deterministic compatibility explicit so CI users can make policy decisions.
 4. Keep plugin authoring simple and Python packaging-native.
@@ -79,9 +79,9 @@ This function is optional in phase 1 and never required for loading.
 
 ### 4) Determinism class vocabulary
 
-- `deterministic`: plugin behavior is deterministic for fixed inputs/configuration.
+- `deterministic`: plugin behaviour is deterministic for fixed inputs/configuration.
 - `best_effort`: mostly deterministic with known external/stochastic caveats.
-- `non_deterministic`: plugin behavior is intentionally or inherently non-deterministic.
+- `non_deterministic`: plugin behaviour is intentionally or inherently non-deterministic.
 
 ### 5) Validation posture
 
@@ -104,7 +104,7 @@ This function is optional in phase 1 and never required for loading.
 ## Security and reliability considerations
 
 - Plugin loading remains code execution; only install trusted distributions.
-- Deterministic declarations are attestations by plugin authors; consumers should verify behavior in CI.
+- Deterministic declarations are attestations by plugin authors; consumers should verify behaviour in CI.
 - In strict CI environments, pin plugin package versions and hashes.
 
 ## Open questions
