@@ -16,7 +16,7 @@ import asyncio
 import tempfile
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -343,6 +343,7 @@ class TestAsyncModel:
         assert isinstance(result, ModelResponse)
         assert result.content == "async:hello"
         assert result.model == "async-v1"
+        assert result.latency_ms is not None
         assert result.latency_ms >= 0
 
     @pytest.mark.asyncio
@@ -407,14 +408,14 @@ class TestModelValidatePrompt:
         from insideLLMs.validation import ValidationError
 
         with pytest.raises(ValidationError):
-            model._validate_prompt(None)
+            model._validate_prompt(cast(Any, None))
 
     def test_validate_prompt_raises_for_non_string(self):
         model = ConcreteModel(name="test", model_id="test-v1")
         from insideLLMs.validation import ValidationError
 
         with pytest.raises(ValidationError):
-            model._validate_prompt(123)
+            model._validate_prompt(cast(Any, 123))
 
 
 # ===================================================================
@@ -465,6 +466,7 @@ class TestModelBase:
         resp = model.generate_with_metadata("hello")
         assert resp.content == "response:hello"
         assert resp.model == "test-v1"
+        assert resp.latency_ms is not None
         assert resp.latency_ms >= 0
 
     def test_call_count_init(self):
@@ -685,7 +687,7 @@ class TestParseConfigDict:
         try:
             config = _parse_config_dict(data)
             assert config.name == "Minimal"
-        except Exception:
+        except Exception as _:
             # Pydantic validation may reject empty model/probe/dataset
             pass
 
@@ -802,7 +804,7 @@ class TestRequirePydantic:
 
     def test_raises_when_unavailable(self):
         """Test that _require_pydantic raises ImportError when pydantic is missing."""
-        from insideLLMs import config as config_module
+        import insideLLMs.config as config_module
 
         original = config_module.PYDANTIC_AVAILABLE
         try:
@@ -844,7 +846,7 @@ class TestSaveConfigToJson:
 
     def test_save_config_to_json_non_pydantic_path(self, tmp_path):
         """Exercise _config_to_dict fallback used when PYDANTIC_AVAILABLE is False."""
-        from insideLLMs import config as config_module
+        import insideLLMs.config as config_module
         from insideLLMs.config import create_example_config, save_config_to_json
 
         config = create_example_config()
@@ -864,7 +866,7 @@ class TestSaveConfigToJson:
 
     def test_save_config_to_yaml_non_pydantic_path(self, tmp_path):
         """Exercise _config_to_dict fallback for YAML save."""
-        from insideLLMs import config as config_module
+        import insideLLMs.config as config_module
         from insideLLMs.config import create_example_config, save_config_to_yaml
 
         config = create_example_config()
@@ -987,11 +989,12 @@ class TestCreateExampleConfigCoverage:
         assert config.dataset is not None
         assert config.runner is not None
         assert "example" in config.tags
+        assert config.dataset.data is not None
         assert len(config.dataset.data) == 2
 
     def test_example_config_non_pydantic(self):
         """Exercise create_example_config with PYDANTIC_AVAILABLE=False."""
-        from insideLLMs import config as config_module
+        import insideLLMs.config as config_module
 
         original = config_module.PYDANTIC_AVAILABLE
         try:
@@ -1087,8 +1090,8 @@ class TestConfigNoPydanticFallback:
                 pass
 
             obj = TestModel(x=1, y="hello")
-            assert obj.x == 1
-            assert obj.y == "hello"
+            assert getattr(obj, "x") == 1
+            assert getattr(obj, "y") == "hello"
             dumped = obj.model_dump()
             assert dumped == {"x": 1, "y": "hello"}
 

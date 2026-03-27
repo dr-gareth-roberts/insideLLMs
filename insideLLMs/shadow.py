@@ -82,10 +82,10 @@ def _decode_request_body(raw: bytes) -> Any:
         return None
     try:
         return json.loads(raw.decode("utf-8"))
-    except Exception:
+    except Exception as _:
         try:
             return raw.decode("utf-8")
-        except Exception:
+        except Exception as _:
             return {"bytes": len(raw)}
 
 
