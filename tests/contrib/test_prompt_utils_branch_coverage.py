@@ -18,6 +18,10 @@ from insideLLMs.contrib.prompt_utils import (
 )
 
 
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("jinja2"),
+    reason="jinja2 not installed",
+)
 def test_render_jinja_template_success():
     rendered = render_jinja_template("Hello {{ name }}!", {"name": "World"})
     assert rendered == "Hello World!"

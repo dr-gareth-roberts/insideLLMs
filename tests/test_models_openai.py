@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("openai")
+
 
 class TestOpenAIModelInit:
     """Tests for OpenAIModel initialization."""

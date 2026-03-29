@@ -2,6 +2,8 @@
 
 import pytest
 
+pytest.importorskip("nltk")
+
 from insideLLMs.nlp.tokenization import (
     get_ngrams,
     segment_sentences,

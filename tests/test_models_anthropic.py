@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("anthropic")
+
 
 class TestAnthropicModelInit:
     """Tests for AnthropicModel initialization."""
