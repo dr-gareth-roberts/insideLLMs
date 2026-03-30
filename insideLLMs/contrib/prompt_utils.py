@@ -179,12 +179,18 @@ def _escape_html_text(value: object) -> str:
     Examples
     --------
     >>> _escape_html_text("<script>alert('xss')</script>")
-    '&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;'
+    "&lt;script&gt;alert('xss')&lt;/script&gt;"
 
     >>> _escape_html_text("Hello & goodbye")
     'Hello &amp; goodbye'
+
+    Notes
+    -----
+    Uses quote=False since this is for text content, not HTML attributes.
+    This means single and double quotes are not escaped, which is safe for
+    text nodes but not for attribute values.
     """
-    return html.escape(str(value), quote=True)
+    return html.escape(str(value), quote=False)
 
 
 class PromptRole(Enum):
