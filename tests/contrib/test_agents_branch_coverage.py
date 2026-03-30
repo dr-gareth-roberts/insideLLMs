@@ -101,11 +101,12 @@ def test_calculator_and_python_tool_error_branches():
     assert "Error:" in bad_expr.output
 
     python_tool = create_python_tool(allow_exec=True, sandbox_contract="unit-test-sandbox")
-    success = python_tool.execute("result = 41 + 1")
-    assert success.output == "42"
+    # Python tool is always disabled for security
+    result = python_tool.execute("result = 41 + 1")
+    assert "disabled" in result.output.lower()
 
-    failure = python_tool.execute("result = 1/0")
-    assert "Error:" in failure.output
+    result2 = python_tool.execute("result = 1/0")
+    assert "disabled" in result2.output.lower()
 
 
 def test_agent_factory_conversion_branches_for_tool_and_callable():

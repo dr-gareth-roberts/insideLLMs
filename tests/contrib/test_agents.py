@@ -876,10 +876,10 @@ class TestBuiltInTools:
         assert "disabled" in result.output.lower()
 
     def test_python_tool_requires_sandbox_contract_when_enabled(self):
-        """Execution stays disabled without explicit sandbox contract."""
+        """Execution is always disabled for security."""
         python = create_python_tool(allow_exec=True)
         result = python.execute("result = 2 + 2")
-        assert "sandbox contract" in result.output.lower()
+        assert "disabled" in result.output.lower()
 
 
 # =============================================================================
