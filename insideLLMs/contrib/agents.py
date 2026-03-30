@@ -3177,41 +3177,26 @@ def create_python_tool(
 ) -> Tool:
     """Create a Python code execution tool.
 
-    Creates a tool that can execute Python code. By default, execution is
-    disabled for safety. Only enable execution in trusted environments.
+    Creates a tool that represents Python code execution capability. Code execution
+    is always disabled for security reasons. The parameters are kept for API
+    compatibility but are ignored.
 
     Args:
-        allow_exec: Whether to allow actual code execution. Default is False.
-            WARNING: Setting this to True is dangerous and should only be
-            done in fully trusted, sandboxed environments.
-        sandbox_contract: Explicit description/identifier of the sandbox boundary
-            used to contain execution (required when allow_exec=True).
+        allow_exec: (Deprecated) Ignored. Code execution is always disabled.
+        sandbox_contract: (Deprecated) Ignored. Code execution is always disabled.
 
     Returns:
-        Tool: A Python execution tool instance.
+        Tool: A Python execution tool instance that always returns a safe error message.
 
     Examples:
-        Default (safe) mode - execution disabled:
+        Creating the tool:
 
             >>> from insideLLMs.contrib.agents import create_python_tool
             >>>
-            >>> python_tool = create_python_tool(allow_exec=False)
+            >>> python_tool = create_python_tool()
             >>> result = python_tool.execute("result = 2 + 2")
-            >>> print(result.output)
-            Code execution disabled for safety
-
-        With execution enabled (DANGEROUS):
-
-            >>> from insideLLMs.contrib.agents import create_python_tool
-            >>>
-            >>> # WARNING: Only use in trusted environments!
-            >>> python_tool = create_python_tool(
-            ...     allow_exec=True,
-            ...     sandbox_contract="isolated-unit-test-sandbox",
-            ... )
-            >>> result = python_tool.execute("result = 2 + 2")
-            >>> print(result.output)
-            4
+            >>> print("disabled" in result.output.lower())
+            True
 
         Using with an agent:
 
@@ -3222,23 +3207,11 @@ def create_python_tool(
             >>> print(agent.tools[0].name)
             python
 
-        Error handling:
-
-            >>> from insideLLMs.contrib.agents import create_python_tool
-            >>>
-            >>> python_tool = create_python_tool(
-            ...     allow_exec=True,
-            ...     sandbox_contract="isolated-unit-test-sandbox",
-            ... )
-            >>> result = python_tool.execute("result = 1/0")
-            >>> print("Error" in result.output)
-            True
-
     Warning:
-        Enabling code execution (allow_exec=True) is inherently dangerous
-        and can lead to arbitrary code execution vulnerabilities. Only use
-        in sandboxed environments with proper security controls, and always
-        provide an explicit sandbox_contract.
+        Code execution is permanently disabled due to remote code execution
+        vulnerabilities. Python's exec() cannot be safely sandboxed without
+        additional process isolation (e.g., containers, separate processes).
+        Use create_calculator_tool() for safe mathematical operations.
 
     See Also:
         :class:`Tool`: The base Tool class.
@@ -3246,20 +3219,12 @@ def create_python_tool(
     """
 
     def execute_python(code: str) -> str:
-        if not allow_exec:
-            return "Code execution disabled for safety"
-        if not sandbox_contract:
-            return (
-                "Code execution disabled: missing sandbox contract. "
-                "Pass sandbox_contract when allow_exec=True."
-            )
-        try:
-            # DANGEROUS: Only use in trusted environments
-            local_vars: dict[str, Any] = {}
-            exec(code, {"__builtins__": {}}, local_vars)
-            return str(local_vars.get("result", "Code executed successfully"))
-        except Exception as e:
-            return f"Error: {str(e)}"
+        # Code execution is disabled to prevent remote code execution vulnerabilities.
+        # Even with restricted builtins, exec() can be bypassed through Python introspection.
+        return (
+            "Code execution is disabled for security reasons. "
+            "Python's exec() cannot be safely sandboxed without additional process isolation."
+        )
 
     return Tool(
         name="python",
