@@ -140,6 +140,7 @@ References
 """
 
 import hashlib
+import html
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -156,6 +157,40 @@ from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
 
 # Type variable for generic prompt content
 T = TypeVar("T")
+
+
+def _escape_html_text(value: object) -> str:
+    """Escape HTML special characters for text content.
+
+    This function prevents XSS (Cross-Site Scripting) attacks by escaping
+    HTML special characters in user-provided content that may be rendered
+    in HTML contexts.
+
+    Parameters
+    ----------
+    value : object
+        The value to escape. Will be converted to string first.
+
+    Returns
+    -------
+    str
+        The escaped string safe for HTML text content.
+
+    Examples
+    --------
+    >>> _escape_html_text("<script>alert('xss')</script>")
+    "&lt;script&gt;alert('xss')&lt;/script&gt;"
+
+    >>> _escape_html_text("Hello & goodbye")
+    'Hello &amp; goodbye'
+
+    Notes
+    -----
+    Uses quote=False since this is for text content, not HTML attributes.
+    This means single and double quotes are not escaped, which is safe for
+    text nodes but not for attribute values.
+    """
+    return html.escape(str(value), quote=False)
 
 
 class PromptRole(Enum):
@@ -908,7 +943,7 @@ def format_chat_messages(
         role = msg.get("role", "user")
         content = msg.get("content", "")
         prefix = prefixes.get(role, "")
-        formatted.append(f"{prefix}{content}")
+        formatted.append(f"{prefix}{_escape_html_text(content)}")
 
     return "\n".join(formatted)
 
@@ -943,12 +978,12 @@ def create_few_shot_prompt(
 
     for i, example in enumerate(examples, 1):
         parts.append(f"Example {i}:")
-        parts.append(f"Input: {example[input_key]}")
-        parts.append(f"Output: {example[output_key]}")
+        parts.append(f"Input: {_escape_html_text(example[input_key])}")
+        parts.append(f"Output: {_escape_html_text(example[output_key])}")
         parts.append("")
 
     parts.append("Now solve:")
-    parts.append(f"Input: {query}")
+    parts.append(f"Input: {_escape_html_text(query)}")
     parts.append("Output:")
 
     return "\n".join(parts)
@@ -1030,7 +1065,7 @@ class PromptBuilder:
         parts = []
         for msg in self._messages:
             prefix = prefixes.get(msg.role, "")
-            parts.append(f"{prefix}{msg.content}")
+            parts.append(f"{prefix}{_escape_html_text(msg.content)}")
         return separator.join(parts)
 
     def __len__(self) -> int:
