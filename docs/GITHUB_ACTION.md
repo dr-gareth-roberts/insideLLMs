@@ -69,3 +69,16 @@ jobs:
 
 Use `pull_request` with `fetch-depth: 0` for safe base-vs-head execution and deterministic diffs.
 This avoids running untrusted fork code in a privileged `pull_request_target` context.
+
+## Action Versioning
+
+Action versioning is independent of the pip package version.
+
+| Reference | Behaviour |
+|---|---|
+| `@v1` | Floating tag — always points to the latest `v1.x.x` release. Recommended for most users. |
+| `@v1.2.3` | Pinned to an exact release. Use when you need reproducible CI. |
+| `@main` | Tracks the development branch. May be unstable. |
+
+The `v1` floating tag is updated automatically on every `v1.x.x` release via the release workflow.
+A new major tag (`v2`) is only created for breaking changes to the action's inputs, outputs, or behaviour.

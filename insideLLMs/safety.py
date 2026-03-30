@@ -732,7 +732,7 @@ class PIIDetector:
         "zip_code": "[ZIP]",
     }
 
-    def __init__(self, patterns: Optional[dict[str, Pattern]] = None):
+    def __init__(self, patterns: Optional[dict[str, Pattern[str]]] = None):
         """Initialize PII detector with optional custom patterns.
 
         Creates a new PIIDetector instance, optionally with custom regex
@@ -1107,7 +1107,7 @@ class ToxicityAnalyzer:
             >>> len(analyzer._custom_patterns)
             1
         """
-        self._custom_patterns: list[tuple[str, Pattern, RiskLevel]] = []
+        self._custom_patterns: list[tuple[str, Pattern[str], RiskLevel]] = []
 
     def add_pattern(
         self, name: str, pattern: str, risk_level: RiskLevel = RiskLevel.MEDIUM

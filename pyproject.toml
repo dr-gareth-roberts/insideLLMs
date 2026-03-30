@@ -97,6 +97,7 @@ dev = [
     "isort>=5.12.0",
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
+    "pydantic>=2.0.0",
 ]
 # Everything
 all = [
@@ -238,6 +239,19 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
+    # Provider-specific modules requiring optional dependencies not in [dev]
+    "insideLLMs/models/openai.py",
+    "insideLLMs/models/anthropic.py",
+    "insideLLMs/models/huggingface.py",
+    "insideLLMs/models/cohere.py",
+    "insideLLMs/models/gemini.py",
+    "insideLLMs/models/openrouter.py",
+    "insideLLMs/nlp/*",
+    "insideLLMs/publish/*",
+    "insideLLMs/crypto/*",
+    "insideLLMs/datasets/tuf_client.py",
+    "insideLLMs/integrations/*",
+    "insideLLMs/contrib/*",
 ]
 
 [tool.coverage.report]

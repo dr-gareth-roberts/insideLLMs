@@ -1,5 +1,6 @@
 """Tests for model error handling."""
 
+import importlib.util
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,7 +17,12 @@ from insideLLMs.exceptions import (
     TimeoutError as InsideLLMsTimeoutError,
 )
 
+_openai_available = importlib.util.find_spec("openai") is not None
+_anthropic_available = importlib.util.find_spec("anthropic") is not None
+_transformers_available = importlib.util.find_spec("transformers") is not None
 
+
+@pytest.mark.skipif(not _openai_available, reason="openai not installed")
 class TestOpenAIModelErrorHandling:
     """Tests for OpenAI model error handling."""
 
@@ -98,6 +104,7 @@ class TestOpenAIModelErrorHandling:
         assert "Something went wrong" in str(exc_info.value)
 
 
+@pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")
 class TestAnthropicModelErrorHandling:
     """Tests for Anthropic model error handling."""
 
@@ -143,6 +150,7 @@ class TestAnthropicModelErrorHandling:
             model.generate("test prompt")
 
 
+@pytest.mark.skipif(not _transformers_available, reason="transformers not installed")
 class TestHuggingFaceModelErrorHandling:
     """Tests for HuggingFace model error handling."""
 
