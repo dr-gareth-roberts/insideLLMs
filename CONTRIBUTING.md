@@ -20,7 +20,7 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
 
 2. Create a virtual environment:
    ```bash
-   python -m venv .venv
+   python3 -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
 
@@ -39,6 +39,8 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
    ```bash
    insidellms doctor
    ```
+   This command reports optional dependency gaps as warnings and does not require
+   all extras to be installed.
 
 5. Install pre-commit hooks:
    ```bash
@@ -69,6 +71,11 @@ make check-fast     # Quick: lint + format-check + test-fast (skips slow/integra
 make docs-audit     # Docs coverage/link audit for key CLI/runtime workflows
 # or
 bash scripts/checks.sh
+```
+
+The Makefile defaults to `python3`; if needed, you can override the interpreter:
+```bash
+make check-fast PYTHON=python
 ```
 
 ### Testing

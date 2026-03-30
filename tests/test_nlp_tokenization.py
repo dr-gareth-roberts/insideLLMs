@@ -166,6 +166,7 @@ class TestNltkFallbacks:
     """Tests for graceful fallbacks when NLTK tokenizer resources are missing."""
 
     def test_nltk_tokenize_falls_back_to_wordpunct_tokenize(self, monkeypatch):
+        pytest.importorskip("nltk")
         from nltk import tokenize as nltk_tokenize_mod
 
         from insideLLMs.nlp import tokenization as tokenization_mod
@@ -182,6 +183,7 @@ class TestNltkFallbacks:
         assert "world" in result
 
     def test_segment_sentences_falls_back_to_regex_on_lookup_error(self, monkeypatch):
+        pytest.importorskip("nltk")
         from nltk import tokenize as nltk_tokenize_mod
 
         from insideLLMs.nlp import tokenization as tokenization_mod
