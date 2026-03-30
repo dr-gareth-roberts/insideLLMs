@@ -875,7 +875,7 @@ class TestBuiltInTools:
         result = python.execute("print('hello')")
         assert "disabled" in result.output.lower()
 
-    def test_python_tool_requires_sandbox_contract_when_enabled(self):
+    def test_python_tool_disabled_even_when_exec_enabled(self):
         """Execution is always disabled for security."""
         python = create_python_tool(allow_exec=True)
         result = python.execute("result = 2 + 2")
