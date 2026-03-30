@@ -94,7 +94,7 @@ def test_chain_of_thought_plan_delegates_to_model():
     assert agent._plan("what?") == "reasoning"
 
 
-def test_calculator_and_python_tool_error_branches():
+def test_calculator_error_handling_and_python_tool_always_disabled():
     calculator = create_calculator_tool()
     bad_expr = calculator.execute("1/(")
     assert bad_expr.success is True
