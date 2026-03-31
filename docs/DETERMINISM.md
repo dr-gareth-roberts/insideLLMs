@@ -1,7 +1,7 @@
 ## Determinism
 
 This page is the canonical determinism guide for the repository.
-For field-level artifact guarantees, see `docs/ARTIFACT_CONTRACT.md`.
+For field-level artefact guarantees, see `docs/ARTIFACT_CONTRACT.md`.
 
 insideLLMs is designed so the “run → records → report → diff” spine can be used for CI diff-gating.
 For the same inputs and configuration, run directories are intended to be byte-for-byte identical.
@@ -58,8 +58,8 @@ determinism:
 CLI equivalents:
 
 ```bash
-insidellms run config.yaml --no-strict-serialization --no-deterministic-artifacts
-insidellms harness harness.yaml --no-strict-serialization --no-deterministic-artifacts
+insidellms run config.yaml --no-strict-serialization --no-deterministic-artefacts
+insidellms harness harness.yaml --no-strict-serialization --no-deterministic-artefacts
 ```
 
 What these do:

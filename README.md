@@ -1,8 +1,8 @@
 <div align="center">
   <img src="insidellms.jpg" alt="insideLLMs" width="720">
   <h1>insideLLMs</h1>
-  <p><strong>Behavioral regression testing for LLM systems.</strong></p>
-  <p>Detect model behavior drift with deterministic artifacts, readable diffs, and CI gates.</p>
+  <p><strong>Behavioural regression testing for LLM systems.</strong></p>
+  <p>Detect model behaviour drift with deterministic artefacts, readable diffs, and CI gates.</p>
 </div>
 
 <p align="center">
@@ -18,13 +18,13 @@
 
 Most eval tooling answers: **"How good is this model on benchmark X?"**
 
-insideLLMs answers: **"Did my application's behavior change in ways I care about?"**
+insideLLMs answers: **"Did my application's behaviour change in ways I care about?"**
 
 This project is designed for product teams that need safe, repeatable model changes:
 
-- **Deterministic outputs** so behavior diffs are stable and reviewable.
-- **Response-level artifact tracking** (`records.jsonl`) rather than only aggregate scores.
-- **CI enforcement** to fail pull requests when behavior shifts unexpectedly.
+- **Deterministic outputs** so behaviour diffs are stable and reviewable.
+- **Response-level artefact tracking** (`records.jsonl`) rather than only aggregate scores.
+- **CI enforcement** to fail pull requests when behaviour shifts unexpectedly.
 - **Provider-agnostic execution** across hosted and local model backends.
 
 ---
@@ -55,7 +55,7 @@ pip install -e ".[dev]"
 make golden-path
 ```
 
-Expected result: the diff exits cleanly (no unexpected changes) and writes artifacts under `.tmp/runs/`.
+Expected result: the diff exits cleanly (no unexpected changes) and writes artefacts under `.tmp/runs/`.
 
 ---
 
@@ -114,12 +114,12 @@ make check-fast
 ## Core concepts
 
 ### Probe
-A behavioral test that exercises a model capability or risk area.
+A behavioural test that exercises a model capability or risk area.
 
 ### Harness run
 A deterministic execution over probe(s) + data + model config.
 
-### Artifacts
+### Artefacts
 A run directory usually includes:
 
 - `records.jsonl` — canonical per-example input/output records.
@@ -129,7 +129,7 @@ A run directory usually includes:
 - `report.html` — optional human-readable report.
 
 ### Diff
-Compares two run directories to identify behavioral deltas.
+Compares two run directories to identify behavioural deltas.
 
 ---
 
@@ -165,7 +165,7 @@ For CI policy gates, run harness on baseline and candidate configurations and en
 - name: Candidate
   run: insidellms harness ci/harness.yaml --run-dir runs/candidate --overwrite
 
-- name: Behavioral gate
+- name: Behavioural gate
   run: insidellms diff runs/baseline runs/candidate --fail-on-changes
 ```
 

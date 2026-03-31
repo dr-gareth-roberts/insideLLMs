@@ -3,7 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl
+try:
+    from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl
+except BaseException:
+    pytest.skip("cryptography not available", allow_module_level=True)
 
 fernet_module = pytest.importorskip("cryptography.fernet")
 Fernet = fernet_module.Fernet
