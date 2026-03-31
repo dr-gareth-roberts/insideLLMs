@@ -26,7 +26,7 @@ Every issue identified below has been resolved. See `AUDIT_FIX_PLAN.md` for the 
 | 🟡 LOW | pytest-asyncio unset loop scope | 1 config gap | ✅ Fixed |
 | ℹ️ INFO | Stubs labeled as stubs (functional or mock) | 2 | ✅ Fixed |
 | ℹ️ INFO | Empty policy rules directory | 1 | ⚠️ Noted (no code change — needs content) |
-| ℹ️ INFO | Stray artifact in repo root | 1 | ✅ Fixed |
+| ℹ️ INFO | Stray artefact in repo root | 1 | ✅ Fixed |
 | ℹ️ INFO | Pydantic v1-style `class Config` (unguarded) | 1 | ✅ Fixed |
 | ℹ️ INFO | Process-pool tests fail in sandboxed envs | 5 tests | ✅ Fixed |
 
@@ -129,7 +129,7 @@ Every test run emitted a `PytestDeprecationWarning` about `asyncio_default_fixtu
 ### `insideLLMs/claims/compiler.py`
 Module docstring said "(stub)" but the implementation is complete and functional.
 
-**Fix applied**: Removed "(stub)" from docstring; updated description to match actual behavior.
+**Fix applied**: Removed "(stub)" from docstring; updated description to match actual behaviour.
 
 ### `insideLLMs/datasets/tuf_client.py`
 Module docstring said "(stub)" but the code has a real TUF integration path with a mock fallback.

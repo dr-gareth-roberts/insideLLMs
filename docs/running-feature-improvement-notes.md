@@ -5,8 +5,8 @@ This file is a live log of noteworthy features and improvement opportunities obs
 ## 2026-02-26
 
 ### Implemented (Batch A)
-- Entry 11: Added shared CLI run/harness utilities in `insideLLMs/cli/commands/_run_common.py` to centralize tracker initialization and standard artifact enumeration, reducing duplication between command modules.
-- Entry 13: Updated `insideLLMs/cli/commands/harness.py` to reuse runtime artifact helpers (`_atomic_write_text`, `_atomic_write_yaml`, `_ensure_run_sentinel`, `_prepare_run_dir`, `_semver_tuple`) instead of local redefinitions.
+- Entry 11: Added shared CLI run/harness utilities in `insideLLMs/cli/commands/_run_common.py` to centralize tracker initialization and standard artefact enumeration, reducing duplication between command modules.
+- Entry 13: Updated `insideLLMs/cli/commands/harness.py` to reuse runtime artefact helpers (`_atomic_write_text`, `_atomic_write_yaml`, `_ensure_run_sentinel`, `_prepare_run_dir`, `_semver_tuple`) instead of local redefinitions.
 - Entry 48: Enhanced `insidellms report` output so regenerated `summary.json` now includes `report_metadata` fields (`from_records`, `tool`, `tool_version`, `records_file`) for auditability.
 
 ### Implemented (Batch B)
@@ -18,17 +18,17 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Entry 78: Added direct CLI command tests for `attest`, `sign`, and `verify-signatures` command flows and error paths.
 
 ### Implemented (Batch D)
-- Entry 1: Added a dedicated artifact contract page at `docs/ARTIFACT_CONTRACT.md` as a single source of truth for canonical artifact fields and volatility rules.
+- Entry 1: Added a dedicated artefact contract page at `docs/ARTIFACT_CONTRACT.md` as a single source of truth for canonical artefact fields and volatility rules.
 - Entry 82: Added an "Advanced Assurance" navigation section in `wiki/advanced/index.md` linking determinism, tracing, and assurance CLI workflows.
 - Entry 95: Added explicit canonical-source cross-references from wiki determinism pages back to `docs/DETERMINISM.md` and `docs/ARTIFACT_CONTRACT.md`.
 
 ### Implemented (Batch E)
-- Entry 54: Expanded `DOCUMENTATION_INDEX.md` with dedicated determinism/artifact-contract/verifiable-evaluation entries and quick navigation for assurance workflows.
+- Entry 54: Expanded `DOCUMENTATION_INDEX.md` with dedicated determinism/artefact-contract/verifiable-evaluation entries and quick navigation for assurance workflows.
 - Entry 3: Updated architecture/instruction docs to point to the CLI package structure (`insideLLMs/cli/__init__.py`, `insideLLMs/cli/_parsing.py`, `insideLLMs/cli/commands/*`) instead of legacy single-file references.
 - Entry 62: Updated `CONTRIBUTING.md` architecture guidance to reflect current CLI/runtime package layout and added stable-vs-internal API usage notes.
 - Entry 77: Extended stability contract tests to include verifiable-evaluation CLI command surfaces (`attest`, `sign`, `verify-signatures`).
 - Entry 81: Added a dedicated wiki page (`wiki/advanced/Verifiable-Evaluation.md`) with practical attest/sign/verify quickstart guidance and cross-links.
-- Entry 14: Included an Ultimate-mode quickstart sequence and expected artifact outputs in `wiki/advanced/Verifiable-Evaluation.md`.
+- Entry 14: Included an Ultimate-mode quickstart sequence and expected artefact outputs in `wiki/advanced/Verifiable-Evaluation.md`.
 - Entry 93: Added direct links from core wiki pages to verifiable-evaluation workflows (`wiki/index.md`, `wiki/Determinism-and-CI.md`).
 - Entry 94: Refreshed legacy CLI path references in wiki performance guidance to point at current parser/module locations.
 
@@ -76,7 +76,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Entry 97: Included recurring check for stale path references in wiki/reference pages within DOCS_STANDARDS.md.
 
 ### Entry 1
-- Feature noticed: The project has a strong deterministic artifact spine (`records.jsonl` / `summary.json` / `report.html` / `diff.json`) with CI-oriented behavior-regression workflows.
+- Feature noticed: The project has a strong deterministic artefact spine (`records.jsonl` / `summary.json` / `report.html` / `diff.json`) with CI-oriented behaviour-regression workflows.
 - Suggestion: Keep this as a first-class "contract" page in docs with one source of truth for fields/volatility rules so contributors can quickly verify determinism assumptions.
 
 ### Entry 2
@@ -92,7 +92,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Split `insideLLMs/cli/_parsing.py` (currently very large) into per-command parser builders to reduce merge conflicts and make new command contributions safer.
 
 ### Entry 5
-- Feature noticed: `ProbeRunner.run(...)` offers rich configurability (resume, deterministic artifacts, schema validation, batch modes, etc.).
+- Feature noticed: `ProbeRunner.run(...)` offers rich configurability (resume, deterministic artefacts, schema validation, batch modes, etc.).
 - Suggestion: Introduce a preferred "config-first" path in docs and gradually de-emphasize the many keyword overrides to lower API complexity and reduce parameter drift risk.
 
 ### Entry 6
@@ -101,7 +101,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 7
 - Feature noticed: The project contains extensive inline API documentation and examples directly in module docstrings.
-- Suggestion: Evaluate moving long-form examples into docs pages and keeping module docstrings shorter, which can improve source readability and maintenance when behavior changes.
+- Suggestion: Evaluate moving long-form examples into docs pages and keeping module docstrings shorter, which can improve source readability and maintenance when behaviour changes.
 
 ### Entry 8
 - Feature noticed: Test coverage breadth is strong, with many targeted branch-coverage files and deterministic-path tests.
@@ -116,16 +116,16 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Reassess whether all dev dependencies are still required (for example, overlapping formatter/import-sort tools) to keep contributor setup lean and reduce dependency churn.
 
 ### Entry 11
-- Feature noticed: `run` and `harness` commands both include robust run-directory resolution, tracking setup, and post-run artifact UX hints.
-- Suggestion: Consolidate shared command behaviors into a small CLI utility layer to reduce duplication and keep run/harness behavior aligned over time.
+- Feature noticed: `run` and `harness` commands both include robust run-directory resolution, tracking setup, and post-run artefact UX hints.
+- Suggestion: Consolidate shared command behaviours into a small CLI utility layer to reduce duplication and keep run/harness behaviour aligned over time.
 
 ### Entry 12
-- Feature noticed: Harness artifact emission explicitly preserves backward compatibility (`records.jsonl` plus legacy `results.jsonl`).
-- Suggestion: Add/maintain a clear deprecation timeline for legacy artifact aliases so users know what will remain stable long-term.
+- Feature noticed: Harness artefact emission explicitly preserves backward compatibility (`records.jsonl` plus legacy `results.jsonl`).
+- Suggestion: Add/maintain a clear deprecation timeline for legacy artefact aliases so users know what will remain stable long-term.
 
 ### Entry 13
-- Feature noticed: The runtime artifact utilities already provide reusable helpers (`_atomic_write_text`, `_atomic_write_yaml`, `_prepare_run_dir`, etc.).
-- Suggestion: Prefer importing and reusing these helpers directly in command modules (instead of redefining local copies) to minimize divergence in safety behavior.
+- Feature noticed: The runtime artefact utilities already provide reusable helpers (`_atomic_write_text`, `_atomic_write_yaml`, `_prepare_run_dir`, etc.).
+- Suggestion: Prefer importing and reusing these helpers directly in command modules (instead of redefining local copies) to minimize divergence in safety behaviour.
 
 ### Entry 14
 - Feature noticed: Ultimate mode provides an end-to-end verifiable pipeline (integrity roots, DSSE attestations, policy verdict, optional SCITT/OCI).
@@ -136,7 +136,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Add schema-level validation for each predicate payload so optional-field growth does not silently drift across steps.
 
 ### Entry 16
-- Feature noticed: Policy evaluation already checks artifact presence and required attestation files.
+- Feature noticed: Policy evaluation already checks artefact presence and required attestation files.
 - Suggestion: Evolve from hardcoded checks toward configurable policy profiles/rules so teams can tune admissibility requirements without code edits.
 
 ### Entry 17
@@ -144,7 +144,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Add a strict policy mode that requires SCITT receipts for designated attestations (not only validating them when present).
 
 ### Entry 18
-- Feature noticed: SCITT client has retry/timeout behavior and clear error surfacing.
+- Feature noticed: SCITT client has retry/timeout behaviour and clear error surfacing.
 - Suggestion: Expand receipt verification beyond shape/digest checks to cryptographic/issuer validation (when service metadata is available) for stronger trust guarantees.
 
 ### Entry 19
@@ -173,7 +173,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 25
 - Feature noticed: Ultimate-mode orchestration hooks are present in both sync and async runners.
-- Suggestion: Centralize shared post-artifact invocation logic into a common helper to reduce divergence risk between runner implementations.
+- Suggestion: Centralize shared post-artefact invocation logic into a common helper to reduce divergence risk between runner implementations.
 
 ### Entry 26
 - Feature noticed: CLI includes `attest`, `sign`, and `verify-signatures` commands in the parser and command map.
@@ -197,7 +197,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 31
 - Feature noticed: Trace contracts provide deterministic, CI-friendly validation across stream/tool/generate flows.
-- Suggestion: Emit a standardized machine-readable trace validation artifact in run directories to make contract gating easier in CI pipelines.
+- Suggestion: Emit a standardized machine-readable trace validation artefact in run directories to make contract gating easier in CI pipelines.
 
 ### Entry 32
 - Feature noticed: Trace recording is sequence-based and deterministic, which is excellent for reproducibility.
@@ -208,8 +208,8 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Document a single preferred import path to reduce duplicated documentation burden and future migration friction.
 
 ### Entry 34
-- Feature noticed: Sync and async runners both implement mature artifact/validation flows.
-- Suggestion: Factor more shared logic into common internals to reduce maintenance overhead and prevent subtle behavior drift.
+- Feature noticed: Sync and async runners both implement mature artefact/validation flows.
+- Suggestion: Factor more shared logic into common internals to reduce maintenance overhead and prevent subtle behaviour drift.
 
 ### Entry 35
 - Feature noticed: Models and probes have rich type interfaces and protocol support.
@@ -229,7 +229,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 39
 - Feature noticed: Async execution includes a dedicated timeout wrapper and structured exception mapping.
-- Suggestion: Persist timeout metadata in run artifacts/results for easier post-run diagnosis of intermittent execution failures.
+- Suggestion: Persist timeout metadata in run artefacts/results for easier post-run diagnosis of intermittent execution failures.
 
 ### Entry 40
 - Feature noticed: The project includes both `config.py` (Pydantic model family) and `config_types.py` (`RunConfig` dataclass-style runtime controls).
@@ -241,7 +241,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 42
 - Feature noticed: `validate` command supports both config-file and run-directory validation paths in one entrypoint.
-- Suggestion: Consider split command UX (`validate-config` / `validate-run`) or clearer argument naming to simplify behavior expectations.
+- Suggestion: Consider split command UX (`validate-config` / `validate-run`) or clearer argument naming to simplify behaviour expectations.
 
 ### Entry 43
 - Feature noticed: Run-directory validation already leverages schema registry/versioning for `manifest.json` and `records.jsonl`.
@@ -272,7 +272,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Move fallback HTML rendering to templated assets to simplify styling updates and keep command code focused on data assembly.
 
 ### Entry 50
-- Feature noticed: `validate` command supports schema-version override and warn/strict modes for run artifacts.
+- Feature noticed: `validate` command supports schema-version override and warn/strict modes for run artefacts.
 - Suggestion: Add a concise per-file error summary (counts by failure type) to make large-run validation triage faster.
 
 ### Entry 51
@@ -285,7 +285,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 53
 - Feature noticed: Report reconstruction logic in `_report_builder` handles both harness-style and single-run record layouts.
-- Suggestion: Add focused tests around mixed/partial record metadata edge cases to harden reconstruction behavior as formats evolve.
+- Suggestion: Add focused tests around mixed/partial record metadata edge cases to harden reconstruction behaviour as formats evolve.
 
 ### Entry 54
 - Feature noticed: `DOCUMENTATION_INDEX.md` provides strong navigation for core docs and common workflows.
@@ -312,8 +312,8 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Keep local guidance and AGENTS/README references aligned with CI thresholds and gates (for example coverage floor) to avoid contributor confusion.
 
 ### Entry 60
-- Feature noticed: Release workflow cleanly builds artifacts and publishes GitHub release + optional PyPI.
-- Suggestion: Add provenance/supply-chain release steps (artifact attestations, signature verification) to align with the project’s verifiable-evaluation direction.
+- Feature noticed: Release workflow cleanly builds artefacts and publishes GitHub release + optional PyPI.
+- Suggestion: Add provenance/supply-chain release steps (artefact attestations, signature verification) to align with the project’s verifiable-evaluation direction.
 
 ### Entry 61
 - Feature noticed: Pages workflow is minimal and focused on `wiki/` publication.
@@ -329,7 +329,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 64
 - Feature noticed: Automation workflows include both ad-hoc Claude invocation and PR review plugin execution.
-- Suggestion: Document governance/expected behavior for these bots (scope, etiquette, required secrets) to keep maintainer expectations explicit.
+- Suggestion: Document governance/expected behaviour for these bots (scope, etiquette, required secrets) to keep maintainer expectations explicit.
 
 ### Entry 65
 - Feature noticed: Root helper script (`scripts/checks.sh`) mirrors essential local quality gates.
@@ -365,7 +365,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 
 ### Entry 73
 - Feature noticed: Receipt middleware captures per-call hashes/latency with sync + async support and canonical JSONL emission.
-- Suggestion: Factor shared receipt construction into common helpers to reduce duplicated code paths and keep sync/async behavior tightly aligned.
+- Suggestion: Factor shared receipt construction into common helpers to reduce duplicated code paths and keep sync/async behaviour tightly aligned.
 
 ### Entry 74
 - Feature noticed: Chat request hashing in receipt middleware performs message normalization inline.
@@ -384,7 +384,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Expand these tests to include newer user-facing commands/flags (e.g., attest/sign/verify-signatures surfaces) to keep guarantees current.
 
 ### Entry 78
-- Feature noticed: Ultimate-mode integration tests cover artifact/attestation flows at runner level.
+- Feature noticed: Ultimate-mode integration tests cover artefact/attestation flows at runner level.
 - Suggestion: Add direct CLI command tests for `attest`, `sign`, and `verify-signatures` to validate end-user command UX and error handling paths.
 
 ### Entry 79
@@ -404,7 +404,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Include a focused "advanced assurance" section grouping determinism, policy, attestations, signatures, and transparency topics in one place.
 
 ### Entry 83
-- Feature noticed: `docs/plans/` contains extensive historical implementation planning artifacts.
+- Feature noticed: `docs/plans/` contains extensive historical implementation planning artefacts.
 - Suggestion: Consider separating archival planning docs from primary user/contributor docs navigation to reduce noise for first-time readers.
 
 ### Entry 84
@@ -440,7 +440,7 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Add a documented way to extend this harness with additional low-cost probes while preserving offline determinism.
 
 ### Entry 92
-- Feature noticed: Schema command supports listing, dumping, and validating versioned artifacts with warn/strict modes.
+- Feature noticed: Schema command supports listing, dumping, and validating versioned artefacts with warn/strict modes.
 - Suggestion: Add examples in top-level docs showing common `insidellms schema validate` workflows for both JSON and JSONL inputs.
 
 ### Entry 93
@@ -456,8 +456,8 @@ This file is a live log of noteworthy features and improvement opportunities obs
 - Suggestion: Define one canonical source and cross-reference the other to reduce drift in terminology and guarantees over time.
 
 ### Entry 96
-- Feature noticed: Experiment tracking docs are comprehensive and include backend-specific behavior details.
-- Suggestion: Add a short section on data-retention/privacy considerations for tracked artifacts to support compliance-sensitive adopters.
+- Feature noticed: Experiment tracking docs are comprehensive and include backend-specific behaviour details.
+- Suggestion: Add a short section on data-retention/privacy considerations for tracked artefacts to support compliance-sensitive adopters.
 
 ### Entry 97
 - Feature noticed: Most current top-level docs appear aligned with canonical module paths after prior cleanup.

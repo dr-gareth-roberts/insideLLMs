@@ -25,7 +25,7 @@ model = ModelPipeline(
 probe = LogicProbe()
 runner = ProbeRunner(model, probe)
 
-# Run config controls runner behavior (artifacts, validation, etc.)
+# Run config controls runner behaviour (artefacts, validation, etc.)
 config = RunConfig(run_root="./runs/rate_limited")
 
 results = runner.run(prompts, config=config)
