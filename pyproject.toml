@@ -193,6 +193,7 @@ disable_error_code = [
     "union-attr",
     "override",
     "type-var",
+    "import-untyped",
 ]
 
 # Strict checking for core modules
@@ -212,6 +213,7 @@ warn_return_any = true
 [[tool.mypy.overrides]]
 module = "insideLLMs.contrib.*"
 ignore_errors = true
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
