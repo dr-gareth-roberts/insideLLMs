@@ -2899,7 +2899,7 @@ class RateLimitedExecutor:
                 except Exception as e:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
-                    raise e
+                    raise
         finally:
             if self.concurrency_limiter:
                 await self.concurrency_limiter.release_async()
