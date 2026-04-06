@@ -239,6 +239,13 @@ for signing and [oras](https://oras.land/docs/installation) for OCI publishing.
 
 </details>
 
+### Optional advanced modes
+
+- Active adversarial evaluation: `--active-red-team`
+- Drift sensitivity gate: `--fail-on-trajectory-drift`
+- Shadow capture middleware helper: `shadow.fastapi`
+- Reusable action reference: `dr-gareth-roberts/insideLLMs@v1`
+
 ## Docs
 
 - [Documentation site](https://dr-gareth-roberts.github.io/insideLLMs/) -- full guides and reference
