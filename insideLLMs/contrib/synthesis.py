@@ -2543,7 +2543,7 @@ class DataAugmenter:
                                 "source": seed_example,
                             }
                         )
-                except Exception as e:
+                except Exception:
                     logger.debug("Balance augmentation generation failed", exc_info=True)
 
         return dataset

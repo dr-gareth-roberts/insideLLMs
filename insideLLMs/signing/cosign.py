@@ -34,7 +34,7 @@ def _validate_identity_constraints(identity_constraints: str) -> None:
     """
     # Only allow alphanumeric, @, -, _, ., =, +, :, and /
     # These are safe characters for identity values like email addresses, URLs, etc.
-    if not re.match(r'^[a-zA-Z0-9@._:+=/-]+$', identity_constraints):
+    if not re.match(r"^[a-zA-Z0-9@._:+=/-]+$", identity_constraints):
         raise ValueError(
             "Invalid identity_constraints: contains disallowed characters. "
             "Only alphanumeric, @, -, _, ., =, +, :, and / are allowed."
