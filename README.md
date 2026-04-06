@@ -143,7 +143,7 @@ models (Ollama, llama.cpp). All through one interface:
 from insideLLMs import OpenAIModel, AnthropicModel, LocalModel
 
 gpt = OpenAIModel(model_name="gpt-4o-mini")
-claude = AnthropicModel(model_name="claude-sonnet-4-20250514")
+claude = AnthropicModel(model_name="claude-sonnet-4-6")
 local = LocalModel(model_name="llama3", backend="ollama")
 ```
 

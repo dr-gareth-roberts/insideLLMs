@@ -167,8 +167,9 @@ def cmd_init(args: argparse.Namespace) -> int:
     output_path.write_text(content)
     print_success(f"Created config: {output_path}")
     print_key_value("Template", template)
-    print_key_value("Model", model)
-    print_key_value("Probe", probe)
+    if not harness_template:
+        print_key_value("Model", model)
+        print_key_value("Probe", probe)
 
     # Create sample data directory and file
     data_dir = Path("data")
