@@ -226,7 +226,7 @@ def load_jsonl_dataset(path: str) -> list[dict[str, Any]]:
     return items
 
 
-def load_hf_dataset(dataset_name: str, split: str = "train", **kwargs) -> list[dict[str, Any]]:
+def load_hf_dataset(dataset_name: str, split: str = "test", **kwargs) -> list[dict[str, Any]]:
     """Load a dataset from the HuggingFace Datasets Hub into a list of dictionaries.
 
     Downloads and loads a dataset from the HuggingFace Hub, converting it to the
@@ -251,7 +251,8 @@ def load_hf_dataset(dataset_name: str, split: str = "train", **kwargs) -> list[d
 
     Returns:
         A list of dictionaries where each dictionary represents a single
-        example from the dataset. Returns None only if the dataset is empty.
+        example from the dataset. Returns an empty list if the dataset has
+        no examples.
 
     Raises:
         ImportError: If the ``datasets`` package is not installed.

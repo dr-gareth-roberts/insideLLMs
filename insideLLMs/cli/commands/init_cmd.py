@@ -44,11 +44,18 @@ def cmd_init(args: argparse.Namespace) -> int:
             if q_output:
                 output = q_output
 
-            q_template = input(
-                f"  Choose a template (basic, benchmark, tracking, harness) [{template}]: "
-            ).strip()
-            if q_template:
-                template = q_template
+            allowed_templates = ("basic", "benchmark", "tracking", "harness", "full")
+            template_choices = ", ".join(allowed_templates)
+            while True:
+                q_template = input(
+                    f"  Choose a template ({template_choices}) [{template}]: "
+                ).strip()
+                if not q_template:
+                    break
+                if q_template in allowed_templates:
+                    template = q_template
+                    break
+                print(f"  Invalid template '{q_template}'. Choose one of: {template_choices}.")
 
             if template != "harness":
                 q_model = input(
@@ -159,9 +166,9 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     output_path.write_text(content)
     print_success(f"Created config: {output_path}")
-    print_key_value("Template", args.template)
-    print_key_value("Model", args.model)
-    print_key_value("Probe", args.probe)
+    print_key_value("Template", template)
+    print_key_value("Model", model)
+    print_key_value("Probe", probe)
 
     # Create sample data directory and file
     data_dir = Path("data")

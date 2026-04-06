@@ -2896,10 +2896,10 @@ class RateLimitedExecutor:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
                     return direct_result
-                except Exception as e:
+                except Exception:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
-                    raise e
+                    raise
         finally:
             if self.concurrency_limiter:
                 await self.concurrency_limiter.release_async()
