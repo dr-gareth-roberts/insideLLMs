@@ -3064,9 +3064,29 @@ def _eval_exec_expression(
     raise ValueError("Unsupported expression")
 
 
+_MAX_EXEC_CODE_LENGTH = 1024
+_MAX_EXEC_AST_NODES = 100
+_MAX_EXEC_AST_DEPTH = 20
+
+
+def _ast_depth(node: ast.AST) -> int:
+    """Return the maximum nesting depth of an AST node."""
+    children = list(ast.iter_child_nodes(node))
+    if not children:
+        return 1
+    return 1 + max(_ast_depth(c) for c in children)
+
+
 def _safe_exec_python_subset(code: str) -> dict[str, Union[int, float]]:
     """Execute a tightly restricted Python subset (assignments + arithmetic)."""
+    if len(code) > _MAX_EXEC_CODE_LENGTH:
+        raise ValueError(f"Code exceeds maximum length of {_MAX_EXEC_CODE_LENGTH} characters")
     parsed = ast.parse(code, mode="exec")
+    node_count = sum(1 for _ in ast.walk(parsed))
+    if node_count > _MAX_EXEC_AST_NODES:
+        raise ValueError(f"Code AST exceeds maximum of {_MAX_EXEC_AST_NODES} nodes")
+    if _ast_depth(parsed) > _MAX_EXEC_AST_DEPTH:
+        raise ValueError(f"Code AST exceeds maximum depth of {_MAX_EXEC_AST_DEPTH}")
     variables: dict[str, Union[int, float]] = {}
     for statement in parsed.body:
         if isinstance(statement, ast.Assign):

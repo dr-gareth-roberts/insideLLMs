@@ -239,7 +239,7 @@ def load_hf_dataset(dataset_name: str, split: str = "test", **kwargs) -> list[di
             the format "dataset_name" for official datasets or "user/dataset"
             for community datasets.
         split: The dataset split to load. Common values are "train", "test",
-            "validation". Defaults to "test".
+            "validation". Defaults to "train".
         **kwargs: Additional keyword arguments passed to ``datasets.load_dataset``.
             Common options include:
             - name (str): Configuration/subset name for datasets with multiple configs
