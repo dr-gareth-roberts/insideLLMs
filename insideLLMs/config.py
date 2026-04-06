@@ -1878,8 +1878,5 @@ __all__ = [
     name
     for name, value in globals().items()
     if not name.startswith("_")
-    and (
-        getattr(value, "__module__", None) == __name__
-        or not hasattr(value, "__module__")
-    )
+    and (getattr(value, "__module__", None) == __name__ or not hasattr(value, "__module__"))
 ]  # pyright: ignore[reportUnsupportedDunderAll]
