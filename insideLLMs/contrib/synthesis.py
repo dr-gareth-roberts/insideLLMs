@@ -1601,7 +1601,7 @@ class PromptVariator:
                     )
                     for var in variations[:num_variations]
                 ]
-            except Exception:
+            except Exception as _:
                 logger.debug("Variation generation attempt failed", exc_info=True)
                 continue
 
@@ -1936,7 +1936,7 @@ class AdversarialGenerator:
                     continue
 
                 return examples[:num_examples]
-            except Exception:
+            except Exception as _:
                 logger.debug("Adversarial generation attempt failed", exc_info=True)
                 continue
 
@@ -2364,7 +2364,7 @@ class DataAugmenter:
                             "source": example,
                         }
                     )
-            except Exception:
+            except Exception as _:
                 logger.debug("Expand augmentation generation failed", exc_info=True)
 
         return dataset
@@ -2442,7 +2442,7 @@ class DataAugmenter:
                             "type": "diversified",
                         }
                     )
-            except Exception:
+            except Exception as _:
                 logger.debug("Diversify augmentation generation failed", exc_info=True)
 
         return dataset
@@ -2846,7 +2846,7 @@ Return as a JSON array of strings."""
                         new_example[field_to_vary] = var
                         new_example["synthetic"] = True
                         dataset.add(new_example)
-                except Exception:
+                except Exception as _:
                     logger.debug("Template example generation failed", exc_info=True)
 
         return dataset

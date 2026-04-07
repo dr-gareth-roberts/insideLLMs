@@ -1377,7 +1377,7 @@ class StructuredExtractor:
                 if result.is_success and result.confidence > best_confidence:
                     best_result = result
                     best_confidence = result.confidence
-            except Exception:
+            except Exception as _:
                 continue
 
         if best_result:
@@ -1462,7 +1462,7 @@ class ResponseParser:
                         }
                         result.extracted_data = filtered
                     return result
-            except Exception:
+            except Exception as _:
                 continue
 
         return ExtractionResult(

@@ -1797,7 +1797,7 @@ def create_example_config() -> ExperimentConfig:
     )
 
 
-def validate_config(config: Union[dict[str, Any], ExperimentConfig]) -> ExperimentConfig:
+def validate_config(config: Union[ExperimentConfig, dict[str, Any]]) -> ExperimentConfig:
     """Validate and convert a configuration to ExperimentConfig.
 
     Takes either a raw configuration dictionary or an existing
@@ -1872,3 +1872,11 @@ def validate_config(config: Union[dict[str, Any], ExperimentConfig]) -> Experime
         return config
 
     return _parse_config_dict(config)
+
+
+__all__ = [
+    name
+    for name, value in globals().items()
+    if not name.startswith("_")
+    and (getattr(value, "__module__", None) == __name__ or not hasattr(value, "__module__"))
+]  # pyright: ignore[reportUnsupportedDunderAll]

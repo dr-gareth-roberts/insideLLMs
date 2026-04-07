@@ -20,6 +20,7 @@ from insideLLMs.registry import (
 
 from .._output import (
     print_header,
+    print_info,
     print_key_value,
     print_subheader,
     print_success,
@@ -90,7 +91,7 @@ def _entrypoint_plugins(group: str) -> list[dict[str, str]]:
             selected = list(eps.select(group=group))
         else:  # pragma: no cover (older Python)
             selected = list(eps.get(group, []))  # type: ignore[attr-defined]
-    except Exception:
+    except Exception as _:
         return []
 
     normalized = [
@@ -351,9 +352,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     )
 
     # API keys (informational)
-    add_check(name="OPENAI_API_KEY", ok=bool(os.environ.get("OPENAI_API_KEY")), hint="set env var")
     add_check(
-        name="ANTHROPIC_API_KEY", ok=bool(os.environ.get("ANTHROPIC_API_KEY")), hint="set env var"
+        name="OPENAI_API_KEY",
+        ok=bool(os.environ.get("OPENAI_API_KEY")),
+        hint="export OPENAI_API_KEY=sk-...",
+    )
+    add_check(
+        name="ANTHROPIC_API_KEY",
+        ok=bool(os.environ.get("ANTHROPIC_API_KEY")),
+        hint="export ANTHROPIC_API_KEY=sk-ant-...",
     )
 
     run_root = os.environ.get("INSIDELLMS_RUN_ROOT")
@@ -399,7 +406,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             print_success(item["name"])
         else:
             hint = f" ({item['hint']})" if item.get("hint") else ""
-            print_warning(f"{item['name']}{hint}")
+            if item["name"] in {"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "INSIDELLMS_RUN_ROOT"}:
+                print_info(f"{item['name']}{hint}")
+            else:
+                print_warning(f"{item['name']}{hint}")
 
     if capabilities is not None:
         print()

@@ -74,7 +74,7 @@ def _probe_category_from_value(value: Any) -> ProbeCategory:
         return value
     try:
         return ProbeCategory(str(value))
-    except Exception:
+    except Exception as _:
         return ProbeCategory.CUSTOM
 
 

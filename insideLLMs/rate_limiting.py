@@ -2012,7 +2012,7 @@ class RateLimitCircuitBreaker:
             result = func()
             self.record_success()
             return result
-        except Exception:
+        except Exception as _:
             self.record_failure()
             raise
 
@@ -2052,7 +2052,7 @@ class RateLimitCircuitBreaker:
                 result = func()
             self.record_success()
             return result
-        except Exception:
+        except Exception as _:
             self.record_failure()
             raise
 
@@ -2293,7 +2293,7 @@ class RequestQueue:
             result = func()
             self._processed_count += 1
             return result
-        except Exception:
+        except Exception as _:
             raise
 
     async def process_one_async(self) -> Optional[Any]:
@@ -2329,7 +2329,7 @@ class RequestQueue:
                 result = func()
             self._processed_count += 1
             return result
-        except Exception:
+        except Exception as _:
             raise
 
     def process_all(self) -> list[Any]:
@@ -2824,7 +2824,7 @@ class RateLimitedExecutor:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_success()
                     return direct_result
-                except Exception:
+                except Exception as _:
                     if self.circuit_breaker:
                         self.circuit_breaker.record_failure()
                     raise
@@ -3425,3 +3425,5 @@ RetryResult = RateLimitRetryResult
 # Older code and tests may import SlidingWindowRateLimiter. The canonical name is
 # ThreadSafeSlidingWindowRateLimiter.
 SlidingWindowRateLimiter = ThreadSafeSlidingWindowRateLimiter
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

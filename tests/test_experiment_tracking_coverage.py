@@ -759,11 +759,8 @@ class TestMultiTrackerEdgeCases:
     """Additional edge-case tests for MultiTracker."""
 
     def test_empty_trackers_list(self):
-        multi = MultiTracker([])
-        run_id = multi.start_run(run_name="empty")
-        assert run_id == ""
-        multi.end_run()
-        assert multi._run_active is False
+        with pytest.raises(ValueError, match="requires at least one tracker"):
+            MultiTracker([])
 
     def test_log_artifact_to_all(self, tmp_path):
         t1 = LocalFileTracker(output_dir=str(tmp_path / "a"))

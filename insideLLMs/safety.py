@@ -2377,3 +2377,5 @@ def detect_pii(text: str) -> list[dict[str, Any]]:
 # Older code and tests may import HallucinationDetector. The canonical name is
 # SafetyHallucinationIndicatorDetector.
 HallucinationDetector = SafetyHallucinationIndicatorDetector
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,59 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print_header("Initialize Experiment Configuration")
 
-    harness_template = args.template == "harness"
+    model = args.model
+    probe = args.probe
+    template = args.template
+    output = args.output
+
+    # Check if we should go interactive
+    # Heuristic: --interactive flag OR (no other flags passed AND in a TTY AND not quiet)
+    try:
+        init_idx = sys.argv.index("init")
+        args_after_init = len(sys.argv) - 1 - init_idx
+    except ValueError:
+        args_after_init = 0
+
+    if args.interactive or (args_after_init == 0 and sys.stdin.isatty() and not args.quiet):
+        try:
+            print("  Welcome to the interactive experiment setup!")
+            print("  Press Enter to use [defaults].\n")
+
+            q_output = input(f"  Configuration output path [{output}]: ").strip()
+            if q_output:
+                output = q_output
+
+            allowed_templates = ("basic", "benchmark", "tracking", "harness", "full")
+            template_choices = ", ".join(allowed_templates)
+            while True:
+                q_template = input(
+                    f"  Choose a template ({template_choices}) [{template}]: "
+                ).strip()
+                if not q_template:
+                    break
+                if q_template in allowed_templates:
+                    template = q_template
+                    break
+                print(f"  Invalid template '{q_template}'. Choose one of: {template_choices}.")
+
+            if template != "harness":
+                q_model = input(
+                    f"  Choose a model (dummy, openai, anthropic, ollama) [{model}]: "
+                ).strip()
+                if q_model:
+                    model = q_model
+
+                q_probe = input(
+                    f"  Choose a probe (logic, bias, attack, factuality) [{probe}]: "
+                ).strip()
+                if q_probe:
+                    probe = q_probe
+            print()
+        except (KeyboardInterrupt, EOFError):
+            print("\n  Setup cancelled.")
+            return 1
+
+    harness_template = template == "harness"
 
     if harness_template:
         config: dict[str, Any] = {
@@ -47,11 +100,11 @@ def cmd_init(args: argparse.Namespace) -> int:
         # Base single-run experiment configuration.
         config = {
             "model": {
-                "type": args.model,
+                "type": model,
                 "args": {},
             },
             "probe": {
-                "type": args.probe,
+                "type": probe,
                 "args": {},
             },
             "dataset": {
@@ -69,22 +122,22 @@ def cmd_init(args: argparse.Namespace) -> int:
             "huggingface": {"model_name": "gpt2"},
             "ollama": {"model_name": "llama2"},
         }
-        if args.model in model_hints:
-            config["model"]["args"] = model_hints[args.model]
+        if model in model_hints:
+            config["model"]["args"] = model_hints[model]
 
         # Apply template enhancements
-        if args.template == "benchmark":
+        if template == "benchmark":
             config["benchmark"] = {
                 "datasets": ["reasoning", "math", "coding"],
                 "max_examples_per_dataset": 10,
             }
-        elif args.template == "tracking":
+        elif template == "tracking":
             config["tracking"] = {
                 "backend": "local",
                 "project": "my-experiment",
                 "log_dir": "./experiments",
             }
-        elif args.template == "full":
+        elif template == "full":
             config["benchmark"] = {
                 "datasets": ["reasoning", "math", "coding", "safety"],
                 "max_examples_per_dataset": 20,
@@ -104,7 +157,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 "html_report": True,
             }
 
-    output_path = Path(args.output)
+    output_path = Path(output)
 
     if output_path.suffix in (".yaml", ".yml"):
         content = yaml.dump(config, default_flow_style=False, sort_keys=False)
@@ -113,9 +166,10 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     output_path.write_text(content)
     print_success(f"Created config: {output_path}")
-    print_key_value("Template", args.template)
-    print_key_value("Model", args.model)
-    print_key_value("Probe", args.probe)
+    print_key_value("Template", template)
+    if not harness_template:
+        print_key_value("Model", model)
+        print_key_value("Probe", probe)
 
     # Create sample data directory and file
     data_dir = Path("data")

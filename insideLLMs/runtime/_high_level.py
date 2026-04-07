@@ -745,11 +745,11 @@ def create_experiment_result(
         if isinstance(value, Enum):
             try:
                 return ResultStatus(str(value.value))
-            except Exception:
+            except Exception as _:
                 return ResultStatus.ERROR
         try:
             return ResultStatus(str(value))
-        except Exception:
+        except Exception as _:
             return ResultStatus.ERROR
 
     probe_results: list[ProbeResult] = []
@@ -777,7 +777,7 @@ def create_experiment_result(
     if not isinstance(category, ProbeCategory):
         try:
             category = ProbeCategory(str(category))
-        except Exception:
+        except Exception as _:
             category = ProbeCategory.CUSTOM
 
     resolved_experiment_id = experiment_id

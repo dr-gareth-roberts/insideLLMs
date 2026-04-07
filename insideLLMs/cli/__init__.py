@@ -101,6 +101,7 @@ from .commands.sign import cmd_sign as cmd_sign
 from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
 from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
+from .commands.welcome import cmd_welcome as cmd_welcome
 
 # Make _CLI_QUIET and _CLI_STATUS_TO_STDERR accessible at package level
 _CLI_QUIET = _output._CLI_QUIET
@@ -179,6 +180,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "attest": cmd_attest,
             "sign": cmd_sign,
             "verify-signatures": cmd_verify_signatures,
+            "welcome": cmd_welcome,
         }
 
         handler = commands.get(args.command)
