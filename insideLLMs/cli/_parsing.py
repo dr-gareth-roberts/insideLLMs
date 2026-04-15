@@ -345,6 +345,16 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     harness_parser.add_argument(
+        "--dry-run",
+        "--plan",
+        dest="dry_run",
+        action="store_true",
+        help=(
+            "Print the resolved harness execution plan (model/probe counts and total "
+            "evaluations) without running model calls."
+        ),
+    )
+    harness_parser.add_argument(
         "--verbose",
         action="store_true",
         help="Show detailed progress and tracebacks",

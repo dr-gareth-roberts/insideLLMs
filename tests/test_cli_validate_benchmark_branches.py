@@ -263,6 +263,42 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
     assert rc == 0
 
 
+def test_cmd_benchmark_records_failure_counts_and_messages(capsys):
+    examples = [SimpleNamespace(input_text="q1"), SimpleNamespace(input_text="q2")]
+    fake_suite = SimpleNamespace(sample=lambda _n, seed=42: list(examples))
+
+    class _Runner:
+        def __init__(self, _model, _probe):
+            self.calls = 0
+
+        def run_single(self, _inp):
+            self.calls += 1
+            if self.calls == 1:
+                raise ProbeExecutionError("goodprobe", "probe failed")
+            return {"status": "success"}
+
+    with (
+        patch(
+            "insideLLMs.benchmark_datasets.create_comprehensive_benchmark_suite",
+            return_value=fake_suite,
+        ),
+        patch(
+            "insideLLMs.cli.commands.benchmark.model_registry.get", return_value=SimpleNamespace()
+        ),
+        patch(
+            "insideLLMs.cli.commands.benchmark.probe_registry.get",
+            return_value=SimpleNamespace(),
+        ),
+        patch("insideLLMs.runtime.runner.ProbeRunner", _Runner),
+    ):
+        rc = cmd_benchmark(_benchmark_args(models="dummy", probes="goodprobe", max_examples=2))
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "Failures" in captured.out
+    assert "encountered failures" in captured.out
+
+
 def test_cmd_benchmark_outer_exception_verbose_returns_1(capsys):
     with (
         patch(
