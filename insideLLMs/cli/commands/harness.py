@@ -26,10 +26,10 @@ from insideLLMs.runtime._artifact_utils import (
 )
 from insideLLMs.runtime.runner import (
     _build_resolved_config_snapshot,
-    _load_dataset_from_config,
     _deterministic_base_time,
     _deterministic_run_id_from_config_snapshot,
     _deterministic_run_times,
+    _load_dataset_from_config,
     _resolve_determinism_options,
     _serialize_value,
     derive_run_id_from_config_path,
@@ -364,7 +364,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
             dataset_examples = _count_harness_items(dataset_cfg, config_path.parent)
             max_examples = loaded_config.get("max_examples")
             if isinstance(max_examples, int) and max_examples > 0:
-                dataset_examples = min(dataset_examples, max_examples) if dataset_examples else max_examples
+                dataset_examples = (
+                    min(dataset_examples, max_examples) if dataset_examples else max_examples
+                )
 
             total_evaluations = dataset_examples * len(models_cfg) * len(probes_cfg)
             print_success("Dry-run plan generated")
@@ -373,7 +375,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
             print_key_value("Dataset examples", dataset_examples if dataset_examples else "unknown")
             if isinstance(max_examples, int) and max_examples > 0:
                 print_key_value("max_examples cap", max_examples)
-            print_key_value("Total evaluations", total_evaluations if total_evaluations else "unknown")
+            print_key_value(
+                "Total evaluations", total_evaluations if total_evaluations else "unknown"
+            )
             return 0
 
         start_time = time.time()

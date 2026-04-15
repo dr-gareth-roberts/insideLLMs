@@ -261,7 +261,6 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
         )
 
     assert rc == 0
-    results_file = tmp_path / "benchmark_results.json"
 
 
 def test_cmd_benchmark_records_failure_counts_and_messages(capsys):
