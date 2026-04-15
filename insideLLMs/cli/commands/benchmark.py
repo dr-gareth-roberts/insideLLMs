@@ -96,12 +96,16 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 progress = ProgressBar(len(inputs), prefix=f"  {probe_name}")
 
                 probe_results = []
+                failure_count = 0
+                failure_messages: list[str] = []
                 for i, inp in enumerate(inputs):
                     try:
                         result = runner.run_single(inp)
                         probe_results.append(result)
-                    except (ProbeExecutionError, RuntimeError):
-                        pass
+                    except (ProbeExecutionError, RuntimeError) as exc:
+                        failure_count += 1
+                        if len(failure_messages) < 3:
+                            failure_messages.append(str(exc))
                     progress.update(i + 1)
 
                 progress.finish()
@@ -118,18 +122,26 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                         "probe": probe_name,
                         "total": len(inputs),
                         "success": success_count,
+                        "failures": failure_count,
                         "accuracy": success_count / max(1, len(inputs)),
+                        "failure_messages": failure_messages,
                     }
                 )
 
         # Summary
         print_subheader("Benchmark Results Summary")
-        print(f"\n  {'Model':<15} {'Probe':<15} {'Accuracy':>10} {'Success':>10}")
-        print("  " + "-" * 55)
+        print(f"\n  {'Model':<15} {'Probe':<15} {'Accuracy':>10} {'Success':>10} {'Failures':>10}")
+        print("  " + "-" * 68)
         for r in results_all:
             print(
-                f"  {r['model']:<15} {r['probe']:<15} {r['accuracy'] * 100:>9.1f}% {r['success']:>5}/{r['total']}"
+                f"  {r['model']:<15} {r['probe']:<15} {r['accuracy'] * 100:>9.1f}% "
+                f"{r['success']:>5}/{r['total']} {r['failures']:>10}"
             )
+            if r["failure_messages"]:
+                print_warning(
+                    f"  {r['probe']} encountered failures: "
+                    + "; ".join(str(msg) for msg in r["failure_messages"])
+                )
 
         # Save results if output specified
         if args.output:
