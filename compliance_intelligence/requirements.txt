@@ -1,7 +1,7 @@
 langgraph>=0.2.0
 langchain>=0.3.0
 langchain-openai>=1.2.2
-langchain-core>=0.3.0
+langchain-core>=1.4.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 fastapi>=0.110.0
