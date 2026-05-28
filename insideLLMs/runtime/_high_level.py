@@ -55,6 +55,12 @@ from insideLLMs.types import (
 logger = logging.getLogger(__name__)
 
 
+def _runner_settings_from_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Extract optional ``runner:`` block from a loaded experiment config."""
+    runner = config.get("runner")
+    return dict(runner) if isinstance(runner, dict) else {}
+
+
 def run_probe(
     model: Model,
     probe: Probe,
@@ -175,6 +181,7 @@ def run_experiment_from_config(
     deterministic_artifacts: Optional[bool] = None,
     use_probe_batch: bool = False,
     batch_workers: Optional[int] = None,
+    stop_on_error: Optional[bool] = None,
     return_experiment: bool = False,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
     """Run an experiment defined in a YAML or JSON configuration file.
@@ -227,6 +234,7 @@ def run_experiment_from_config(
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
+    runner_settings = _runner_settings_from_config(config)
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
     strict_serialization, deterministic_artifacts = _resolve_determinism_options(
@@ -253,6 +261,15 @@ def run_experiment_from_config(
     probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
 
     runner = ProbeRunner(model, probe)
+    effective_stop_on_error = (
+        stop_on_error
+        if stop_on_error is not None
+        else runner_settings.get("stop_on_error")
+    )
+    effective_use_probe_batch = use_probe_batch or bool(runner_settings.get("use_probe_batch"))
+    effective_batch_workers = (
+        batch_workers if batch_workers is not None else runner_settings.get("batch_workers")
+    )
     return runner.run(
         dataset,
         progress_callback=progress_callback,
@@ -269,8 +286,9 @@ def run_experiment_from_config(
         resume=resume,
         strict_serialization=strict_serialization,
         deterministic_artifacts=deterministic_artifacts,
-        use_probe_batch=use_probe_batch,
-        batch_workers=batch_workers,
+        use_probe_batch=effective_use_probe_batch,
+        batch_workers=effective_batch_workers,
+        stop_on_error=effective_stop_on_error,
         return_experiment=return_experiment,
         **probe_kwargs,
     )
@@ -320,6 +338,7 @@ def run_harness_from_config(
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
+    runner_settings = _runner_settings_from_config(config)
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
     strict_serialization, deterministic_artifacts = _resolve_determinism_options(
@@ -429,7 +448,7 @@ def run_harness_from_config(
         }
 
     for model_idx, model_config in enumerate(models_config):
-        model = _create_model_from_config(model_config)
+        model = _create_model_from_config(model_config, prefer_async_pipeline=True)
         model_info = _coerce_model_info(model)
         model_spec = _model_spec_for_harness(model, model_config)
 
@@ -578,7 +597,7 @@ def run_harness_from_config(
 async def run_experiment_from_config_async(
     config_path: Union[str, Path],
     *,
-    concurrency: int = 5,
+    concurrency: Optional[int] = None,
     progress_callback: Optional[Callable[[int, int], None]] = None,
     validate_output: bool = False,
     schema_version: str = DEFAULT_SCHEMA_VERSION,
@@ -593,6 +612,8 @@ async def run_experiment_from_config_async(
     deterministic_artifacts: Optional[bool] = None,
     use_probe_batch: bool = False,
     batch_workers: Optional[int] = None,
+    stop_on_error: Optional[bool] = None,
+    timeout: Optional[float] = None,
     return_experiment: bool = False,
 ) -> Union[list[dict[str, Any]], ExperimentResult]:
     """Run an experiment asynchronously from a configuration file.
@@ -647,6 +668,7 @@ async def run_experiment_from_config_async(
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
+    runner_settings = _runner_settings_from_config(config)
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
     strict_serialization, deterministic_artifacts = _resolve_determinism_options(
@@ -665,7 +687,7 @@ async def run_experiment_from_config_async(
             "strict_serialization requires JSON-stable values in the resolved config snapshot."
         ) from exc
 
-    model = _create_model_from_config(config["model"])
+    model = _create_model_from_config(config["model"], prefer_async_pipeline=True)
     probe = _create_probe_from_config(config["probe"])
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
 
@@ -673,9 +695,22 @@ async def run_experiment_from_config_async(
     probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
 
     runner = AsyncProbeRunner(model, probe)
+    effective_concurrency = (
+        concurrency if concurrency is not None else int(runner_settings.get("concurrency", 5))
+    )
+    effective_timeout = timeout if timeout is not None else runner_settings.get("timeout")
+    effective_stop_on_error = (
+        stop_on_error
+        if stop_on_error is not None
+        else runner_settings.get("stop_on_error")
+    )
+    effective_use_probe_batch = use_probe_batch or bool(runner_settings.get("use_probe_batch"))
+    effective_batch_workers = (
+        batch_workers if batch_workers is not None else runner_settings.get("batch_workers")
+    )
     return await runner.run(
         dataset,
-        concurrency=concurrency,
+        concurrency=effective_concurrency,
         progress_callback=progress_callback,
         validate_output=validate_output,
         schema_version=schema_version,
@@ -690,8 +725,10 @@ async def run_experiment_from_config_async(
         resume=resume,
         strict_serialization=strict_serialization,
         deterministic_artifacts=deterministic_artifacts,
-        use_probe_batch=use_probe_batch,
-        batch_workers=batch_workers,
+        use_probe_batch=effective_use_probe_batch,
+        batch_workers=effective_batch_workers,
+        stop_on_error=effective_stop_on_error,
+        timeout=float(effective_timeout) if effective_timeout is not None else None,
         return_experiment=return_experiment,
         **probe_kwargs,
     )

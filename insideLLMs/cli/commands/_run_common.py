@@ -7,16 +7,47 @@ This module centralizes common command behaviors so `insidellms run` and
 from __future__ import annotations
 
 import argparse
+import inspect
+from inspect import Parameter
 from pathlib import Path
 from typing import Any
 
 import insideLLMs.experiment_tracking as experiment_tracking
 
+from insideLLMs.models.base import Model
+from insideLLMs.registry import Registry, model_registry
+from insideLLMs.runtime._artifact_utils import _default_run_root
+
 from .._output import print_warning
 
 
+def _filter_factory_kwargs(registry: Registry[Any], name: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Keep only kwargs accepted by the registered factory signature."""
+    factory = registry.get_factory(name)
+    if not callable(factory):
+        return kwargs
+    try:
+        sig = inspect.signature(factory)
+    except (TypeError, ValueError):
+        return kwargs
+    if any(param.kind == Parameter.VAR_KEYWORD for param in sig.parameters.values()):
+        return kwargs
+    allowed = set(sig.parameters)
+    return {key: value for key, value in kwargs.items() if key in allowed}
+
+
+def resolve_registered_model(name: str, **kwargs: Any) -> Model:
+    """Instantiate a registered model with optional override kwargs."""
+    filtered = _filter_factory_kwargs(model_registry, name, kwargs)
+    return model_registry.get(name, **filtered)
+
+
 def resolve_harness_output_dir(
-    args: argparse.Namespace, config: dict[str, Any], resolved_run_id: str
+    args: argparse.Namespace,
+    config: dict[str, Any],
+    resolved_run_id: str,
+    *,
+    config_path: Path | None = None,
 ) -> Path:
     """Resolve the effective output directory for harness artifacts.
 
@@ -24,21 +55,32 @@ def resolve_harness_output_dir(
         args: Parsed CLI arguments from `insidellms harness`.
         config: Loaded harness config dict.
         resolved_run_id: Final run identifier for this execution.
+        config_path: Source config path; used to resolve relative ``output_dir``.
 
     Returns:
         Absolute output path where harness artifacts should be written.
     """
 
-    effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
-    config_default_dir = Path(config.get("output_dir", "results")).expanduser().absolute()
+    default_run_root = _default_run_root().expanduser().absolute()
+    effective_run_root = (
+        Path(args.run_root).expanduser().absolute() if args.run_root else default_run_root
+    )
 
     if args.run_dir:
         return Path(args.run_dir).expanduser().absolute()
     if args.output_dir:
         return Path(args.output_dir).expanduser().absolute()
-    if effective_run_root is not None:
+    if args.run_root:
         return effective_run_root / resolved_run_id
-    return config_default_dir
+
+    config_output_dir = config.get("output_dir")
+    if config_output_dir:
+        raw = Path(str(config_output_dir)).expanduser()
+        if not raw.is_absolute() and config_path is not None:
+            return (config_path.parent / raw).absolute()
+        return raw.absolute()
+
+    return effective_run_root / resolved_run_id
 
 
 def create_tracker(

@@ -16,6 +16,16 @@ from .._output import (
 )
 
 
+def _init_uses_defaults(args: argparse.Namespace) -> bool:
+    """Return True when init was invoked with parser defaults only."""
+    return (
+        getattr(args, "output", "experiment.yaml") == "experiment.yaml"
+        and getattr(args, "model", "dummy") == "dummy"
+        and getattr(args, "probe", "logic") == "logic"
+        and getattr(args, "template", "basic") == "basic"
+    )
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     """Execute the init command."""
     import yaml
@@ -27,15 +37,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     template = args.template
     output = args.output
 
-    # Check if we should go interactive
-    # Heuristic: --interactive flag OR (no other flags passed AND in a TTY AND not quiet)
-    try:
-        init_idx = sys.argv.index("init")
-        args_after_init = len(sys.argv) - 1 - init_idx
-    except ValueError:
-        args_after_init = 0
-
-    if args.interactive or (args_after_init == 0 and sys.stdin.isatty() and not args.quiet):
+    # Interactive when explicitly requested, or defaults-only invocation in a TTY.
+    if args.interactive or (_init_uses_defaults(args) and sys.stdin.isatty() and not args.quiet):
         try:
             print("  Welcome to the interactive experiment setup!")
             print("  Press Enter to use [defaults].\n")

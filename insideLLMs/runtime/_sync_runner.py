@@ -439,7 +439,7 @@ class ProbeRunner(_RunnerBase):
                             schema_version=schema_version,
                             error_type=error_type,
                         )
-                        result_obj["latency_ms"] = None
+                        result_obj["latency_ms"] = probe_result.latency_ms
                         results[i] = result_obj
 
                         if emit_run_artifacts and records_fp is not None:
@@ -457,7 +457,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=prompt_set[i],
                                 output=probe_result.output,
-                                latency_ms=None,
+                                latency_ms=probe_result.latency_ms,
                                 store_messages=store_messages,
                                 index=i,
                                 status=_normalize_status(probe_result.status),
@@ -504,6 +504,9 @@ class ProbeRunner(_RunnerBase):
                                     ],
                                 )
 
+                        if stop_error is not None:
+                            break
+
                     if stop_error is not None:
                         raise stop_error
             else:
@@ -546,7 +549,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=item,
                                 output=output,
-                                latency_ms=None,
+                                latency_ms=probe_result.latency_ms,
                                 store_messages=store_messages,
                                 index=i,
                                 status="success",
@@ -606,7 +609,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=item,
                                 output=None,
-                                latency_ms=None,
+                                latency_ms=probe_result.latency_ms,
                                 store_messages=store_messages,
                                 index=i,
                                 status="timeout" if is_timeout else "error",

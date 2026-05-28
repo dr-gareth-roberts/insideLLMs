@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from insideLLMs.contrib.synthesis import generate_test_dataset
-from insideLLMs.registry import ensure_builtins_registered, model_registry
+from insideLLMs.registry import ensure_builtins_registered
 
 from .._output import (
     Colors,
@@ -20,6 +20,7 @@ from .._output import (
     print_subheader,
     print_success,
 )
+from ._run_common import resolve_registered_model
 
 
 def _default_seed_prompts(target: str) -> list[str]:
@@ -89,12 +90,7 @@ def cmd_generate_suite(args: argparse.Namespace) -> int:
         seed_prompts = _default_seed_prompts(args.target)
 
     try:
-        model_or_factory = model_registry.get(args.model)
-        model = (
-            model_or_factory(**model_args)
-            if isinstance(model_or_factory, type)
-            else model_or_factory
-        )
+        model = resolve_registered_model(args.model, **model_args)
     except Exception as exc:
         print_error(f"Could not initialize model '{args.model}': {exc}")
         return 1
