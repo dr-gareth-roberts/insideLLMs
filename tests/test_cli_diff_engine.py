@@ -360,3 +360,73 @@ def test_interactive_helpers_contract(tmp_path: Path) -> None:
     copied = copy_candidate_artifacts_to_baseline(baseline, candidate)
     assert "records.jsonl" in copied
     assert (baseline / "records.jsonl").exists()
+
+
+def test_primary_metric_mismatch_blocks_score_fallback() -> None:
+    base = [_record(score=0.9)]
+    cand = [_record(score=0.7)]
+    base[0]["primary_metric"] = "accuracy"
+    base[0]["scores"] = {"score": 0.9}
+    cand[0]["primary_metric"] = "loss"
+    cand[0]["scores"] = {"score": 0.7}
+
+    computation = build_diff_computation(
+        records_baseline=base,
+        records_candidate=cand,
+        baseline_label="a",
+        candidate_label="b",
+    )
+    assert computation.regressions == []
+    assert computation.diff_report["counts"]["other_changes"] == 1
+    assert "primary_metric_mismatch" in computation.changes[0][3]
+
+
+def test_bool_scores_not_treated_as_numeric() -> None:
+    base = [_record(score=1.0)]
+    cand = [_record(score=0.0)]
+    base[0]["scores"] = {"score": True}
+    cand[0]["scores"] = {"score": False}
+
+    computation = build_diff_computation(
+        records_baseline=base,
+        records_candidate=cand,
+        baseline_label="a",
+        candidate_label="b",
+    )
+    assert computation.regressions == []
+
+
+def test_improvements_only_has_differences() -> None:
+    computation = build_diff_computation(
+        records_baseline=[_record(score=0.5)],
+        records_candidate=[_record(score=0.9)],
+        baseline_label="a",
+        candidate_label="b",
+    )
+    assert computation.improvements
+    assert computation.has_differences is True
+    assert compute_diff_exit_code(computation, DiffGatePolicy(fail_on_changes=True)) == 0
+
+
+def test_output_text_ignore_keys() -> None:
+    computation = build_diff_computation(
+        records_baseline=[_record(output_text='{"a":1,"ts":"x"}')],
+        records_candidate=[_record(output_text='{"a":1,"ts":"y"}')],
+        baseline_label="a",
+        candidate_label="b",
+        output_fingerprint_ignore=["ts"],
+    )
+    assert computation.changes == []
+
+
+def test_regression_and_output_change_both_reported() -> None:
+    base = [_record(score=0.9, output_text="alpha")]
+    cand = [_record(score=0.5, output_text="beta")]
+    computation = build_diff_computation(
+        records_baseline=base,
+        records_candidate=cand,
+        baseline_label="a",
+        candidate_label="b",
+    )
+    assert len(computation.regressions) == 1
+    assert any("output changed" in item[3] for item in computation.changes)

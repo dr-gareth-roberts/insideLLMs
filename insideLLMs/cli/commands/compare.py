@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry
+from insideLLMs.registry import ensure_builtins_registered
 
 from .._output import (
     Colors,
@@ -19,6 +19,7 @@ from .._output import (
     print_warning,
 )
 from .._record_utils import _json_default
+from ._run_common import resolve_registered_model
 
 
 def cmd_compare(args: argparse.Namespace) -> int:
@@ -91,10 +92,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
         model_instances: dict[str, Any] = {}
         for model_name in models:
             try:
-                model_or_factory = model_registry.get(model_name)
-                model_instances[model_name] = (
-                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
-                )
+                model_instances[model_name] = resolve_registered_model(model_name)
             except Exception as e:
                 model_instances[model_name] = None
                 print_warning(f"Could not load model '{model_name}': {e}")

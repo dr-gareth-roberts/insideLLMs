@@ -63,10 +63,21 @@ def build_interactive_review_lines(
 ) -> list[str]:
     """Build a concise interactive review view for snapshot acceptance."""
     regressions = diff_report.get("regressions", [])
+    improvements = diff_report.get("improvements", [])
     changes = diff_report.get("changes", [])
+    trace_drifts = diff_report.get("trace_drifts", [])
+    trace_violation_increases = diff_report.get("trace_violation_increases", [])
+    trajectory_drifts = diff_report.get("trajectory_drifts", [])
     only_baseline = diff_report.get("only_baseline", [])
     only_candidate = diff_report.get("only_candidate", [])
-    review_items = [*regressions, *changes]
+    review_items = [
+        *regressions,
+        *improvements,
+        *changes,
+        *trace_drifts,
+        *trace_violation_increases,
+        *trajectory_drifts,
+    ]
     dim = dim_text or (lambda s: s)
 
     lines: list[str] = []

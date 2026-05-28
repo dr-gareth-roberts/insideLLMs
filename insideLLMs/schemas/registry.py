@@ -1858,4 +1858,16 @@ class SchemaRegistry:
         t = normalize_semver(to_version)
         if f == t:
             return custom_migration(data) if custom_migration else data
+        if (
+            schema_name == self.RUN_MANIFEST
+            and f == "1.0.0"
+            and t == "1.0.1"
+        ):
+            migrated = dict(data) if isinstance(data, dict) else data
+            if isinstance(migrated, dict):
+                migrated = custom_migration(migrated) if custom_migration else migrated
+                if isinstance(migrated, dict):
+                    migrated.setdefault("run_completed", False)
+                    migrated["schema_version"] = "1.0.1"
+            return migrated
         raise NotImplementedError(f"No migration registered for {schema_name}: {f} -> {t}")

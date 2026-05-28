@@ -202,8 +202,19 @@ def create_parser() -> argparse.ArgumentParser:
         "--concurrency",
         "-c",
         type=int,
-        default=5,
+        default=None,
         help="Number of concurrent requests (only with --async)",
+    )
+    run_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Per-item timeout in seconds (only with --async)",
+    )
+    run_parser.add_argument(
+        "--stop-on-error",
+        action="store_true",
+        help="Stop the run after the first item error",
     )
     run_parser.add_argument(
         "--verbose",

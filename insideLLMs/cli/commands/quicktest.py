@@ -4,7 +4,7 @@ import argparse
 import json
 import time
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
+from insideLLMs.registry import ensure_builtins_registered, probe_registry
 
 from .._output import (
     Colors,
@@ -16,6 +16,7 @@ from .._output import (
     print_key_value,
     print_subheader,
 )
+from ._run_common import resolve_registered_model
 
 
 def cmd_quicktest(args: argparse.Namespace) -> int:
@@ -27,26 +28,22 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
     print_key_value("Prompt", args.prompt[:50] + "..." if len(args.prompt) > 50 else args.prompt)
 
     try:
-        # Parse model args
         model_args = json.loads(args.model_args)
-        model_args["temperature"] = args.temperature
-        model_args["max_tokens"] = args.max_tokens
+        init_kwargs = dict(model_args)
+        init_kwargs.pop("temperature", None)
+        init_kwargs.pop("max_tokens", None)
 
-        # Get model from registry - it may be a class or instance
-        model_or_factory = model_registry.get(args.model)
+        model = resolve_registered_model(args.model, **init_kwargs)
 
-        # If it's a class, instantiate it; if it's already an instance, use it
-        if isinstance(model_or_factory, type):
-            model = model_or_factory(**model_args)
-        else:
-            model = model_or_factory
-
-        # Generate response
         spinner = Spinner("Generating response")
         start_time = time.time()
         spinner.spin()
 
-        response = model.generate(args.prompt)
+        response = model.generate(
+            args.prompt,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
         elapsed = time.time() - start_time
         spinner.stop(success=True)
 
@@ -57,12 +54,15 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
         print_key_value("Latency", f"{elapsed * 1000:.1f}ms")
         print_key_value("Response length", f"{len(response)} characters")
 
-        # Apply probe if specified
         if args.probe:
             print_subheader(f"Probe: {args.probe}")
-            probe_factory = probe_registry.get(args.probe)
-            probe_factory()
-            # Note: Probe evaluation would go here
+            probe = probe_registry.get(args.probe)
+            probe_result = probe.run(model, args.prompt)
+            if isinstance(probe_result, dict):
+                for key, value in probe_result.items():
+                    print_key_value(str(key), str(value))
+            else:
+                print_key_value("Result", str(probe_result))
             print_info(
                 f"Probe '{args.probe}' applied (detailed scoring available in full experiments)"
             )

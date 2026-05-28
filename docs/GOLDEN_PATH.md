@@ -21,6 +21,9 @@ insidellms doctor
 
 ### 2) Run a deterministic harness (offline)
 
+Harness runs default to `~/.insidellms/runs/<run_id>/` unless you pass `--run-dir`,
+`--run-root`, or set `output_dir` in the config (relative to the config file).
+
 ```bash
 insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite
 insidellms report .tmp/runs/baseline

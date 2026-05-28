@@ -164,11 +164,18 @@ def _canonical_json_bytes(value: Any) -> bytes:
     --------
     _assert_jsonable : Validates JSON serialisability with error context
     """
+    from insideLLMs._serialization import StrictSerializationError, serialize_value
+
+    try:
+        serialized = serialize_value(value, strict=True)
+    except StrictSerializationError as exc:
+        raise TypeError(str(exc)) from exc
     return json.dumps(
-        value,
+        serialized,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
 
 

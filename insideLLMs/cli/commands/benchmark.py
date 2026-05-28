@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from insideLLMs.exceptions import ProbeExecutionError
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
+from insideLLMs.registry import ensure_builtins_registered, probe_registry
 
 from .._output import (
     Colors,
@@ -20,6 +20,7 @@ from .._output import (
     print_success,
     print_warning,
 )
+from ._run_common import resolve_registered_model
 
 
 def cmd_benchmark(args: argparse.Namespace) -> int:
@@ -65,10 +66,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             print_subheader(f"Model: {model_name}")
 
             try:
-                model_or_factory = model_registry.get(model_name)
-                model = (
-                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
-                )
+                model = resolve_registered_model(model_name)
             except Exception as e:
                 print_warning(f"Could not load model {model_name}: {e}")
                 continue
@@ -77,12 +75,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 print(f"  Running probe: {colorize(probe_name, Colors.GREEN)}")
 
                 try:
-                    probe_or_factory = probe_registry.get(probe_name)
-                    probe = (
-                        probe_or_factory()
-                        if isinstance(probe_or_factory, type)
-                        else probe_or_factory
-                    )
+                    probe = probe_registry.get(probe_name)
                 except Exception as e:
                     print_warning(f"  Could not load probe {probe_name}: {e}")
                     continue
@@ -96,15 +89,22 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 progress = ProgressBar(len(inputs), prefix=f"  {probe_name}")
 
                 probe_results = []
+                error_count = 0
                 for i, inp in enumerate(inputs):
                     try:
                         result = runner.run_single(inp)
                         probe_results.append(result)
-                    except (ProbeExecutionError, RuntimeError):
-                        pass
+                    except (ProbeExecutionError, RuntimeError) as exc:
+                        error_count += 1
+                        print_warning(f"  Example {i + 1} failed: {exc}")
                     progress.update(i + 1)
 
                 progress.finish()
+
+                if error_count:
+                    print_warning(
+                        f"  {error_count} example(s) failed for {model_name}/{probe_name}"
+                    )
 
                 success_count = sum(
                     1
