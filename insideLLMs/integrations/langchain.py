@@ -184,6 +184,8 @@ def as_langchain_chat_model(model: ModelProtocol):
                         try:
                             run_manager.on_llm_new_token(str(chunk))
                         except Exception:
+                            # A third-party LangChain callback raising must not
+                            # break token streaming; intentionally broad.
                             pass
                     yield ChatGenerationChunk(message=AIMessageChunk(content=str(chunk)))
             except Exception:

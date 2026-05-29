@@ -1102,6 +1102,10 @@ class RedisCache:
             # Count only value keys, not metadata keys
             self._stats.entry_count = len([k for k in keys if not k.endswith(":meta")])
         except Exception:
+            # Best-effort stats read against an external cache backend (redis):
+            # a backend/connection error must not break callers that only need
+            # the in-memory counters. Backend client exceptions are dynamic, so
+            # the broad catch is intentional.
             pass
         return self._stats
 

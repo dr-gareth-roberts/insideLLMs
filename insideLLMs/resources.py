@@ -374,7 +374,9 @@ def open_records_file(
         try:
             fp.flush()
             fp.close()
-        except Exception:
+        except (OSError, ValueError):
+            # Best-effort cleanup: flush/close can fail on an already-closed or
+            # broken stream; that must not mask the original error (if any).
             pass
 
 
@@ -551,7 +553,10 @@ def atomic_write_text(path: Path, text: str) -> None:
         f.flush()
         try:
             os.fsync(f.fileno())
-        except Exception:
+        except OSError:
+            # fsync is best-effort durability; some filesystems/platforms reject
+            # it. The atomic os.replace below is what guarantees consistency, so
+            # a failed fsync must not fail the write.
             pass
     os.replace(tmp, path)
 
@@ -921,7 +926,9 @@ def ensure_run_sentinel(run_dir: Path) -> None:
     if not marker.exists():
         try:
             marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:
+        except OSError:
+            # The run-directory sentinel is advisory; failing to write it (e.g. a
+            # read-only filesystem) must not abort run setup.
             pass
 
 
