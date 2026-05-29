@@ -102,7 +102,7 @@ jobs:
           python -m pytest
           --cov
           --cov-report=term-missing
-          --cov-fail-under=80
+          --cov-fail-under=88
           -m "not slow and not integration and not performance"
 
   determinism:
