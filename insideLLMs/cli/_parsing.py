@@ -38,7 +38,18 @@ def _module_version(dist_name: str) -> str | None:
 
 
 def _has_module(module: str) -> bool:
-    return importlib.util.find_spec(module) is not None
+    """Return True if ``module`` can be located as an import spec.
+
+    ``importlib.util.find_spec`` raises (rather than returning ``None``) when a
+    parent package is missing for a dotted path -- e.g. ``google.generativeai``
+    when ``google`` is not installed -- so any import-time failure is treated as
+    "module not available". This keeps capability probing (``doctor``) robust to
+    absent optional dependencies instead of crashing.
+    """
+    try:
+        return importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 def _check_nltk_resource(path: str) -> bool:

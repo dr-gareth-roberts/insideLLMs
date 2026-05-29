@@ -95,7 +95,7 @@ jobs:
           restore-keys: pip-test-${{ matrix.python-version }}-
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,providers,nlp,visualization]"
 
       - name: Run tests with coverage
         run: >

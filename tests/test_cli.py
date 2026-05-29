@@ -59,15 +59,18 @@ class TestColorize:
 
     def test_colorize_without_color_support(self):
         """Test colorize when color is disabled."""
-        import insideLLMs.cli as cli_module
+        # ``colorize`` reads the ``USE_COLOR`` flag defined in ``cli._output``;
+        # patch it at that source so the test is independent of the ambient
+        # terminal colour state (NO_COLOR/FORCE_COLOR/TTY).
+        from insideLLMs.cli import _output
 
-        original = cli_module.USE_COLOR
+        original = _output.USE_COLOR
         try:
-            cli_module.USE_COLOR = False
-            result = cli_module.colorize("test", cli_module.Colors.RED)
+            _output.USE_COLOR = False
+            result = _output.colorize("test", _output.Colors.RED)
             assert result == "test"
         finally:
-            cli_module.USE_COLOR = original
+            _output.USE_COLOR = original
 
 
 class TestProgressBar:

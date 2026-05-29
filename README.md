@@ -239,6 +239,42 @@ for signing and [oras](https://oras.land/docs/installation) for OCI publishing.
 
 </details>
 
+<details>
+<summary><b>Trace & trajectory gating</b></summary>
+
+Beyond output text, `diff` can gate on structural drift in traces and agent
+trajectories:
+
+```bash
+insidellms diff ./baseline ./candidate --fail-on-trace-violations   # trace violations increased
+insidellms diff ./baseline ./candidate --fail-on-trace-drift        # trace fingerprints changed
+insidellms diff ./baseline ./candidate --fail-on-trajectory-drift   # agent step/tool sequence changed
+```
+
+`--fail-on-trajectory-drift` exits non-zero (code `5`) when an agent's step
+count, tool sequence, or tool-call arguments differ between runs -- even if the
+final answer is identical.
+
+</details>
+
+<details>
+<summary><b>Production shadow capture</b></summary>
+
+Sample live production traffic into canonical `records.jsonl` artefacts with a
+FastAPI middleware, then diff captured behaviour over time:
+
+```python
+from fastapi import FastAPI
+from insideLLMs import shadow
+
+app = FastAPI()
+app.middleware("http")(
+    shadow.fastapi(output_path="./shadow/records.jsonl", sample_rate=0.01)
+)
+```
+
+</details>
+
 ## Docs
 
 - [Documentation site](https://dr-gareth-roberts.github.io/insideLLMs/) -- full guides and reference

@@ -142,6 +142,11 @@ def _run_cli(
 def _seeded_env(seed: str) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONHASHSEED"] = seed
+    # Determinism checks compare the human-readable diff summary, which must not
+    # depend on the ambient terminal's colour settings. Pin colour off so the
+    # captured stdout is byte-stable regardless of NO_COLOR/FORCE_COLOR/TTY.
+    env["NO_COLOR"] = "1"
+    env.pop("FORCE_COLOR", None)
     return env
 
 
