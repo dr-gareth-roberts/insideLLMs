@@ -187,7 +187,6 @@ disable_error_code = [
     "operator",
     "index",
     "var-annotated",
-    "no-any-return",
     "misc",
     "union-attr",
     "override",

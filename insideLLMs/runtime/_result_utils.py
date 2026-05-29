@@ -9,7 +9,7 @@ import hashlib
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from insideLLMs._serialization import (
     StrictSerializationError,
@@ -138,13 +138,13 @@ def _normalize_info_obj_to_dict(info_obj: Any) -> dict[str, Any]:
     if hasattr(info_obj, "dict") and callable(getattr(info_obj, "dict")):
         # pydantic v1 compatibility
         try:
-            return info_obj.dict()
+            return cast("dict[str, Any]", info_obj.dict())
         except Exception:
             return {}
     if hasattr(info_obj, "model_dump") and callable(getattr(info_obj, "model_dump")):
         # pydantic v2 compatibility
         try:
-            return info_obj.model_dump()
+            return cast("dict[str, Any]", info_obj.model_dump())
         except Exception:
             return {}
     return {}

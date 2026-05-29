@@ -11,7 +11,7 @@ import logging
 import os
 import posixpath
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import yaml
 
@@ -522,7 +522,7 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
         if probe_type not in probe_map:
             raise ValueError(f"Unknown probe type: {probe_type}") from None
 
-        return probe_map[probe_type](**probe_args)
+        return cast("Probe[Any]", probe_map[probe_type](**probe_args))
 
 
 def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
@@ -553,7 +553,7 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
         path = _resolve_path(config["path"], base_dir)
         try:
             loader = dataset_registry.get_factory(format_type)
-            return loader(str(path))
+            return cast("list[Any]", loader(str(path)))
         except NotFoundError:
             from insideLLMs.dataset_utils import load_csv_dataset, load_jsonl_dataset
 
@@ -579,7 +579,10 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
         extra_kwargs = {k: v for k, v in config.items() if k not in excluded_keys}
         try:
             loader = dataset_registry.get_factory("hf")
-            return loader(config["name"], split=config.get("split", "test"), **extra_kwargs)
+            return cast(
+                "list[Any]",
+                loader(config["name"], split=config.get("split", "test"), **extra_kwargs),
+            )
         except NotFoundError:
             from insideLLMs.dataset_utils import load_hf_dataset
 

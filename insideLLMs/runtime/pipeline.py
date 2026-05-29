@@ -242,7 +242,7 @@ import asyncio
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from insideLLMs.exceptions import ModelError, RateLimitError, TimeoutError
 from insideLLMs.models.base import (
@@ -565,7 +565,7 @@ class Middleware(ABC):
         if self.next_middleware:
             return self.next_middleware.process_chat(messages, **kwargs)
         if self.model and hasattr(self.model, "chat"):
-            return self.model.chat(messages, **kwargs)
+            return cast(str, self.model.chat(messages, **kwargs))
         raise ModelError("No chat implementation available")
 
     def process_stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
@@ -761,7 +761,7 @@ class Middleware(ABC):
             return await self.next_middleware.aprocess_chat(messages, **kwargs)
         if self.model:
             if hasattr(self.model, "achat"):
-                return await self.model.achat(messages, **kwargs)
+                return cast(str, await self.model.achat(messages, **kwargs))
             if hasattr(self.model, "chat"):
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, lambda: self.model.chat(messages, **kwargs))
@@ -2846,7 +2846,7 @@ class ModelPipeline(Model):
         if self.middlewares:
             return self.middlewares[0].process_chat(messages, **kwargs)
         if hasattr(self.base_model, "chat"):
-            return self.base_model.chat(messages, **kwargs)
+            return cast(str, self.base_model.chat(messages, **kwargs))
         raise ModelError("Base model does not support chat")
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
@@ -2875,7 +2875,7 @@ class ModelPipeline(Model):
         if self.middlewares:
             return await self.middlewares[0].aprocess_chat(messages, **kwargs)
         if hasattr(self.base_model, "achat"):
-            return await self.base_model.achat(messages, **kwargs)
+            return cast(str, await self.base_model.achat(messages, **kwargs))
         if hasattr(self.base_model, "chat"):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(

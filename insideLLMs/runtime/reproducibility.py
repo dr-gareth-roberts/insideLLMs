@@ -182,7 +182,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from insideLLMs._serialization import serialize_value as _serialize_value
 from insideLLMs._serialization import stable_json_dumps as _stable_json_dumps
@@ -1461,7 +1461,7 @@ class ExperimentCheckpointManager:
         checkpoint = self._checkpoints.get(checkpoint_id)
         if not checkpoint:
             return None
-        return checkpoint["state"]
+        return cast("dict[str, Any]", checkpoint["state"])
 
 
 @dataclass
