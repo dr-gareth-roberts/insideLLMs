@@ -1576,7 +1576,7 @@ class ExperimentRegistry:
         """Find experiments by name."""
         return [exp for exp in self._experiments.values() if exp.metadata.name == name]
 
-    def list_all(self) -> list[dict[str, str]]:
+    def list_all(self) -> list[dict[str, str | float]]:
         """List all experiments."""
         return [
             {

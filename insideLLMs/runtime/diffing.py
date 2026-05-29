@@ -776,10 +776,10 @@ def build_diff_computation(
         "candidate": candidate_label,
         "run_ids": {
             "baseline": sorted(
-                {record.get("run_id") for record in records_baseline if record.get("run_id")}
+                {record["run_id"] for record in records_baseline if record.get("run_id")}
             ),
             "candidate": sorted(
-                {record.get("run_id") for record in records_candidate if record.get("run_id")}
+                {record["run_id"] for record in records_candidate if record.get("run_id")}
             ),
         },
         "counts": {

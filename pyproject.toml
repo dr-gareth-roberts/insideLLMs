@@ -178,19 +178,12 @@ disable_error_code = [
     "attr-defined",
     "arg-type",
     "assignment",
-    "call-arg",
-    "call-overload",
-    "dict-item",
-    "exit-return",
-    "has-type",
-    "list-item",
     "operator",
     "index",
     "var-annotated",
     "misc",
     "union-attr",
     "override",
-    "type-var",
 ]
 
 # Strict checking for core modules
