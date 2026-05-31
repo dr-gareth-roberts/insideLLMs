@@ -4,6 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# transformers is an optional provider dependency; skip the whole module when it
+# is absent (e.g. core-only CI installs) rather than erroring at import time.
+pytest.importorskip("transformers", reason="transformers not installed")
+
 
 class TestHuggingFaceModelInit:
     """Tests for HuggingFaceModel initialization."""

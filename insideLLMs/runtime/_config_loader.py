@@ -410,35 +410,31 @@ def _create_model_from_config(
     try:
         base_model = model_registry.get(model_type, **model_args)
     except NotFoundError:
-        # Fallback to direct import for backwards compatibility
-        from insideLLMs.models import (
-            AnthropicModel,
-            CohereModel,
-            DummyModel,
-            GeminiModel,
-            HuggingFaceModel,
-            LlamaCppModel,
-            OllamaModel,
-            OpenAIModel,
-            VLLMModel,
-        )
-
-        model_map = {
-            "dummy": DummyModel,
-            "openai": OpenAIModel,
-            "huggingface": HuggingFaceModel,
-            "anthropic": AnthropicModel,
-            "gemini": GeminiModel,
-            "cohere": CohereModel,
-            "llamacpp": LlamaCppModel,
-            "ollama": OllamaModel,
-            "vllm": VLLMModel,
+        # Fallback to direct import for backwards compatibility. Validate the
+        # type against the known names *before* importing any provider class:
+        # the model symbols are lazily imported and pull in provider SDKs, so
+        # importing them for an unknown type would surface a confusing
+        # ModuleNotFoundError instead of a clean "Unknown model type" error
+        # (and would fail outright in a core-only install).
+        model_class_names = {
+            "dummy": "DummyModel",
+            "openai": "OpenAIModel",
+            "huggingface": "HuggingFaceModel",
+            "anthropic": "AnthropicModel",
+            "gemini": "GeminiModel",
+            "cohere": "CohereModel",
+            "llamacpp": "LlamaCppModel",
+            "ollama": "OllamaModel",
+            "vllm": "VLLMModel",
         }
 
-        if model_type not in model_map:
+        if model_type not in model_class_names:
             raise ValueError(f"Unknown model type: {model_type}")
 
-        base_model = model_map[model_type](**model_args)
+        import insideLLMs.models as _models
+
+        model_class = getattr(_models, model_class_names[model_type])
+        base_model = model_class(**model_args)
 
     pipeline_cfg = config.get("pipeline") if isinstance(config, dict) else None
     if isinstance(pipeline_cfg, dict):

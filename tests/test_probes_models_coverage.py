@@ -10,6 +10,7 @@ Covers uncovered code paths in:
 - insideLLMs/models/local.py (Ollama options, pull/list_models/show_model_info, VLLMModel)
 """
 
+import importlib.util
 import os
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -23,6 +24,11 @@ from insideLLMs.types import (
     ProbeScore,
     ResultStatus,
 )
+
+# Optional provider SDKs: skip the provider-specific suites when absent so the
+# core-only test environment (CI) does not error on missing imports.
+_HAS_OPENAI = importlib.util.find_spec("openai") is not None
+_HAS_ANTHROPIC = importlib.util.find_spec("anthropic") is not None
 
 # ---------------------------------------------------------------------------
 # Helper probe subclasses for testing
@@ -755,6 +761,7 @@ class TestCodeDebugProbe:
 # ===========================================================================
 
 
+@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
 class TestOpenAIModelChatErrorHandling:
     """Tests for OpenAIModel.chat error handling."""
 
@@ -829,6 +836,7 @@ class TestOpenAIModelChatErrorHandling:
                 model.chat([{"role": "user", "content": "Hello"}])
 
 
+@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
 class TestOpenAIModelStreamErrorHandling:
     """Tests for OpenAIModel.stream error handling."""
 
@@ -903,6 +911,7 @@ class TestOpenAIModelStreamErrorHandling:
                 list(model.stream("Test"))
 
 
+@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
 class TestOpenAIModelInfoExtra:
     """Tests for OpenAIModel.info with extra fields."""
 
@@ -929,6 +938,7 @@ class TestOpenAIModelInfoExtra:
 # ===========================================================================
 
 
+@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
 class TestAnthropicModelChatErrorHandling:
     """Tests for AnthropicModel.chat error handling."""
 
@@ -1003,6 +1013,7 @@ class TestAnthropicModelChatErrorHandling:
                 model.chat([{"role": "user", "content": "Hello"}])
 
 
+@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
 class TestAnthropicModelStreamErrorHandling:
     """Tests for AnthropicModel.stream error handling."""
 
@@ -1077,6 +1088,7 @@ class TestAnthropicModelStreamErrorHandling:
                 list(model.stream("Test"))
 
 
+@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
 class TestAnthropicModelChatRoleConversion:
     """Tests for AnthropicModel.chat role conversion."""
 
@@ -1106,6 +1118,7 @@ class TestAnthropicModelChatRoleConversion:
             assert sent_messages[1]["role"] == "user"
 
 
+@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
 class TestAnthropicModelInfoExtra:
     """Tests for AnthropicModel.info extra fields."""
 

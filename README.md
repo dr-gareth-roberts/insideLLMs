@@ -212,6 +212,37 @@ insidellms harness config.yaml \
 </details>
 
 <details>
+<summary><b>Diff gating</b></summary>
+
+Fail CI when a candidate run drifts from the baseline. Beyond `--fail-on-changes`,
+the diff gate can flag agent trajectory drift specifically:
+
+```bash
+insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
+```
+
+A trajectory-drift gate failure exits with code `5`, distinct from the generic
+change-detected code, so pipelines can branch on the reason.
+
+</details>
+
+<details>
+<summary><b>Production shadow capture</b></summary>
+
+Sample live traffic into deterministic run artifacts for offline probing. Mount
+the shadow middleware on a FastAPI app:
+
+```python
+from insideLLMs import shadow
+
+shadow.fastapi(output_path="./shadow/records.jsonl", sample_rate=0.01)
+```
+
+Captured records flow into the same `diff`/`report` pipeline as offline runs.
+
+</details>
+
+<details>
 <summary><b>Schema validation</b></summary>
 
 ```bash

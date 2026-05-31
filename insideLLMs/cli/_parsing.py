@@ -38,7 +38,14 @@ def _module_version(dist_name: str) -> str | None:
 
 
 def _has_module(module: str) -> bool:
-    return importlib.util.find_spec(module) is not None
+    # find_spec raises ModuleNotFoundError for a dotted module whose parent
+    # package is absent (e.g. "google.generativeai" when google is missing),
+    # and ValueError when a partially initialised module has no __spec__.
+    # Treat any such failure as "module unavailable" rather than crashing.
+    try:
+        return importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 def _check_nltk_resource(path: str) -> bool:

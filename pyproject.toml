@@ -97,6 +97,12 @@ dev = [
     "isort>=5.12.0",
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
+    # Runtime deps backing core features (schema validation, HTML reports,
+    # tokenization) that the test suite must exercise for coverage. These are
+    # optional at runtime (lazy-guarded) but required to run the full suite.
+    "pydantic>=2.0",
+    "jinja2>=3.0",
+    "nltk>=3.9.3",
 ]
 # Everything
 all = [
