@@ -179,12 +179,6 @@ disable_error_code = [
     "attr-defined",
     "arg-type",
     "assignment",
-    "call-arg",
-    "call-overload",
-    "dict-item",
-    "exit-return",
-    "has-type",
-    "list-item",
     "operator",
     "index",
     "var-annotated",
@@ -192,7 +186,6 @@ disable_error_code = [
     "misc",
     "union-attr",
     "override",
-    "type-var",
     "import-untyped",
 ]
 
