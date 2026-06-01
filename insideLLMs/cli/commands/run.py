@@ -90,11 +90,16 @@ def cmd_run(args: argparse.Namespace) -> int:
         )
 
         if args.use_async:
-            print_info(f"Using async execution with concurrency={args.concurrency}")
+            concurrency_label = (
+                args.concurrency if args.concurrency is not None else "config/default"
+            )
+            print_info(f"Using async execution with concurrency={concurrency_label}")
             results = asyncio.run(
                 run_experiment_from_config_async(
                     config_path,
                     concurrency=args.concurrency,
+                    timeout=getattr(args, "timeout", None),
+                    stop_on_error=bool(getattr(args, "stop_on_error", False)) or None,
                     progress_callback=progress_callback if args.verbose else None,
                     validate_output=args.validate_output,
                     schema_version=args.schema_version,
@@ -124,6 +129,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 resume=bool(args.resume),
                 strict_serialization=args.strict_serialization,
                 deterministic_artifacts=args.deterministic_artifacts,
+                stop_on_error=bool(getattr(args, "stop_on_error", False)) or None,
             )
 
         elapsed = time.time() - start_time

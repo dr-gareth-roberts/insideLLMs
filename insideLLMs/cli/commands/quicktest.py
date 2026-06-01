@@ -4,8 +4,7 @@ import argparse
 import json
 import time
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
-from insideLLMs.runtime.runner import ProbeRunner
+from insideLLMs.registry import ensure_builtins_registered, probe_registry
 
 from .._output import (
     Colors,
@@ -17,6 +16,7 @@ from .._output import (
     print_key_value,
     print_subheader,
 )
+from ._run_common import resolve_registered_model
 
 
 def cmd_quicktest(args: argparse.Namespace) -> int:
@@ -28,70 +28,44 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
     print_key_value("Prompt", args.prompt[:50] + "..." if len(args.prompt) > 50 else args.prompt)
 
     try:
-        # Parse model args
         model_args = json.loads(args.model_args)
-        model_args["temperature"] = args.temperature
-        model_args["max_tokens"] = args.max_tokens
+        init_kwargs = dict(model_args)
+        init_kwargs.pop("temperature", None)
+        init_kwargs.pop("max_tokens", None)
 
-        # Get model from registry - it may be a class or instance
-        model_or_factory = model_registry.get(args.model)
+        model = resolve_registered_model(args.model, **init_kwargs)
 
-        # If it's a class, instantiate it; if it's already an instance, use it
-        if isinstance(model_or_factory, type):
-            model = model_or_factory(**model_args)
-        else:
-            model = model_or_factory
+        spinner = Spinner("Generating response")
+        start_time = time.time()
+        spinner.spin()
 
-        # When a probe is requested, evaluate through ProbeRunner for parity with run/harness.
+        response = model.generate(
+            args.prompt,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
+        elapsed = time.time() - start_time
+        spinner.stop(success=True)
+
+        print_subheader("Response")
+        print(f"  {response}")
+
+        print_subheader("Stats")
+        print_key_value("Latency", f"{elapsed * 1000:.1f}ms")
+        print_key_value("Response length", f"{len(response)} characters")
+
         if args.probe:
             print_subheader(f"Probe: {args.probe}")
-            probe_factory = probe_registry.get(args.probe)
-            probe = probe_factory() if isinstance(probe_factory, type) else probe_factory
-
-            spinner = Spinner("Evaluating probe")
-            start_time = time.time()
-            spinner.spin()
-            # ProbeRunner expects an iterable dataset; each item is passed to probe.run(...)
-            # Most built-in probes accept raw prompt strings, so we wrap the prompt in a list.
-            results = ProbeRunner(model, probe).run(
-                [args.prompt],
-                emit_run_artifacts=False,
+            probe = probe_registry.get(args.probe)
+            probe_result = probe.run(model, args.prompt)
+            if isinstance(probe_result, dict):
+                for key, value in probe_result.items():
+                    print_key_value(str(key), str(value))
+            else:
+                print_key_value("Result", str(probe_result))
+            print_info(
+                f"Probe '{args.probe}' applied (detailed scoring available in full experiments)"
             )
-            elapsed = time.time() - start_time
-            spinner.stop(success=True)
-
-            result = results[0] if results else {}
-            response = str(result.get("output", ""))
-            status = str(result.get("status", "unknown"))
-            latency_ms = result.get("latency_ms")
-
-            print_subheader("Response")
-            print(f"  {response}")
-
-            print_subheader("Probe Result")
-            print_key_value("Status", status)
-            if isinstance(latency_ms, (int, float)):
-                print_key_value("Probe latency", f"{float(latency_ms):.1f}ms")
-            print_key_value("Wall time", f"{elapsed * 1000:.1f}ms")
-            print_key_value("Response length", f"{len(response)} characters")
-            if result.get("error"):
-                print_key_value("Error", str(result.get("error")))
-        else:
-            # Generate response directly for fast smoke tests.
-            spinner = Spinner("Generating response")
-            start_time = time.time()
-            spinner.spin()
-
-            response = model.generate(args.prompt)
-            elapsed = time.time() - start_time
-            spinner.stop(success=True)
-
-            print_subheader("Response")
-            print(f"  {response}")
-
-            print_subheader("Stats")
-            print_key_value("Latency", f"{elapsed * 1000:.1f}ms")
-            print_key_value("Response length", f"{len(response)} characters")
 
         print()
         print_info("Next steps:")

@@ -570,7 +570,7 @@ def _result_dict_from_record(
         "output": record.get("output"),
         "latency_ms": record.get("latency_ms"),
         "status": record.get("status"),
-        "metadata": {},
+        "metadata": dict(record["metadata"]) if isinstance(record.get("metadata"), dict) else {},
     }
     if record.get("error") is not None:
         payload["error"] = record.get("error")

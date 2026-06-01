@@ -94,9 +94,11 @@ def cmd_export(args: argparse.Namespace) -> int:
                     f.write("\n".join(lines))
 
         elif args.format == "jsonl":
+            from insideLLMs._serialization import stable_json_dumps
+
             with open(output_path, "w", encoding="utf-8") as f:
                 for r in results:
-                    f.write(json.dumps(r, default=str) + "\n")
+                    f.write(stable_json_dumps(r) + "\n")
 
         if getattr(args, "encrypt", False):
             key_env = getattr(args, "encryption_key_env", "INSIDELLMS_ENCRYPTION_KEY")

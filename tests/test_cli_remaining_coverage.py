@@ -122,17 +122,18 @@ class TestQuicktestCommand:
         assert rc == 1
 
     def test_quicktest_with_probe(self, capsys):
-        # Exercises the probe loading code path; may fail if registry returns instance
-        rc = cmd_quicktest(_quicktest_args(probe="factuality"))
-        assert rc in (0, 1)
-
-    def test_quicktest_long_prompt(self, capsys):
-        rc = cmd_quicktest(_quicktest_args(prompt="x" * 100))
+        rc = cmd_quicktest(_quicktest_args(probe="logic"))
+        captured = capsys.readouterr()
         assert rc == 0
+        assert "Probe: logic" in captured.out
 
-    def test_quicktest_with_model_args(self, capsys):
-        rc = cmd_quicktest(_quicktest_args(model_args='{"response_prefix": "test"}'))
+    def test_quicktest_model_args_applied(self, capsys):
+        rc = cmd_quicktest(
+            _quicktest_args(model_args='{"response_prefix": "PREFIX:"}', temperature=0.7)
+        )
+        captured = capsys.readouterr()
         assert rc == 0
+        assert "PREFIX:" in captured.out
 
 
 class TestRunCommand:
