@@ -10,8 +10,10 @@ from pathlib import Path
 
 # Patterns that indicate potential secrets
 SECRET_PATTERNS = [
-    (r"sk-[a-zA-Z0-9]{32,}", "OpenAI API key"),
-    (r"sk-ant-[a-zA-Z0-9-]{95,}", "Anthropic API key"),
+    # Classic and project/service-account style OpenAI keys (sk-, sk-proj-, sk-svcacct-).
+    (r"sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}", "OpenAI API key"),
+    # Anthropic keys including the modern sk-ant-api03- prefix.
+    (r"sk-ant-(?:api\d+-)?[A-Za-z0-9_-]{32,}", "Anthropic API key"),
     (r'api_key\s*=\s*["\'][^"\']+["\']', "Hardcoded API key"),
     (r'OPENAI_API_KEY\s*=\s*["\']sk-', "Hardcoded OpenAI key in env assignment"),
     (r'password\s*=\s*["\'][^"\']+["\']', "Hardcoded password"),
