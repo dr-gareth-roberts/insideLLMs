@@ -151,7 +151,8 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
             results_file = output_dir / "benchmark_results.json"
             with open(results_file, "w", encoding="utf-8") as f:
-                json.dump(results_all, f, indent=2)
+                # sort_keys for canonical, byte-stable output (artifact convention).
+                json.dump(results_all, f, indent=2, sort_keys=True)
             print_success(f"Results saved to: {results_file}")
 
             if args.html_report:

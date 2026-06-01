@@ -65,8 +65,8 @@ Using the version in validation workflows:
     ...     {"input": "test", "status": "success"},
     ...     schema_version=DEFAULT_SCHEMA_VERSION
     ... )
-    >>> result.is_valid
-    True
+    >>> result.status
+    'success'
 
 Checking version compatibility programmatically:
 

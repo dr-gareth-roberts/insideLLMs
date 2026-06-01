@@ -671,7 +671,7 @@ class OutputValidator:
                 >>> result.status
                 'success'
                 >>> type(result).__name__
-                'ProbeResult'
+                'SchemaProbeResult'
 
             Validation with all optional fields:
 
@@ -779,7 +779,7 @@ class OutputValidator:
                 >>> result.input
                 'question'
                 >>> type(result).__name__
-                'ProbeResult'
+                'SchemaProbeResult'
 
             Validating nested dataclasses:
 

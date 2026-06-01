@@ -1015,7 +1015,7 @@ Set the dataset for the benchmark.
 
 ### Configuration-Based Execution
 
-##### `run_experiment_from_config(config_path: Union[str, Path]) -> Dict[str, Any]`
+##### `run_experiment_from_config(config_path: Union[str, Path]) -> Union[List[Dict[str, Any]], ExperimentResult]`
 
 Run a complete experiment from a YAML or JSON configuration file.
 

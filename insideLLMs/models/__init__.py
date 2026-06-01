@@ -277,7 +277,7 @@ Run transformer models without API calls:
     >>>
     >>> model = HuggingFaceModel(
     ...     model_name="meta-llama/Llama-2-7b-chat-hf",
-    ...     device="cuda"  # or "cpu", "mps"
+    ...     device=0  # GPU index; use -1 for CPU
     ... )
     >>> response = model.generate("Hello, how are you?")
 

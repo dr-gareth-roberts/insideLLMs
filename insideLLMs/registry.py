@@ -1287,6 +1287,7 @@ def register_builtins() -> None:
         - instruction_following: InstructionFollowingProbe
         - multi_step_task: MultiStepTaskProbe
         - constraint_compliance: ConstraintComplianceProbe
+        - judge: JudgeScoredProbe for LLM-as-judge scoring
 
     Registered Dataset Loaders:
         - csv: load_csv_dataset for CSV files

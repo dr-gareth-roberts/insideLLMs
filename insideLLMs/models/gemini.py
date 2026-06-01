@@ -377,7 +377,7 @@ class GeminiModel(Model):
                 >>> model = GeminiModel(api_key="your-key")
                 >>> _ = model.generate("Hello")
                 >>> _ = model.generate("World")
-                >>> print(model.call_count)
+                >>> print(model._call_count)
                 2
 
         Notes:
@@ -515,6 +515,11 @@ class GeminiModel(Model):
                 history.append({"role": "user", "parts": [content]})
             elif role == "assistant":
                 history.append({"role": "model", "parts": [content]})
+
+        # A trailing system message with no following user turn would otherwise
+        # be silently dropped; surface it as a user message instead.
+        if current_message:
+            history.append({"role": "user", "parts": [current_message]})
 
         # Find the last user message in history
         last_user_msg = ""

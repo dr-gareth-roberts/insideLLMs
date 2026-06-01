@@ -101,7 +101,7 @@ dev = [
 ]
 # Everything
 all = [
-    "insideLLMs[providers,signing,crypto,nlp,visualization,dev,serving]",
+    "insideLLMs[providers,signing,crypto,nlp,visualization,langchain,dev,serving]",
 ]
 
 [project.scripts]

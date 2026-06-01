@@ -17,7 +17,11 @@ def redact_pii(obj: Any) -> Any:
         return mask_pii(obj)
 
     elif isinstance(obj, dict):
-        return {k: redact_pii(v) for k, v in obj.items()}
+        # Redact string keys too (PII can live in keys); leave non-string keys
+        # (and non-string values) untouched rather than stringifying them.
+        return {
+            (redact_pii(k) if isinstance(k, str) else k): redact_pii(v) for k, v in obj.items()
+        }
 
     elif isinstance(obj, list):
         return [redact_pii(item) for item in obj]
