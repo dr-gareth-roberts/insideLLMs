@@ -97,7 +97,7 @@ class TestAssertJsonable:
         from insideLLMs.schemas.custom_trace_v1 import _assert_jsonable
 
         with pytest.raises(ValueError, match="events.payload must be JSON-serialisable"):
-            _assert_jsonable({"ts": datetime.now()}, where="events.payload")
+            _assert_jsonable({"bad": object()}, where="events.payload")
 
 
 class TestNormaliseSha256Value:
@@ -364,7 +364,7 @@ class TestTraceEventStored:
         from insideLLMs.schemas.custom_trace_v1 import TraceEventStored
 
         with pytest.raises(Exception, match="JSON-serialisable"):
-            TraceEventStored(seq=0, kind="msg", payload={"bad": datetime.now()})
+            TraceEventStored(seq=0, kind="msg", payload={"bad": object()})
 
 
 class TestTruncationModels:

@@ -2029,7 +2029,7 @@ async def first_completed(
 
         raise RuntimeError("No task completed")  # Should never happen
 
-    except Exception:
+    except Exception as _:
         # Cancel all tasks on error
         for task in tasks:
             task.cancel()

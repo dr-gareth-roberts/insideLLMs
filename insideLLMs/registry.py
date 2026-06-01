@@ -1716,10 +1716,16 @@ def ensure_builtins_registered() -> None:
         try:
             register_builtins()
             _builtins_registered = True
-        except ImportError:
-            # Some dependencies might not be installed
-            pass
+        except ImportError as exc:
+            warnings.warn(
+                f"Builtin registration failed ({exc}). Some models or probes may be unavailable.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     if _builtins_registered and not _plugins_loaded:
         load_entrypoint_plugins()
         _plugins_loaded = True
+
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

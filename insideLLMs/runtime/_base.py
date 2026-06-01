@@ -80,7 +80,7 @@ def _invoke_progress_callback(
             callback_style = "legacy"
         try:
             setattr(callback, "_insidellms_progress_style", callback_style)
-        except Exception:
+        except Exception as _:
             pass
 
     if callback_style == "legacy":
@@ -273,7 +273,7 @@ class _RunnerBase:
             >>> if runner.error_count > 0:
             ...     print(f"Encountered {runner.error_count} errors")
         """
-        return sum(1 for r in self._results if r.get("status") == "error")
+        return sum(1 for r in self._results if r.get("status") in {"error", "timeout"})
 
 
 __all__ = [

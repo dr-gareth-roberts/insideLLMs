@@ -1207,7 +1207,7 @@ def tool(
             >>> @tool(name="calculator")
             ... def calculate(expression: str) -> str:
             ...     '''Evaluate a math expression.'''
-            ...     return str(eval(expression))
+            ...     return str(_safe_eval_arithmetic(expression))
             >>>
             >>> model = DummyModel()
             >>> agent = ReActAgent(model, tools=[calculate])
@@ -1752,7 +1752,7 @@ class BaseAgent(ABC):
             0
             >>>
             >>> def calculate(expr: str) -> str:
-            ...     return str(eval(expr))
+            ...     return str(_safe_eval_arithmetic(expr))
             >>>
             >>> agent.add_tool(Tool("calc", calculate))
             >>> print(len(agent.tools))
@@ -3016,6 +3016,91 @@ def _safe_eval_arithmetic(expression: str) -> Union[int, float]:
     return _eval(parsed)
 
 
+def _apply_binary_operator(
+    op: ast.operator, left: Union[int, float], right: Union[int, float]
+) -> Union[int, float]:
+    if isinstance(op, ast.Add):
+        return left + right
+    if isinstance(op, ast.Sub):
+        return left - right
+    if isinstance(op, ast.Mult):
+        return left * right
+    if isinstance(op, ast.Div):
+        return left / right
+    if isinstance(op, ast.FloorDiv):
+        return left // right
+    if isinstance(op, ast.Mod):
+        return left % right
+    if isinstance(op, ast.Pow):
+        return left**right
+    raise ValueError("Unsupported arithmetic operator")
+
+
+def _apply_unary_operator(op: ast.unaryop, operand: Union[int, float]) -> Union[int, float]:
+    if isinstance(op, ast.UAdd):
+        return +operand
+    if isinstance(op, ast.USub):
+        return -operand
+    raise ValueError("Unsupported unary operator")
+
+
+def _eval_exec_expression(
+    node: ast.AST, variables: dict[str, Union[int, float]]
+) -> Union[int, float]:
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+            raise ValueError("Only numeric constants are allowed")
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id not in variables:
+            raise ValueError(f"Unknown variable: {node.id}")
+        return variables[node.id]
+    if isinstance(node, ast.BinOp):
+        left = _eval_exec_expression(node.left, variables)
+        right = _eval_exec_expression(node.right, variables)
+        return _apply_binary_operator(node.op, left, right)
+    if isinstance(node, ast.UnaryOp):
+        return _apply_unary_operator(node.op, _eval_exec_expression(node.operand, variables))
+    raise ValueError("Unsupported expression")
+
+
+_MAX_EXEC_CODE_LENGTH = 1024
+_MAX_EXEC_AST_NODES = 100
+_MAX_EXEC_AST_DEPTH = 20
+
+
+def _ast_depth(node: ast.AST) -> int:
+    """Return the maximum nesting depth of an AST node."""
+    children = list(ast.iter_child_nodes(node))
+    if not children:
+        return 1
+    return 1 + max(_ast_depth(c) for c in children)
+
+
+def _safe_exec_python_subset(code: str) -> dict[str, Union[int, float]]:
+    """Execute a tightly restricted Python subset (assignments + arithmetic)."""
+    if len(code) > _MAX_EXEC_CODE_LENGTH:
+        raise ValueError(f"Code exceeds maximum length of {_MAX_EXEC_CODE_LENGTH} characters")
+    parsed = ast.parse(code, mode="exec")
+    node_count = sum(1 for _ in ast.walk(parsed))
+    if node_count > _MAX_EXEC_AST_NODES:
+        raise ValueError(f"Code AST exceeds maximum of {_MAX_EXEC_AST_NODES} nodes")
+    if _ast_depth(parsed) > _MAX_EXEC_AST_DEPTH:
+        raise ValueError(f"Code AST exceeds maximum depth of {_MAX_EXEC_AST_DEPTH}")
+    variables: dict[str, Union[int, float]] = {}
+    for statement in parsed.body:
+        if isinstance(statement, ast.Assign):
+            if len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
+                raise ValueError("Only simple variable assignments are supported")
+            variables[statement.targets[0].id] = _eval_exec_expression(statement.value, variables)
+            continue
+        if isinstance(statement, ast.Expr):
+            _eval_exec_expression(statement.value, variables)
+            continue
+        raise ValueError("Only arithmetic expressions and assignments are supported")
+    return variables
+
+
 def create_calculator_tool() -> Tool:
     """Create a calculator tool for evaluating mathematical expressions.
 
@@ -3177,41 +3262,26 @@ def create_python_tool(
 ) -> Tool:
     """Create a Python code execution tool.
 
-    Creates a tool that can execute Python code. By default, execution is
-    disabled for safety. Only enable execution in trusted environments.
+    Creates a tool that represents Python code execution capability. Code execution
+    is always disabled for security reasons. The parameters are kept for API
+    compatibility but are ignored.
 
     Args:
-        allow_exec: Whether to allow actual code execution. Default is False.
-            WARNING: Setting this to True is dangerous and should only be
-            done in fully trusted, sandboxed environments.
-        sandbox_contract: Explicit description/identifier of the sandbox boundary
-            used to contain execution (required when allow_exec=True).
+        allow_exec: (Deprecated) Ignored. Code execution is always disabled.
+        sandbox_contract: (Deprecated) Ignored. Code execution is always disabled.
 
     Returns:
-        Tool: A Python execution tool instance.
+        Tool: A Python execution tool instance that always returns a safe error message.
 
     Examples:
-        Default (safe) mode - execution disabled:
+        Creating the tool:
 
             >>> from insideLLMs.contrib.agents import create_python_tool
             >>>
-            >>> python_tool = create_python_tool(allow_exec=False)
+            >>> python_tool = create_python_tool()
             >>> result = python_tool.execute("result = 2 + 2")
-            >>> print(result.output)
-            Code execution disabled for safety
-
-        With execution enabled (DANGEROUS):
-
-            >>> from insideLLMs.contrib.agents import create_python_tool
-            >>>
-            >>> # WARNING: Only use in trusted environments!
-            >>> python_tool = create_python_tool(
-            ...     allow_exec=True,
-            ...     sandbox_contract="isolated-unit-test-sandbox",
-            ... )
-            >>> result = python_tool.execute("result = 2 + 2")
-            >>> print(result.output)
-            4
+            >>> print("disabled" in result.output.lower())
+            True
 
         Using with an agent:
 
@@ -3222,23 +3292,11 @@ def create_python_tool(
             >>> print(agent.tools[0].name)
             python
 
-        Error handling:
-
-            >>> from insideLLMs.contrib.agents import create_python_tool
-            >>>
-            >>> python_tool = create_python_tool(
-            ...     allow_exec=True,
-            ...     sandbox_contract="isolated-unit-test-sandbox",
-            ... )
-            >>> result = python_tool.execute("result = 1/0")
-            >>> print("Error" in result.output)
-            True
-
     Warning:
-        Enabling code execution (allow_exec=True) is inherently dangerous
-        and can lead to arbitrary code execution vulnerabilities. Only use
-        in sandboxed environments with proper security controls, and always
-        provide an explicit sandbox_contract.
+        Code execution is permanently disabled due to remote code execution
+        vulnerabilities. Python's exec() cannot be safely sandboxed without
+        additional process isolation (e.g., containers, separate processes).
+        Use create_calculator_tool() for safe mathematical operations.
 
     See Also:
         :class:`Tool`: The base Tool class.
@@ -3246,20 +3304,12 @@ def create_python_tool(
     """
 
     def execute_python(code: str) -> str:
-        if not allow_exec:
-            return "Code execution disabled for safety"
-        if not sandbox_contract:
-            return (
-                "Code execution disabled: missing sandbox contract. "
-                "Pass sandbox_contract when allow_exec=True."
-            )
-        try:
-            # DANGEROUS: Only use in trusted environments
-            local_vars: dict[str, Any] = {}
-            exec(code, {"__builtins__": {}}, local_vars)
-            return str(local_vars.get("result", "Code executed successfully"))
-        except Exception as e:
-            return f"Error: {str(e)}"
+        # Code execution is disabled to prevent remote code execution vulnerabilities.
+        # Even with restricted builtins, exec() can be bypassed through Python introspection.
+        return (
+            "Code execution is disabled for security reasons. "
+            "Python's exec() cannot be safely sandboxed without additional process isolation."
+        )
 
     return Tool(
         name="python",

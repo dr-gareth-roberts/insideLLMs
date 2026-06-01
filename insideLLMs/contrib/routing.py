@@ -2017,7 +2017,7 @@ class ModelPool:
                 self._stats[idx].update(True, (time.time() - start_time) * 1000)
             return response
 
-        except Exception:
+        except Exception as _:
             with self._lock:
                 self._stats[idx].current_load -= 1
                 self._stats[idx].update(False, (time.time() - start_time) * 1000)
@@ -2256,7 +2256,7 @@ class IntentClassifier:
                 best_score = score
                 best_intent = intent
 
-        if best_score > 0.5:
+        if best_score > 0.5 and best_intent is not None:
             return best_intent, best_score
 
         # Use model if available and patterns didn't match well
@@ -2264,7 +2264,8 @@ class IntentClassifier:
             return self._classify_with_model(query)
 
         # Fallback to best pattern match or unknown
-        return best_intent or "unknown", best_score
+        fallback_intent = best_intent if best_intent is not None else "unknown"
+        return fallback_intent, best_score
 
     def _classify_with_model(self, query: str) -> tuple[str, float]:
         """Classify a query using the configured LLM model.
@@ -2299,8 +2300,12 @@ Query: {query}
 
 Respond with just the intent name."""
 
+        model = self.model
+        if model is None:
+            return "unknown", 0.0
+
         try:
-            response = self.model.generate(prompt)
+            response = model.generate(prompt)
             intent = response.strip().lower()
 
             # Find best matching intent
@@ -2309,7 +2314,7 @@ Respond with just the intent name."""
                     return name, 0.8
 
             return "unknown", 0.3
-        except Exception:
+        except Exception as _:
             return "unknown", 0.0
 
 

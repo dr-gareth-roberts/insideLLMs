@@ -60,15 +60,21 @@ csv.DictReader : Python's built-in CSV dictionary reader
 """
 
 import csv
+import importlib
 import json
 from typing import Any, Optional
 
+load_dataset: Optional[Any] = None
+_datasets_module = None
 try:
-    from datasets import load_dataset
-
-    HF_DATASETS_AVAILABLE = True
+    _datasets_module = importlib.import_module("datasets")
 except ImportError:
-    HF_DATASETS_AVAILABLE = False
+    _datasets_module = None
+
+if _datasets_module is not None:
+    load_dataset = getattr(_datasets_module, "load_dataset", None)
+
+HF_DATASETS_AVAILABLE = load_dataset is not None
 
 
 def load_csv_dataset(path: str, *, encoding: str = "utf-8") -> list[dict[str, Any]]:
@@ -220,9 +226,7 @@ def load_jsonl_dataset(path: str) -> list[dict[str, Any]]:
     return items
 
 
-def load_hf_dataset(
-    dataset_name: str, split: str = "test", **kwargs
-) -> Optional[list[dict[str, Any]]]:
+def load_hf_dataset(dataset_name: str, split: str = "test", **kwargs) -> list[dict[str, Any]]:
     """Load a dataset from the HuggingFace Datasets Hub into a list of dictionaries.
 
     Downloads and loads a dataset from the HuggingFace Hub, converting it to the
@@ -247,7 +251,8 @@ def load_hf_dataset(
 
     Returns:
         A list of dictionaries where each dictionary represents a single
-        example from the dataset. Returns None only if the dataset is empty.
+        example from the dataset. Returns an empty list if the dataset has
+        no examples.
 
     Raises:
         ImportError: If the ``datasets`` package is not installed.
@@ -305,7 +310,10 @@ def load_hf_dataset(
         load_jsonl_dataset: For loading local JSONL files
         datasets.load_dataset: The underlying HuggingFace function with full options
     """
-    if not HF_DATASETS_AVAILABLE:
+    if not HF_DATASETS_AVAILABLE or load_dataset is None:
         raise ImportError("HuggingFace Datasets not installed.")
     ds = load_dataset(dataset_name, split=split, **kwargs)
     return [dict(x) for x in ds]
+
+
+__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]

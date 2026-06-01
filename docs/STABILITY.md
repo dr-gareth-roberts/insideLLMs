@@ -20,7 +20,7 @@ The detailed compatibility contract (Stable / Experimental / Internal) is mainta
 
 - `docs/STABILITY_MATRIX.md`
 
-Use the matrix during PR review when changing CLI behavior, schema-governed artifacts,
+Use the matrix during PR review when changing CLI behaviour, schema-governed artefacts,
 or registry extension points.
 
 ### Versioning rules
@@ -33,11 +33,11 @@ or registry extension points.
 
 ### Deprecation lifecycle
 
-For user-facing stable surfaces (CLI semantics, schema-governed artifacts, and registry extension APIs),
+For user-facing stable surfaces (CLI semantics, schema-governed artefacts, and registry extension APIs),
 use this lifecycle:
 
 1. **Deprecate in minor release `X.Y`**
-   - Keep behavior working.
+   - Keep behaviour working.
    - Add release notes and migration guidance.
    - Prefer compatibility aliases when possible.
 2. **Warn during deprecation window**
@@ -51,7 +51,7 @@ Minimum policy for every deprecation:
 
 - Changelog entry under **Unreleased**.
 - Update `docs/STABILITY_MATRIX.md` if contract scope changes.
-- Add or update compatibility tests when behavior is user-visible.
+- Add or update compatibility tests when behaviour is user-visible.
 
 ### Determinism scope
 

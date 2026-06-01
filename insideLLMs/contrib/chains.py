@@ -2560,7 +2560,7 @@ class Chain:
                     try:
                         current_data = self.error_handler(e, state)
                         step_status = ChainStatus.COMPLETED
-                    except Exception:
+                    except Exception as _:
                         state.status = ChainStatus.FAILED
                         break
                 else:
@@ -2831,7 +2831,7 @@ class WorkflowTemplate:
         name: str = "classify_and_route",
     ) -> Chain:
         """Create a classification-based routing chain."""
-        route_steps = {
+        route_steps: dict[str, ChainStep] = {
             route: LLMStep(route, template, model_fn) for route, template in routes.items()
         }
 

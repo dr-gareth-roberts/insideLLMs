@@ -20,7 +20,7 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
 
 2. Create a virtual environment:
    ```bash
-   python -m venv .venv
+   python3 -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
 
@@ -39,6 +39,8 @@ Thank you for your interest in contributing to insideLLMs! This guide will help 
    ```bash
    insidellms doctor
    ```
+   This command reports optional dependency gaps as warnings and does not require
+   all extras to be installed.
 
 5. Install pre-commit hooks:
    ```bash
@@ -71,6 +73,11 @@ make docs-audit     # Docs coverage/link audit for key CLI/runtime workflows
 bash scripts/checks.sh
 ```
 
+The Makefile defaults to `python3`; if needed, you can override the interpreter:
+```bash
+make check-fast PYTHON=python
+```
+
 ### Testing
 
 Run the test suite:
@@ -96,6 +103,38 @@ update a user-facing workflow, please update the relevant page and link it from 
 Local contributor-facing policies and extension guidance:
 - `docs/STABILITY.md`
 - `docs/PLUGINS.md`
+
+#### Running the Documentation Audit
+
+Before submitting changes that affect CLI, probes, or models, run the documentation audit:
+
+```bash
+make docs-audit
+```
+
+This runs two validation scripts:
+1. **`scripts/audit_docs.py`** - Verifies documentation parity with code:
+   - All CLI commands are documented in `wiki/reference/CLI.md`
+   - All exported probes are documented in `wiki/reference/Probes-Catalog.md`
+   - All exported models are documented in `wiki/reference/Models-Catalog.md`
+   - Key tokens appear in README, API_REFERENCE, and DOCUMENTATION_INDEX
+   - No stale/deprecated tokens in docs
+
+2. **`scripts/check_wiki_links.py`** - Validates wiki integrity:
+   - All internal links resolve
+   - Required YAML front matter is present
+   - No broken references
+
+#### Common Audit Failures and Fixes
+
+| Failure | Fix |
+|---------|-----|
+| "CLI.md missing documentation for command: X" | Add `## X` section to `wiki/reference/CLI.md` |
+| "Probes-Catalog.md missing documentation for: XProbe" | Add `## XProbe` section to `wiki/reference/Probes-Catalog.md` |
+| "Models-Catalog.md missing documentation for: XModel" | Add `## X` section to `wiki/reference/Models-Catalog.md` |
+| "X contains stale token: Y" | Remove deprecated option `Y` from the file |
+
+See `docs/DOCS_STANDARDS.md` for documentation formatting guidelines.
 
 ## Making Changes
 

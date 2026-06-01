@@ -1,11 +1,6 @@
-"""Public diffing facade.
+"""Public diffing facade (contrib re-export)."""
 
-This module provides a narrow import surface for deterministic behavioral diff
-computation and snapshot-interactive helpers without requiring broad
-``insideLLMs.runtime`` imports.
-"""
-
-from insideLLMs.runtime.diffing import (
+from insideLLMs.diffing import (
     DiffComputation,
     DiffGatePolicy,
     DiffJudgeComputation,

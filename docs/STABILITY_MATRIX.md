@@ -18,11 +18,11 @@ about what can change safely and what requires migration planning.
 
 | Surface | Status | Compatibility promise | Change requirements |
 |---|---|---|---|
-| CLI command names (`insidellms run`, `harness`, `diff`, `report`, etc.) | Stable | Commands should remain available with consistent behavior. | Breaking change requires deprecation phase + changelog + migration note. |
+| CLI command names (`insidellms run`, `harness`, `diff`, `report`, etc.) | Stable | Commands should remain available with consistent behaviour. | Breaking change requires deprecation phase + changelog + migration note. |
 | CLI flag semantics for core deterministic flow (`run`, `harness`, `diff`, `report`, `schema validate`) | Stable | Existing flags should preserve meaning. | Semantic changes require deprecation alias and docs updates before removal. |
-| Canonical run artifacts (`records.jsonl`, `manifest.json`, `summary.json`, `diff.json`) | Stable | Schema-governed and deterministic for identical inputs/config. | Any field addition/removal/meaning change requires schema version update and docs. |
+| Canonical run artefacts (`records.jsonl`, `manifest.json`, `summary.json`, `diff.json`) | Stable | Schema-governed and deterministic for identical inputs/config. | Any field addition/removal/meaning change requires schema version update and docs. |
 | Schema validation contracts (`SchemaRegistry` names and versions) | Stable | Published schema names remain valid; versioning follows SemVer principles. | Schema bumps + compatibility notes required. |
-| Deterministic controls (`strict_serialization`, `deterministic_artifacts`) | Stable | Flag/config semantics remain consistent. | Behavior changes require explicit docs and regression tests. |
+| Deterministic controls (`strict_serialization`, `deterministic_artifacts`) | Stable | Flag/config semantics remain consistent. | Behaviour changes require explicit docs and regression tests. |
 | Registry extension points (model/probe/dataset registration APIs) | Stable | Existing registration and lookup patterns remain supported. | API changes require migration path and updated plugin docs. |
 | Python import paths in public docs (`insideLLMs.*` user-facing modules) | Experimental | Best-effort compatibility while architecture settles. | Any move/rename must include release notes and import aliases where feasible. |
 | Private/underscored modules (`insideLLMs.runtime._*`, `insideLLMs.cli._*`) | Internal | No compatibility guarantee. | Can change without notice; avoid external use. |
@@ -44,7 +44,7 @@ When changing a **Stable** surface:
 - Does this modify a Stable surface?
 - If yes, is there a compatibility path?
 - Were schema versions and docs updated where needed?
-- Were deterministic artifact guarantees preserved?
+- Were deterministic artefact guarantees preserved?
 - Is the changelog updated?
 
 ## Recommended CI enforcement (policy target)
@@ -52,7 +52,7 @@ When changing a **Stable** surface:
 For world-class contract discipline, enforce these checks in CI:
 
 - CLI smoke tests for stable command/flag compatibility.
-- Schema contract tests for canonical artifact files.
+- Schema contract tests for canonical artefact files.
 - Determinism golden-path job (`run -> records -> report -> diff`).
 
-This file defines policy and expected behavior; CI wiring may evolve separately.
+This file defines policy and expected behaviour; CI wiring may evolve separately.

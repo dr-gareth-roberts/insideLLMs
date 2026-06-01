@@ -456,6 +456,12 @@ class AsyncProbeRunner(_RunnerBase):
             nonlocal completed, stop_error
             async with semaphore:
                 if stop_event.is_set():
+                    results[index] = {
+                        "input": item,
+                        "output": None,
+                        "status": "skipped",
+                        "metadata": {"skipped": True, "reason": "stop_on_error"},
+                    }
                     return
                 try:
                     loop = asyncio.get_running_loop()

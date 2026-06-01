@@ -13,7 +13,6 @@ from insideLLMs import (
     # Runner
     ProbeRunner,
     create_comprehensive_benchmark_suite,
-    create_difficulty_stratified_suite,
     # Dataset utilities
     list_builtin_datasets,
     load_builtin_dataset,
@@ -71,14 +70,6 @@ def create_custom_suite():
         seed=42,
     )
     print(f"\nReasoning suite: {len(reasoning_suite)} examples")
-
-    # Create an easy-only suite
-    easy_suite = create_difficulty_stratified_suite(
-        difficulty="easy",
-        max_total_examples=20,
-        seed=42,
-    )
-    print(f"Easy difficulty suite: {len(easy_suite)} examples")
 
     # Show some examples from the reasoning suite
     print("\nSample from reasoning suite:")

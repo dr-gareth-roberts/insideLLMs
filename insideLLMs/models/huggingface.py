@@ -484,6 +484,8 @@ class HuggingFaceModel(Model):
         """
         try:
             outputs = self.generator(prompt, **kwargs)
+            if not outputs:
+                return ""
             return outputs[0]["generated_text"]
         except Exception as e:
             raise ModelGenerationError(
@@ -597,6 +599,8 @@ class HuggingFaceModel(Model):
             # Simple chat: concatenate messages
             prompt = "\n".join([m.get("content", "") for m in messages])
             outputs = self.generator(prompt, **kwargs)
+            if not outputs:
+                return ""
             return outputs[0]["generated_text"]
         except Exception as e:
             first_msg = messages[0].get("content", "") if messages else ""
@@ -696,6 +700,8 @@ class HuggingFaceModel(Model):
         try:
             # Streaming not natively supported; yield the full output as one chunk
             outputs = self.generator(prompt, **kwargs)
+            if not outputs:
+                return
             yield outputs[0]["generated_text"]
         except Exception as e:
             raise ModelGenerationError(

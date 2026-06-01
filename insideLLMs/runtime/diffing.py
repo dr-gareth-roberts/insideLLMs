@@ -7,6 +7,7 @@ and library users can compose on top of the same core behavior.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
@@ -40,6 +41,7 @@ class DiffComputation:
         """Whether any behavioral/trace differences are present."""
         return bool(
             self.regressions
+            or self.improvements
             or self.changes
             or self.only_baseline
             or self.only_candidate
@@ -116,7 +118,8 @@ def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
         model_label = str(model_name)
 
     probe_name = harness.get("probe_name") or probe_spec.get("probe_id") or "probe"
-    example_id = record.get("example_id") or harness.get("example_index") or "0"
+    replicate_key = custom.get("replicate_key")
+    example_id = replicate_key or record.get("example_id") or harness.get("example_index") or "0"
     return (str(model_label), str(probe_name), str(example_id))
 
 
@@ -155,25 +158,64 @@ def _strip_volatile_keys(value: Any, ignore_keys: set[str]) -> Any:
     return value
 
 
+def _is_numeric_score(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def _output_fingerprint(record: dict[str, Any], ignore_keys: set[str] | None = None) -> str | None:
+    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    override = custom.get("output_fingerprint")
     output = record.get("output")
     if ignore_keys:
-        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-        override = custom.get("output_fingerprint")
-        if output is None and isinstance(override, str):
+        if isinstance(override, str) and output is None:
             return override
         if output is None:
             return None
         sanitized = _strip_volatile_keys(output, ignore_keys)
         return _fingerprint_value(sanitized)
 
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-    override = custom.get("output_fingerprint")
     if isinstance(override, str):
         return override
     if output is None:
         return None
     return _fingerprint_value(output)
+
+
+def _output_text_fingerprint(
+    record: dict[str, Any],
+    ignore_keys: set[str] | None = None,
+) -> str | None:
+    """Fingerprint text output, applying ignore_keys when JSON-encoded."""
+    text = _output_text(record)
+    if text is None:
+        return None
+    if not ignore_keys:
+        return text
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+    sanitized = _strip_volatile_keys(parsed, ignore_keys)
+    return _fingerprint_value(sanitized)
+
+
+def _outputs_differ(
+    record_a: dict[str, Any],
+    record_b: dict[str, Any],
+    ignore_keys: set[str] | None,
+) -> bool:
+    text_a = _output_text(record_a)
+    text_b = _output_text(record_b)
+    if text_a is not None or text_b is not None:
+        if ignore_keys:
+            return _output_text_fingerprint(record_a, ignore_keys) != _output_text_fingerprint(
+                record_b, ignore_keys
+            )
+        return text_a != text_b
+
+    fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys)
+    fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys)
+    return fingerprint_a != fingerprint_b
 
 
 def _output_summary(record: dict[str, Any], ignore_keys: set[str] | None) -> dict[str, Any] | None:
@@ -335,11 +377,19 @@ def _trajectory_summary(record: dict[str, Any]) -> dict[str, Any] | None:
 def _primary_score(record: dict[str, Any]) -> tuple[str | None, float | None]:
     scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
     metric = record.get("primary_metric")
-    if metric and metric in scores and isinstance(scores[metric], (int, float)):
+    if metric and metric in scores and _is_numeric_score(scores[metric]):
         return str(metric), float(scores[metric])
-    if "score" in scores and isinstance(scores["score"], (int, float)):
+    if not metric and "score" in scores and _is_numeric_score(scores["score"]):
         return "score", float(scores["score"])
     return None, None
+
+
+def _scores_comparable(record_a: dict[str, Any], record_b: dict[str, Any]) -> bool:
+    primary_a = record_a.get("primary_metric")
+    primary_b = record_b.get("primary_metric")
+    if primary_a and primary_b and primary_a != primary_b:
+        return False
+    return True
 
 
 def _metric_mismatch_reason(record_a: dict[str, Any], record_b: dict[str, Any]) -> str | None:
@@ -365,7 +415,7 @@ def _metric_mismatch_reason(record_a: dict[str, Any], record_b: dict[str, Any]) 
 
     value_a = scores_a.get(primary_a)
     value_b = scores_b.get(primary_b)
-    if not isinstance(value_a, (int, float)) or not isinstance(value_b, (int, float)):
+    if not _is_numeric_score(value_a) or not _is_numeric_score(value_b):
         return "non_numeric_metric"
 
     return "type_mismatch"
@@ -561,6 +611,7 @@ def build_diff_computation(
         summary_a = _record_summary(record_a, ignore_keys)
         summary_b = _record_summary(record_b, ignore_keys)
 
+        status_handled = False
         if status_a == "success" and status_b != "success":
             regressions.append((*label, f"status {status_a} -> {status_b}"))
             regressions_json.append(
@@ -572,8 +623,8 @@ def build_diff_computation(
                     "candidate": summary_b,
                 }
             )
-            continue
-        if status_a != "success" and status_b == "success":
+            status_handled = True
+        elif status_a != "success" and status_b == "success":
             improvements.append((*label, f"status {status_a} -> {status_b}"))
             improvements_json.append(
                 {
@@ -584,10 +635,24 @@ def build_diff_computation(
                     "candidate": summary_b,
                 }
             )
-            continue
+            status_handled = True
 
         metrics_compared = False
-        if score_a is not None and score_b is not None and score_name_a == score_name_b:
+        if not _scores_comparable(record_a, record_b):
+            reason = "primary_metric_mismatch"
+            detail = _metric_mismatch_details(record_a, record_b)
+            changes.append((*label, f"metrics not comparable:{reason}; {detail}"))
+            changes_json.append(
+                {
+                    **identity,
+                    "kind": "metrics_not_comparable",
+                    "reason": reason,
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                    "details": _metric_mismatch_context(record_a, record_b),
+                }
+            )
+        elif score_a is not None and score_b is not None and score_name_a == score_name_b:
             delta = score_b - score_a
             metrics_compared = True
             if delta < 0:
@@ -604,8 +669,7 @@ def build_diff_computation(
                         "delta": delta,
                     }
                 )
-                continue
-            if delta > 0:
+            elif delta > 0:
                 improvements.append(
                     (*label, f"{score_name_a} {score_a:.4f} -> {score_b:.4f} (delta +{delta:.4f})")
                 )
@@ -620,7 +684,11 @@ def build_diff_computation(
                     }
                 )
 
-        if not metrics_compared and (score_a is not None or score_b is not None):
+        if (
+            not metrics_compared
+            and _scores_comparable(record_a, record_b)
+            and (score_a is not None or score_b is not None)
+        ):
             reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
             detail = _metric_mismatch_details(record_a, record_b)
             changes.append((*label, f"metrics not comparable:{reason}; {detail}"))
@@ -662,40 +730,28 @@ def build_diff_computation(
                         }
                     )
 
-        output_a = _output_text(record_a)
-        output_b = _output_text(record_b)
-        if output_a is not None or output_b is not None:
-            if output_a != output_b:
-                changes.append((*label, "output changed"))
-                changes_json.append(
-                    {
-                        **identity,
-                        "kind": "output_changed",
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                    }
-                )
-        else:
+        if _outputs_differ(record_a, record_b, ignore_keys):
             fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys)
             fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys)
-            if fingerprint_a != fingerprint_b:
-                if fingerprint_a and fingerprint_b:
-                    changes.append(
-                        (*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}")
-                    )
-                else:
-                    changes.append((*label, "output changed (structured)"))
-                changes_json.append(
-                    {
-                        **identity,
-                        "kind": "output_changed",
-                        "baseline": summary_a,
-                        "candidate": summary_b,
-                        "baseline_fingerprint": fingerprint_a,
-                        "candidate_fingerprint": fingerprint_b,
-                    }
-                )
-        if status_a != status_b:
+            text_a = _output_text(record_a)
+            text_b = _output_text(record_b)
+            if text_a is not None or text_b is not None:
+                changes.append((*label, "output changed"))
+            elif fingerprint_a and fingerprint_b:
+                changes.append((*label, f"output fingerprint {fingerprint_a} -> {fingerprint_b}"))
+            else:
+                changes.append((*label, "output changed (structured)"))
+            changes_json.append(
+                {
+                    **identity,
+                    "kind": "output_changed",
+                    "baseline": summary_a,
+                    "candidate": summary_b,
+                    "baseline_fingerprint": fingerprint_a,
+                    "candidate_fingerprint": fingerprint_b,
+                }
+            )
+        if not status_handled and status_a != status_b:
             changes.append((*label, f"status {status_a} -> {status_b}"))
             changes_json.append(
                 {

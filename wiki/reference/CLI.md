@@ -29,6 +29,16 @@ insidellms <command> [options]
 | [`attest`](#attest) | Generate DSSE attestations for a run directory |
 | [`sign`](#sign) | Sign attestations with Sigstore |
 | [`verify-signatures`](#verify-signatures) | Verify attestation signature bundles |
+| [`init`](#init) | Generate a sample configuration file |
+| [`list`](#list) | List available models, probes, or datasets |
+| [`info`](#info) | Show detailed information about a resource |
+| [`benchmark`](#benchmark) | Run comprehensive benchmark suites |
+| [`compare`](#compare) | Compare multiple models on same inputs |
+| [`export`](#export) | Export results to various formats |
+| [`trend`](#trend) | Show metric trends across run history |
+| [`interactive`](#interactive) | Start interactive exploration session |
+| [`generate-suite`](#generate-suite) | Generate test suite from templates |
+| [`optimize-prompt`](#optimize-prompt) | Prompt optimization utilities |
 
 ---
 
@@ -465,6 +475,385 @@ insidellms verify-signatures <run-dir> [--identity ...]
 ```bash
 insidellms verify-signatures ./baseline
 insidellms verify-signatures ./baseline --identity "issuer=https://token.actions.githubusercontent.com"
+```
+
+---
+
+## init
+
+Generate a sample configuration file.
+
+```bash
+insidellms init [output] [options]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `output` | Output file path (default: `experiment.yaml`) |
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model TYPE` | Model type for the sample config | `dummy` |
+| `--probe TYPE` | Probe type for the sample config | `logic` |
+| `--template {basic,benchmark,tracking,full,harness}` | Configuration template to use | `basic` |
+| `--interactive` | Run in interactive mode to configure the experiment | `false` |
+
+### Examples
+
+```bash
+# Generate basic experiment config
+insidellms init
+
+# Generate harness config for OpenAI
+insidellms init harness.yaml --model openai --probe bias --template harness
+
+# Interactive configuration wizard
+insidellms init --interactive
+```
+
+---
+
+## list
+
+List available models, probes, or datasets.
+
+```bash
+insidellms list <type> [options]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `type` | What to list: `models`, `probes`, `datasets`, `trackers`, or `all` |
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--filter TEXT` | Filter results by name (substring match) | None |
+| `--detailed` | Show detailed information | `false` |
+
+### Examples
+
+```bash
+# List all available resources
+insidellms list all
+
+# List only models
+insidellms list models
+
+# List probes with detailed info
+insidellms list probes --detailed
+
+# Filter by name
+insidellms list models --filter openai
+```
+
+---
+
+## info
+
+Show detailed information about a model, probe, or dataset.
+
+```bash
+insidellms info <type> <name>
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `type` | Type of item: `model`, `probe`, or `dataset` |
+| `name` | Name of the model, probe, or dataset |
+
+### Examples
+
+```bash
+# Get info about a model
+insidellms info model openai
+
+# Get info about a probe
+insidellms info probe logic
+
+# Get info about a dataset
+insidellms info dataset reasoning
+```
+
+---
+
+## benchmark
+
+Run comprehensive benchmark suites.
+
+```bash
+insidellms benchmark [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--models LIST` | Comma-separated list of models to benchmark | All available |
+| `--probes LIST` | Comma-separated list of probes to run | All available |
+| `--datasets LIST` | Comma-separated list of benchmark datasets (e.g., reasoning,math,coding) | All available |
+| `-n N` | Maximum examples per dataset | `10` |
+| `--output DIR` | Output directory for benchmark results | Auto-generated |
+| `--html-report` | Generate an HTML report with visualizations | `false` |
+| `--verbose` | Show detailed progress | `false` |
+
+### Examples
+
+```bash
+# Run full benchmark
+insidellms benchmark --models openai,anthropic --probes logic,bias
+
+# Benchmark with limited examples
+insidellms benchmark --models gpt-4o -n 5
+
+# Generate HTML report
+insidellms benchmark --models openai --html-report --output ./benchmark_results
+```
+
+---
+
+## compare
+
+Compare multiple models on the same inputs.
+
+```bash
+insidellms compare --models <models> [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--models LIST` | Comma-separated list of models to compare (required) | None |
+| `--input TEXT` | Single input prompt to compare | None |
+| `--input-file FILE` | File with inputs (one per line or JSON/JSONL) | None |
+| `--output FILE` | Output file for comparison results | stdout |
+| `--format {table,json,markdown}` | Output format | `table` |
+
+### Examples
+
+```bash
+# Compare models on a single prompt
+insidellms compare --models gpt-4o,claude-3-5-sonnet --input "Explain quantum computing"
+
+# Compare using input file
+insidellms compare --models openai,anthropic --input-file prompts.txt --output comparison.json
+
+# Markdown output for documentation
+insidellms compare --models gpt-4o,gpt-4o-mini --input "Hello" --format markdown
+```
+
+---
+
+## export
+
+Export results to various formats.
+
+```bash
+insidellms export <input> [options]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `input` | Input results file (JSON) |
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--format {csv,markdown,html,latex,jsonl}` | Export format | `csv` |
+| `--output FILE` | Output file path | stdout |
+| `--redact-pii` | Redact PII from exported data before writing | `false` |
+| `--encrypt` | Encrypt JSONL output (requires `--encryption-key-env`) | `false` |
+| `--encryption-key-env VAR` | Environment variable holding the Fernet key | `INSIDELLMS_ENCRYPTION_KEY` |
+
+### Examples
+
+```bash
+# Export to CSV
+insidellms export results.json --format csv --output results.csv
+
+# Export to Markdown for documentation
+insidellms export results.json --format markdown --output RESULTS.md
+
+# Export with PII redaction
+insidellms export results.json --format jsonl --redact-pii
+
+# Encrypted export
+insidellms export results.json --format jsonl --encrypt --output encrypted.jsonl
+```
+
+---
+
+## trend
+
+Show metric trends across run history.
+
+```bash
+insidellms trend --index <index-file> [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--index FILE` | Path to run index JSONL file (required) | None |
+| `--add DIR` | Add a completed run directory to the index before showing trends | None |
+| `--label TEXT` | Optional config label when indexing with `--add` | None |
+| `--metric NAME` | Metric name to plot | `accuracy` |
+| `--last N` | Only show the most recent N runs | All |
+| `--threshold VALUE` | Threshold for metric alerts | None |
+| `--fail-on-threshold` | Exit non-zero when threshold violations are detected | `false` |
+| `--format {text,json}` | Output format | `text` |
+
+### Examples
+
+```bash
+# Show accuracy trend
+insidellms trend --index runs.jsonl --metric accuracy
+
+# Add a new run and show trends
+insidellms trend --index runs.jsonl --add ./latest_run --label "v1.2.0"
+
+# Alert on threshold violations
+insidellms trend --index runs.jsonl --threshold 0.85 --fail-on-threshold
+
+# Show only recent runs
+insidellms trend --index runs.jsonl --last 10
+```
+
+---
+
+## interactive
+
+Start an interactive exploration session.
+
+```bash
+insidellms interactive [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model TYPE` | Model to use in interactive mode | `dummy` |
+| `--history-file FILE` | File to store command history | `.insidellms_history` |
+
+### Examples
+
+```bash
+# Start interactive session with dummy model
+insidellms interactive
+
+# Interactive session with OpenAI
+insidellms interactive --model openai
+```
+
+### Interactive Commands
+
+Once in interactive mode, you can:
+- Type prompts directly to send to the model
+- Use `/help` to see available commands
+- Use `/switch <model>` to change models
+- Use `/history` to view conversation history
+- Use `/clear` to clear the conversation
+- Use `/quit` or `Ctrl+D` to exit
+
+---
+
+## generate-suite
+
+Generate test suite from templates or seed examples.
+
+```bash
+insidellms generate-suite --target <target> [options]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--target TEXT` | Domain target for generated cases (required) | None |
+| `--num-cases N` | Number of generated cases | `50` |
+| `--output FILE` | Output path for generated suite | `data/generated_suite.jsonl` |
+| `--format {jsonl,json}` | Output format | `jsonl` |
+| `--include-adversarial` / `--no-include-adversarial` | Include adversarial edge cases | `true` |
+| `--model TYPE` | Model backend used for generation | `dummy` |
+| `--model-args JSON` | JSON object of model init args | `{}` |
+| `--seed-example TEXT` | Seed example to bootstrap generation (repeatable) | Built-in seeds |
+
+### Examples
+
+```bash
+# Generate test suite for a customer support bot
+insidellms generate-suite --target "customer support bot" --num-cases 100
+
+# Generate without adversarial cases
+insidellms generate-suite --target "code assistant" --no-include-adversarial
+
+# Use GPT-4 for generation
+insidellms generate-suite --target "medical chatbot" --model openai --model-args '{"model_name":"gpt-4o"}'
+
+# Custom seed examples
+insidellms generate-suite --target "FAQ bot" \
+  --seed-example "How do I reset my password?" \
+  --seed-example "What are your business hours?"
+```
+
+---
+
+## optimize-prompt
+
+Prompt optimization utilities.
+
+```bash
+insidellms optimize-prompt [prompt] [options]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `prompt` | The prompt text to optimize (optional if using `--input-file`) |
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input-file FILE` | Read prompt text from file | None |
+| `--strategies LIST` | Comma-separated strategies: compression, clarity, specificity, structure, example_selection | All |
+| `--format {text,json}` | Output format | `text` |
+| `--show-diff` | Show original and optimized prompts in terminal output | `false` |
+| `--output FILE` | Output file for optimized prompt or JSON report | stdout |
+
+### Examples
+
+```bash
+# Optimize a prompt with all strategies
+insidellms optimize-prompt "Tell me about AI"
+
+# Optimize from file
+insidellms optimize-prompt --input-file prompt.txt --output optimized.txt
+
+# Specific optimization strategies
+insidellms optimize-prompt "Explain X" --strategies clarity,specificity
+
+# Show diff between original and optimized
+insidellms optimize-prompt "Write code" --show-diff
+
+# JSON report with all details
+insidellms optimize-prompt "Summarize this" --format json --output report.json
 ```
 
 ---

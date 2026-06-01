@@ -875,11 +875,11 @@ class TestBuiltInTools:
         result = python.execute("print('hello')")
         assert "disabled" in result.output.lower()
 
-    def test_python_tool_requires_sandbox_contract_when_enabled(self):
-        """Execution stays disabled without explicit sandbox contract."""
-        python = create_python_tool(allow_exec=True)
+    def test_python_tool_allow_exec_and_sandbox_contract_are_ignored(self):
+        """allow_exec and sandbox_contract params are ignored; execution is always disabled."""
+        python = create_python_tool(allow_exec=True, sandbox_contract="unit-test-sandbox")
         result = python.execute("result = 2 + 2")
-        assert "sandbox contract" in result.output.lower()
+        assert "disabled" in result.output.lower()
 
 
 # =============================================================================

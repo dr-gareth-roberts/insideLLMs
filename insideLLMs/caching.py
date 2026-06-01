@@ -1522,14 +1522,14 @@ class DiskCache(BaseCacheABC[T]):
                 }
             )
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(entries, f, indent=2)
 
         return len(entries)
 
     def import_from_file(self, path: Union[str, Path]) -> int:
         """Import cache from a JSON file."""
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             entries = json.load(f)
 
         count = 0

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
+from insideLLMs.registry import ensure_builtins_registered, probe_registry
 
 from .._output import (
     Colors,
@@ -20,6 +20,7 @@ from .._output import (
     print_success,
     print_warning,
 )
+from ._run_common import resolve_registered_model
 
 
 def cmd_interactive(args: argparse.Namespace) -> int:
@@ -31,8 +32,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
     print_info("Type 'help' for commands, 'quit' to exit")
 
     try:
-        model_or_factory = model_registry.get(args.model)
-        model = model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
+        model = resolve_registered_model(args.model)
     except Exception as e:
         print_error(f"Could not load model: {e}")
         return 1
@@ -47,7 +47,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
     # Load history file
     history_path = Path(args.history_file)
     if history_path.exists():
-        with open(history_path) as f:
+        with open(history_path, encoding="utf-8") as f:
             history = [line.strip() for line in f.readlines()]
 
     print()
@@ -65,7 +65,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
 
         # Save to history
         history.append(prompt)
-        with open(history_path, "a") as f:
+        with open(history_path, "a", encoding="utf-8") as f:
             f.write(prompt + "\n")
 
         # Handle commands
@@ -94,10 +94,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
         elif prompt.lower().startswith("model "):
             new_model = prompt[6:].strip()
             try:
-                model_or_factory = model_registry.get(new_model)
-                model = (
-                    model_or_factory() if isinstance(model_or_factory, type) else model_or_factory
-                )
+                model = resolve_registered_model(new_model)
                 print_success(f"Switched to model: {new_model}")
             except Exception as e:
                 print_error(f"Could not load model: {e}")
@@ -107,8 +104,7 @@ def cmd_interactive(args: argparse.Namespace) -> int:
                 print_warning("No previous response to evaluate. Send a prompt first.")
                 continue
             try:
-                probe_factory = probe_registry.get(probe_name)
-                probe = probe_factory() if isinstance(probe_factory, type) else probe_factory
+                probe = probe_registry.get(probe_name)
                 print_subheader(f"Probe: {probe.name}")
                 result = probe.run(model, last_prompt)
                 if isinstance(result, dict):

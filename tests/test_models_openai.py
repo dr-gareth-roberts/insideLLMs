@@ -5,9 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# The OpenAI SDK is an optional provider dependency; skip the whole module when
-# it is absent (e.g. core-only CI installs) rather than erroring at runtime.
-pytest.importorskip("openai", reason="openai not installed")
+pytest.importorskip("openai")
 
 
 class TestOpenAIModelInit:

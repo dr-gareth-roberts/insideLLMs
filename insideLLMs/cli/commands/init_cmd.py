@@ -16,6 +16,16 @@ from .._output import (
 )
 
 
+def _init_uses_defaults(args: argparse.Namespace) -> bool:
+    """Return True when init was invoked with parser defaults only."""
+    return (
+        getattr(args, "output", "experiment.yaml") == "experiment.yaml"
+        and getattr(args, "model", "dummy") == "dummy"
+        and getattr(args, "probe", "logic") == "logic"
+        and getattr(args, "template", "basic") == "basic"
+    )
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     """Execute the init command."""
     import yaml
@@ -27,15 +37,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     template = args.template
     output = args.output
 
-    # Check if we should go interactive
-    # Heuristic: --interactive flag OR (no other flags passed AND in a TTY AND not quiet)
-    try:
-        init_idx = sys.argv.index("init")
-        args_after_init = len(sys.argv) - 1 - init_idx
-    except ValueError:
-        args_after_init = 0
-
-    if args.interactive or (args_after_init == 0 and sys.stdin.isatty() and not args.quiet):
+    # Interactive when explicitly requested, or defaults-only invocation in a TTY.
+    if args.interactive or (_init_uses_defaults(args) and sys.stdin.isatty() and not args.quiet):
         try:
             print("  Welcome to the interactive experiment setup!")
             print("  Press Enter to use [defaults].\n")
@@ -44,11 +47,18 @@ def cmd_init(args: argparse.Namespace) -> int:
             if q_output:
                 output = q_output
 
-            q_template = input(
-                f"  Choose a template (basic, benchmark, tracking, harness) [{template}]: "
-            ).strip()
-            if q_template:
-                template = q_template
+            allowed_templates = ("basic", "benchmark", "tracking", "harness", "full")
+            template_choices = ", ".join(allowed_templates)
+            while True:
+                q_template = input(
+                    f"  Choose a template ({template_choices}) [{template}]: "
+                ).strip()
+                if not q_template:
+                    break
+                if q_template in allowed_templates:
+                    template = q_template
+                    break
+                print(f"  Invalid template '{q_template}'. Choose one of: {template_choices}.")
 
             if template != "harness":
                 q_model = input(
@@ -159,9 +169,10 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     output_path.write_text(content)
     print_success(f"Created config: {output_path}")
-    print_key_value("Template", args.template)
-    print_key_value("Model", args.model)
-    print_key_value("Probe", args.probe)
+    print_key_value("Template", template)
+    if not harness_template:
+        print_key_value("Model", model)
+        print_key_value("Probe", probe)
 
     # Create sample data directory and file
     data_dir = Path("data")
@@ -206,7 +217,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 },
                 {"question": "What is the chemical symbol for water?", "reference_answer": "H2O"},
             ]
-        with open(sample_data_path, "w") as f:
+        with open(sample_data_path, "w", encoding="utf-8") as f:
             for item in sample_data:
                 f.write(json.dumps(item) + "\n")
         print_success(f"Created sample data: {sample_data_path}")

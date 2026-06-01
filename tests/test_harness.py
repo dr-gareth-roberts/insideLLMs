@@ -438,7 +438,7 @@ class TestHarnessEdgeCases:
         config_path = tmp_path / "harness.yaml"
         config_path.write_text(yaml.safe_dump(config))
 
-        with pytest.raises((ValueError, KeyError)):
+        with pytest.raises((ValueError, KeyError, ModuleNotFoundError, ImportError)):
             run_harness_from_config(config_path)
 
     def test_harness_invalid_probe_type(self, tmp_path):

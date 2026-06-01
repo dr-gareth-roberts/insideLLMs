@@ -110,7 +110,9 @@ class TestInteractiveCommand:
         mock_model = MagicMock()
         mock_model.generate.side_effect = RuntimeError("generation failed")
         with patch("builtins.input", side_effect=["test prompt", "quit"]):
-            with patch("insideLLMs.cli.commands.interactive.model_registry") as mock_registry:
-                mock_registry.get.return_value = mock_model
+            with patch(
+                "insideLLMs.cli.commands.interactive.resolve_registered_model",
+                return_value=mock_model,
+            ):
                 rc = cmd_interactive(_make_args(history_file=history_file))
         assert rc == 0

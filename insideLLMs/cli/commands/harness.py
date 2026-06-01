@@ -350,9 +350,16 @@ def cmd_harness(args: argparse.Namespace) -> int:
             strict_serialization=args.strict_serialization,
         )
 
-        # Precompute output_dir for tracking. Must match the precedence used later when emitting
-        # standardized run artifacts.
-        output_dir = resolve_harness_output_dir(args, loaded_config, resolved_run_id)
+        output_dir = resolve_harness_output_dir(
+            args,
+            loaded_config,
+            resolved_run_id,
+            config_path=run_config_path,
+        )
+        effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
+
+        _prepare_run_dir(output_dir, overwrite=bool(args.overwrite), run_root=effective_run_root)
+        _ensure_run_sentinel(output_dir)
 
         tracker = create_tracker(
             backend=args.track,
@@ -394,6 +401,8 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 deterministic_artifacts_override=args.deterministic_artifacts,
             )
 
+        result_config = result.get("config")
+        config_for_output_dir = result_config if isinstance(result_config, dict) else loaded_config
         if args.run_id:
             resolved_run_id = args.run_id
         else:
@@ -410,14 +419,12 @@ def cmd_harness(args: argparse.Namespace) -> int:
                         "strict_serialization requires JSON-stable values in the resolved harness config."
                     ) from exc
 
-        result_config = result.get("config")
-        config_for_output_dir = result_config if isinstance(result_config, dict) else {}
-        output_dir = resolve_harness_output_dir(args, config_for_output_dir, resolved_run_id)
-        effective_run_root = Path(args.run_root).expanduser().absolute() if args.run_root else None
-
-        # Prepare run dir with the same safety policy as `insidellms run`.
-        _prepare_run_dir(output_dir, overwrite=bool(args.overwrite), run_root=effective_run_root)
-        _ensure_run_sentinel(output_dir)
+        output_dir = resolve_harness_output_dir(
+            args,
+            config_for_output_dir,
+            resolved_run_id,
+            config_path=run_config_path,
+        )
 
         # Write resolved config snapshot for reproducibility.
         _atomic_write_yaml(
@@ -740,7 +747,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     report_title,
                     generated_at=created_at,
                 )
-                with open(report_path, "w") as f:
+                with open(report_path, "w", encoding="utf-8") as f:
                     f.write(report_html)
 
             print_success(f"Report written to: {report_path}")

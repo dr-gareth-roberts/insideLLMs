@@ -143,7 +143,7 @@ models (Ollama, llama.cpp). All through one interface:
 from insideLLMs import OpenAIModel, AnthropicModel, LocalModel
 
 gpt = OpenAIModel(model_name="gpt-4o-mini")
-claude = AnthropicModel(model_name="claude-sonnet-4-20250514")
+claude = AnthropicModel(model_name="claude-sonnet-4-6")
 local = LocalModel(model_name="llama3", backend="ollama")
 ```
 
@@ -212,37 +212,6 @@ insidellms harness config.yaml \
 </details>
 
 <details>
-<summary><b>Diff gating</b></summary>
-
-Fail CI when a candidate run drifts from the baseline. Beyond `--fail-on-changes`,
-the diff gate can flag agent trajectory drift specifically:
-
-```bash
-insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
-```
-
-A trajectory-drift gate failure exits with code `5`, distinct from the generic
-change-detected code, so pipelines can branch on the reason.
-
-</details>
-
-<details>
-<summary><b>Production shadow capture</b></summary>
-
-Sample live traffic into deterministic run artifacts for offline probing. Mount
-the shadow middleware on a FastAPI app:
-
-```python
-from insideLLMs import shadow
-
-shadow.fastapi(output_path="./shadow/records.jsonl", sample_rate=0.01)
-```
-
-Captured records flow into the same `diff`/`report` pipeline as offline runs.
-
-</details>
-
-<details>
 <summary><b>Schema validation</b></summary>
 
 ```bash
@@ -269,6 +238,13 @@ Requires [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)
 for signing and [oras](https://oras.land/docs/installation) for OCI publishing.
 
 </details>
+
+### Optional advanced modes
+
+- Active adversarial evaluation: `--active-red-team`
+- Drift sensitivity gate: `--fail-on-trajectory-drift`
+- Shadow capture middleware helper: `shadow.fastapi`
+- Reusable action reference: `dr-gareth-roberts/insideLLMs@v1`
 
 ## Docs
 

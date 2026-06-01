@@ -16,6 +16,7 @@ Complete reference for all supported model providers.
 | [Anthropic](#anthropic) | `anthropic` | Yes |
 | [Google/Gemini](#google-gemini) | `gemini` | Yes |
 | [Cohere](#cohere) | `cohere` | Yes |
+| [OpenRouter](#openrouter) | `openrouter` | Yes |
 | [HuggingFace](#huggingface) | `huggingface` | Optional |
 | [Ollama](#ollama) | `ollama` | No |
 | [vLLM](#vllm) | `vllm` | No |
@@ -169,6 +170,92 @@ models:
   - type: cohere
     args:
       model_name: command
+```
+
+---
+
+## OpenRouter
+
+Access 200+ models through OpenRouter's unified API.
+
+OpenRouter provides a unified API gateway to models from OpenAI, Anthropic, Google, Meta, Mistral, and many others. It uses an OpenAI-compatible API surface, making it easy to switch between providers.
+
+### Environment Variables
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."
+# Optional: Attribution headers
+export OPENROUTER_HTTP_REFERER="https://your-app.com"
+export OPENROUTER_APP_TITLE="My App"
+```
+
+### Config
+
+```yaml
+models:
+  - type: openrouter
+    args:
+      model_name: openai/gpt-4o
+```
+
+### Available Models
+
+OpenRouter supports 200+ models. Common examples:
+
+| Model | Provider | Model Name |
+|-------|----------|------------|
+| GPT-4o | OpenAI | `openai/gpt-4o` |
+| GPT-4o Mini | OpenAI | `openai/gpt-4o-mini` |
+| Claude 3.5 Sonnet | Anthropic | `anthropic/claude-3.5-sonnet` |
+| Claude 3 Opus | Anthropic | `anthropic/claude-3-opus` |
+| Gemini Pro | Google | `google/gemini-pro` |
+| Llama 3.1 70B | Meta | `meta-llama/llama-3.1-70b-instruct` |
+| Mixtral 8x7B | Mistral | `mistralai/mixtral-8x7b-instruct` |
+| DeepSeek V3 | DeepSeek | `deepseek/deepseek-chat` |
+
+See [OpenRouter Models](https://openrouter.ai/models) for the full list.
+
+### Python
+
+```python
+from insideLLMs.models import OpenRouterModel
+
+model = OpenRouterModel(
+    model_name="anthropic/claude-3.5-sonnet",
+    http_referer="https://my-app.com",  # Optional
+    app_title="My App"  # Optional
+)
+
+response = model.generate("Hello, world!")
+```
+
+### Common Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `model_name` | str | `"openai/gpt-4o-mini"` | Model identifier (provider/model format) |
+| `api_key` | str | None | API key (or use `OPENROUTER_API_KEY` env) |
+| `base_url` | str | `"https://openrouter.ai/api/v1"` | API endpoint |
+| `http_referer` | str | None | Referer header for attribution |
+| `app_title` | str | None | App title header for attribution |
+| `temperature` | float | `1.0` | Sampling temperature |
+| `max_tokens` | int | None | Maximum response tokens |
+
+### Provider Routing
+
+OpenRouter can route requests to specific providers:
+
+```python
+# Force using Anthropic's API directly (not a proxy)
+model = OpenRouterModel(
+    model_name="anthropic/claude-3.5-sonnet:beta"
+)
+
+# Use the cheapest available provider
+model = OpenRouterModel(
+    model_name="openai/gpt-4o",
+    extra_headers={"X-OpenRouter-Provider": "any"}
+)
 ```
 
 ---

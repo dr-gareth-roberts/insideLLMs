@@ -2,11 +2,12 @@ import json
 
 import pytest
 
-pytest.importorskip("cryptography", reason="cryptography not installed")
+try:
+    from cryptography.fernet import Fernet
 
-from cryptography.fernet import Fernet  # noqa: E402
-
-from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl  # noqa: E402
+    from insideLLMs.privacy.encryption import decrypt_jsonl, encrypt_jsonl
+except BaseException:
+    pytest.skip("cryptography not usable", allow_module_level=True)
 
 
 def test_encrypt_decrypt_jsonl(tmp_path):

@@ -1863,7 +1863,7 @@ def create_html_report(
     </html>
     """
 
-    with open(save_path, "w") as f:
+    with open(save_path, "w", encoding="utf-8") as f:
         f.write(html)
 
     return save_path
@@ -3951,7 +3951,7 @@ def create_interactive_html_report(
 </html>
 """
 
-    with open(save_path, "w") as f:
+    with open(save_path, "w", encoding="utf-8") as f:
         f.write(html)
 
     return save_path

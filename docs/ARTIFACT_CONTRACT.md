@@ -1,7 +1,7 @@
 ## Artifact Contract
 
-This page is the field-level contract for deterministic run artifacts.
-Use it as the source of truth when updating artifact emission, validation, or CI diff-gating.
+This page is the field-level contract for deterministic run artefacts.
+Use it as the source of truth when updating artefact emission, validation, or CI diff-gating.
 
 For broader guidance, see `docs/DETERMINISM.md`.
 
@@ -46,7 +46,7 @@ Every run directory is expected to include:
   - `custom.status_counts`
   - `custom.timeout_count`
 - `records_file` must reference canonical `records.jsonl`
-- `schemas` must include active schema bindings for emitted artifacts
+- `schemas` must include active schema bindings for emitted artefacts
 
 ### Legacy Artifact Aliases
 

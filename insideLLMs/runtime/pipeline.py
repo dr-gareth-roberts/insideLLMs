@@ -239,12 +239,13 @@ insideLLMs.exceptions : Exception classes used by middleware
 """
 
 import asyncio
+import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from insideLLMs.exceptions import ModelError, RateLimitError, TimeoutError
+from insideLLMs.exceptions import ModelError, ModelTimeoutError, RateLimitError
 from insideLLMs.models.base import (
     AsyncModelProtocol,
     ChatMessage,
@@ -1953,6 +1954,7 @@ class CacheMiddleware(Middleware):
         self.ttl_seconds = ttl_seconds
         self.hits = 0
         self.misses = 0
+        self._sync_lock = threading.Lock()
 
     def _cache_key(self, prompt: str, **kwargs: Any) -> str:
         """Generate a deterministic cache key from prompt and parameters.
@@ -2074,18 +2076,17 @@ class CacheMiddleware(Middleware):
         """
         key = self._cache_key(prompt, **kwargs)
 
-        # Check cache
-        cached = self.cache.pop(key, None)
-        if cached is not None:
-            response, timestamp = cached
-            if not self._is_expired(timestamp):
-                self.hits += 1
-                # True LRU: move most-recently-used key to the end.
-                self.cache[key] = (response, timestamp)
-                return response
+        with self._sync_lock:
+            cached = self.cache.pop(key, None)
+            if cached is not None:
+                response, timestamp = cached
+                if not self._is_expired(timestamp):
+                    self.hits += 1
+                    self.cache[key] = (response, timestamp)
+                    return response
 
-        # Cache miss - generate and cache
-        self.misses += 1
+            self.misses += 1
+
         if self.next_middleware:
             response = self.next_middleware.process_generate(prompt, **kwargs)
         elif self.model:
@@ -2093,13 +2094,11 @@ class CacheMiddleware(Middleware):
         else:
             raise ModelError("No model available in pipeline")
 
-        # Store in cache with LRU eviction
-        if len(self.cache) >= self.cache_size:
-            # Remove oldest entry
-            oldest_key = next(iter(self.cache))
-            del self.cache[oldest_key]
-
-        self.cache[key] = (response, time.time())
+        with self._sync_lock:
+            if len(self.cache) >= self.cache_size:
+                oldest_key = next(iter(self.cache))
+                del self.cache[oldest_key]
+            self.cache[key] = (response, time.time())
         return response
 
     async def aprocess_generate(self, prompt: str, **kwargs: Any) -> str:
@@ -2397,6 +2396,7 @@ class RateLimitMiddleware(Middleware):
         self.burst_size = burst_size if burst_size is not None else requests_per_minute
         self.tokens = float(self.burst_size)
         self.last_update = time.time()
+        self._sync_lock = threading.Lock()
 
     def _acquire_token(self) -> None:
         """Acquire a token from the bucket, waiting if necessary.
@@ -2415,19 +2415,19 @@ class RateLimitMiddleware(Middleware):
             >>> rate_mw = RateLimitMiddleware(requests_per_minute=60)
             >>> rate_mw._acquire_token()  # May wait if no tokens
         """
-        now = time.time()
-        elapsed = now - self.last_update
-        self.tokens = min(self.burst_size, self.tokens + elapsed * self.rate)
-        self.last_update = now
+        with self._sync_lock:
+            now = time.time()
+            elapsed = now - self.last_update
+            self.tokens = min(self.burst_size, self.tokens + elapsed * self.rate)
+            self.last_update = now
 
-        if self.tokens < 1.0:
-            # Wait for token to be available
-            wait_time = (1.0 - self.tokens) / self.rate
-            time.sleep(wait_time)
-            self.tokens = 1.0
-            self.last_update = time.time()
+            if self.tokens < 1.0:
+                wait_time = (1.0 - self.tokens) / self.rate
+                time.sleep(wait_time)
+                self.tokens = 1.0
+                self.last_update = time.time()
 
-        self.tokens -= 1.0
+            self.tokens -= 1.0
 
     def process_generate(self, prompt: str, **kwargs: Any) -> str:
         """Process a generate request with rate limiting.
@@ -2614,7 +2614,7 @@ class RetryMiddleware(Middleware):
                 if self.model:
                     return self.model.generate(prompt, **kwargs)
                 raise ModelError("No model available in pipeline")
-            except (RateLimitError, TimeoutError, ModelError) as e:
+            except (RateLimitError, ModelTimeoutError, ModelError) as e:
                 last_error = e
 
                 if attempt < self.max_retries:
@@ -2648,7 +2648,7 @@ class RetryMiddleware(Middleware):
                         None, lambda: self.model.generate(prompt, **kwargs)
                     )
                 raise ModelError("No model available in pipeline")
-            except (RateLimitError, TimeoutError, ModelError) as e:
+            except (RateLimitError, ModelTimeoutError, ModelError) as e:
                 last_error = e
 
                 if attempt < self.max_retries:

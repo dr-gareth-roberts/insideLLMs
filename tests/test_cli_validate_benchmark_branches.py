@@ -199,7 +199,7 @@ def test_cmd_benchmark_explicit_datasets_and_html_report(tmp_path):
 
     with (
         patch("insideLLMs.benchmark_datasets.load_builtin_dataset", return_value=fake_dataset),
-        patch("insideLLMs.cli.commands.benchmark.model_registry.get", return_value=_Model),
+        patch("insideLLMs.cli.commands.benchmark.resolve_registered_model", return_value=_Model),
         patch("insideLLMs.cli.commands.benchmark.probe_registry.get", return_value=_Probe),
         patch("insideLLMs.runtime.runner.ProbeRunner", _Runner),
     ):
@@ -248,7 +248,8 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
             return_value=fake_suite,
         ),
         patch(
-            "insideLLMs.cli.commands.benchmark.model_registry.get", return_value=SimpleNamespace()
+            "insideLLMs.cli.commands.benchmark.resolve_registered_model",
+            return_value=SimpleNamespace(),
         ),
         patch(
             "insideLLMs.cli.commands.benchmark.probe_registry.get",

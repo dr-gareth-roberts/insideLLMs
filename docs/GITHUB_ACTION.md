@@ -1,6 +1,6 @@
 # insideLLMs GitHub Action (`dr-gareth-roberts/insideLLMs@v1`)
 
-Use the first-class action to run deterministic base-vs-head behavioral diffing and post pull
+Use the first-class action to run deterministic base-vs-head behavioural diffing and post pull
 request comments automatically.
 
 ## Quick Start

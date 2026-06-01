@@ -2506,7 +2506,7 @@ def create_export_bundle(
         schema_version=schema_version,
     )
     metadata_path = bundle_dir / "metadata.json"
-    with open(metadata_path, "w") as f:
+    with open(metadata_path, "w", encoding="utf-8") as f:
         meta_dict = metadata.to_dict()
 
         if validate_output:
@@ -2551,7 +2551,7 @@ def create_export_bundle(
             registry = SchemaRegistry()
             schema = registry.get_json_schema(validate_schema_name, schema_version)
             schema_path = bundle_dir / "schema.json"
-            with open(schema_path, "w") as f:
+            with open(schema_path, "w", encoding="utf-8") as f:
                 json.dump(schema, f, indent=2, sort_keys=True)
             files.append(schema_path)
         else:
@@ -2579,7 +2579,7 @@ def create_export_bundle(
                 fields=schema_fields,
             )
             schema_path = bundle_dir / "schema.json"
-            with open(schema_path, "w") as f:
+            with open(schema_path, "w", encoding="utf-8") as f:
                 json.dump(schema.to_dict(), f, indent=2, sort_keys=True)
             files.append(schema_path)
 

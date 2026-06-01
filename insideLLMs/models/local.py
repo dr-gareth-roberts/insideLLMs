@@ -395,6 +395,8 @@ class LlamaCppModel(Model):
         response = model(**params)
 
         self._call_count += 1
+        if not response.get("choices"):
+            return ""
         return response["choices"][0]["text"]
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
@@ -492,6 +494,8 @@ class LlamaCppModel(Model):
         response = model.create_chat_completion(**params)
 
         self._call_count += 1
+        if not response.get("choices"):
+            return ""
         return response["choices"][0]["message"]["content"]
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
@@ -1627,6 +1631,8 @@ class VLLMModel(Model):
         )
 
         self._call_count += 1
+        if not response.choices:
+            return ""
         return response.choices[0].text
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
@@ -1723,6 +1729,8 @@ class VLLMModel(Model):
         )
 
         self._call_count += 1
+        if not response.choices:
+            return ""
         return response.choices[0].message.content
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
@@ -1801,7 +1809,7 @@ class VLLMModel(Model):
         )
 
         for chunk in stream:
-            if chunk.choices[0].text:
+            if chunk.choices and chunk.choices[0].text:
                 yield chunk.choices[0].text
 
     def info(self) -> ModelInfo:

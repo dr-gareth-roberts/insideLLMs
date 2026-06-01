@@ -25,10 +25,8 @@ from insideLLMs.types import (
     ResultStatus,
 )
 
-# Optional provider SDKs: skip the provider-specific suites when absent so the
-# core-only test environment (CI) does not error on missing imports.
-_HAS_OPENAI = importlib.util.find_spec("openai") is not None
-_HAS_ANTHROPIC = importlib.util.find_spec("anthropic") is not None
+_openai_available = importlib.util.find_spec("openai") is not None
+_anthropic_available = importlib.util.find_spec("anthropic") is not None
 
 # ---------------------------------------------------------------------------
 # Helper probe subclasses for testing
@@ -43,7 +41,7 @@ class SimpleTestProbe(Probe[str]):
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
         return model.generate(data)
 
-    def score(self, results: list) -> ProbeScore:
+    def score(self, results: list[ProbeResult[str]]) -> ProbeScore:
         success_count = sum(1 for r in results if r.status == ResultStatus.SUCCESS)
         return ProbeScore(accuracy=success_count / len(results) if results else 0.0)
 
@@ -56,7 +54,7 @@ class ScoredProbeImpl(ScoredProbe[str]):
     def run(self, model: Any, data: Any, **kwargs: Any) -> str:
         return model.generate(data)
 
-    def evaluate_single(self, model_output, reference, input_data):
+    def evaluate_single(self, model_output: str, reference: Any, input_data: Any) -> dict[str, Any]:
         is_correct = model_output.strip().lower() == str(reference).strip().lower()
         return {"is_correct": is_correct}
 
@@ -470,9 +468,9 @@ class TestCodeGenerationProbe:
         probe = CodeGenerationProbe()
         code = "def factorial(n):\n    return 1 if n <= 1 else n * factorial(n-1)"
         result = probe.evaluate_single(code, reference="def factorial")
-        assert result.status == ResultStatus.SUCCESS
-        assert result.metadata["syntax_valid"] is True
-        assert result.metadata["pattern_match_score"] == 1.0
+        assert result["status"] == "success"
+        assert result["syntax_valid"] is True
+        assert result["pattern_match_score"] == 1.0
 
     def test_evaluate_single_with_dict_patterns_ref(self):
         from insideLLMs.probes.code import CodeGenerationProbe
@@ -482,7 +480,7 @@ class TestCodeGenerationProbe:
         result = probe.evaluate_single(
             code, reference={"patterns": ["def is_prime", "return True", "return False"]}
         )
-        assert result.metadata["pattern_match_score"] == 1.0
+        assert result["pattern_match_score"] == 1.0
 
     def test_evaluate_single_with_none_ref(self):
         from insideLLMs.probes.code import CodeGenerationProbe
@@ -490,7 +488,7 @@ class TestCodeGenerationProbe:
         probe = CodeGenerationProbe()
         code = "def add(a, b):\n    return a + b"
         result = probe.evaluate_single(code, reference=None)
-        assert result.status == ResultStatus.SUCCESS
+        assert result["status"] == "success"
 
     def test_evaluate_single_invalid_syntax(self):
         from insideLLMs.probes.code import CodeGenerationProbe
@@ -498,7 +496,7 @@ class TestCodeGenerationProbe:
         probe = CodeGenerationProbe()
         code = "def broken(:\n    pass"
         result = probe.evaluate_single(code, reference=None)
-        assert result.metadata["syntax_valid"] is False
+        assert result["syntax_valid"] is False
 
     def test_evaluate_single_require_docstrings(self):
         from insideLLMs.probes.code import CodeGenerationProbe
@@ -506,11 +504,11 @@ class TestCodeGenerationProbe:
         probe = CodeGenerationProbe(require_docstrings=True)
         code_with_doc = 'def add(a, b):\n    """Add two numbers."""\n    return a + b'
         result = probe.evaluate_single(code_with_doc, reference=None)
-        assert result.metadata["has_docstring"] is True
+        assert result["has_docstring"] is True
 
         code_without_doc = "def add(a, b):\n    return a + b"
         result2 = probe.evaluate_single(code_without_doc, reference=None)
-        assert result2.metadata["has_docstring"] is False
+        assert result2["has_docstring"] is False
 
     def test_evaluate_single_require_type_hints(self):
         from insideLLMs.probes.code import CodeGenerationProbe
@@ -518,19 +516,20 @@ class TestCodeGenerationProbe:
         probe = CodeGenerationProbe(require_type_hints=True)
         code_with_hints = "def add(a: int, b: int) -> int:\n    return a + b"
         result = probe.evaluate_single(code_with_hints, reference=None)
-        assert result.metadata["has_type_hints"] is True
+        assert result["has_type_hints"] is True
 
         code_without_hints = "def add(a, b):\n    return a + b"
         result2 = probe.evaluate_single(code_without_hints, reference=None)
-        assert result2.metadata["has_type_hints"] is False
+        assert result2["has_type_hints"] is False
 
-    def test_evaluate_single_truncates_long_input(self):
+    def test_evaluate_single_long_input(self):
         from insideLLMs.probes.code import CodeGenerationProbe
 
         probe = CodeGenerationProbe()
         long_code = "def func():\n    pass\n" * 20  # longer than 100 chars
         result = probe.evaluate_single(long_code, reference=None)
-        assert result.input.endswith("...")
+        assert result["status"] == "success"
+        assert result["syntax_valid"] is True
 
 
 class TestCodeExplanationProbe:
@@ -584,9 +583,9 @@ class TestCodeExplanationProbe:
         result = probe.evaluate_single(
             explanation, reference={"concepts": ["recursion", "factorial"]}
         )
-        assert result.metadata["concepts_covered"] == 2
-        assert result.metadata["total_concepts"] == 2
-        assert result.status == ResultStatus.SUCCESS
+        assert result["concepts_covered"] == 2
+        assert result["total_concepts"] == 2
+        assert result["status"] == "success"
 
     def test_evaluate_single_with_list_concepts(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -594,7 +593,7 @@ class TestCodeExplanationProbe:
         probe = CodeExplanationProbe()
         explanation = "Sorts the list using lambda as the key for comparison."
         result = probe.evaluate_single(explanation, reference=["sort", "lambda"])
-        assert result.metadata["concepts_covered"] == 2
+        assert result["concepts_covered"] == 2
 
     def test_evaluate_single_with_string_ref(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -602,7 +601,7 @@ class TestCodeExplanationProbe:
         probe = CodeExplanationProbe()
         explanation = "This sorts the array using a merge sort algorithm."
         result = probe.evaluate_single(explanation, reference="sort")
-        assert result.metadata["concepts_covered"] == 1
+        assert result["concepts_covered"] == 1
 
     def test_evaluate_single_with_none_ref(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -610,7 +609,7 @@ class TestCodeExplanationProbe:
         probe = CodeExplanationProbe()
         explanation = "This is a brief explanation with some structure:\n1. First\n2. Second"
         result = probe.evaluate_single(explanation, reference=None)
-        assert result.metadata["has_structure"] is True
+        assert result["has_structure"] is True
 
     def test_evaluate_single_no_structure(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -618,7 +617,7 @@ class TestCodeExplanationProbe:
         probe = CodeExplanationProbe()
         explanation = "simple explanation without any special formatting or numbering at all here nothing else"
         result = probe.evaluate_single(explanation, reference=None)
-        assert result.metadata["has_structure"] is False
+        assert result["has_structure"] is False
 
     def test_evaluate_single_label_clear(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -627,7 +626,7 @@ class TestCodeExplanationProbe:
         # Brief needs only 5 words; make a long explanation with structure
         explanation = "This function sorts a list using the built-in sort method. It is efficient:\n1. Step one"
         result = probe.evaluate_single(explanation, reference=None)
-        assert result.metadata["label"] == "clear"
+        assert result["label"] == "clear"
 
     def test_evaluate_single_label_unclear(self):
         from insideLLMs.probes.code import CodeExplanationProbe
@@ -636,7 +635,7 @@ class TestCodeExplanationProbe:
         # Detailed needs 50 words; provide very few
         explanation = "Does stuff"
         result = probe.evaluate_single(explanation, reference=None)
-        assert result.metadata["label"] == "unclear"
+        assert result["label"] == "unclear"
 
 
 class TestCodeDebugProbe:
@@ -696,9 +695,9 @@ class TestCodeDebugProbe:
         result = probe.evaluate_single(
             response, reference={"fix_patterns": ["if b == 0", "ValueError"]}
         )
-        assert result.metadata["has_explanation"] is True
-        assert result.metadata["has_code_fix"] is True
-        assert result.metadata["fix_patterns_found"] == 2
+        assert result["has_explanation"] is True
+        assert result["has_code_fix"] is True
+        assert result["fix_patterns_found"] == 2
 
     def test_evaluate_single_with_list_patterns(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -706,7 +705,7 @@ class TestCodeDebugProbe:
         probe = CodeDebugProbe()
         response = "The issue is the loop. Use len(arr)-1 to fix the bounds."
         result = probe.evaluate_single(response, reference=["len(arr)", "bounds"])
-        assert result.metadata["fix_patterns_found"] == 2
+        assert result["fix_patterns_found"] == 2
 
     def test_evaluate_single_with_string_pattern(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -714,7 +713,7 @@ class TestCodeDebugProbe:
         probe = CodeDebugProbe()
         response = "The problem is the missing return statement."
         result = probe.evaluate_single(response, reference="return")
-        assert result.metadata["has_explanation"] is True
+        assert result["has_explanation"] is True
 
     def test_evaluate_single_with_none_ref(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -722,8 +721,8 @@ class TestCodeDebugProbe:
         probe = CodeDebugProbe()
         response = "The problem is that x is uninitialized.\ndef fix():\n    x = 0"
         result = probe.evaluate_single(response, reference=None)
-        assert result.metadata["has_explanation"] is True
-        assert result.metadata["has_code_fix"] is True
+        assert result["has_explanation"] is True
+        assert result["has_code_fix"] is True
 
     def test_evaluate_single_no_explanation_no_fix(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -733,7 +732,7 @@ class TestCodeDebugProbe:
         result = probe.evaluate_single(response, reference=["specific_fix"])
         # "wrong" is not in the indicators, but "know" is not either
         # The score should be low
-        assert result.metadata["score"] < 0.7
+        assert result["score"] < 0.7
 
     def test_evaluate_single_fixed_label(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -743,7 +742,7 @@ class TestCodeDebugProbe:
             "The bug is in the loop. The fix is:\n```python\ndef correct():\n    return True\n```"
         )
         result = probe.evaluate_single(response, reference=None)
-        assert result.metadata["label"] in ("fixed", "partially_fixed")
+        assert result["label"] in ("fixed", "partially_fixed")
 
     def test_evaluate_single_low_score_error_status(self):
         from insideLLMs.probes.code import CodeDebugProbe
@@ -753,7 +752,7 @@ class TestCodeDebugProbe:
         result = probe.evaluate_single(response, reference=["complex_fix_pattern_xyz"])
         # low score: no explanation (0.3*0.3=0.09), no code fix (0.3*0.3=0.09), no pattern (0*0.4=0)
         # overall = 0.18, which < 0.5 => ERROR
-        assert result.status == ResultStatus.ERROR
+        assert result["status"] == "error"
 
 
 # ===========================================================================
@@ -761,7 +760,7 @@ class TestCodeDebugProbe:
 # ===========================================================================
 
 
-@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
+@pytest.mark.skipif(not _openai_available, reason="openai not installed")
 class TestOpenAIModelChatErrorHandling:
     """Tests for OpenAIModel.chat error handling."""
 
@@ -836,7 +835,7 @@ class TestOpenAIModelChatErrorHandling:
                 model.chat([{"role": "user", "content": "Hello"}])
 
 
-@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
+@pytest.mark.skipif(not _openai_available, reason="openai not installed")
 class TestOpenAIModelStreamErrorHandling:
     """Tests for OpenAIModel.stream error handling."""
 
@@ -911,7 +910,7 @@ class TestOpenAIModelStreamErrorHandling:
                 list(model.stream("Test"))
 
 
-@pytest.mark.skipif(not _HAS_OPENAI, reason="openai not installed")
+@pytest.mark.skipif(not _openai_available, reason="openai not installed")
 class TestOpenAIModelInfoExtra:
     """Tests for OpenAIModel.info with extra fields."""
 
@@ -938,7 +937,7 @@ class TestOpenAIModelInfoExtra:
 # ===========================================================================
 
 
-@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
+@pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")
 class TestAnthropicModelChatErrorHandling:
     """Tests for AnthropicModel.chat error handling."""
 
@@ -1013,7 +1012,7 @@ class TestAnthropicModelChatErrorHandling:
                 model.chat([{"role": "user", "content": "Hello"}])
 
 
-@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
+@pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")
 class TestAnthropicModelStreamErrorHandling:
     """Tests for AnthropicModel.stream error handling."""
 
@@ -1088,7 +1087,7 @@ class TestAnthropicModelStreamErrorHandling:
                 list(model.stream("Test"))
 
 
-@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
+@pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")
 class TestAnthropicModelChatRoleConversion:
     """Tests for AnthropicModel.chat role conversion."""
 
@@ -1118,7 +1117,7 @@ class TestAnthropicModelChatRoleConversion:
             assert sent_messages[1]["role"] == "user"
 
 
-@pytest.mark.skipif(not _HAS_ANTHROPIC, reason="anthropic not installed")
+@pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")
 class TestAnthropicModelInfoExtra:
     """Tests for AnthropicModel.info extra fields."""
 

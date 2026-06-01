@@ -108,7 +108,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
 
         try:
             if in_path.suffix.lower() == ".jsonl":
-                with open(in_path) as f:
+                with open(in_path, encoding="utf-8") as f:
                     for line_no, line in enumerate(f, start=1):
                         line = line.strip()
                         if not line:

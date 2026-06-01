@@ -1678,7 +1678,7 @@ class PromptDebugger:
 
         return event
 
-    def step_start(self, step_id: str, step_name: str, **kwargs) -> DebugTraceEvent:
+    def step_start(self, step_id: str, step_name: str, **kwargs) -> Optional[DebugTraceEvent]:
         """Log the beginning of a workflow step.
 
         Records a STEP_START event and pushes the step onto the internal stack
@@ -1752,7 +1752,7 @@ class PromptDebugger:
         duration_ms: float,
         result: Optional[Any] = None,
         success: bool = True,
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log the completion of a workflow step.
 
         Records a STEP_END event with duration and result information, and
@@ -1830,7 +1830,7 @@ class PromptDebugger:
         prompt: str,
         step_id: Optional[str] = None,
         model: Optional[str] = None,
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log a prompt being sent to an LLM.
 
         Records a PROMPT_SENT event with the prompt content (truncated),
@@ -1894,7 +1894,7 @@ class PromptDebugger:
         step_id: Optional[str] = None,
         tokens_used: Optional[int] = None,
         latency_ms: Optional[float] = None,
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log a response received from an LLM.
 
         Records a RESPONSE_RECEIVED event with the response content (truncated),
@@ -1969,7 +1969,7 @@ class PromptDebugger:
         value: Any,
         step_id: Optional[str] = None,
         operation: str = "set",
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log a variable operation."""
         snapshot = VariableSnapshot(
             name=name,
@@ -1995,7 +1995,7 @@ class PromptDebugger:
         error: Union[str, Exception],
         step_id: Optional[str] = None,
         step_name: Optional[str] = None,
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log an error."""
         if isinstance(error, Exception):
             error_str = f"{type(error).__name__}: {str(error)}"
@@ -2025,7 +2025,7 @@ class PromptDebugger:
         self,
         message: str,
         step_id: Optional[str] = None,
-    ) -> DebugTraceEvent:
+    ) -> Optional[DebugTraceEvent]:
         """Log a warning."""
         return self.log_event(
             TraceEventType.WARNING,
@@ -2437,7 +2437,7 @@ class PromptFlowAnalyzer:
                             "suggestion": suggestion,
                         }
                     )
-            except Exception:
+            except Exception as _:
                 pass  # Skip failing patterns
 
         return findings
@@ -2536,7 +2536,7 @@ class TraceComparator:
 
         all_steps = set(steps1.keys()) | set(steps2.keys())
         for step_name in all_steps:
-            step_comp = {"step_name": step_name}
+            step_comp: dict[str, Any] = {"step_name": step_name}
 
             if step_name in steps1 and step_name in steps2:
                 d1 = steps1[step_name].duration_ms or 0

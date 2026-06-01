@@ -88,10 +88,10 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
         raise FileNotFoundError(f"Config file not found: {path}")
 
     if path.suffix in (".yaml", ".yml"):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     elif path.suffix == ".json":
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
     else:
         raise ValueError(f"Unsupported config file format: {path.suffix}")
@@ -185,7 +185,7 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                 try:
                     rel = resolved_path.resolve().relative_to(base_dir.resolve())
                     path_value = rel.as_posix()
-                except Exception:
+                except Exception as _:
                     if dataset_hash:
                         path_value = Path(normalized).name
             dataset["path"] = posixpath.normpath(path_value)
@@ -449,9 +449,18 @@ def _create_model_from_config(
             if pipeline_async is None:
                 pipeline_async = prefer_async_pipeline
             pipeline_name = pipeline_cfg.get("name")
+            pipeline_base_model: Any = base_model
             if pipeline_async:
-                return AsyncModelPipeline(base_model, middlewares=middlewares, name=pipeline_name)
-            return ModelPipeline(base_model, middlewares=middlewares, name=pipeline_name)
+                return AsyncModelPipeline(
+                    pipeline_base_model,
+                    middlewares=middlewares,
+                    name=pipeline_name,
+                )
+            return ModelPipeline(
+                pipeline_base_model,
+                middlewares=middlewares,
+                name=pipeline_name,
+            )
 
     return base_model
 

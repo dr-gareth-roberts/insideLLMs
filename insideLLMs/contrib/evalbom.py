@@ -38,7 +38,7 @@ def emit_cyclonedx(run_dir: Path | str) -> dict[str, Any]:
                         "name": manifest["dataset"]["dataset_id"],
                     }
                 )
-        except Exception:
+        except Exception as _:
             pass
 
     return {
@@ -81,7 +81,7 @@ def emit_spdx3(run_dir: Path | str) -> dict[str, Any]:
                         "name": manifest["dataset"]["dataset_id"],
                     }
                 )
-        except Exception:
+        except Exception as _:
             pass
 
     return {

@@ -13,7 +13,7 @@ from .._output import print_error, print_header, print_key_value, print_success
 
 def _load_results(input_path: Path) -> list:
     """Load results from JSON or JSONL file."""
-    with open(input_path) as f:
+    with open(input_path, encoding="utf-8") as f:
         if input_path.suffix.lower() == ".jsonl":
             results = [json.loads(line) for line in f if line.strip()]
         else:
@@ -50,14 +50,14 @@ def cmd_export(args: argparse.Namespace) -> int:
 
             if results:
                 keys = results[0].keys()
-                with open(output_path, "w", newline="") as f:
+                with open(output_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.DictWriter(f, fieldnames=keys)
                     writer.writeheader()
                     writer.writerows(results)
 
         elif args.format == "markdown":
             content = results_to_markdown(results)
-            with open(output_path, "w") as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
         elif args.format == "html":
@@ -90,13 +90,15 @@ def cmd_export(args: argparse.Namespace) -> int:
                         "\\end{table}",
                     ]
                 )
-                with open(output_path, "w") as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     f.write("\n".join(lines))
 
         elif args.format == "jsonl":
-            with open(output_path, "w") as f:
+            from insideLLMs._serialization import stable_json_dumps
+
+            with open(output_path, "w", encoding="utf-8") as f:
                 for r in results:
-                    f.write(json.dumps(r, default=str) + "\n")
+                    f.write(stable_json_dumps(r) + "\n")
 
         if getattr(args, "encrypt", False):
             key_env = getattr(args, "encryption_key_env", "INSIDELLMS_ENCRYPTION_KEY")

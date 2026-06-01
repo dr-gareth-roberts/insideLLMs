@@ -82,3 +82,55 @@ When changing docs or adding pages:
 - New pages have front matter with `title` and `nav_order`.
 - Any new diagrams render correctly and are legible.
 - Examples are copy/paste runnable (or explicitly marked as pseudo-code).
+
+## 9) Documentation maintenance checklist (feature PRs)
+
+When adding new features, use this checklist to ensure docs stay synchronized:
+
+### New CLI command added
+
+- [ ] Add `## command-name` section to `wiki/reference/CLI.md`
+- [ ] Include in Commands table at top of CLI.md
+- [ ] Document all options, arguments, and examples
+- [ ] Run `make docs-audit` to verify parity
+
+### New probe class added
+
+- [ ] Add section to `wiki/reference/Probes-Catalog.md`
+- [ ] Include in Overview table at top
+- [ ] Document: category, input format, config example, Python usage
+- [ ] If exported in `__all__`, ensure audit passes
+
+### New model class added
+
+- [ ] Add section to `wiki/reference/Models-Catalog.md`
+- [ ] Include in Overview table at top
+- [ ] Document: environment variables, config example, Python usage, common options
+- [ ] If exported in `__all__`, ensure audit passes
+
+### API changes
+
+- [ ] Update `API_REFERENCE.md` with new/changed signatures
+- [ ] Update version number if applicable
+- [ ] Check `DOCUMENTATION_INDEX.md` links remain valid
+
+### Deprecating features
+
+- [ ] Add deprecated option to stale tokens in `scripts/audit_docs.py` (if applicable)
+- [ ] Remove from documentation or mark as deprecated
+- [ ] Update `docs/IMPORT_PATHS.md` if import paths change
+
+### Automated verification
+
+Always run before submitting:
+
+```bash
+make docs-audit
+```
+
+This validates:
+- CLI command parity (code ↔ CLI.md)
+- Probe parity (exports ↔ Probes-Catalog.md)
+- Model parity (exports ↔ Models-Catalog.md)
+- Wiki link integrity
+- No stale/deprecated tokens

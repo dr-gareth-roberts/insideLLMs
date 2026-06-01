@@ -388,9 +388,9 @@ def add(a, b):
         code = "def add(a, b):\n    return a + b"
         result = probe.evaluate_single(code, {"patterns": ["def add"]})
 
-        assert result.status == ResultStatus.SUCCESS
-        assert result.metadata.get("score") is not None
-        assert result.metadata["score"] >= 0.5
+        assert result["status"] == "success"
+        assert result.get("score") is not None
+        assert result["score"] >= 0.5
 
 
 class TestCodeExplanationProbe:
@@ -440,9 +440,9 @@ class TestCodeExplanationProbe:
             explanation, {"concepts": ["factorial", "recursion", "base case"]}
         )
 
-        assert result.status == ResultStatus.SUCCESS
-        assert result.metadata.get("score") is not None
-        assert result.metadata["concepts_covered"] > 0
+        assert result["status"] == "success"
+        assert result.get("score") is not None
+        assert result["concepts_covered"] > 0
 
 
 class TestCodeDebugProbe:
@@ -492,9 +492,9 @@ class TestCodeDebugProbe:
             response, {"fix_patterns": ["if b == 0", "raise", "valueerror"]}
         )
 
-        assert result.status == ResultStatus.SUCCESS
-        assert result.metadata["has_explanation"] is True
-        assert result.metadata["has_code_fix"] is True
+        assert result["status"] == "success"
+        assert result["has_explanation"] is True
+        assert result["has_code_fix"] is True
 
 
 class TestInstructionFollowingProbe:

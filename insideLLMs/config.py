@@ -1334,7 +1334,7 @@ def load_config_from_yaml(path: Union[str, Path]) -> ExperimentConfig:
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     return _parse_config_dict(data)
@@ -1408,7 +1408,7 @@ def load_config_from_json(path: Union[str, Path]) -> ExperimentConfig:
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
     return _parse_config_dict(data)
@@ -1656,8 +1656,11 @@ def save_config_to_json(config: ExperimentConfig, path: Union[str, Path]) -> Non
     path.parent.mkdir(parents=True, exist_ok=True)
 
     data = config.model_dump() if PYDANTIC_AVAILABLE else _config_to_dict(config)
+    # Normalize complex types (e.g., Enum, nested dataclasses) before JSON serialization,
+    # matching the same normalization applied in save_config_to_yaml.
+    data = _serialize_value(data)
 
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
@@ -1690,15 +1693,25 @@ def _config_to_dict(config: Any) -> dict[str, Any]:
     This is an internal function. For serialization, use save_config_to_yaml
     or save_config_to_json which handle both Pydantic and fallback cases.
     """
-    if hasattr(config, "model_dump"):
-        return config.model_dump()
+    # When pydantic is available, real BaseModel instances have a deep model_dump().
+    # Use it directly — it handles nested models and enums correctly.
+    if PYDANTIC_AVAILABLE and hasattr(config, "model_dump") and not isinstance(config, type):
+        try:
+            return config.model_dump()  # type: ignore[return-value]
+        except Exception:
+            pass
 
     result = {}
     for key, value in vars(config).items():
         if hasattr(value, "__dict__") and not isinstance(value, type):
             result[key] = _config_to_dict(value)
-        elif isinstance(value, Enum):
-            result[key] = value.value
+        elif isinstance(value, list):
+            result[key] = [
+                _config_to_dict(item)
+                if hasattr(item, "__dict__") and not isinstance(item, type)
+                else item
+                for item in value
+            ]
         else:
             result[key] = value
     return result
@@ -1784,7 +1797,7 @@ def create_example_config() -> ExperimentConfig:
     )
 
 
-def validate_config(config: Union[dict[str, Any], ExperimentConfig]) -> ExperimentConfig:
+def validate_config(config: Union[ExperimentConfig, dict[str, Any]]) -> ExperimentConfig:
     """Validate and convert a configuration to ExperimentConfig.
 
     Takes either a raw configuration dictionary or an existing
@@ -1859,3 +1872,11 @@ def validate_config(config: Union[dict[str, Any], ExperimentConfig]) -> Experime
         return config
 
     return _parse_config_dict(config)
+
+
+__all__ = [
+    name
+    for name, value in globals().items()
+    if not name.startswith("_")
+    and (getattr(value, "__module__", None) == __name__ or not hasattr(value, "__module__"))
+]  # pyright: ignore[reportUnsupportedDunderAll]

@@ -2541,7 +2541,7 @@ class StructuredResult(Generic[T]):
         Args:
             filepath: Path to save to.
         """
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.to_json())
 
     def save_html(self, filepath: str, title: str = "Structured Output") -> None:
@@ -2551,7 +2551,7 @@ class StructuredResult(Generic[T]):
             filepath: Path to save to.
             title: HTML page title.
         """
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.to_html(title))
 
     def __repr__(self) -> str:

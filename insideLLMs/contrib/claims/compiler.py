@@ -28,13 +28,13 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
     claims_path = Path(claims_yaml_path)
     run_dir = Path(run_dir)
 
-    with claims_path.open() as f:
+    with claims_path.open(encoding="utf-8") as f:
         claims_doc = yaml.safe_load(f)
 
     claims = claims_doc.get("claims", [])
 
     summary_path = run_dir / "summary.json"
-    with summary_path.open() as f:
+    with summary_path.open(encoding="utf-8") as f:
         summary = json.load(f)
 
     metrics = summary.get("metrics", {})
@@ -71,12 +71,12 @@ def compile_claims(claims_yaml_path: Path | str, run_dir: Path | str) -> dict[st
 
     # Emit claims.json (the parsed claims)
     claims_out = run_dir / "claims.json"
-    with claims_out.open("w") as f:
+    with claims_out.open("w", encoding="utf-8") as f:
         json.dump(claims_doc, f, indent=2)
 
     # Emit verification.json
     verification_out = run_dir / "verification.json"
-    with verification_out.open("w") as f:
+    with verification_out.open("w", encoding="utf-8") as f:
         json.dump(verification, f, indent=2)
 
     return {"status": "success", "verification": verification}
