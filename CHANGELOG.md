@@ -72,10 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preventing a CPU/memory exhaustion DoS (e.g. `10**10**10`).
 - The PyPI release workflow now runs the full quality gate (lint, typecheck,
   tests, determinism) before building/publishing.
-- **Known open item**: selective-disclosure Merkle inclusion proofs
-  (`insideLLMs.privacy.disclosure`) still lack a verifier and leaf/node domain
-  separation; hardening this requires a canon-version bump and is tracked as a
-  follow-up.
+- Selective-disclosure Merkle inclusion proofs (`insideLLMs.privacy.disclosure`)
+  are now **direction-aware and self-verifiable** via a new
+  `verify_inclusion_proof()`. The remaining hardening — leaf/node hash
+  domain-separation — changes every Merkle root (including the artifact-spine
+  `records_merkle_root`) and is therefore deferred to a deliberate canon-version
+  bump rather than silently breaking existing artifacts.
 
 ## Migration Guide
 

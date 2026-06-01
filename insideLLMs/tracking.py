@@ -21,7 +21,6 @@ format_sparkline : Render a text sparkline for a metric series.
 """
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -114,7 +113,11 @@ def index_run(
             manifest = json.load(f)
 
     run_id = manifest.get("run_id", run_dir.name)
-    timestamp = manifest.get("created_at") or datetime.utcnow().isoformat()
+    # Fall back to a run_id-derived deterministic time (as the runner does) rather
+    # than wall-clock, so re-indexing the same run yields byte-identical entries.
+    from insideLLMs.runtime._determinism import _deterministic_base_time
+
+    timestamp = manifest.get("created_at") or _deterministic_base_time(run_id).isoformat()
 
     records: list[dict[str, Any]] = []
     if records_path.exists():
@@ -147,8 +150,10 @@ def index_run(
         metrics=metrics,
     )
 
+    from insideLLMs._serialization import stable_json_dumps
+
     with open(index_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, sort_keys=True) + "\n")
+        f.write(stable_json_dumps(entry) + "\n")
 
     return entry
 
