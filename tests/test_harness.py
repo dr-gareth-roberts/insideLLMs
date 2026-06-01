@@ -441,6 +441,42 @@ class TestHarnessEdgeCases:
         with pytest.raises((ValueError, KeyError, ModuleNotFoundError, ImportError)):
             run_harness_from_config(config_path)
 
+    def test_harness_forwards_runner_settings(self, tmp_path, monkeypatch):
+        """The optional ``runner:`` config block must reach ProbeRunner.run.
+
+        Regression: run_harness_from_config previously computed runner settings
+        but never forwarded them, so use_probe_batch / batch_workers /
+        stop_on_error were silently ignored for the harness.
+        """
+        dataset_path = tmp_path / "data.jsonl"
+        dataset_path.write_text('{"question": "Test?"}\n')
+
+        config = {
+            "models": [{"type": "dummy", "args": {}}],
+            "probes": [{"type": "logic", "args": {}}],
+            "dataset": {"format": "jsonl", "path": str(dataset_path)},
+            "runner": {"use_probe_batch": True, "batch_workers": 2, "stop_on_error": True},
+        }
+        config_path = tmp_path / "harness.yaml"
+        config_path.write_text(yaml.safe_dump(config))
+
+        from insideLLMs.runtime import _sync_runner
+
+        captured: dict = {}
+        original_run = _sync_runner.ProbeRunner.run
+
+        def spy_run(self, *args, **kwargs):
+            captured.update(kwargs)
+            return original_run(self, *args, **kwargs)
+
+        monkeypatch.setattr(_sync_runner.ProbeRunner, "run", spy_run)
+
+        run_harness_from_config(config_path)
+
+        assert captured.get("use_probe_batch") is True
+        assert captured.get("batch_workers") == 2
+        assert captured.get("stop_on_error") is True
+
     def test_harness_invalid_probe_type(self, tmp_path):
         """Test harness raises error for invalid probe type."""
         dataset_path = tmp_path / "data.jsonl"

@@ -90,7 +90,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         )
 
         if args.use_async:
-            concurrency_label = args.concurrency if args.concurrency is not None else "config/default"
+            concurrency_label = (
+                args.concurrency if args.concurrency is not None else "config/default"
+            )
             print_info(f"Using async execution with concurrency={concurrency_label}")
             results = asyncio.run(
                 run_experiment_from_config_async(

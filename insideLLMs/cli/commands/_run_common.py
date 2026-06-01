@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import insideLLMs.experiment_tracking as experiment_tracking
-
 from insideLLMs.models.base import Model
 from insideLLMs.registry import Registry, model_registry
 from insideLLMs.runtime._artifact_utils import _default_run_root
@@ -21,7 +20,9 @@ from insideLLMs.runtime._artifact_utils import _default_run_root
 from .._output import print_warning
 
 
-def _filter_factory_kwargs(registry: Registry[Any], name: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+def _filter_factory_kwargs(
+    registry: Registry[Any], name: str, kwargs: dict[str, Any]
+) -> dict[str, Any]:
     """Keep only kwargs accepted by the registered factory signature."""
     factory = registry.get_factory(name)
     if not callable(factory):

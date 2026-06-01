@@ -32,17 +32,17 @@ def _get_documented_cli_commands(cli_md_content: str) -> set[str]:
     """Extract all documented CLI commands from CLI.md."""
     # Look for commands in the Commands table and section headers
     documented: set[str] = set()
-    
+
     # Pattern for table entries: | [`command`](#command) |
     table_pattern = re.compile(r"\|\s*\[`([^`]+)`\]\(#[^)]+\)\s*\|")
     for match in table_pattern.finditer(cli_md_content):
         documented.add(match.group(1))
-    
+
     # Pattern for section headers: ## command
     header_pattern = re.compile(r"^##\s+([a-z][-a-z0-9]*)\s*$", re.MULTILINE)
     for match in header_pattern.finditer(cli_md_content):
         documented.add(match.group(1))
-    
+
     return documented
 
 
@@ -55,6 +55,7 @@ def _get_exported_probes() -> set[str]:
     """Get all probes exported from insideLLMs.probes."""
     try:
         from insideLLMs.probes import __all__ as probes_all
+
         # Filter to only probe classes (those ending in Probe or Scorer)
         return {p for p in probes_all if p.endswith("Probe") or p.endswith("Scorer")}
     except ImportError:
@@ -64,17 +65,17 @@ def _get_exported_probes() -> set[str]:
 def _get_documented_probes(probes_md_content: str) -> set[str]:
     """Extract documented probe classes from Probes-Catalog.md."""
     documented: set[str] = set()
-    
+
     # Pattern for section headers: ## ProbeName
     header_pattern = re.compile(r"^##\s+([A-Z][a-zA-Z]+(?:Probe|Scorer))\s*$", re.MULTILINE)
     for match in header_pattern.finditer(probes_md_content):
         documented.add(match.group(1))
-    
+
     # Also check table entries
     table_pattern = re.compile(r"\|\s*\[([A-Z][a-zA-Z]+(?:Probe|Scorer))\]")
     for match in table_pattern.finditer(probes_md_content):
         documented.add(match.group(1))
-    
+
     return documented
 
 
@@ -82,6 +83,7 @@ def _get_exported_models() -> set[str]:
     """Get all model classes exported from insideLLMs.models."""
     try:
         from insideLLMs.models import __all__ as models_all
+
         # Filter to only model classes (those ending in Model)
         return {m for m in models_all if m.endswith("Model")}
     except ImportError:
@@ -91,12 +93,12 @@ def _get_exported_models() -> set[str]:
 def _get_documented_models(models_md_content: str) -> set[str]:
     """Extract documented model classes from Models-Catalog.md."""
     documented: set[str] = set()
-    
+
     # Pattern for Python code: from insideLLMs.models import ModelName
     import_pattern = re.compile(r"from insideLLMs\.models import (\w+Model)")
     for match in import_pattern.finditer(models_md_content):
         documented.add(match.group(1))
-    
+
     # Pattern for section headers that mention model types
     # e.g., ## OpenAI -> OpenAIModel
     section_to_model = {
@@ -114,13 +116,13 @@ def _get_documented_models(models_md_content: str) -> set[str]:
         "dummy": "DummyModel",
         "openrouter": "OpenRouterModel",
     }
-    
+
     header_pattern = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
     for match in header_pattern.finditer(models_md_content):
         header = match.group(1).lower().strip()
         if header in section_to_model:
             documented.add(section_to_model[header])
-    
+
     return documented
 
 
@@ -336,10 +338,10 @@ def main() -> int:
     # =========================================================================
     all_cli_commands = _get_all_cli_commands()
     documented_commands = _get_documented_cli_commands(cli_reference)
-    
+
     # Commands that are intentionally undocumented (internal/utility commands)
     excluded_commands = {"welcome"}  # welcome is a hidden internal command
-    
+
     undocumented_commands = all_cli_commands - documented_commands - excluded_commands
     for cmd in sorted(undocumented_commands):
         failures.append(f"wiki/reference/CLI.md missing documentation for command: {cmd}")
@@ -352,10 +354,10 @@ def main() -> int:
         probes_catalog = _read(probes_catalog_path)
         exported_probes = _get_exported_probes()
         documented_probes = _get_documented_probes(probes_catalog)
-        
+
         # Some exported items are base classes/utilities, not user-facing probes
         excluded_probes = {"Probe", "ScoredProbe", "CustomProbe", "ComparativeProbe"}
-        
+
         undocumented_probes = exported_probes - documented_probes - excluded_probes
         for probe in sorted(undocumented_probes):
             failures.append(f"wiki/reference/Probes-Catalog.md missing documentation for: {probe}")
@@ -370,10 +372,10 @@ def main() -> int:
         models_catalog = _read(models_catalog_path)
         exported_models = _get_exported_models()
         documented_models = _get_documented_models(models_catalog)
-        
+
         # AsyncModel is a wrapper/protocol, not a user-facing model
         excluded_models = {"Model", "AsyncModel"}
-        
+
         undocumented_models = exported_models - documented_models - excluded_models
         for model in sorted(undocumented_models):
             failures.append(f"wiki/reference/Models-Catalog.md missing documentation for: {model}")

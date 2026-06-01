@@ -133,11 +133,8 @@ def main():
         print(f"Readability calculation skipped: {e}")
 
     word_freq = get_word_frequencies(cleaned_text)
-    print(
-        f"Top 5 most frequent words: {
-            sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
-        }"
-    )
+    top_5_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
+    print(f"Top 5 most frequent words: {top_5_words}")
 
     # Basic text classification
     print("\n4. Basic Text Classification:")

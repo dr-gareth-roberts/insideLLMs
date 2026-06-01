@@ -1858,11 +1858,7 @@ class SchemaRegistry:
         t = normalize_semver(to_version)
         if f == t:
             return custom_migration(data) if custom_migration else data
-        if (
-            schema_name == self.RUN_MANIFEST
-            and f == "1.0.0"
-            and t == "1.0.1"
-        ):
+        if schema_name == self.RUN_MANIFEST and f == "1.0.0" and t == "1.0.1":
             migrated = dict(data) if isinstance(data, dict) else data
             if isinstance(migrated, dict):
                 migrated = custom_migration(migrated) if custom_migration else migrated

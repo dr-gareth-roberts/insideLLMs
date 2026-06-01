@@ -177,7 +177,7 @@ def _llm_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
     try:
         data = json.loads(response.content)
         return TransactionPatternFinding(**data)
-    except Exception:
+    except Exception as _:
         logger.warning("LLM pattern output parsing failed, falling back to simulation")
         return _simulate_pattern(txn, state)
 

@@ -119,9 +119,7 @@ def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
 
     probe_name = harness.get("probe_name") or probe_spec.get("probe_id") or "probe"
     replicate_key = custom.get("replicate_key")
-    example_id = (
-        replicate_key or record.get("example_id") or harness.get("example_index") or "0"
-    )
+    example_id = replicate_key or record.get("example_id") or harness.get("example_index") or "0"
     return (str(model_label), str(probe_name), str(example_id))
 
 
@@ -686,8 +684,10 @@ def build_diff_computation(
                     }
                 )
 
-        if not metrics_compared and _scores_comparable(record_a, record_b) and (
-            score_a is not None or score_b is not None
+        if (
+            not metrics_compared
+            and _scores_comparable(record_a, record_b)
+            and (score_a is not None or score_b is not None)
         ):
             reason = _metric_mismatch_reason(record_a, record_b) or "type_mismatch"
             detail = _metric_mismatch_details(record_a, record_b)
