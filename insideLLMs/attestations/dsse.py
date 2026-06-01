@@ -46,7 +46,7 @@ def build_dsse_envelope(
 
 
 def parse_dsse_envelope(envelope: dict[str, Any]) -> tuple[dict[str, Any], str]:
-    """Parse a DSSE envelope and return the decoded payload and raw payload bytes for verification.
+    """Parse a DSSE envelope, returning the decoded payload dict and its payload type.
 
     Parameters
     ----------

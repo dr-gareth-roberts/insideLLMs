@@ -34,10 +34,15 @@ format-check:
 typecheck:
 	mypy insideLLMs
 
-# Strict type checking for new code
+# Strict type checking on the security-critical modules. This is the gating
+# strict check and is mirrored exactly by CI (which runs `make typecheck-strict`).
 typecheck-strict:
-	mypy --strict insideLLMs/injection.py
-	mypy --strict insideLLMs/safety.py
+	mypy --strict --follow-imports=silent insideLLMs/injection.py
+	mypy --strict --follow-imports=silent insideLLMs/safety.py
+
+# Aspirational: full untyped-def strictness on the runtime package. Not yet
+# clean (tracked); run manually, not part of the gating typecheck-strict.
+typecheck-strict-runtime:
 	mypy --disallow-untyped-defs insideLLMs/runtime/
 
 # Generate type checking report

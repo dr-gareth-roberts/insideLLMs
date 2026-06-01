@@ -9,6 +9,7 @@ from typing import Any
 from .._output import (
     Colors,
     colorize,
+    print_error,
     print_header,
     print_info,
     print_key_value,
@@ -161,6 +162,9 @@ def cmd_init(args: argparse.Namespace) -> int:
             }
 
     output_path = Path(output)
+    if output_path.exists() and not getattr(args, "overwrite", False):
+        print_error(f"{output_path} already exists; pass --overwrite to replace it")
+        return 1
 
     if output_path.suffix in (".yaml", ".yml"):
         content = yaml.dump(config, default_flow_style=False, sort_keys=False)

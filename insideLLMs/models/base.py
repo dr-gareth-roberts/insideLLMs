@@ -1779,6 +1779,21 @@ class ModelWrapper:
         """
         return self._model.info()
 
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attributes not defined on the wrapper to the wrapped model.
+
+        Keeps the wrapper transparent so methods like ``chat``, ``stream`` and
+        ``batch_generate`` reach the underlying model instead of raising
+        AttributeError. Dunder lookups are excluded to avoid interfering with
+        copy/pickle protocols and to prevent recursion before ``_model`` is set.
+        """
+        # Guard against recursion when `_model` is not yet set (e.g. instances
+        # created via __new__/unpickle/copy without __init__): accessing
+        # self._model would re-enter __getattr__ for "_model" forever.
+        if name == "_model" or (name.startswith("__") and name.endswith("__")):
+            raise AttributeError(name)
+        return getattr(self._model, name)
+
     def __repr__(self) -> str:
         """Return a string representation of the wrapper.
 

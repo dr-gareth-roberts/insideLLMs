@@ -2047,11 +2047,11 @@ def _normalize_events(
     if not events:
         return []
 
-    normalized: list[TraceEvent]
-    if isinstance(events[0], TraceEvent):
-        normalized = list(events)  # type: ignore[arg-type]
-    else:
-        normalized = [TraceEvent.from_dict(e) for e in events]
+    # Normalize per element so heterogeneous lists (mixed TraceEvent + dict)
+    # are handled, rather than branching on only the first element's type.
+    normalized: list[TraceEvent] = [
+        event if isinstance(event, TraceEvent) else TraceEvent.from_dict(event) for event in events
+    ]
 
     # Sort by sequence for consistent processing
     normalized.sort(key=lambda e: e.seq)

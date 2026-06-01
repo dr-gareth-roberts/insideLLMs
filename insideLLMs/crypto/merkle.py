@@ -20,16 +20,34 @@ from insideLLMs.crypto.canonical import (
     digest_bytes,
 )
 
+# Domain-separation tags (canon_v2+): leaves and internal nodes are hashed with
+# distinct prefixes so a leaf hash can never be reinterpreted as a node hash
+# (second-preimage resistance). canon_v1 used no prefixes.
+_LEAF_PREFIX = b"\x00"
+_NODE_PREFIX = b"\x01"
 
-def _hash_pair(left: str, right: str, algo: str) -> str:
+
+def _leaf_digest(
+    canonical_bytes: bytes, algo: str, canon_version: str = DEFAULT_CANON_VERSION
+) -> str:
+    """Hash a leaf's canonical bytes, domain-separated from internal nodes."""
+    if canon_version == "canon_v1":
+        return digest_bytes(canonical_bytes, algo=algo)
+    return digest_bytes(_LEAF_PREFIX + canonical_bytes, algo=algo)
+
+
+def _hash_pair(left: str, right: str, algo: str, canon_version: str = DEFAULT_CANON_VERSION) -> str:
     """Hash two hex digests together for Merkle tree construction."""
     if algo != "sha256":
         raise ValueError(f"Unsupported algo: {algo!r}")
-    payload = (left + right).encode("utf-8")
+    inner = (left + right).encode("utf-8")
+    payload = inner if canon_version == "canon_v1" else _NODE_PREFIX + inner
     return hashlib.sha256(payload).hexdigest()
 
 
-def _merkle_root_from_hashes(leaf_hashes: list[str], algo: str) -> str:
+def _merkle_root_from_hashes(
+    leaf_hashes: list[str], algo: str, canon_version: str = DEFAULT_CANON_VERSION
+) -> str:
     """Compute Merkle root from an ordered list of leaf hashes.
 
     Leaves are hashed in pairs; if odd number, duplicate the last.
@@ -43,7 +61,7 @@ def _merkle_root_from_hashes(leaf_hashes: list[str], algo: str) -> str:
         for i in range(0, len(current), 2):
             left = current[i]
             right = current[i + 1] if i + 1 < len(current) else current[i]
-            next_level.append(_hash_pair(left, right, algo))
+            next_level.append(_hash_pair(left, right, algo, canon_version))
         current = next_level
     return current[0]
 
@@ -70,8 +88,10 @@ def merkle_root_from_items(
         If None, uses canonical_json_bytes with canon_version and strict.
     algo : str, default "sha256"
         Hash algorithm.
-    canon_version : str, default "canon_v1"
-        Canonicalization version (used when canonicalize_fn is None).
+    canon_version : str, default "canon_v2"
+        Canonicalization/tree-construction version (used when canonicalize_fn is
+        None). "canon_v2" domain-separates leaf and node hashes; "canon_v1" is
+        the legacy scheme without that separation.
     strict : bool, default False
         Passed to canonical_json_bytes when canonicalize_fn is None.
 
@@ -90,8 +110,10 @@ def merkle_root_from_items(
 
         canonicalize_fn = _canon
 
-    leaf_hashes = [digest_bytes(canonicalize_fn(item), algo=algo) for item in items]
-    root = _merkle_root_from_hashes(leaf_hashes, algo=algo)
+    leaf_hashes = [
+        _leaf_digest(canonicalize_fn(item), algo, canon_version=canon_version) for item in items
+    ]
+    root = _merkle_root_from_hashes(leaf_hashes, algo=algo, canon_version=canon_version)
     return {
         "root": root,
         "count": len(items),

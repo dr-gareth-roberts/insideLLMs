@@ -174,8 +174,8 @@ class OpenAIModel(Model):
             name: Human-readable name for this model instance.
                 Used for logging and identification. Default: "OpenAIModel".
             model_name: The OpenAI model identifier to use.
-                Common options: "o3", "gpt-4.1", "gpt-5.".
-                Default: "gpt-5.2".
+                Common options: "gpt-4o", "gpt-4o-mini", "gpt-4.1", "o3".
+                Default: "gpt-3.5-turbo".
             api_key: OpenAI API key. If not provided, reads from the
                 environment variable specified by ``api_key_env``.
             base_url: Override the default OpenAI API base URL.

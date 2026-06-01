@@ -1079,8 +1079,8 @@ def bootstrap_confidence_interval(
     """
     import random
 
-    if seed is not None:
-        random.seed(seed)
+    # Local RNG so reproducibility does not mutate process-global random state.
+    rng = random.Random(seed)
 
     if not values:
         return ConfidenceInterval(
@@ -1096,7 +1096,7 @@ def bootstrap_confidence_interval(
     bootstrap_stats = []
 
     for _ in range(n_bootstrap):
-        sample = [random.choice(values) for _ in range(n)]
+        sample = [rng.choice(values) for _ in range(n)]
         bootstrap_stats.append(statistic_fn(sample))
 
     bootstrap_stats.sort()

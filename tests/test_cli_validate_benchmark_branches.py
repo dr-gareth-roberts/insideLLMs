@@ -47,7 +47,9 @@ def test_cmd_validate_run_dir_manifest_missing_and_parse_error_modes(tmp_path):
 
     rc_parse_warn = cmd_validate(_validate_args(manifest, mode="warn"))
     rc_parse_strict = cmd_validate(_validate_args(manifest, mode="strict"))
-    assert rc_parse_warn == 0
+    # An unreadable/corrupt manifest is a structural failure (not a schema
+    # mismatch), so it hard-fails regardless of mode.
+    assert rc_parse_warn == 1
     assert rc_parse_strict == 1
 
 

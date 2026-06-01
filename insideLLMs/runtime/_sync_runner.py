@@ -439,7 +439,9 @@ class ProbeRunner(_RunnerBase):
                             schema_version=schema_version,
                             error_type=error_type,
                         )
-                        result_obj["latency_ms"] = probe_result.latency_ms
+                        # latency_ms is volatile (wall-clock); persist as null for
+                        # byte-for-byte determinism, matching the non-batch and async paths.
+                        result_obj["latency_ms"] = None
                         results[i] = result_obj
 
                         if emit_run_artifacts and records_fp is not None:
@@ -457,7 +459,7 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=prompt_set[i],
                                 output=probe_result.output,
-                                latency_ms=probe_result.latency_ms,
+                                latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
                                 status=_normalize_status(probe_result.status),

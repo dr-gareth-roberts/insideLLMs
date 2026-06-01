@@ -140,11 +140,11 @@ OpenAI, Anthropic, Google Gemini, Cohere, HuggingFace, OpenRouter, and local
 models (Ollama, llama.cpp). All through one interface:
 
 ```python
-from insideLLMs import OpenAIModel, AnthropicModel, LocalModel
+from insideLLMs import OpenAIModel, AnthropicModel, OllamaModel
 
 gpt = OpenAIModel(model_name="gpt-4o-mini")
 claude = AnthropicModel(model_name="claude-sonnet-4-6")
-local = LocalModel(model_name="llama3", backend="ollama")
+local = OllamaModel(model_name="llama3.2")   # also: LlamaCppModel, VLLMModel
 ```
 
 ## Python API
@@ -159,10 +159,9 @@ results = run_probe(model, LogicProbe(), ["What is 2+2?"])
 For the full harness:
 
 ```python
-from insideLLMs.runtime.runner import ProbeRunner
+from insideLLMs.runtime.runner import run_experiment_from_config
 
-runner = ProbeRunner(config_path="config.yaml")
-runner.run()
+results = run_experiment_from_config("config.yaml")
 ```
 
 ## CLI reference
@@ -174,13 +173,18 @@ insidellms diff            Compare two run directories
 insidellms report          Rebuild summary/report from records
 insidellms compare         Compare multiple models on same inputs
 insidellms benchmark       Comprehensive benchmarks across models
+insidellms generate-suite  Generate a synthetic evaluation suite
+insidellms optimize-prompt Optimize a prompt against a probe
 insidellms doctor          Diagnose environment and dependencies
 insidellms schema          Inspect and validate output schemas
 insidellms init            Generate sample configuration
 insidellms quicktest       One-off prompt test
 insidellms list            List available models/probes/datasets
+insidellms info            Show details of a model/probe/dataset
 insidellms export          Export results (csv, parquet, etc.)
 insidellms trend           Metric trends across indexed runs
+insidellms interactive     Interactive exploration session
+insidellms welcome         Getting-started guide
 insidellms validate        Validate config or run directory
 ```
 

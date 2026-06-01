@@ -648,11 +648,15 @@ class InstructionFollowingProbe(ScoredProbe[str]):
 
         details["score"] = overall_score
         details["label"] = "compliant" if passed else "non_compliant"
+        details["is_correct"] = passed
 
         return ProbeResult(
             input=str(constraints)[:100],
             output=model_output,
-            status=ResultStatus.SUCCESS if passed else ResultStatus.ERROR,
+            # Evaluation completed successfully; (non-)compliance is recorded in
+            # is_correct. Using ERROR for non-compliant results would exclude them
+            # from the accuracy denominator and make accuracy meaningless.
+            status=ResultStatus.SUCCESS,
             metadata=details,
         )
 
@@ -1267,11 +1271,13 @@ class MultiStepTaskProbe(ScoredProbe[str]):
 
         details["score"] = overall_score
         details["label"] = "completed" if overall_score >= 0.7 else "partial"
+        details["is_correct"] = overall_score >= 0.7
 
         return ProbeResult(
             input=f"{len(steps)} steps",
             output=model_output,
-            status=ResultStatus.SUCCESS if overall_score >= 0.5 else ResultStatus.ERROR,
+            # Evaluation completed; task completion is recorded in is_correct.
+            status=ResultStatus.SUCCESS,
             metadata=details,
         )
 
@@ -1793,10 +1799,12 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         details["compliant"] = compliant
         details["score"] = score
         details["label"] = "compliant" if compliant else "violation"
+        details["is_correct"] = compliant
 
         return ProbeResult(
             input=self.constraint_type,
             output=model_output,
-            status=ResultStatus.SUCCESS if compliant else ResultStatus.ERROR,
+            # Evaluation completed; compliance is recorded in is_correct.
+            status=ResultStatus.SUCCESS,
             metadata=details,
         )

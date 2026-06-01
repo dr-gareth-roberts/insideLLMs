@@ -268,6 +268,21 @@ class TestTokenEstimator:
         for chunk in chunks:
             assert len(chunk) > 0
 
+    def test_split_to_chunks_overlap_exceeding_chunk_terminates(self):
+        """Regression: overlap >= chunk size must not infinite-loop."""
+        estimator = TokenEstimator()
+        # chars_per_chunk < overlap_chars previously moved `start` backward forever.
+        chunks = estimator.split_to_chunks("a" * 200, max_tokens=2, overlap_tokens=10)
+        assert isinstance(chunks, list)
+        # Window always advances, so the result is bounded by the text length.
+        assert len(chunks) <= 200
+
+    def test_split_to_chunks_zero_max_tokens_terminates(self):
+        """Regression: max_tokens=0 (chars_per_chunk==0) must terminate, not hang."""
+        estimator = TokenEstimator()
+        chunks = estimator.split_to_chunks("hello world", max_tokens=0, overlap_tokens=0)
+        assert isinstance(chunks, list)
+
 
 class TestTokenAnalyzer:
     """Tests for TokenAnalyzer."""

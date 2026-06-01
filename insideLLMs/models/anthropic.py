@@ -403,11 +403,13 @@ class AnthropicModel(Model):
         stream : For streaming responses token by token
         """
         try:
+            api_kwargs = dict(kwargs)
+            api_kwargs.setdefault("max_tokens", 1024)
+            api_kwargs.setdefault("temperature", 0.7)
             response = self.client.messages.create(
                 model=self.model_name,
-                max_tokens=kwargs.get("max_tokens", 1024),
-                temperature=kwargs.get("temperature", 0.7),
                 messages=[{"role": "user", "content": prompt}],
+                **api_kwargs,
             )
             if not response.content:
                 return ""
@@ -549,17 +551,33 @@ class AnthropicModel(Model):
         stream : For streaming responses in real-time
         """
         try:
-            # Convert messages to Anthropic format if needed
+            # Convert messages to Anthropic format. Anthropic takes the system
+            # prompt via a dedicated `system=` parameter rather than an in-band
+            # system message, so extract any system messages out of the list.
             anthropic_messages = []
+            system_parts = []
             for msg in messages:
+                if msg.get("role") == "system":
+                    system_parts.append(msg.get("content", ""))
+                    continue
                 role = "assistant" if msg.get("role") == "assistant" else "user"
                 anthropic_messages.append({"role": role, "content": msg.get("content", "")})
 
+            api_kwargs = dict(kwargs)
+            api_kwargs.setdefault("max_tokens", 1024)
+            api_kwargs.setdefault("temperature", 0.7)
+            # An explicit system= kwarg (documented in the docstring) also contributes.
+            explicit_system = api_kwargs.pop("system", None)
+            if explicit_system:
+                system_parts.append(explicit_system)
+            combined_system = "\n\n".join(part for part in system_parts if part)
+            if combined_system:
+                api_kwargs["system"] = combined_system
+
             response = self.client.messages.create(
                 model=self.model_name,
-                max_tokens=kwargs.get("max_tokens", 1024),
-                temperature=kwargs.get("temperature", 0.7),
                 messages=anthropic_messages,
+                **api_kwargs,
             )
             if not response.content:
                 return ""
@@ -696,11 +714,13 @@ class AnthropicModel(Model):
         - Use flush=True when printing to ensure immediate display
         """
         try:
+            api_kwargs = dict(kwargs)
+            api_kwargs.setdefault("max_tokens", 1024)
+            api_kwargs.setdefault("temperature", 0.7)
             with self.client.messages.stream(
                 model=self.model_name,
-                max_tokens=kwargs.get("max_tokens", 1024),
-                temperature=kwargs.get("temperature", 0.7),
                 messages=[{"role": "user", "content": prompt}],
+                **api_kwargs,
             ) as stream:
                 yield from stream.text_stream
         except AnthropicRateLimitError as e:

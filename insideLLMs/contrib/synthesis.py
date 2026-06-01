@@ -1101,9 +1101,10 @@ class SyntheticDataset:
             >>> len(sample)
             2
         """
-        if seed is not None:
-            random.seed(seed)
-        sampled = random.sample(self.items, min(n, len(self.items)))
+        # Use a local RNG so sampling reproducibility does not mutate the
+        # process-global `random` state that every other consumer shares.
+        rng = random.Random(seed)
+        sampled = rng.sample(self.items, min(n, len(self.items)))
         return SyntheticDataset(
             items=sampled,
             metadata={**self.metadata, "sampled": True, "sample_size": n},
@@ -1467,8 +1468,9 @@ class PromptVariator:
         self.model = model
         self.config = config or SynthesisConfig()
 
-        if self.config.seed is not None:
-            random.seed(self.config.seed)
+        # Use a per-instance RNG rather than seeding the process-global `random`
+        # module, which would corrupt randomness for every other consumer.
+        self._rng = random.Random(self.config.seed)
 
     def generate(
         self,

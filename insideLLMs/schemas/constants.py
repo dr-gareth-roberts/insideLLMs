@@ -65,8 +65,8 @@ Using the version in validation workflows:
     ...     {"input": "test", "status": "success"},
     ...     schema_version=DEFAULT_SCHEMA_VERSION
     ... )
-    >>> result.is_valid
-    True
+    >>> result.status
+    'success'
 
 Checking version compatibility programmatically:
 
@@ -170,7 +170,7 @@ Version History
 1.0.1 : 2024-02-01
     Added ``run_completed`` field to RunManifest:
     - New optional boolean field indicating run completion status
-    - Defaults to None for backward compatibility
+    - Defaults to False (an incomplete run is assumed until explicitly marked complete)
     - Enables better run state tracking in long-running probes
 
 Warning

@@ -671,7 +671,7 @@ class OutputValidator:
                 >>> result.status
                 'success'
                 >>> type(result).__name__
-                'ProbeResult'
+                'SchemaProbeResult'
 
             Validation with all optional fields:
 
@@ -779,7 +779,7 @@ class OutputValidator:
                 >>> result.input
                 'question'
                 >>> type(result).__name__
-                'ProbeResult'
+                'SchemaProbeResult'
 
             Validating nested dataclasses:
 
@@ -922,7 +922,16 @@ class OutputValidator:
             if hasattr(model, "model_validate"):
                 return model.model_validate(_to_plain(data))
             return model.parse_obj(_to_plain(data))
-        except Exception as e:  # ValidationError (v1/v2), keep generic
+        except Exception as e:
+            # Only treat pydantic ValidationError (v1/v2) as a validation failure.
+            # Unexpected errors (bugs, lookup failures) must propagate rather than
+            # be silently swallowed and return unvalidated data in warn mode.
+            try:
+                from pydantic import ValidationError as _PydanticValidationError
+            except ImportError:  # pragma: no cover - pydantic required to reach here
+                _PydanticValidationError = ()  # type: ignore[assignment]
+            if not isinstance(e, _PydanticValidationError):
+                raise
             errors = [str(e)]
             if mode == "warn":
                 warnings.warn(

@@ -277,7 +277,7 @@ Run transformer models without API calls:
     >>>
     >>> model = HuggingFaceModel(
     ...     model_name="meta-llama/Llama-2-7b-chat-hf",
-    ...     device="cuda"  # or "cpu", "mps"
+    ...     device=0  # GPU index; use -1 for CPU
     ... )
     >>> response = model.generate("Hello, how are you?")
 
@@ -298,7 +298,9 @@ Notes
 - All models share a common interface defined by the Model base class
 - Lazy loading is used for heavy dependencies to keep import times fast
 - Environment variables are used for API keys by default (can be overridden)
-- Error handling is unified through the insideLLMs.exceptions module
+- Provider errors are mapped into the insideLLMs.exceptions hierarchy by the
+  OpenAI and Anthropic adapters; models.base provides translate_provider_error /
+  handle_provider_errors helpers that other adapters can opt into
 - Models are registered in the model registry for discovery (see insideLLMs.registry)
 
 See Also

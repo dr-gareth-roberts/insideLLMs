@@ -63,9 +63,8 @@ jobs:
         run: make typecheck
 
       - name: Run mypy (strict on security modules)
-        run: |
-          mypy --strict --follow-imports=silent insideLLMs/injection.py
-          mypy --strict --follow-imports=silent insideLLMs/safety.py
+        # Call the Makefile target so CI and `make typecheck-strict` cannot drift.
+        run: make typecheck-strict
 
       - name: Check type coverage
         run: |

@@ -22,10 +22,13 @@ def test_canonical_json_bytes_deterministic() -> None:
 
 
 def test_canonical_json_bytes_canon_version() -> None:
-    """Only canon_v1 is supported."""
-    canonical_json_bytes({"x": 1}, canon_version="canon_v1")
+    """canon_v1 and canon_v2 are supported and share identical canonical bytes;
+    unknown versions are rejected."""
+    v1 = canonical_json_bytes({"x": 1}, canon_version="canon_v1")
+    v2 = canonical_json_bytes({"x": 1}, canon_version="canon_v2")
+    assert v1 == v2  # the version only changes Merkle construction, not the bytes
     with pytest.raises(ValueError, match="Unsupported canon_version"):
-        canonical_json_bytes({"x": 1}, canon_version="canon_v2")
+        canonical_json_bytes({"x": 1}, canon_version="canon_v99")
 
 
 def test_digest_bytes_sha256() -> None:

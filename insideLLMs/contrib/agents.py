@@ -272,6 +272,10 @@ class AgentConfig:
     # Reasoning settings
     verbose: bool = False
     include_scratchpad: bool = True
+    # NOTE: these prefixes only affect scratchpad *rendering* of prior steps.
+    # The model-facing prompt template and the response parser use fixed
+    # "Thought:"/"Action:"/"Action Input:"/"Final Answer:" literals, so changing
+    # these does not change what the model is asked to emit or how it is parsed.
     thought_prefix: str = "Thought: "
     action_prefix: str = "Action: "
     observation_prefix: str = "Observation: "
@@ -2975,6 +2979,17 @@ class AgentExecutor:
 # =============================================================================
 
 
+def _bounded_pow(left: Union[int, float], right: Union[int, float]) -> Union[int, float]:
+    """Exponentiate with operand bounds to prevent CPU/memory exhaustion.
+
+    Unbounded ``**`` (e.g. ``10**10**10``) builds a multi-million-digit integer
+    and hangs the process, so reject oversized operands instead.
+    """
+    if abs(right) > 1000 or abs(left) > 1_000_000:
+        raise ValueError("Exponentiation operands too large")
+    return left**right
+
+
 def _safe_eval_arithmetic(expression: str) -> Union[int, float]:
     """Evaluate arithmetic expressions without using eval/exec."""
     parsed = ast.parse(expression, mode="eval")
@@ -3002,7 +3017,7 @@ def _safe_eval_arithmetic(expression: str) -> Union[int, float]:
             if isinstance(node.op, ast.Mod):
                 return left % right
             if isinstance(node.op, ast.Pow):
-                return left**right
+                return _bounded_pow(left, right)
             raise ValueError("Unsupported arithmetic operator")
         if isinstance(node, ast.UnaryOp):
             operand = _eval(node.operand)
@@ -3032,7 +3047,7 @@ def _apply_binary_operator(
     if isinstance(op, ast.Mod):
         return left % right
     if isinstance(op, ast.Pow):
-        return left**right
+        return _bounded_pow(left, right)
     raise ValueError("Unsupported arithmetic operator")
 
 

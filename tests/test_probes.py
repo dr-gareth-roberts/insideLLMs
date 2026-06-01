@@ -652,7 +652,10 @@ class TestConstraintComplianceProbe:
 
         response = "This is exactly five words."
         result = probe.evaluate_single(response, None)
-        assert result.status == ResultStatus.ERROR  # ERROR is used for constraint violations
+        # Evaluation succeeds; the violation is recorded via is_correct=False so
+        # the result still counts toward the accuracy denominator.
+        assert result.status == ResultStatus.SUCCESS
+        assert result.metadata["is_correct"] is False
         assert result.metadata["word_count"] == 5
 
     def test_character_limit_constraint(self):

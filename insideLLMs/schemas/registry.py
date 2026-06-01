@@ -1629,8 +1629,8 @@ class SchemaRegistry:
         - **Identity migrations**: Same version, with optional custom transform
         - **Custom migrations**: User-provided functions for arbitrary transforms
 
-        Future versions may include built-in migration paths between specific
-        versions (e.g., 1.0.0 -> 1.0.1).
+        A built-in RunManifest 1.0.0 -> 1.0.1 migration path is implemented;
+        further cross-version paths may be added in future versions.
 
         Parameters
         ----------
@@ -1831,13 +1831,14 @@ class SchemaRegistry:
         - Version normalization is applied before comparison. "1.0" and "1.0.0"
           are considered the same version.
 
-        - The current implementation only supports identity migrations (same
-          version after normalization). Cross-version migrations will be added
-          in future releases.
+        - In addition to identity migrations (same version after normalization),
+          a built-in RunManifest 1.0.0 -> 1.0.1 migration is implemented (it sets
+          ``run_completed`` to its default of False and updates ``schema_version``
+          to "1.0.1"). Other cross-version migrations may be added in future
+          releases.
 
-        - Custom migration functions are only called for identity migrations.
-          For cross-version migrations (when implemented), built-in migration
-          logic will be used.
+        - A supplied ``custom_migration`` function runs for identity migrations
+          and also participates in the RunManifest cross-version branch.
 
         - This method does not validate the input or output data against the
           schema. Use ``get_model().model_validate()`` after migration if you

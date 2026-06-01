@@ -67,6 +67,28 @@ from typing import Any, Callable, Optional
 
 from insideLLMs.safety import RiskLevel
 
+# Explicit public surface so the `insideLLMs.injection` facade's `import *` does
+# not re-export stdlib/typing imports (re, Enum, Any, Optional, dataclass).
+__all__ = [
+    # Re-exported from insideLLMs.safety as part of the public injection API.
+    "RiskLevel",
+    "InjectionType",
+    "DefenseStrategy",
+    "InjectionPattern",
+    "DetectionResult",
+    "SanitizationResult",
+    "DefenseReport",
+    "InjectionDetector",
+    "InputSanitizer",
+    "DefensivePromptBuilder",
+    "InjectionTester",
+    "detect_injection",
+    "sanitize_input",
+    "build_defensive_prompt",
+    "assess_injection_resistance",
+    "is_safe_input",
+]
+
 
 class InjectionType(Enum):
     """Classification of prompt injection attack types.

@@ -1091,8 +1091,9 @@ class TestAnthropicModelStreamErrorHandling:
 class TestAnthropicModelChatRoleConversion:
     """Tests for AnthropicModel.chat role conversion."""
 
-    def test_system_role_mapped_to_user(self):
-        """Non-assistant roles should be mapped to user."""
+    def test_system_message_routed_to_system_param(self):
+        """System messages are routed to the dedicated `system=` parameter,
+        not folded into the message list as a fake user turn."""
         with patch("insideLLMs.models.anthropic.anthropic.Anthropic") as MockAnthropic:
             from insideLLMs.models.anthropic import AnthropicModel
 
@@ -1112,9 +1113,11 @@ class TestAnthropicModelChatRoleConversion:
 
             call_kwargs = mock_client.messages.create.call_args[1]
             sent_messages = call_kwargs["messages"]
-            # system role should be mapped to user
+            # The system message is extracted into system=, leaving only the user turn.
+            assert call_kwargs["system"] == "Be helpful"
+            assert len(sent_messages) == 1
             assert sent_messages[0]["role"] == "user"
-            assert sent_messages[1]["role"] == "user"
+            assert sent_messages[0]["content"] == "Hello"
 
 
 @pytest.mark.skipif(not _anthropic_available, reason="anthropic not installed")

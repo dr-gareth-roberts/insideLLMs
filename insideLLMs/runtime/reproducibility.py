@@ -898,7 +898,14 @@ class SeedManager:
         self._libraries_seeded: list[str] = []
 
     def _generate_seed(self) -> int:
-        """Generate a random seed."""
+        """Generate a wall-clock-derived seed.
+
+        .. warning::
+            This default seed is **not reproducible** — it is derived from the
+            current time. For any artifact-producing or reproducible run, pass an
+            explicit ``global_seed`` (or derive one from the run_id/config hash)
+            rather than relying on this fallback.
+        """
         return int(time.time() * 1000) % (2**31)
 
     def set_python_seed(self) -> None:

@@ -61,7 +61,7 @@ Converting an ExperimentResult to Markdown:
 ...     experiment_id="exp-001",
 ...     model_info=model,
 ...     probe_name="arithmetic",
-...     probe_category=ProbeCategory.FACTUAL,
+...     probe_category=ProbeCategory.FACTUALITY,
 ...     results=[probe_result],
 ... )
 >>> md = experiment_to_markdown(experiment)
@@ -304,6 +304,13 @@ def _serialize_for_json(obj: Any) -> Any:
         return obj.value
     if is_dataclass(obj) and not isinstance(obj, type):
         return _serialize_for_json(asdict(obj))
+    if isinstance(obj, (set, frozenset)):
+        # Sets have no stable iteration order; sort for deterministic output.
+        serialized = [_serialize_for_json(item) for item in obj]
+        try:
+            return sorted(serialized)
+        except TypeError:
+            return sorted(serialized, key=str)
     if isinstance(obj, (list, tuple)):
         return [_serialize_for_json(item) for item in obj]
     if isinstance(obj, dict):
@@ -396,7 +403,7 @@ def save_results_json(
     ...     experiment_id="exp-001",
     ...     model_info=model,
     ...     probe_name="arithmetic",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[],
     ... )
     >>> save_results_json(experiment, "/tmp/experiment.json")
@@ -693,7 +700,7 @@ def experiment_to_markdown(
     ...     experiment_id="math-test-001",
     ...     model_info=model,
     ...     probe_name="arithmetic",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[result],
     ... )
     >>> md = experiment_to_markdown(experiment)
@@ -958,7 +965,7 @@ def save_results_markdown(
     ...     experiment_id="exp-001",
     ...     model_info=model,
     ...     probe_name="test",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[result],
     ... )
     >>> save_results_markdown(experiment, "/tmp/experiment.md")
@@ -1229,7 +1236,7 @@ def experiment_to_html(
     ...     experiment_id="math-test-001",
     ...     model_info=model,
     ...     probe_name="arithmetic",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[result],
     ... )
     >>> html = experiment_to_html(experiment)
@@ -1443,7 +1450,7 @@ def save_results_html(experiment: ExperimentResult, path: str) -> None:
     ...     experiment_id="exp-001",
     ...     model_info=model,
     ...     probe_name="test",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[result],
     ... )
     >>> save_results_html(experiment, "/tmp/report.html")
@@ -1526,7 +1533,7 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
     ...     experiment_id="exp-gpt4",
     ...     model_info=model1,
     ...     probe_name="factual",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[],
     ...     score=score1,
     ... )
@@ -1534,7 +1541,7 @@ def comparison_to_markdown(comparison: BenchmarkComparison) -> str:
     ...     experiment_id="exp-claude",
     ...     model_info=model2,
     ...     probe_name="factual",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[],
     ...     score=score2,
     ... )
@@ -1679,7 +1686,7 @@ def save_comparison_markdown(comparison: BenchmarkComparison, path: str) -> None
     ...     experiment_id="exp-001",
     ...     model_info=model,
     ...     probe_name="test",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[],
     ... )
     >>> comparison = BenchmarkComparison(
@@ -1781,7 +1788,7 @@ def generate_statistical_report(
     ...     experiment_id="exp-001",
     ...     model_info=model,
     ...     probe_name="factual",
-    ...     probe_category=ProbeCategory.FACTUAL,
+    ...     probe_category=ProbeCategory.FACTUALITY,
     ...     results=[result],
     ...     score=ProbeScore(accuracy=0.95, error_rate=0.05),
     ... )

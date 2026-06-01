@@ -1182,7 +1182,14 @@ class TokenEstimator:
             if chunk:
                 chunks.append(chunk)
 
-            start = end - overlap_chars if overlap_chars > 0 else end
+            # Clamp the overlap so the window always advances; otherwise an
+            # overlap >= chunk size (or chars_per_chunk == 0) would move `start`
+            # backward or leave it unchanged, looping forever.
+            effective_overlap = min(overlap_chars, max(chars_per_chunk - 1, 0))
+            next_start = end - effective_overlap if effective_overlap > 0 else end
+            if next_start <= start:
+                next_start = start + 1
+            start = next_start
 
         return chunks
 

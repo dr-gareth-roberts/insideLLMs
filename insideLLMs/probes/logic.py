@@ -823,21 +823,44 @@ class LogicProbe(ScoredProbe[str]):
         ref_answer = str(reference).lower().strip()
         extracted = self._extract_final_answer(model_output).lower().strip()
 
-        def _contains_at_word_boundary(needle: str, haystack: str) -> bool:
-            """Return True if needle appears in haystack at word boundaries.
+        negation_tokens = {
+            "not",
+            "no",
+            "never",
+            "cannot",
+            "without",
+            "isn't",
+            "aren't",
+            "wasn't",
+            "doesn't",
+            "don't",
+            "didn't",
+        }
 
-            This avoids substring false positives like "no" matching "know".
+        def _matches_at_word_boundary(needle: str, haystack: str) -> bool:
+            """Return True if needle appears in haystack at word boundaries and
+            the match is not immediately negated.
+
+            Avoids substring false positives like "no" matching "know", and
+            negation false positives like reference "true" matching inside
+            "it is not true" (the opposite answer).
             """
             if not needle or not haystack:
                 return False
             pattern = r"(?<!\w)" + re.escape(needle) + r"(?!\w)"
-            return re.search(pattern, haystack) is not None
+            for match in re.finditer(pattern, haystack):
+                preceding = haystack[: match.start()].split()
+                prev_word = re.sub(r"[^\w']", "", preceding[-1]).lower() if preceding else ""
+                if prev_word in negation_tokens or prev_word.endswith("n't"):
+                    continue  # negated occurrence — not a genuine match
+                return True
+            return False
 
-        # Check for exact match or word-boundary containment.
+        # Check for exact match or (non-negated) word-boundary containment.
         is_correct = (
             ref_answer == extracted
-            or _contains_at_word_boundary(ref_answer, extracted)
-            or _contains_at_word_boundary(extracted, ref_answer)
+            or _matches_at_word_boundary(ref_answer, extracted)
+            or _matches_at_word_boundary(extracted, ref_answer)
         )
 
         return {
@@ -1346,21 +1369,23 @@ class LogicProbe(ScoredProbe[str]):
         """
         base_score = super().score(results)
 
-        # Calculate additional metrics
+        # Calculate additional metrics over the SAME filtered set used for the
+        # numerators, so a SUCCESS result with empty output does not inflate the
+        # denominator and skew reasoning_rate / avg_response_length.
         reasoning_count = 0
         total_length = 0
+        evaluated_count = 0
 
         for result in results:
-            if result.status == ResultStatus.SUCCESS and result.output:
+            if result.status == ResultStatus.SUCCESS and result.output is not None:
+                evaluated_count += 1
                 if self._has_reasoning(result.output):
                     reasoning_count += 1
                 total_length += len(result.output)
 
-        success_count = sum(1 for r in results if r.status == ResultStatus.SUCCESS)
-
         base_score.custom_metrics = {
-            "reasoning_rate": reasoning_count / success_count if success_count > 0 else 0,
-            "avg_response_length": total_length / success_count if success_count > 0 else 0,
+            "reasoning_rate": reasoning_count / evaluated_count if evaluated_count > 0 else 0,
+            "avg_response_length": total_length / evaluated_count if evaluated_count > 0 else 0,
         }
 
         return base_score

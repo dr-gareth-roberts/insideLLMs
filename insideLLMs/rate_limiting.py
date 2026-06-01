@@ -970,6 +970,10 @@ class TokenBucketRateLimiter:
         """
         if tokens < 1:
             raise ValueError("tokens must be >= 1")
+        if tokens > self.capacity:
+            # A request larger than the bucket can never be satisfied; fail loudly
+            # instead of sleeping forever and returning a misleading False.
+            raise ValueError("tokens cannot exceed capacity")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -989,10 +993,11 @@ class TokenBucketRateLimiter:
             wait_time = needed / self.rate
 
         # Wait outside lock
-        self._stats.total_wait_time_ms += wait_time * 1000
         time.sleep(wait_time)
 
         with self._lock:
+            # Mutate stats under the lock to avoid races with concurrent acquirers.
+            self._stats.total_wait_time_ms += wait_time * 1000
             self._refill()
             if self._tokens >= tokens:
                 self._tokens -= tokens
@@ -1050,6 +1055,10 @@ class TokenBucketRateLimiter:
         """
         if tokens < 1:
             raise ValueError("tokens must be >= 1")
+        if tokens > self.capacity:
+            # A request larger than the bucket can never be satisfied; fail loudly
+            # instead of sleeping forever and returning a misleading False.
+            raise ValueError("tokens cannot exceed capacity")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -1067,10 +1076,11 @@ class TokenBucketRateLimiter:
             needed = tokens - self._tokens
             wait_time = needed / self.rate
 
-        self._stats.total_wait_time_ms += wait_time * 1000
         await asyncio.sleep(wait_time)
 
         with self._lock:
+            # Mutate stats under the lock to avoid races with concurrent acquirers.
+            self._stats.total_wait_time_ms += wait_time * 1000
             self._refill()
             if self._tokens >= tokens:
                 self._tokens -= tokens
@@ -1623,7 +1633,7 @@ class RetryHandler:
         return RateLimitRetryResult(
             success=False,
             result=None,
-            attempts=self.config.max_retries + 1,
+            attempts=attempt + 1,
             total_time_ms=(time.time() - start_time) * 1000,
             errors=errors,
             final_error=last_error,
@@ -1696,7 +1706,7 @@ class RetryHandler:
         return RateLimitRetryResult(
             success=False,
             result=None,
-            attempts=self.config.max_retries + 1,
+            attempts=attempt + 1,
             total_time_ms=(time.time() - start_time) * 1000,
             errors=errors,
             final_error=last_error,

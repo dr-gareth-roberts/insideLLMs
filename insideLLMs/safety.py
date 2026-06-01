@@ -702,7 +702,7 @@ class PIIDetector:
 
     # Common PII patterns
     PATTERNS = {
-        "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+        "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
         "phone_us": re.compile(r"\b(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
         "phone_intl": re.compile(r"\b\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b"),
         "ssn": re.compile(r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b"),
@@ -712,7 +712,10 @@ class PIIDetector:
             r"\b(?:0?[1-9]|1[0-2])[/\-.](?:0?[1-9]|[12]\d|3[01])[/\-.](?:19|20)\d{2}\b"
         ),
         "address": re.compile(
-            r"\b\d+\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|"
+            # Bound the street-name run to 1-4 whitespace-free words (non-greedy)
+            # so a single match cannot span across two addresses and swallow the
+            # intervening text (e.g. "456 oak ave then 789 elm road").
+            r"\b\d+\s+(?:[\w.-]+\s+){1,4}?(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|"
             r"boulevard|blvd|way|court|ct)\b",
             re.IGNORECASE,
         ),
