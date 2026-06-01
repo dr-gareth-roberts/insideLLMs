@@ -1787,7 +1787,10 @@ class ModelWrapper:
         AttributeError. Dunder lookups are excluded to avoid interfering with
         copy/pickle protocols and to prevent recursion before ``_model`` is set.
         """
-        if name.startswith("__") and name.endswith("__"):
+        # Guard against recursion when `_model` is not yet set (e.g. instances
+        # created via __new__/unpickle/copy without __init__): accessing
+        # self._model would re-enter __getattr__ for "_model" forever.
+        if name == "_model" or (name.startswith("__") and name.endswith("__")):
             raise AttributeError(name)
         return getattr(self._model, name)
 

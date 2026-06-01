@@ -29,11 +29,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Delimiter escape vulnerability in prompt injection defense
 - Async determinism with concurrent execution
 - Config loading error messages now show line numbers and context
+- Production-quality audit (waves 1–4): resolved ~50 verified bugs, silent
+  failures, determinism violations, robustness issues, and docs inaccuracies.
+  Highlights:
+  - **Determinism**: the sync batch path no longer writes wall-clock `latency_ms`
+    into `records.jsonl`; cache keys, set serialization, and trace fingerprints
+    are now order-stable; `ModelComparator.generate_report` no longer embeds
+    `datetime.now()` by default.
+  - **Bugs**: `LogicProbe` no longer scores negated answers as correct; the
+    instruction probes (`InstructionFollowingProbe`, `MultiStepTaskProbe`,
+    `ConstraintComplianceProbe`) now report meaningful accuracy; `CachedModel`
+    no longer crashes when wrapping `StrategyCache`/`PromptCache`;
+    `TokenEstimator.split_to_chunks` no longer infinite-loops on large overlaps;
+    `RetryHandler` reports accurate attempt counts.
+  - **Robustness**: `ModelWrapper` now transparently delegates `chat`/`stream`/
+    `batch_generate`; `redact_pii` scrubs string dict keys; `ensure_nltk` accepts
+    any iterable.
+
+### Changed (behavior — review before upgrading)
+> Several audit fixes alter runtime/output behavior. Most affect only previously
+> incorrect cases, but the following are behavior changes to be aware of:
+- **BREAKING** `TokenBucketRateLimiter.acquire`/`acquire_async` now raise
+  `ValueError` when `tokens > capacity` (previously slept then returned `False`).
+- **BREAKING (output)** The instruction probes now emit `status="success"` for
+  evaluated-but-non-compliant results (with compliance in `metadata["is_correct"]`)
+  instead of `status="error"`. This changes `records.jsonl` `status` values and
+  lowers `error_rate` for those probes. Records remain schema-valid and runs
+  remain deterministic (verified).
+- **BREAKING (output)** `AnthropicModel.chat` now routes `system` messages to the
+  Anthropic `system=` parameter and forwards previously-dropped kwargs
+  (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
+- `insidellms init` now refuses to overwrite an existing config unless
+  `--overwrite` is passed.
 
 ### Security
 - Added delimiter escape sanitization to prevent injection bypass
 - Enhanced API key exposure prevention in documentation
 - Added pre-commit hook for secret detection
+- `insidellms export --encrypt` now validates the encryption key/format **before**
+  writing any output, so a failed precondition no longer leaves plaintext on disk.
+- The calculator agent tool's arithmetic evaluator now bounds exponentiation,
+  preventing a CPU/memory exhaustion DoS (e.g. `10**10**10`).
+- The PyPI release workflow now runs the full quality gate (lint, typecheck,
+  tests, determinism) before building/publishing.
+- **Known open item**: selective-disclosure Merkle inclusion proofs
+  (`insideLLMs.privacy.disclosure`) still lack a verifier and leaf/node domain
+  separation; hardening this requires a canon-version bump and is tracked as a
+  follow-up.
 
 ## Migration Guide
 
