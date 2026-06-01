@@ -9,6 +9,10 @@
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
+<p align="center">
+  <img src="docs/insidellms-demo.gif" alt="insideLLMs: deterministic run artifacts, diff catches behavioural regressions across model versions, and a CI gate blocks the merge" width="900">
+</p>
+
 ---
 
 LLM evaluation frameworks tell you how a model scores on a benchmark.
