@@ -1604,9 +1604,6 @@ class ResponseQualityAnalyzer:
             dimensions: Dimensions to analyze (default: all).
             weights: Custom weights for each dimension.
         """
-        self.dimensions = dimensions or list(QualityDimension)
-        self.weights = weights or dict.fromkeys(QualityDimension, 1.0)
-
         # Initialize scorers
         self._scorers = {
             QualityDimension.RELEVANCE: RelevanceScorer(),
@@ -1616,6 +1613,15 @@ class ResponseQualityAnalyzer:
             QualityDimension.CLARITY: ClarityScorer(),
             QualityDimension.SPECIFICITY: SpecificityScorer(),
         }
+        self.dimensions = dimensions or list(self._scorers)
+        self.weights = weights or dict.fromkeys(QualityDimension, 1.0)
+        unsupported_dimensions = [d for d in self.dimensions if d not in self._scorers]
+        if unsupported_dimensions:
+            unsupported = ", ".join(d.value for d in unsupported_dimensions)
+            raise ValueError(
+                "Unsupported quality dimensions requested: "
+                f"{unsupported}. Only dimensions with implemented scorers may be analyzed."
+            )
 
     def analyze(self, prompt: str, response: str) -> QualityReport:
         """Analyze response quality.
@@ -1633,14 +1639,13 @@ class ResponseQualityAnalyzer:
 
         # Score each dimension
         for dimension in self.dimensions:
-            if dimension in self._scorers:
-                score = self._scorers[dimension].score(prompt, response)
-                dimension_scores[dimension] = score
+            score = self._scorers[dimension].score(prompt, response)
+            dimension_scores[dimension] = score
 
-                # Track issues
-                if score.score < 0.5:
-                    issues.append(f"Low {dimension.value}: {score.explanation}")
-                    suggestions.append(f"Improve {dimension.value}")
+            # Track issues
+            if score.score < 0.5:
+                issues.append(f"Low {dimension.value}: {score.explanation}")
+                suggestions.append(f"Improve {dimension.value}")
 
         # Calculate overall score (weighted average)
         total_weight = sum(self.weights.get(d, 1.0) for d in dimension_scores)

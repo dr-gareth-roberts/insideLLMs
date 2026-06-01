@@ -29,6 +29,7 @@ from insideLLMs.runtime.runner import (
     _deterministic_base_time,
     _deterministic_run_id_from_config_snapshot,
     _deterministic_run_times,
+    _load_dataset_from_config,
     _resolve_determinism_options,
     _serialize_value,
     derive_run_id_from_config_path,
@@ -271,6 +272,15 @@ def _profile_probe_types(profile: str | None) -> list[str]:
     ]
 
 
+def _count_harness_items(dataset_cfg: dict[str, Any], base_dir: Path) -> int:
+    """Best-effort count of dataset examples for dry-run planning."""
+    try:
+        dataset = _load_dataset_from_config(dataset_cfg, base_dir)
+        return len(dataset)
+    except Exception:
+        return 0
+
+
 def cmd_harness(args: argparse.Namespace) -> int:
     """Execute the harness command."""
     config_path = Path(args.config)
@@ -342,6 +352,33 @@ def cmd_harness(args: argparse.Namespace) -> int:
         if selected_profile or active_red_team:
             run_config_path = _materialize_profile_config(config_path, loaded_config)
             temp_profile_config_path = run_config_path
+
+        if bool(getattr(args, "dry_run", False)):
+            models_cfg = loaded_config.get("models")
+            models_cfg = models_cfg if isinstance(models_cfg, list) else []
+            probes_cfg = loaded_config.get("probes")
+            probes_cfg = probes_cfg if isinstance(probes_cfg, list) else []
+            dataset_cfg = loaded_config.get("dataset")
+            dataset_cfg = dataset_cfg if isinstance(dataset_cfg, dict) else {}
+
+            dataset_examples = _count_harness_items(dataset_cfg, config_path.parent)
+            max_examples = loaded_config.get("max_examples")
+            if isinstance(max_examples, int) and max_examples > 0:
+                dataset_examples = (
+                    min(dataset_examples, max_examples) if dataset_examples else max_examples
+                )
+
+            total_evaluations = dataset_examples * len(models_cfg) * len(probes_cfg)
+            print_success("Dry-run plan generated")
+            print_key_value("Models", len(models_cfg))
+            print_key_value("Probes", len(probes_cfg))
+            print_key_value("Dataset examples", dataset_examples if dataset_examples else "unknown")
+            if isinstance(max_examples, int) and max_examples > 0:
+                print_key_value("max_examples cap", max_examples)
+            print_key_value(
+                "Total evaluations", total_evaluations if total_evaluations else "unknown"
+            )
+            return 0
 
         start_time = time.time()
         resolved_run_id = args.run_id or derive_run_id_from_config_path(

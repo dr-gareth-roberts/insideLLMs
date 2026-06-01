@@ -1,5 +1,7 @@
 """Tests for response quality scoring and analysis utilities."""
 
+import pytest
+
 from insideLLMs.contrib.quality import (
     ClarityScorer,
     CoherenceScorer,
@@ -313,9 +315,24 @@ class TestSpecificityScorer:
 class TestResponseQualityAnalyzer:
     """Tests for ResponseQualityAnalyzer."""
 
+    def test_default_dimensions_use_implemented_scorers_only(self):
+        """Default constructor should restrict analysis to implemented dimensions."""
+        analyzer = ResponseQualityAnalyzer()
+        assert QualityDimension.ACCURACY not in analyzer.dimensions
+        assert QualityDimension.HELPFULNESS not in analyzer.dimensions
+
     def test_analyze_good_response(self):
         """Test analyzing a good response."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
         prompt = "Explain the importance of sleep."
         response = """Sleep is essential for physical and mental health. Here are the key reasons:
 
@@ -332,7 +349,16 @@ In conclusion, prioritizing sleep is one of the most important things you can do
 
     def test_analyze_poor_response(self):
         """Test analyzing a poor response."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
         prompt = "Explain the importance of sleep in detail."
         response = "Sleep is good I think maybe."
 
@@ -351,6 +377,11 @@ In conclusion, prioritizing sleep is one of the most important things you can do
 
         assert len(report.dimension_scores) == 2
 
+    def test_unsupported_dimensions_raise(self):
+        """Unsupported dimensions should fail fast instead of being skipped."""
+        with pytest.raises(ValueError, match="Unsupported quality dimensions requested"):
+            ResponseQualityAnalyzer(dimensions=[QualityDimension.ACCURACY])
+
     def test_custom_weights(self):
         """Test analyzer with custom weights."""
         analyzer = ResponseQualityAnalyzer(
@@ -365,7 +396,16 @@ In conclusion, prioritizing sleep is one of the most important things you can do
 
     def test_quick_check(self):
         """Test quick check method."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
 
         score, passed, issues = analyzer.quick_check(
             "What is AI?", "AI stands for artificial intelligence."
@@ -450,21 +490,48 @@ class TestEdgeCases:
 
     def test_empty_response(self):
         """Test with empty response."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
         report = analyzer.analyze("What is AI?", "")
 
         assert report.overall_score < 0.5
 
     def test_very_short_response(self):
         """Test with very short response."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
         report = analyzer.analyze("Explain the theory of relativity in detail.", "E=mc²")
 
         assert report is not None
 
     def test_very_long_response(self):
         """Test with very long response."""
-        analyzer = ResponseQualityAnalyzer()
+        analyzer = ResponseQualityAnalyzer(
+            dimensions=[
+                QualityDimension.RELEVANCE,
+                QualityDimension.COMPLETENESS,
+                QualityDimension.COHERENCE,
+                QualityDimension.CONCISENESS,
+                QualityDimension.CLARITY,
+                QualityDimension.SPECIFICITY,
+            ]
+        )
         long_response = "This is a test sentence. " * 100
 
         report = analyzer.analyze("Test prompt", long_response)
