@@ -777,7 +777,7 @@ Synchronous runner for executing probes on models.
 
 **Constructor:**
 ```python
-"""ProbeRunner(model: Model, probe: Probe, verbose: bool = False)"""
+"""ProbeRunner(model: Model, probe: Probe)"""
 ```
 
 **Parameters:**
@@ -811,7 +811,7 @@ from insideLLMs.runtime.runner import ProbeRunner
 
 model = OpenAIModel()
 probe = LogicProbe()
-runner = ProbeRunner(model, probe, verbose=True)
+runner = ProbeRunner(model, probe)
 
 problems = [
     "If A > B and B > C, is A > C?",
@@ -838,7 +838,7 @@ Asynchronous runner for concurrent probe execution.
 
 **Constructor:**
 ```python
-"""AsyncProbeRunner(model: Model, probe: Probe, verbose: bool = False)"""
+"""AsyncProbeRunner(model: Model, probe: Probe)"""
 ```
 
 **Parameters:**
@@ -2353,7 +2353,7 @@ probe_registry.register("logic", logic_probe)
 probe = probe_registry.get("logic")
 model = model_registry.get("gpt4")
 
-runner = ProbeRunner(model, probe, verbose=True)
+runner = ProbeRunner(model, probe)
 results = runner.run(dataset[:10])
 
 print(f"Completed {len(results)} tests")

@@ -877,7 +877,7 @@ class ModelComparator:
 
         return winner, ranked
 
-    def generate_report(self) -> str:
+    def generate_report(self, generated_at: Optional[datetime] = None) -> str:
         """Generate a detailed markdown-formatted comparison report.
 
         Creates a comprehensive report including a metrics summary table,
@@ -945,7 +945,10 @@ class ModelComparator:
         """
         lines = ["# Model Comparison Report", ""]
         lines.append(f"**Models compared:** {', '.join(self._profiles.keys())}")
-        lines.append(f"**Generated:** {datetime.now().isoformat()}")
+        # Only stamp a wall-clock time when the caller explicitly opts in, so the
+        # default report is deterministic (byte-stable for identical inputs).
+        if generated_at is not None:
+            lines.append(f"**Generated:** {generated_at.isoformat()}")
         lines.append("")
 
         # Metrics table

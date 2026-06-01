@@ -976,6 +976,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run in interactive mode to configure the experiment",
     )
+    init_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite the output file if it already exists",
+    )
 
     # =========================================================================
     # Info command

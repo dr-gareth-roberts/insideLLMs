@@ -1101,9 +1101,10 @@ class SyntheticDataset:
             >>> len(sample)
             2
         """
-        if seed is not None:
-            random.seed(seed)
-        sampled = random.sample(self.items, min(n, len(self.items)))
+        # Use a local RNG so sampling reproducibility does not mutate the
+        # process-global `random` state that every other consumer shares.
+        rng = random.Random(seed)
+        sampled = rng.sample(self.items, min(n, len(self.items)))
         return SyntheticDataset(
             items=sampled,
             metadata={**self.metadata, "sampled": True, "sample_size": n},

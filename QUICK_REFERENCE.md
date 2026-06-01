@@ -168,7 +168,7 @@ print(f"Error rate: {score.error_rate:.2%}")
 from insideLLMs.runtime.runner import ProbeRunner, run_probe
 
 # Using ProbeRunner
-runner = ProbeRunner(model, probe, verbose=True)
+runner = ProbeRunner(model, probe)
 results = runner.run(["Input 1", "Input 2"])
 
 # Using convenience function

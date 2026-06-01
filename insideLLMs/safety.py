@@ -712,7 +712,10 @@ class PIIDetector:
             r"\b(?:0?[1-9]|1[0-2])[/\-.](?:0?[1-9]|[12]\d|3[01])[/\-.](?:19|20)\d{2}\b"
         ),
         "address": re.compile(
-            r"\b\d+\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|"
+            # Bound the street-name run to 1-4 whitespace-free words (non-greedy)
+            # so a single match cannot span across two addresses and swallow the
+            # intervening text (e.g. "456 oak ave then 789 elm road").
+            r"\b\d+\s+(?:[\w.-]+\s+){1,4}?(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|"
             r"boulevard|blvd|way|court|ct)\b",
             re.IGNORECASE,
         ),

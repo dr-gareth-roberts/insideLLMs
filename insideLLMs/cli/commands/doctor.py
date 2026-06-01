@@ -3,6 +3,7 @@
 import argparse
 import importlib.metadata
 import json
+import logging
 import os
 import platform
 import shutil
@@ -91,7 +92,12 @@ def _entrypoint_plugins(group: str) -> list[dict[str, str]]:
             selected = list(eps.select(group=group))
         else:  # pragma: no cover (older Python)
             selected = list(eps.get(group, []))  # type: ignore[attr-defined]
-    except Exception as _:
+    except Exception as exc:
+        # Surface discovery failures (e.g. malformed package metadata) via the
+        # log rather than silently reporting "no plugins" — doctor is a diagnostic.
+        logging.getLogger(__name__).warning(
+            "Plugin entry-point discovery failed for group %r: %s", group, exc
+        )
         return []
 
     normalized = [

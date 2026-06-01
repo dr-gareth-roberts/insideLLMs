@@ -970,6 +970,10 @@ class TokenBucketRateLimiter:
         """
         if tokens < 1:
             raise ValueError("tokens must be >= 1")
+        if tokens > self.capacity:
+            # A request larger than the bucket can never be satisfied; fail loudly
+            # instead of sleeping forever and returning a misleading False.
+            raise ValueError("tokens cannot exceed capacity")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -1050,6 +1054,10 @@ class TokenBucketRateLimiter:
         """
         if tokens < 1:
             raise ValueError("tokens must be >= 1")
+        if tokens > self.capacity:
+            # A request larger than the bucket can never be satisfied; fail loudly
+            # instead of sleeping forever and returning a misleading False.
+            raise ValueError("tokens cannot exceed capacity")
         with self._lock:
             self._refill()
             self._stats.total_requests += 1
@@ -1623,7 +1631,7 @@ class RetryHandler:
         return RateLimitRetryResult(
             success=False,
             result=None,
-            attempts=self.config.max_retries + 1,
+            attempts=attempt + 1,
             total_time_ms=(time.time() - start_time) * 1000,
             errors=errors,
             final_error=last_error,
@@ -1696,7 +1704,7 @@ class RetryHandler:
         return RateLimitRetryResult(
             success=False,
             result=None,
-            attempts=self.config.max_retries + 1,
+            attempts=attempt + 1,
             total_time_ms=(time.time() - start_time) * 1000,
             errors=errors,
             final_error=last_error,

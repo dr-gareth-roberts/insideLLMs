@@ -930,9 +930,10 @@ def generate_cache_key(
         sorted_params = json.dumps(params, sort_keys=True)
         key_parts.append(f"params:{sorted_params}")
 
-    # Add any additional kwargs (sorted for determinism)
+    # Add any additional kwargs (sorted for determinism). Canonicalize each
+    # value so dict/list-valued kwargs hash by content, not by dict repr order.
     for k, v in sorted(kwargs.items()):
-        key_parts.append(f"{k}:{v}")
+        key_parts.append(f"{k}:{json.dumps(v, sort_keys=True, default=str)}")
 
     key_string = "|".join(key_parts)
 
@@ -2110,7 +2111,12 @@ class CachedModel:
             )
 
             cached = self._cache.get(cache_key)
-            if cached is not None:
+            # Two get() contracts exist: BaseCacheABC returns the value (or None),
+            # while StrategyCache/PromptCache return a CacheLookupResult.
+            if isinstance(cached, CacheLookupResult):
+                if cached.hit:
+                    return self._deserialize_response(cached.value)
+            elif cached is not None:
                 return self._deserialize_response(cached)
 
         response = self._model.generate(

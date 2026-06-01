@@ -1875,8 +1875,18 @@ def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
             continue
         raise TypeError(f"Unsupported trace event type: {type(event).__name__}")
 
-    # Sort events by sequence to ensure deterministic ordering
-    sorted_events = sorted(event_dicts, key=lambda e: e.get("seq", 0))
+    # Sort events by a total order so the fingerprint is order-independent even
+    # when events from multiple recorders share a sequence number (seq alone is
+    # not unique across recorders, which would otherwise leave ties unbroken).
+    sorted_events = sorted(
+        event_dicts,
+        key=lambda e: (
+            e.get("seq", 0),
+            str(e.get("example_id") or ""),
+            str(e.get("kind") or ""),
+            stable_json_dumps(e.get("payload", {})),
+        ),
+    )
 
     # Canonical JSON serialization (stable key ordering + JSON-safe normalization).
     canonical = stable_json_dumps(sorted_events)

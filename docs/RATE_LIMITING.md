@@ -197,6 +197,4 @@ results = await runner.run(prompts, config=RunConfig(concurrency=10))
 
 ## See Also
 
-- [Cost Tracking](COST_TRACKING.md)
-- [Caching](CACHING.md)
-- [Async Execution](ASYNC.md)
+- [Caching](../wiki/guides/Performance-and-Caching.md)

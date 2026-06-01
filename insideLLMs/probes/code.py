@@ -459,8 +459,10 @@ class CodeGenerationProbe(ScoredProbe[str]):
         >>> print("import" in code)
         True
         """
-        # Try to extract from code blocks
-        code_block_pattern = rf"```(?:{self.language})?\n?(.*?)```"
+        # Try to extract from code blocks. Escape the language so fence tags
+        # with regex metacharacters (c++, c#, f#) are matched literally rather
+        # than interpreted (e.g. "c++" becoming "c" followed by one-or-more "+").
+        code_block_pattern = rf"```(?:{re.escape(self.language)})?\n?(.*?)```"
         matches = re.findall(code_block_pattern, response, re.DOTALL | re.IGNORECASE)
 
         if matches:

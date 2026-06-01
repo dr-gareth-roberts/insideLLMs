@@ -47,7 +47,7 @@ os.environ["OPENAI_API_KEY"] = "your_api_key_here"
 ```python
 from insideLLMs import OpenAIModel
 
-# With default model (gpt-4o-mini)
+# With default model (gpt-3.5-turbo)
 model = OpenAIModel()
 
 # With specific model
@@ -60,9 +60,9 @@ print(response)
 
 ### Available Models
 - `gpt-4o` - Latest GPT-4 Omni model
-- `gpt-4o-mini` - Cost-effective GPT-4 Omni (default)
+- `gpt-4o-mini` - Cost-effective GPT-4 Omni
 - `gpt-4-turbo` - GPT-4 Turbo
-- `gpt-3.5-turbo` - Legacy GPT-3.5
+- `gpt-3.5-turbo` - Legacy GPT-3.5 (default)
 
 ### Rate Limits
 - Free tier: Very limited (for testing only)
@@ -114,7 +114,7 @@ export ANTHROPIC_API_KEY=your_api_key_here
 ```python
 from insideLLMs import AnthropicModel
 
-# With default model (claude-3-5-sonnet)
+# With default model (claude-3-opus-20240229)
 model = AnthropicModel()
 
 # With specific model
@@ -126,8 +126,8 @@ print(response)
 ```
 
 ### Available Models
-- `claude-3-5-sonnet-20241022` - Latest Claude 3.5 Sonnet (default)
-- `claude-3-opus-20240229` - Most capable Claude 3 model
+- `claude-3-5-sonnet-20241022` - Latest Claude 3.5 Sonnet
+- `claude-3-opus-20240229` - Most capable Claude 3 model (default)
 - `claude-3-sonnet-20240229` - Balanced performance
 - `claude-3-haiku-20240307` - Fastest, most cost-effective
 

@@ -304,6 +304,13 @@ def _serialize_for_json(obj: Any) -> Any:
         return obj.value
     if is_dataclass(obj) and not isinstance(obj, type):
         return _serialize_for_json(asdict(obj))
+    if isinstance(obj, (set, frozenset)):
+        # Sets have no stable iteration order; sort for deterministic output.
+        serialized = [_serialize_for_json(item) for item in obj]
+        try:
+            return sorted(serialized)
+        except TypeError:
+            return sorted(serialized, key=str)
     if isinstance(obj, (list, tuple)):
         return [_serialize_for_json(item) for item in obj]
     if isinstance(obj, dict):

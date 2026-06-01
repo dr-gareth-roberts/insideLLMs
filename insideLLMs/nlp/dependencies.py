@@ -84,7 +84,7 @@ from pathlib import Path
 
 
 @lru_cache
-def ensure_nltk(resources: Iterable[str] = ()):
+def _ensure_nltk_cached(resources: tuple[str, ...] = ()):
     """
     Import NLTK and ensure required resources are available.
 
@@ -218,6 +218,21 @@ def ensure_nltk(resources: Iterable[str] = ()):
             package = resource.strip("/").split("/")[-1]
             nltk.download(package, download_dir=download_dir, quiet=True)
     return nltk
+
+
+def ensure_nltk(resources: Iterable[str] = ()):
+    """Import NLTK and ensure the given resources are available.
+
+    Thin wrapper over the cached implementation that accepts any iterable of
+    resource paths (list/set/generator), normalizing to a hashable tuple so the
+    underlying ``@lru_cache`` does not raise ``TypeError: unhashable type``.
+    """
+    return _ensure_nltk_cached(tuple(resources))
+
+
+# Preserve the lru_cache management API on the public callable.
+ensure_nltk.cache_clear = _ensure_nltk_cached.cache_clear  # type: ignore[attr-defined]
+ensure_nltk.cache_info = _ensure_nltk_cached.cache_info  # type: ignore[attr-defined]
 
 
 @lru_cache
