@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from insideLLMs.crypto.canonical import DEFAULT_CANON_VERSION
 from insideLLMs.crypto.merkle import merkle_root_from_items, merkle_root_from_jsonl
 
 
@@ -13,7 +14,7 @@ def test_merkle_root_from_items_empty() -> None:
     assert out["root"]
     assert out["count"] == 0
     assert out["algo"] == "sha256"
-    assert out["canon_version"] == "canon_v1"
+    assert out["canon_version"] == DEFAULT_CANON_VERSION
 
 
 def test_merkle_root_from_items_single() -> None:
@@ -36,6 +37,19 @@ def test_merkle_root_from_items_order_matters() -> None:
     r1 = merkle_root_from_items([{"a": 1}, {"a": 2}])["root"]
     r2 = merkle_root_from_items([{"a": 2}, {"a": 1}])["root"]
     assert r1 != r2
+
+
+def test_canon_v2_domain_separation_is_default() -> None:
+    """canon_v2 (the default) domain-separates leaf vs node hashes, producing a
+    different root than the legacy canon_v1 construction."""
+    items = [{"a": 1}, {"a": 2}, {"a": 3}]
+    v1 = merkle_root_from_items(items, canon_version="canon_v1")
+    v2 = merkle_root_from_items(items, canon_version="canon_v2")
+    assert v1["root"] != v2["root"]
+    assert v2["canon_version"] == "canon_v2"
+    # The default construction is the hardened, domain-separated one.
+    assert merkle_root_from_items(items)["canon_version"] == DEFAULT_CANON_VERSION
+    assert merkle_root_from_items(items)["root"] == v2["root"]
 
 
 def test_merkle_root_from_jsonl(tmp_path: Path) -> None:

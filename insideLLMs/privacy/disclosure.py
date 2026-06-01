@@ -17,8 +17,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from insideLLMs.crypto.canonical import DEFAULT_ALGO, canonical_json_bytes, digest_bytes
-from insideLLMs.crypto.merkle import _hash_pair, merkle_root_from_items
+from insideLLMs.crypto.canonical import (
+    DEFAULT_ALGO,
+    DEFAULT_CANON_VERSION,
+    canonical_json_bytes,
+)
+from insideLLMs.crypto.merkle import _hash_pair, _leaf_digest, merkle_root_from_items
 
 
 def merkle_inclusion_proof(leaf_index: int, leaves: list[Any], root: str) -> list[dict[str, Any]]:
@@ -61,7 +65,11 @@ def merkle_inclusion_proof(leaf_index: int, leaves: list[Any], root: str) -> lis
         raise ValueError(f"Root mismatch. Expected {root}, got {computed_root_info['root']}")
 
     algo = DEFAULT_ALGO
-    leaf_hashes = [digest_bytes(canonical_json_bytes(item), algo=algo) for item in leaves]
+    canon_version = DEFAULT_CANON_VERSION
+    leaf_hashes = [
+        _leaf_digest(canonical_json_bytes(item), algo, canon_version=canon_version)
+        for item in leaves
+    ]
 
     proof: list[dict[str, Any]] = []
     current_level = list(leaf_hashes)
@@ -82,7 +90,7 @@ def merkle_inclusion_proof(leaf_index: int, leaves: list[Any], root: str) -> lis
         for i in range(0, len(current_level), 2):
             left = current_level[i]
             right = current_level[i + 1] if i + 1 < len(current_level) else current_level[i]
-            next_level.append(_hash_pair(left, right, algo))
+            next_level.append(_hash_pair(left, right, algo, canon_version))
 
         current_level = next_level
         current_index //= 2
@@ -91,7 +99,12 @@ def merkle_inclusion_proof(leaf_index: int, leaves: list[Any], root: str) -> lis
 
 
 def verify_inclusion_proof(
-    leaf: Any, proof: list[dict[str, Any]], root: str, *, algo: str = DEFAULT_ALGO
+    leaf: Any,
+    proof: list[dict[str, Any]],
+    root: str,
+    *,
+    algo: str = DEFAULT_ALGO,
+    canon_version: str = DEFAULT_CANON_VERSION,
 ) -> bool:
     """Verify a direction-aware inclusion proof against a Merkle root.
 
@@ -106,17 +119,19 @@ def verify_inclusion_proof(
         The expected Merkle root.
     algo : str
         Hash algorithm (defaults to the canonical algorithm).
+    canon_version : str
+        Tree-construction version (must match the version used to build the root).
 
     Returns
     -------
     bool
         True if the proof reconstructs ``root`` from ``leaf``, else False.
     """
-    node = digest_bytes(canonical_json_bytes(leaf), algo=algo)
+    node = _leaf_digest(canonical_json_bytes(leaf), algo, canon_version=canon_version)
     for step in proof:
         sibling = step["sibling"]
         if step["sibling_is_left"]:
-            node = _hash_pair(sibling, node, algo)
+            node = _hash_pair(sibling, node, algo, canon_version)
         else:
-            node = _hash_pair(node, sibling, algo)
+            node = _hash_pair(node, sibling, algo, canon_version)
     return node == root

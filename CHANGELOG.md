@@ -74,10 +74,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tests, determinism) before building/publishing.
 - Selective-disclosure Merkle inclusion proofs (`insideLLMs.privacy.disclosure`)
   are now **direction-aware and self-verifiable** via a new
-  `verify_inclusion_proof()`. The remaining hardening — leaf/node hash
-  domain-separation — changes every Merkle root (including the artifact-spine
-  `records_merkle_root`) and is therefore deferred to a deliberate canon-version
-  bump rather than silently breaking existing artifacts.
+  `verify_inclusion_proof()`.
+- **BREAKING (artifact format)** Merkle trees now **domain-separate leaf vs.
+  internal-node hashes** (second-preimage hardening) under a new default
+  canonicalization version **`canon_v2`**. `canon_v1` remains supported for
+  reading artifacts produced before this change. Because this changes every
+  Merkle root (including the artifact-spine `records_merkle_root`), runs produced
+  with this version are not byte-comparable to pre-`canon_v2` artifacts; the
+  `canon_version` field on each root manifest records which scheme was used.
+  Same-version runs remain byte-for-byte deterministic.
 
 ## Migration Guide
 

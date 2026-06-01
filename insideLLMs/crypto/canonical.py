@@ -20,7 +20,12 @@ try:
 except ImportError:
     _LIBRARY_VERSION = None
 
-DEFAULT_CANON_VERSION = "canon_v1"
+# canon_v2 keeps canon_v1's canonical-byte encoding but switches the Merkle tree
+# construction to domain-separate leaf vs. internal-node hashes (see crypto.merkle),
+# closing the second-preimage ambiguity. canon_v1 remains supported for reading
+# artifacts produced before the change.
+DEFAULT_CANON_VERSION = "canon_v2"
+SUPPORTED_CANON_VERSIONS = ("canon_v1", "canon_v2")
 DEFAULT_ALGO = "sha256"
 SUPPORTED_ALGOS = ("sha256",)
 
@@ -53,7 +58,9 @@ def canonical_json_bytes(
     StrictSerializationError
         When strict=True and obj contains non-serializable values.
     """
-    if canon_version != DEFAULT_CANON_VERSION:
+    # All supported canon versions share the same canonical-byte encoding; the
+    # version only changes how those bytes are combined in the Merkle tree.
+    if canon_version not in SUPPORTED_CANON_VERSIONS:
         raise ValueError(f"Unsupported canon_version: {canon_version!r}")
     return stable_json_dumps(obj, strict=strict).encode("utf-8")
 
