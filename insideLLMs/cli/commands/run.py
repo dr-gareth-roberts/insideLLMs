@@ -196,7 +196,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
             if raw_results:
                 latencies = [
-                    r.get("latency_ms")
+                    r["latency_ms"]
                     for r in raw_results
                     if r.get("status") == "success"
                     and isinstance(r.get("latency_ms"), (int, float))

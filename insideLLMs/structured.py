@@ -170,10 +170,12 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Generic,
     Optional,
     TypeVar,
     Union,
+    cast,
     get_args,
     get_origin,
 )
@@ -1306,12 +1308,13 @@ def parse_to_type(data: Any, output_type: type[T]) -> T:
         return data
 
     elif output_type in (str, int, float, bool):
-        return output_type(data)
+        return cast("Callable[..., T]", output_type)(data)
 
     else:
         # Try direct instantiation
         try:
-            return output_type(**data) if isinstance(data, dict) else output_type(data)
+            ctor = cast("Callable[..., T]", output_type)
+            return ctor(**data) if isinstance(data, dict) else ctor(data)
         except Exception as e:
             raise ParsingError(f"Failed to create {output_type}: {e}", str(data)) from e
 

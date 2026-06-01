@@ -3480,7 +3480,7 @@ def create_interactive_html_report(
 """
 
     # Add model comparison cards
-    model_stats = {}
+    model_stats: dict[str, dict[str, Any]] = {}
     for exp in experiments:
         model = exp.model_info.name
         if model not in model_stats:
@@ -3671,7 +3671,7 @@ def create_interactive_html_report(
     # Footer
     if generated_at is None:
         generated_at = max(
-            (exp.completed_at for exp in experiments if getattr(exp, "completed_at", None)),
+            (exp.completed_at for exp in experiments if exp.completed_at is not None),
             default=None,
         )
     generated_at_str = generated_at.strftime("%Y-%m-%d %H:%M:%S") if generated_at else "unknown"

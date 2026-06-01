@@ -58,7 +58,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
                             for d in data
                         ]
                     elif isinstance(data, dict):
-                        inputs = [data.get("input", data.get("question", str(data)))]
+                        inputs = [str(data.get("input", data.get("question", str(data))))]
                     else:
                         inputs = [str(data)]
                 elif input_path.suffix == ".jsonl":

@@ -59,7 +59,7 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from insideLLMs.nlp.tokenization import word_tokenize_regex
 
@@ -1735,7 +1735,7 @@ def score_response(
     return ResponseQualityScore.calculate(response, prompt, expected_length, required_keywords)
 
 
-def compare_responses(response1: str, response2: str, prompt: str) -> dict[str, dict]:
+def compare_responses(response1: str, response2: str, prompt: str) -> dict[str, Any]:
     """
     Compare two LLM responses to the same prompt.
 
