@@ -316,4 +316,11 @@ def load_hf_dataset(dataset_name: str, split: str = "test", **kwargs) -> list[di
     return [dict(x) for x in ds]
 
 
-__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]
+# Explicit public surface (the previous dynamic comprehension leaked imported
+# stdlib/typing symbols such as csv, json, importlib, Any, Optional into the API).
+__all__ = [
+    "HF_DATASETS_AVAILABLE",
+    "load_csv_dataset",
+    "load_jsonl_dataset",
+    "load_hf_dataset",
+]

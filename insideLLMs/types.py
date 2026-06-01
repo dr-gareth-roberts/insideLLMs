@@ -1333,4 +1333,25 @@ ProbeInput = Union[str, dict[str, Any], list[Any]]
 ProbeOutput = Union[str, dict[str, Any], list[dict[str, Any]]]
 ConfigDict = dict[str, Any]
 
-__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]
+# Explicit public surface (the previous dynamic comprehension leaked imported
+# typing/stdlib symbols such as Any, Optional, datetime, dataclass into the API).
+__all__ = [
+    "ProbeCategory",
+    "ResultStatus",
+    "ModelInfo",
+    "TokenUsage",
+    "ModelResponse",
+    "ProbeResult",
+    "FactualityResult",
+    "BiasResult",
+    "LogicResult",
+    "ProbeAttackResult",
+    "AttackResult",
+    "ProbeScore",
+    "ProbeExperimentResult",
+    "ExperimentResult",
+    "BenchmarkComparison",
+    "ProbeInput",
+    "ProbeOutput",
+    "ConfigDict",
+]

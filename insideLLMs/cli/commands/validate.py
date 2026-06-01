@@ -61,8 +61,11 @@ def cmd_validate(args: argparse.Namespace) -> int:
         try:
             manifest_obj = json.loads(manifest_path.read_text())
         except Exception as e:
-            _handle_error(f"Could not read manifest JSON: {e}")
-            return 0 if args.mode == "warn" else 1
+            # An unreadable/corrupt manifest is a structural failure (not a schema
+            # mismatch); fail hard regardless of mode rather than silently passing
+            # and skipping all record validation.
+            print_error(f"Could not read manifest JSON: {e}")
+            return 1
 
         # Determine schema version: CLI override > manifest.schema_version > manifest.schemas[name]
         schema_version = (

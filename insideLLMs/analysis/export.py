@@ -545,7 +545,10 @@ class ExportMetadata:
     ExportConfig : Configuration that influences metadata generation
     """
 
-    export_time: str = field(default_factory=lambda: datetime.now().isoformat())
+    # Defaults to None (not wall-clock) so a bare ExportMetadata() never embeds a
+    # non-deterministic timestamp; create_export_bundle() sets a deterministic
+    # value (epoch in deterministic mode) explicitly.
+    export_time: Optional[str] = None
     version: str = "1.0"
     schema_version: str = DEFAULT_SCHEMA_VERSION
     source: str = "insideLLMs"

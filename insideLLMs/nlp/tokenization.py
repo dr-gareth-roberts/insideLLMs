@@ -473,7 +473,13 @@ def remove_stopwords(tokens: list[str], language: str = "english") -> list[str]:
     _ensure_nltk_tokenization()
     from nltk.corpus import stopwords  # Local import after ensuring nltk
 
-    stop_words_set = set(stopwords.words(language))
+    try:
+        stop_words_set = set(stopwords.words(language))
+    except LookupError as exc:
+        raise RuntimeError(
+            f"NLTK stopwords corpus is unavailable for language '{language}'. "
+            "Install it with: python -m nltk.downloader stopwords"
+        ) from exc
     return [token for token in tokens if token.lower() not in stop_words_set]
 
 
@@ -627,4 +633,9 @@ def lemmatize_words(tokens: list[str]) -> list[str]:
     from nltk.stem import WordNetLemmatizer  # Local import after ensuring nltk
 
     lemmatizer = WordNetLemmatizer()
-    return [lemmatizer.lemmatize(token) for token in tokens]
+    try:
+        return [lemmatizer.lemmatize(token) for token in tokens]
+    except LookupError as exc:
+        raise RuntimeError(
+            "NLTK WordNet corpus is unavailable. Install it with: python -m nltk.downloader wordnet"
+        ) from exc

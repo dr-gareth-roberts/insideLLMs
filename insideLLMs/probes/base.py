@@ -993,7 +993,7 @@ class ScoredProbe(Probe[T]):
         model_output: T,
         reference: Any,
         input_data: Any,
-    ) -> dict[str, Any]:
+    ) -> "dict[str, Any] | ProbeResult[T]":
         """Evaluate a single model output against a reference answer.
 
         This abstract method must be implemented by subclasses to define how

@@ -1468,8 +1468,9 @@ class PromptVariator:
         self.model = model
         self.config = config or SynthesisConfig()
 
-        if self.config.seed is not None:
-            random.seed(self.config.seed)
+        # Use a per-instance RNG rather than seeding the process-global `random`
+        # module, which would corrupt randomness for every other consumer.
+        self._rng = random.Random(self.config.seed)
 
     def generate(
         self,

@@ -1369,21 +1369,23 @@ class LogicProbe(ScoredProbe[str]):
         """
         base_score = super().score(results)
 
-        # Calculate additional metrics
+        # Calculate additional metrics over the SAME filtered set used for the
+        # numerators, so a SUCCESS result with empty output does not inflate the
+        # denominator and skew reasoning_rate / avg_response_length.
         reasoning_count = 0
         total_length = 0
+        evaluated_count = 0
 
         for result in results:
-            if result.status == ResultStatus.SUCCESS and result.output:
+            if result.status == ResultStatus.SUCCESS and result.output is not None:
+                evaluated_count += 1
                 if self._has_reasoning(result.output):
                     reasoning_count += 1
                 total_length += len(result.output)
 
-        success_count = sum(1 for r in results if r.status == ResultStatus.SUCCESS)
-
         base_score.custom_metrics = {
-            "reasoning_rate": reasoning_count / success_count if success_count > 0 else 0,
-            "avg_response_length": total_length / success_count if success_count > 0 else 0,
+            "reasoning_rate": reasoning_count / evaluated_count if evaluated_count > 0 else 0,
+            "avg_response_length": total_length / evaluated_count if evaluated_count > 0 else 0,
         }
 
         return base_score

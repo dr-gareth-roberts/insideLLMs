@@ -993,10 +993,11 @@ class TokenBucketRateLimiter:
             wait_time = needed / self.rate
 
         # Wait outside lock
-        self._stats.total_wait_time_ms += wait_time * 1000
         time.sleep(wait_time)
 
         with self._lock:
+            # Mutate stats under the lock to avoid races with concurrent acquirers.
+            self._stats.total_wait_time_ms += wait_time * 1000
             self._refill()
             if self._tokens >= tokens:
                 self._tokens -= tokens
@@ -1075,10 +1076,11 @@ class TokenBucketRateLimiter:
             needed = tokens - self._tokens
             wait_time = needed / self.rate
 
-        self._stats.total_wait_time_ms += wait_time * 1000
         await asyncio.sleep(wait_time)
 
         with self._lock:
+            # Mutate stats under the lock to avoid races with concurrent acquirers.
+            self._stats.total_wait_time_ms += wait_time * 1000
             self._refill()
             if self._tokens >= tokens:
                 self._tokens -= tokens

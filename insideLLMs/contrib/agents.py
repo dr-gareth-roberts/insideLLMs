@@ -272,6 +272,10 @@ class AgentConfig:
     # Reasoning settings
     verbose: bool = False
     include_scratchpad: bool = True
+    # NOTE: these prefixes only affect scratchpad *rendering* of prior steps.
+    # The model-facing prompt template and the response parser use fixed
+    # "Thought:"/"Action:"/"Action Input:"/"Final Answer:" literals, so changing
+    # these does not change what the model is asked to emit or how it is parsed.
     thought_prefix: str = "Thought: "
     action_prefix: str = "Action: "
     observation_prefix: str = "Observation: "

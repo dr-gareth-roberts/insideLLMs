@@ -1729,4 +1729,18 @@ def ensure_builtins_registered() -> None:
         _plugins_loaded = True
 
 
-__all__ = [name for name in globals() if not name.startswith("_")]  # pyright: ignore[reportUnsupportedDunderAll]
+# Explicit public surface (the previous dynamic comprehension leaked imported
+# stdlib/typing symbols such as os, warnings, Any, Optional into the API).
+__all__ = [
+    "FactoryType",
+    "Registry",
+    "RegistrationError",
+    "NotFoundError",
+    "PLUGIN_ENTRYPOINT_GROUP",
+    "model_registry",
+    "probe_registry",
+    "dataset_registry",
+    "register_builtins",
+    "ensure_builtins_registered",
+    "load_entrypoint_plugins",
+]

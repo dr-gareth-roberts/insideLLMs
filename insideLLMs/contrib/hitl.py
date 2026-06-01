@@ -3520,6 +3520,7 @@ class ConsensusValidator:
         self.min_reviewers = min_reviewers
         self.consensus_threshold = consensus_threshold
         self._pending: dict[str, dict[str, Any]] = {}
+        self._lock = threading.Lock()
 
     def create_validation_task(
         self,
@@ -3565,52 +3566,55 @@ class ConsensusValidator:
         Returns:
             Consensus result if reached, None otherwise
         """
-        if task_id not in self._pending:
-            return None
+        # Guard the shared _pending state so concurrent reviewers cannot race on
+        # duplicate-vote detection, vote appends, or task removal.
+        with self._lock:
+            if task_id not in self._pending:
+                return None
 
-        task = self._pending[task_id]
+            task = self._pending[task_id]
 
-        # Check for duplicate vote
-        if any(v["reviewer_id"] == reviewer_id for v in task["votes"]):
-            return None
+            # Check for duplicate vote
+            if any(v["reviewer_id"] == reviewer_id for v in task["votes"]):
+                return None
 
-        task["votes"].append(
-            {
-                "is_valid": is_valid,
-                "reviewer_id": reviewer_id,
-                "comment": comment,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
-
-        # Check for consensus
-        if len(task["votes"]) >= self.min_reviewers:
-            valid_votes = sum(1 for v in task["votes"] if v["is_valid"])
-            total_votes = len(task["votes"])
-            consensus_ratio = valid_votes / total_votes
-
-            if consensus_ratio >= self.consensus_threshold:
-                result = {
-                    "task_id": task_id,
-                    "consensus": True,
-                    "is_valid": True,
-                    "ratio": consensus_ratio,
-                    "votes": task["votes"],
+            task["votes"].append(
+                {
+                    "is_valid": is_valid,
+                    "reviewer_id": reviewer_id,
+                    "comment": comment,
+                    "timestamp": datetime.now().isoformat(),
                 }
-                del self._pending[task_id]
-                return result
-            elif (1 - consensus_ratio) >= self.consensus_threshold:
-                result = {
-                    "task_id": task_id,
-                    "consensus": True,
-                    "is_valid": False,
-                    "ratio": consensus_ratio,
-                    "votes": task["votes"],
-                }
-                del self._pending[task_id]
-                return result
+            )
 
-        return None
+            # Check for consensus
+            if len(task["votes"]) >= self.min_reviewers:
+                valid_votes = sum(1 for v in task["votes"] if v["is_valid"])
+                total_votes = len(task["votes"])
+                consensus_ratio = valid_votes / total_votes
+
+                if consensus_ratio >= self.consensus_threshold:
+                    result = {
+                        "task_id": task_id,
+                        "consensus": True,
+                        "is_valid": True,
+                        "ratio": consensus_ratio,
+                        "votes": task["votes"],
+                    }
+                    del self._pending[task_id]
+                    return result
+                elif (1 - consensus_ratio) >= self.consensus_threshold:
+                    result = {
+                        "task_id": task_id,
+                        "consensus": True,
+                        "is_valid": False,
+                        "ratio": consensus_ratio,
+                        "votes": task["votes"],
+                    }
+                    del self._pending[task_id]
+                    return result
+
+            return None
 
     def get_pending_tasks(self) -> list[str]:
         """Get list of pending task IDs."""
