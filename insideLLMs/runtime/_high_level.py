@@ -336,7 +336,13 @@ def run_harness_from_config(
     config_path = Path(config_path)
     config = load_config(config_path)
     base_dir = config_path.parent
-    _runner_settings_from_config(config)
+    runner_settings = _runner_settings_from_config(config)
+    # The harness has no per-call overrides for these knobs, so they are taken
+    # directly from the optional ``runner:`` block of the config and applied to
+    # every model/probe combination below.
+    effective_use_probe_batch = bool(runner_settings.get("use_probe_batch"))
+    effective_batch_workers = runner_settings.get("batch_workers")
+    effective_stop_on_error = runner_settings.get("stop_on_error")
 
     config_snapshot = _build_resolved_config_snapshot(config, base_dir)
     strict_serialization, deterministic_artifacts = _resolve_determinism_options(
@@ -489,6 +495,9 @@ def run_harness_from_config(
                 run_id=experiment_id,
                 strict_serialization=strict_serialization,
                 deterministic_artifacts=deterministic_artifacts,
+                use_probe_batch=effective_use_probe_batch,
+                batch_workers=effective_batch_workers,
+                stop_on_error=effective_stop_on_error,
                 **probe_kwargs,
             )
 
