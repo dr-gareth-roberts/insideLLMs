@@ -53,15 +53,8 @@ model = OpenAIModel()
 # With specific model
 model = OpenAIModel(model_name="gpt-4o")
 
-# With custom temperature
-model = OpenAIModel(
-    model_name="gpt-4o",
-    temperature=0.7,
-    max_tokens=1000
-)
-
-# Generate response
-response = model.generate("What is 2+2?")
+# Generation parameters are passed at call time, not to the constructor
+response = model.generate("What is 2+2?", temperature=0.7, max_tokens=1000)
 print(response)
 ```
 
@@ -125,16 +118,10 @@ from insideLLMs import AnthropicModel
 model = AnthropicModel()
 
 # With specific model
-model = AnthropicModel(model_name="claude-3-opus-20240229")
+model = AnthropicModel(model_name="claude-3-5-sonnet-20241022")
 
-# With custom parameters
-model = AnthropicModel(
-    model_name="claude-3-5-sonnet-20241022",
-    temperature=0.7,
-    max_tokens=2000
-)
-
-response = model.generate("Explain quantum computing")
+# Generation parameters are passed at call time, not to the constructor
+response = model.generate("Explain quantum computing", temperature=0.7, max_tokens=2000)
 print(response)
 ```
 

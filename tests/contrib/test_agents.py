@@ -848,6 +848,13 @@ class TestBuiltInTools:
         assert result.success is True
         assert result.output == "8"
 
+    def test_calculator_rejects_huge_exponentiation(self):
+        """Regression: unbounded exponentiation (DoS) must be rejected, not computed."""
+        calc = create_calculator_tool()
+        result = calc.execute("10**10**10")
+        # Must return promptly with an error rather than hanging on a giant integer.
+        assert result.success is False or "too large" in result.output.lower()
+
     def test_search_tool(self):
         """Test search tool."""
         search = create_search_tool()

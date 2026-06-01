@@ -45,6 +45,23 @@ def cmd_export(args: argparse.Namespace) -> int:
         if not output_path:
             output_path = input_path.stem + f".{args.format}"
 
+        # Validate encryption preconditions BEFORE writing any plaintext to disk,
+        # otherwise a missing key / unsupported format leaves cleartext on disk.
+        encrypt_requested = getattr(args, "encrypt", False)
+        key_b64 = None
+        if encrypt_requested:
+            key_env = getattr(args, "encryption_key_env", "INSIDELLMS_ENCRYPTION_KEY")
+            key_b64 = os.environ.get(key_env)
+            if not key_b64:
+                print_error(
+                    f"Encryption requested but {key_env} is not set. "
+                    "Set the env var with a Fernet key (base64)."
+                )
+                return 1
+            if args.format != "jsonl":
+                print_error("--encrypt is only supported for JSONL format")
+                return 1
+
         if args.format == "csv":
             import csv
 
@@ -100,21 +117,12 @@ def cmd_export(args: argparse.Namespace) -> int:
                 for r in results:
                     f.write(stable_json_dumps(r) + "\n")
 
-        if getattr(args, "encrypt", False):
-            key_env = getattr(args, "encryption_key_env", "INSIDELLMS_ENCRYPTION_KEY")
-            key_b64 = os.environ.get(key_env)
-            if not key_b64:
-                print_error(
-                    f"Encryption requested but {key_env} is not set. "
-                    "Set the env var with a Fernet key (base64)."
-                )
-                return 1
-            if args.format != "jsonl":
-                print_error("--encrypt is only supported for JSONL format")
-                return 1
+        if encrypt_requested:
+            # Preconditions (key present, jsonl format) were validated above.
             try:
                 from insideLLMs.privacy.encryption import encrypt_jsonl
 
+                assert key_b64 is not None
                 encrypt_jsonl(output_path, key=key_b64.encode())
                 print_key_value("Encrypted", "yes")
             except RuntimeError as e:

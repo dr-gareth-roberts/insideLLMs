@@ -140,11 +140,11 @@ OpenAI, Anthropic, Google Gemini, Cohere, HuggingFace, OpenRouter, and local
 models (Ollama, llama.cpp). All through one interface:
 
 ```python
-from insideLLMs import OpenAIModel, AnthropicModel, LocalModel
+from insideLLMs import OpenAIModel, AnthropicModel, OllamaModel
 
 gpt = OpenAIModel(model_name="gpt-4o-mini")
 claude = AnthropicModel(model_name="claude-sonnet-4-6")
-local = LocalModel(model_name="llama3", backend="ollama")
+local = OllamaModel(model_name="llama3.2")   # also: LlamaCppModel, VLLMModel
 ```
 
 ## Python API
@@ -159,10 +159,9 @@ results = run_probe(model, LogicProbe(), ["What is 2+2?"])
 For the full harness:
 
 ```python
-from insideLLMs.runtime.runner import ProbeRunner
+from insideLLMs.runtime.runner import run_experiment_from_config
 
-runner = ProbeRunner(config_path="config.yaml")
-runner.run()
+results = run_experiment_from_config("config.yaml")
 ```
 
 ## CLI reference

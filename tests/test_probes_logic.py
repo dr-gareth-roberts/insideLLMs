@@ -109,6 +109,27 @@ class TestLogicProbeEvaluateSingle:
 
         assert result["is_correct"] is False
 
+    def test_evaluate_negated_answer_is_incorrect(self):
+        """Regression: a negated/opposite answer must not score as correct."""
+        probe = LogicProbe()
+        result = probe.evaluate_single(
+            model_output="Therefore, it is not true.",
+            reference="true",
+            input_data="Is the statement true?",
+        )
+        # The model said NOT true — the opposite of the reference.
+        assert result["is_correct"] is False
+
+    def test_evaluate_affirmative_answer_still_matches(self):
+        """A genuine (non-negated) boundary match must still score correct."""
+        probe = LogicProbe()
+        result = probe.evaluate_single(
+            model_output="Yes, the statement is true.",
+            reference="true",
+            input_data="Is the statement true?",
+        )
+        assert result["is_correct"] is True
+
     def test_evaluate_word_boundary_avoids_substring_false_positive(self):
         """Word-boundary containment should avoid substring false positives."""
         probe = LogicProbe()

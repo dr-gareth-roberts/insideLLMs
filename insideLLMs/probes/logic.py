@@ -823,21 +823,44 @@ class LogicProbe(ScoredProbe[str]):
         ref_answer = str(reference).lower().strip()
         extracted = self._extract_final_answer(model_output).lower().strip()
 
-        def _contains_at_word_boundary(needle: str, haystack: str) -> bool:
-            """Return True if needle appears in haystack at word boundaries.
+        negation_tokens = {
+            "not",
+            "no",
+            "never",
+            "cannot",
+            "without",
+            "isn't",
+            "aren't",
+            "wasn't",
+            "doesn't",
+            "don't",
+            "didn't",
+        }
 
-            This avoids substring false positives like "no" matching "know".
+        def _matches_at_word_boundary(needle: str, haystack: str) -> bool:
+            """Return True if needle appears in haystack at word boundaries and
+            the match is not immediately negated.
+
+            Avoids substring false positives like "no" matching "know", and
+            negation false positives like reference "true" matching inside
+            "it is not true" (the opposite answer).
             """
             if not needle or not haystack:
                 return False
             pattern = r"(?<!\w)" + re.escape(needle) + r"(?!\w)"
-            return re.search(pattern, haystack) is not None
+            for match in re.finditer(pattern, haystack):
+                preceding = haystack[: match.start()].split()
+                prev_word = re.sub(r"[^\w']", "", preceding[-1]).lower() if preceding else ""
+                if prev_word in negation_tokens or prev_word.endswith("n't"):
+                    continue  # negated occurrence — not a genuine match
+                return True
+            return False
 
-        # Check for exact match or word-boundary containment.
+        # Check for exact match or (non-negated) word-boundary containment.
         is_correct = (
             ref_answer == extracted
-            or _contains_at_word_boundary(ref_answer, extracted)
-            or _contains_at_word_boundary(extracted, ref_answer)
+            or _matches_at_word_boundary(ref_answer, extracted)
+            or _matches_at_word_boundary(extracted, ref_answer)
         )
 
         return {

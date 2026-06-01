@@ -174,6 +174,36 @@ def test_cmd_export_redact_pii_applies_redaction(tmp_path):
     assert "user@example.com" not in content or "email" in content
 
 
+def test_cmd_export_encrypt_without_key_writes_no_plaintext(tmp_path, monkeypatch):
+    """Regression: failing the encryption precondition must not leave plaintext on disk."""
+    monkeypatch.delenv("INSIDELLMS_ENCRYPTION_KEY", raising=False)
+    input_file = tmp_path / "in.jsonl"
+    input_file.write_text(json.dumps({"id": 1, "output": "secret-plaintext"}) + "\n")
+    output_file = tmp_path / "out.jsonl"
+
+    rc = cmd_export(
+        _export_args(input=str(input_file), format="jsonl", output=str(output_file), encrypt=True)
+    )
+
+    assert rc == 1
+    assert not output_file.exists()
+
+
+def test_cmd_export_encrypt_wrong_format_writes_no_plaintext(tmp_path, monkeypatch):
+    """Regression: --encrypt with an unsupported format must fail before any write."""
+    monkeypatch.setenv("INSIDELLMS_ENCRYPTION_KEY", "dummy-fernet-key")
+    input_file = tmp_path / "in.jsonl"
+    input_file.write_text(json.dumps({"id": 1, "output": "secret-plaintext"}) + "\n")
+    output_file = tmp_path / "out.csv"
+
+    rc = cmd_export(
+        _export_args(input=str(input_file), format="csv", output=str(output_file), encrypt=True)
+    )
+
+    assert rc == 1
+    assert not output_file.exists()
+
+
 def test_cmd_export_encrypt_without_key_fails(tmp_path, capsys):
     """--encrypt without encryption key env set returns 1."""
     input_file = tmp_path / "results.json"

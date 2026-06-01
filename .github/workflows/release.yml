@@ -10,7 +10,28 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    name: Quality gate (lint + typecheck + test + determinism)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            pyproject.toml
+      - name: Install (core-only, matching CI)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Lint, format, typecheck, test
+        run: make check
+      - name: Determinism golden-path
+        run: make golden-path
+
   tag-action-version:
+    needs: [test]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -30,6 +51,7 @@ jobs:
           git push origin "$MAJOR" --force
 
   build:
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
