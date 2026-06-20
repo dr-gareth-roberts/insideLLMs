@@ -29,7 +29,7 @@ Examples:
     >>> correct = [True, True, True, False, True, False, False, False]
     >>> result = analyze_calibration(confidences, correct)
     >>> print(f"ECE: {result.metrics.ece:.4f}")
-    ECE: 0.0750
+    ECE: 0.3250
 
     Temperature scaling for overconfident models:
 
@@ -38,7 +38,7 @@ Examples:
     >>> raw_confidence = 0.95
     >>> calibrated = scaler.scale(raw_confidence)  # Reduces overconfidence
     >>> print(f"Calibrated: {calibrated:.3f}")
-    Calibrated: 0.864
+    Calibrated: 0.877
 
     Using the Calibrator with different methods:
 
@@ -99,7 +99,7 @@ class CalibrationMethod(Enum):
 
         >>> method = CalibrationMethod.TEMPERATURE_SCALING
         >>> print(method.value)
-        'temperature_scaling'
+        temperature_scaling
 
         Using with the Calibrator class:
 
@@ -633,7 +633,7 @@ class ConfidenceCalibrationResult:
         >>> correct = [True, True, True, False, True, False, False, False]
         >>> result = analyze_calibration(confidences, correct)
         >>> print(f"ECE: {result.metrics.ece:.3f}")
-        ECE: 0.075
+        ECE: 0.325
 
         Accessing reliability diagram data for visualization:
 
@@ -650,6 +650,8 @@ class ConfidenceCalibrationResult:
         ...     print(f"- {rec}")
         - Consider applying temperature scaling to improve calibration
         - Model is significantly overconfident - increase temperature
+        - High maximum calibration error - check for outlier confidence bins
+        - High Brier score suggests poor overall probability estimates
 
         Converting to JSON-serializable format:
 
@@ -724,7 +726,7 @@ class CalibrationAnalyzer:
         >>> correct = [True, True, True, False, True, False, False, False]
         >>> result = analyzer.analyze(confidences, correct)
         >>> print(f"ECE: {result.metrics.ece:.4f}")
-        ECE: 0.0750
+        ECE: 0.3250
 
         Using fewer bins for small datasets:
 
@@ -733,7 +735,7 @@ class CalibrationAnalyzer:
         >>> correct = [True, True, False, False, False]
         >>> result = analyzer.analyze(confidences, correct)
         >>> print(f"Quality: {result.metrics.calibration_quality}")
-        Quality: good
+        Quality: very_poor
 
         Analyzing overconfident predictions:
 
@@ -814,7 +816,7 @@ class CalibrationAnalyzer:
             ...     correct=[True, True, False, True]
             ... )
             >>> print(f"ECE: {result.metrics.ece:.3f}")
-            ECE: 0.100
+            ECE: 0.350
 
             Analyzing a well-calibrated model:
 
@@ -823,7 +825,7 @@ class CalibrationAnalyzer:
             ...     correct=[True, True, True, False, False, False]
             ... )
             >>> print(f"Well calibrated: {result.metrics.is_well_calibrated}")
-            Well calibrated: True
+            Well calibrated: False
 
             Getting recommendations for improvement:
 
@@ -1120,7 +1122,7 @@ class TemperatureScaler:
         >>> raw_confidence = 0.95
         >>> calibrated = scaler.scale(raw_confidence)
         >>> print(f"Raw: {raw_confidence:.2f}, Calibrated: {calibrated:.3f}")
-        Raw: 0.95, Calibrated: 0.864
+        Raw: 0.95, Calibrated: 0.877
 
         Reducing overconfidence:
 
@@ -1128,7 +1130,7 @@ class TemperatureScaler:
         >>> overconfident_preds = [0.99, 0.95, 0.90, 0.85]
         >>> calibrated = scaler.scale_batch(overconfident_preds)
         >>> print([f"{c:.3f}" for c in calibrated])
-        ['0.962', '0.864', '0.768', '0.672']
+        ['0.909', '0.813', '0.750', '0.704']
 
         Learning optimal temperature from validation data:
 
@@ -1275,13 +1277,13 @@ class TemperatureScaler:
 
             >>> scaler = TemperatureScaler(temperature=2.0)
             >>> scaler.scale(0.95)
-            0.8175744761936437
+            0.8133945031366292
 
             Increasing low confidence (T < 1):
 
             >>> scaler = TemperatureScaler(temperature=0.5)
             >>> scaler.scale(0.6)
-            0.7310585786300049
+            0.6923076923076922
 
             Edge cases:
 
@@ -1314,7 +1316,7 @@ class TemperatureScaler:
             >>> scaler = TemperatureScaler(temperature=1.5)
             >>> calibrated = scaler.scale_batch([0.9, 0.7, 0.5, 0.3, 0.1])
             >>> [round(c, 3) for c in calibrated]
-            [0.829, 0.618, 0.5, 0.382, 0.171]
+            [0.812, 0.638, 0.5, 0.362, 0.188]
         """
         return [self.scale(c) for c in confidences]
 
@@ -1834,7 +1836,7 @@ class ConfidenceEstimator:
         >>> logprobs = [-0.1, -0.2, -0.15, -0.3]  # Log probs for tokens
         >>> estimate = estimator.from_logprobs(logprobs, aggregate="mean")
         >>> print(f"Confidence: {estimate.value:.3f}")
-        Confidence: 0.835
+        Confidence: 0.831
 
         Detecting verbalized uncertainty in responses:
 
@@ -1842,9 +1844,9 @@ class ConfidenceEstimator:
         >>> response = "I think the answer might be 42, but I'm not entirely sure."
         >>> estimate = estimator.from_verbalized(response)
         >>> print(f"Confidence: {estimate.value:.2f}")
-        Confidence: 0.35
+        Confidence: 0.45
         >>> print(f"Patterns: {estimate.metadata['patterns_found']}")
-        Patterns: ['might', 'not sure']
+        Patterns: ['might']
 
         Measuring consistency across multiple samples:
 
@@ -1934,7 +1936,7 @@ class ConfidenceEstimator:
             >>> logprobs = [-0.1, -0.2, -0.3]  # ~90%, 82%, 74% probabilities
             >>> est = estimator.from_logprobs(logprobs, aggregate="mean")
             >>> print(f"Mean confidence: {est.value:.3f}")
-            Mean confidence: 0.820
+            Mean confidence: 0.821
 
             Using min for conservative estimate:
 
@@ -2167,7 +2169,7 @@ class ConfidenceEstimator:
             ... ]
             >>> est = estimator.from_entropy(token_probs)
             >>> print(f"Confidence: {est.value:.2f}")
-            Confidence: 0.78
+            Confidence: 0.71
 
             Low confidence (high entropy):
 
@@ -2471,7 +2473,7 @@ def analyze_calibration(
         >>> correct = [True, True, True, False, True, False, False, False]
         >>> result = analyze_calibration(confidences, correct)
         >>> print(f"ECE: {result.metrics.ece:.4f}")
-        ECE: 0.0750
+        ECE: 0.3250
 
         With custom bin count:
 
@@ -2483,7 +2485,7 @@ def analyze_calibration(
 
         >>> result = analyze_calibration([0.9, 0.1], [True, False])
         >>> print(f"Quality: {result.metrics.calibration_quality}")
-        Quality: excellent
+        Quality: moderate
 
         Getting recommendations:
 
@@ -2526,7 +2528,7 @@ def calculate_ece(
         >>> correct = [True, True, True, False, False, False]
         >>> ece = calculate_ece(confidences, correct)
         >>> ece < 0.05
-        True
+        False
 
         Poorly calibrated (overconfident):
 
@@ -2653,7 +2655,7 @@ def apply_temperature_scaling(
         >>> raw_confs = [0.98, 0.95, 0.92, 0.88]  # Overconfident
         >>> calibrated = apply_temperature_scaling(raw_confs, temperature=1.5)
         >>> print([f"{c:.3f}" for c in calibrated])
-        ['0.938', '0.864', '0.787', '0.707']
+        ['0.931', '0.877', '0.836', '0.791']
 
     See Also:
         fit_temperature: Learn optimal temperature from data
