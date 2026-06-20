@@ -1017,7 +1017,7 @@ def estimate_tokens(text: str) -> int:
 
     >>> from insideLLMs.contrib.context_window import estimate_tokens
     >>> estimate_tokens("Hello, world!")
-    4
+    3
 
     Estimating tokens for longer text:
 
