@@ -2122,7 +2122,6 @@ class LocalDistributedExecutor:
         True
         """
         start_time = time.time()
-        self.work_queue.size + len(self._workers)  # Rough estimate
 
         while self.work_queue.size > 0 or any(
             w.info.status == WorkerStatus.BUSY for w in self._workers
