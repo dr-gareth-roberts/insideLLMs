@@ -1714,11 +1714,14 @@ class FewShotSelector:
 
                 # Hoist values derived from ``selected`` out of the per-candidate
                 # loop: they only change once per outer iteration, not per
-                # candidate. Rebuilding them for every candidate made selection
-                # O(candidates * selected) instead of O(candidates). The
-                # tokenized word sets are also precomputed here so
-                # ``_calculate_diversity`` does not re-tokenize every selected
-                # input on each of the (potentially thousands of) calls.
+                # candidate. Previously each candidate rebuilt the membership
+                # list and re-derived the selected inputs (O(selected) of
+                # allocation per candidate), and ``_calculate_diversity``
+                # re-tokenized every selected input on each of the (potentially
+                # thousands of) calls. Precomputing the inputs and their
+                # tokenized word sets here removes that redundant per-candidate
+                # allocation and tokenization. The diversity scoring itself is
+                # still O(candidates * selected); this cuts the constant factor.
                 selected_examples = [s["example"] for s in selected]
                 selected_inputs = [s["example"].get(input_key, "") for s in selected]
                 selected_word_sets = [set(text.lower().split()) for text in selected_inputs]
@@ -1837,7 +1840,7 @@ class FewShotSelector:
         self,
         candidate: str,
         selected: list[str],
-        selected_word_sets: Optional[list[set]] = None,
+        selected_word_sets: Optional[list[set[str]]] = None,
     ) -> float:
         """Calculate how different a candidate is from selected examples.
 
@@ -1857,7 +1860,9 @@ class FewShotSelector:
             being recomputed on every call. Callers that invoke this method
             repeatedly against the same ``selected`` collection (as the greedy
             selection loop does, once per candidate) should pass this to avoid
-            redundant O(selected) tokenization per call.
+            redundant O(selected) tokenization per call. Must align
+            element-for-element with ``selected``; a cache whose length does not
+            match ``selected`` is ignored and recomputed.
 
         Returns
         -------
@@ -1881,7 +1886,10 @@ class FewShotSelector:
 
         candidate_words = set(candidate.lower().split())
 
-        if selected_word_sets is None:
+        # Recompute when no cache is supplied, or when a supplied cache does not
+        # correspond element-for-element to ``selected`` (guards against a
+        # mismatched/stale cache silently producing wrong diversity scores).
+        if selected_word_sets is None or len(selected_word_sets) != len(selected):
             selected_word_sets = [set(sel.lower().split()) for sel in selected]
 
         similarities = []
