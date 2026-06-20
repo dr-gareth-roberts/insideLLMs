@@ -1729,7 +1729,6 @@ class HistogramBinner:
         if not confidences or len(confidences) != len(labels):
             raise ValueError("Invalid input")
 
-        1.0 / self.n_bins
         bin_sums = [0.0] * self.n_bins
         bin_counts = [0] * self.n_bins
 
