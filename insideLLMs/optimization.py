@@ -1720,12 +1720,8 @@ class FewShotSelector:
                 # ``_calculate_diversity`` does not re-tokenize every selected
                 # input on each of the (potentially thousands of) calls.
                 selected_examples = [s["example"] for s in selected]
-                selected_inputs = [
-                    s["example"].get(input_key, "") for s in selected
-                ]
-                selected_word_sets = [
-                    set(text.lower().split()) for text in selected_inputs
-                ]
+                selected_inputs = [s["example"].get(input_key, "") for s in selected]
+                selected_word_sets = [set(text.lower().split()) for text in selected_inputs]
 
                 for candidate in scored_examples:
                     if candidate["example"] in selected_examples:
