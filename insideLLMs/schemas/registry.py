@@ -1660,14 +1660,14 @@ class SchemaRegistry:
 
         custom_migration : Callable[[Any], Any], optional
             A callable that transforms the data. If provided, it's applied
-            after version normalization (when from_version and to_version
-            normalize to the same value).
+            after version normalization.
 
             The callable:
             - Receives the data as its single argument
             - Should return the transformed data
             - Can modify the input in-place or return a new object
-            - Is only called for identity migrations (same normalized version)
+            - Is applied for identity migrations (same normalized version)
+              and for the RunManifest 1.0.0 -> 1.0.1 cross-version migration
 
         Returns
         -------

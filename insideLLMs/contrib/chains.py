@@ -2537,6 +2537,7 @@ class Chain:
 
             start_time = time.time()
             step_status = ChainStatus.RUNNING
+            step_input = current_data
 
             try:
                 # Validate input
@@ -2588,7 +2589,7 @@ class Chain:
                 step_name=step.name,
                 step_type=step.step_type,
                 status=step_status,
-                input_data=current_data if step_status == ChainStatus.FAILED else input_data,
+                input_data=step_input,
                 output_data=current_data if step_status == ChainStatus.COMPLETED else None,
                 start_time=start_time,
                 end_time=end_time,

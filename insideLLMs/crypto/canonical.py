@@ -43,7 +43,7 @@ def canonical_json_bytes(
     ----------
     obj : Any
         JSON-serializable object to canonicalize.
-    canon_version : str, default "canon_v1"
+    canon_version : str, default "canon_v2"
         Version tag for the canonicalization scheme.
     strict : bool, default False
         If True, raise on non-JSON-serializable values.
@@ -112,7 +112,7 @@ def digest_obj(
         Object to canonicalize and hash.
     algo : str, default "sha256"
         Hash algorithm.
-    canon_version : str, default "canon_v1"
+    canon_version : str, default "canon_v2"
         Canonicalization version.
     purpose : str, default "record"
         Purpose tag (e.g. record, receipt, dataset_example, attestation).
