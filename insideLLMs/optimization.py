@@ -1700,7 +1700,7 @@ class FewShotSelector:
         scored_examples.sort(key=lambda x: float(x["relevance"]), reverse=True)
 
         # Select with diversity
-        selected = []
+        selected: list[Any] = []
         selected_scores = []
 
         for i in range(min(n, len(scored_examples))):

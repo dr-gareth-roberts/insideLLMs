@@ -1178,7 +1178,7 @@ def plot_latency_distribution(
     """
     check_visualization_deps()
 
-    latencies_by_model = {}
+    latencies_by_model: dict[str, Any] = {}
 
     for exp in experiments:
         name = exp.model_info.name
@@ -1301,7 +1301,7 @@ def plot_metric_comparison(
         metrics = ["accuracy", "precision", "recall", "f1_score"]
     check_visualization_deps()
 
-    model_data = {}
+    model_data: dict[str, Any] = {}
 
     for exp in experiments:
         name = exp.model_info.name
@@ -1676,7 +1676,7 @@ def plot_factuality_results(
             _warnings.filterwarnings("ignore", category=PendingDeprecationWarning, module="seaborn")
             sns.boxplot(x="Category", y="Response Length", data=df)
     else:
-        by_cat = {}
+        by_cat: dict[str, Any] = {}
         for row in response_data:
             cat = row["Category"]
             if cat not in by_cat:
@@ -2105,7 +2105,7 @@ def interactive_metric_radar(
 
     fig = go.Figure()
 
-    model_metrics = {}
+    model_metrics: dict[str, Any] = {}
     for exp in experiments:
         name = exp.model_info.name
         if name not in model_metrics:
@@ -2241,7 +2241,7 @@ def interactive_heatmap(
     # Build matrix data
     row_values = set()
     col_values = set()
-    matrix_data = {}
+    matrix_data: dict[tuple[str, str], Any] = {}
 
     for exp in experiments:
         row_val = exp.model_info.name if row_key == "model" else exp.probe_name
@@ -2474,9 +2474,9 @@ def create_interactive_dashboard(
     )
 
     # Collect data
-    model_accuracies = {}
-    model_latencies = {}
-    model_metrics = {}
+    model_accuracies: dict[str, Any] = {}
+    model_latencies: dict[str, Any] = {}
+    model_metrics: dict[str, Any] = {}
     success_rates = []
 
     for i, exp in enumerate(experiments):
@@ -4081,7 +4081,7 @@ class ExperimentExplorer:
         Returns:
             pandas DataFrame with comparison data.
         """
-        data = {}
+        data: dict[str, Any] = {}
         for exp in self.experiments:
             model = exp.model_info.name
             probe = exp.probe_name

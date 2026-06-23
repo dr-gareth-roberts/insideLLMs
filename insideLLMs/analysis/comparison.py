@@ -729,7 +729,7 @@ class ModelComparator:
 
         # Find common metrics
         if metrics is None:
-            all_metrics = set()
+            all_metrics: set[str] = set()
             for profile in self._profiles.values():
                 all_metrics.update(profile.metrics.keys())
             metrics = list(all_metrics)
@@ -953,7 +953,7 @@ class ModelComparator:
         lines.append("")
 
         # Get all metrics
-        all_metrics = set()
+        all_metrics: set[str] = set()
         for profile in self._profiles.values():
             all_metrics.update(profile.metrics.keys())
 
@@ -2292,7 +2292,7 @@ def create_comparison_table(
 
     # Get all metrics
     if metrics is None:
-        all_metrics = set()
+        all_metrics: set[str] = set()
         for profile in profiles:
             all_metrics.update(profile.metrics.keys())
         metrics = sorted(all_metrics)

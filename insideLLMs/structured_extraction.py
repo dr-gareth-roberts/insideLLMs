@@ -885,7 +885,7 @@ class JSONExtractor:
     def extract(self, text: str) -> ExtractionResult:
         """Extract JSON from text."""
         errors = []
-        warnings = []
+        warnings: list[str] = []
 
         # Try to find JSON in various formats
         json_candidates = self._find_json_candidates(text)
@@ -1006,7 +1006,7 @@ class KeyValueExtractor:
     def extract(self, text: str, keys: Optional[list[str]] = None) -> ExtractionResult:
         """Extract key-value pairs from text."""
         extracted = {}
-        warnings = []
+        warnings: list[str] = []
 
         lines = text.split("\n")
 

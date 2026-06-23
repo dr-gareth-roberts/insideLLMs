@@ -1590,7 +1590,7 @@ class RetryHandler:
             ...     raise Exception(result.final_error)
         """
         start_time = time.time()
-        errors = []
+        errors: list[Exception] = []
         last_error = None
 
         for attempt in range(self.config.max_retries + 1):
@@ -1660,7 +1660,7 @@ class RetryHandler:
             ...     return result.result if result.success else None
         """
         start_time = time.time()
-        errors = []
+        errors: list[Exception] = []
         last_error = None
 
         for attempt in range(self.config.max_retries + 1):

@@ -439,7 +439,7 @@ def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int
     if not tokens:
         return []
 
-    graph = defaultdict(lambda: defaultdict(int))
+    graph: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     # Populates weighted co-occurrence graph from token window
     for i in range(len(tokens) - window_size + 1):
         window = tokens[i : i + window_size]

@@ -493,7 +493,7 @@ class GeminiModel(Model):
         model = self._get_client()
 
         # Convert to Gemini's chat format
-        history = []
+        history: list[dict[str, Any]] = []
         current_message = None
 
         for msg in messages:

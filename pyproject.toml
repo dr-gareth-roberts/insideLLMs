@@ -180,7 +180,6 @@ disable_error_code = [
     "assignment",
     "operator",
     "index",
-    "var-annotated",
     "misc",
     "union-attr",
     "override",

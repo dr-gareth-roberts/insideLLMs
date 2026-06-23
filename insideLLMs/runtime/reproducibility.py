@@ -1262,7 +1262,7 @@ class ConfigVersionManager:
         path: str = "",
     ) -> dict[str, Any]:
         """Recursively diff two configs."""
-        differences = {
+        differences: dict[str, dict[str, Any]] = {
             "added": {},
             "removed": {},
             "changed": {},
