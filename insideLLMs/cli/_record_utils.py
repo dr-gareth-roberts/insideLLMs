@@ -23,6 +23,11 @@ from insideLLMs.types import (
 )
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    """Return ``value`` when it is a dict, else an empty dict (type-narrowing helper)."""
+    return value if isinstance(value, dict) else {}
+
+
 def _json_default(obj: Any) -> Any:
     """JSON default handler for CLI writes."""
     return _serialize_value(obj)
@@ -97,10 +102,10 @@ def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
 
 def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
     """Extract a unique key tuple from a result record."""
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
-    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
-    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+    custom = _as_dict(record.get("custom"))
+    harness = _as_dict(custom.get("harness"))
+    model_spec = _as_dict(record.get("model"))
+    probe_spec = _as_dict(record.get("probe"))
 
     model_id = (
         harness.get("model_id")
@@ -123,10 +128,10 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
 
 def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
     """Extract human-readable labels from a result record."""
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
-    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
-    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+    custom = _as_dict(record.get("custom"))
+    harness = _as_dict(custom.get("harness"))
+    model_spec = _as_dict(record.get("model"))
+    probe_spec = _as_dict(record.get("probe"))
 
     model_name = harness.get("model_name") or model_spec.get("model_id") or "model"
     model_id = harness.get("model_id") or model_spec.get("model_id")
@@ -197,7 +202,7 @@ def _output_fingerprint(
 ) -> Optional[str]:
     output = record.get("output")
     if ignore_keys:
-        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+        custom = _as_dict(record.get("custom"))
         override = custom.get("output_fingerprint")
         if output is None and isinstance(override, str):
             return override
@@ -206,7 +211,7 @@ def _output_fingerprint(
         sanitized = _strip_volatile_keys(output, ignore_keys)
         return _fingerprint_value(sanitized)
 
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     override = custom.get("output_fingerprint")
     if isinstance(override, str):
         return override
@@ -217,13 +222,13 @@ def _output_fingerprint(
 
 def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
     """Extract trace fingerprint from ResultRecord.custom."""
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     fp = custom.get("trace_fingerprint")
     if isinstance(fp, str):
         return fp
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
-    fingerprint = trace.get("fingerprint") if isinstance(trace.get("fingerprint"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
+    fingerprint = _as_dict(trace.get("fingerprint"))
     value = fingerprint.get("value")
     if not isinstance(value, str) or not value:
         return None
@@ -235,12 +240,12 @@ def _trace_fingerprint(record: dict[str, Any]) -> Optional[str]:
 
 def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract trace violations from ResultRecord.custom."""
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     violations = custom.get("trace_violations")
     if isinstance(violations, list):
         return violations
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
     violations = trace.get("violations")
     return violations if isinstance(violations, list) else []
 
@@ -251,7 +256,7 @@ def _trace_violation_count(record: dict[str, Any]) -> int:
 
 
 def _primary_score(record: dict[str, Any]) -> tuple[Optional[str], Optional[float]]:
-    scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
+    scores = _as_dict(record.get("scores"))
     metric = record.get("primary_metric")
     if metric and metric in scores and isinstance(scores[metric], (int, float)):
         return str(metric), float(scores[metric])
@@ -311,7 +316,7 @@ def _metric_mismatch_context(record_a: dict[str, Any], record_b: dict[str, Any])
         },
     }
 
-    custom = record_a.get("custom") if isinstance(record_a.get("custom"), dict) else {}
+    custom = _as_dict(record_a.get("custom"))
     replicate_key = custom.get("replicate_key")
     if replicate_key:
         context["replicate_key"] = replicate_key
