@@ -8,7 +8,7 @@ and library users can compose on top of the same core behavior.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, Mapping, cast
 
 from insideLLMs._serialization import (
     fingerprint_value as _fingerprint_value,
@@ -71,6 +71,16 @@ class DiffGatePolicy:
     fail_on_trajectory_drift: bool = False
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    """Return ``value`` when it is a dict, else an empty dict.
+
+    Type-narrowing helper: assigning ``_as_dict(record.get("k"))`` lets the
+    checker see a concrete ``dict[str, Any]`` (and is byte-for-byte equivalent to
+    the prior ``x if isinstance(x, dict) else {}`` ternary at runtime).
+    """
+    return value if isinstance(value, dict) else {}
+
+
 def _trim_text(text: str, limit: int = 200) -> str:
     if len(text) <= limit:
         return text
@@ -78,10 +88,10 @@ def _trim_text(text: str, limit: int = 200) -> str:
 
 
 def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
-    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
-    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+    custom = _as_dict(record.get("custom"))
+    harness = _as_dict(custom.get("harness"))
+    model_spec = _as_dict(record.get("model"))
+    probe_spec = _as_dict(record.get("probe"))
 
     model_id = (
         harness.get("model_id")
@@ -103,10 +113,10 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
 
 
 def _record_label(record: dict[str, Any]) -> tuple[str, str, str]:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
-    harness = custom.get("harness") if isinstance(custom.get("harness"), dict) else {}
-    model_spec = record.get("model") if isinstance(record.get("model"), dict) else {}
-    probe_spec = record.get("probe") if isinstance(record.get("probe"), dict) else {}
+    custom = _as_dict(record.get("custom"))
+    harness = _as_dict(custom.get("harness"))
+    model_spec = _as_dict(record.get("model"))
+    probe_spec = _as_dict(record.get("probe"))
 
     model_name = harness.get("model_name") or model_spec.get("model_id") or "model"
     model_id = harness.get("model_id") or model_spec.get("model_id")
@@ -158,7 +168,7 @@ def _strip_volatile_keys(value: Any, ignore_keys: set[str]) -> Any:
 def _output_fingerprint(record: dict[str, Any], ignore_keys: set[str] | None = None) -> str | None:
     output = record.get("output")
     if ignore_keys:
-        custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+        custom = _as_dict(record.get("custom"))
         override = custom.get("output_fingerprint")
         if output is None and isinstance(override, str):
             return override
@@ -167,7 +177,7 @@ def _output_fingerprint(record: dict[str, Any], ignore_keys: set[str] | None = N
         sanitized = _strip_volatile_keys(output, ignore_keys)
         return _fingerprint_value(sanitized)
 
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     override = custom.get("output_fingerprint")
     if isinstance(override, str):
         return override
@@ -190,13 +200,13 @@ def _output_summary(record: dict[str, Any], ignore_keys: set[str] | None) -> dic
 
 
 def _trace_fingerprint(record: dict[str, Any]) -> str | None:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     fp = custom.get("trace_fingerprint")
     if isinstance(fp, str):
         return fp
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
-    fingerprint = trace.get("fingerprint") if isinstance(trace.get("fingerprint"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
+    fingerprint = _as_dict(trace.get("fingerprint"))
     value = fingerprint.get("value")
     if not isinstance(value, str) or not value:
         return None
@@ -206,12 +216,12 @@ def _trace_fingerprint(record: dict[str, Any]) -> str | None:
 
 
 def _trace_violations(record: dict[str, Any]) -> list[dict[str, Any]]:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     violations = custom.get("trace_violations")
     if isinstance(violations, list):
         return violations
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
     violations = trace.get("violations")
     return violations if isinstance(violations, list) else []
 
@@ -221,11 +231,11 @@ def _trace_violation_count(record: dict[str, Any]) -> int:
 
 
 def _trace_events(record: dict[str, Any]) -> list[dict[str, Any]]:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     if isinstance(custom.get("trace_events"), list):
         return [event for event in custom["trace_events"] if isinstance(event, dict)]
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
     if isinstance(trace.get("events"), list):
         return [event for event in trace["events"] if isinstance(event, dict)]
 
@@ -239,13 +249,13 @@ def _tool_calls(record: dict[str, Any]) -> list[dict[str, Any]]:
     output = record.get("output")
     if isinstance(output, dict) and isinstance(output.get("tool_calls"), list):
         return [call for call in output["tool_calls"] if isinstance(call, dict)]
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     if isinstance(custom.get("tool_calls"), list):
         return [call for call in custom["tool_calls"] if isinstance(call, dict)]
 
-    trace = custom.get("trace") if isinstance(custom.get("trace"), dict) else {}
-    derived = trace.get("derived") if isinstance(trace.get("derived"), dict) else {}
-    tool_calls = derived.get("tool_calls") if isinstance(derived.get("tool_calls"), dict) else {}
+    trace = _as_dict(custom.get("trace"))
+    derived = _as_dict(trace.get("derived"))
+    tool_calls = _as_dict(derived.get("tool_calls"))
     sequence = tool_calls.get("sequence")
     if isinstance(sequence, list):
         return [
@@ -262,7 +272,7 @@ def _trajectory_steps(record: dict[str, Any]) -> list[dict[str, Any]]:
         steps: list[dict[str, Any]] = []
         for index, event in enumerate(events):
             kind = str(event.get("kind") or "event")
-            payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+            payload = _as_dict(event.get("payload"))
             seq = event.get("seq")
             step_raw = payload.get("step")
             step = step_raw if isinstance(step_raw, int) else seq if isinstance(seq, int) else index
@@ -333,7 +343,7 @@ def _trajectory_summary(record: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _primary_score(record: dict[str, Any]) -> tuple[str | None, float | None]:
-    scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
+    scores = _as_dict(record.get("scores"))
     metric = record.get("primary_metric")
     if metric and metric in scores and isinstance(scores[metric], (int, float)):
         return str(metric), float(scores[metric])
@@ -393,7 +403,7 @@ def _metric_mismatch_context(record_a: dict[str, Any], record_b: dict[str, Any])
         },
     }
 
-    custom = record_a.get("custom") if isinstance(record_a.get("custom"), dict) else {}
+    custom = _as_dict(record_a.get("custom"))
     replicate_key = custom.get("replicate_key")
     if replicate_key:
         context["replicate_key"] = replicate_key
@@ -461,7 +471,7 @@ def _build_index(
 
 
 def _record_identity(record: dict[str, Any]) -> dict[str, Any]:
-    custom = record.get("custom") if isinstance(record.get("custom"), dict) else {}
+    custom = _as_dict(record.get("custom"))
     label = _record_label(record)
     key = _record_key(record)
     return {
@@ -499,7 +509,7 @@ def _validate_diff_report(
         SchemaRegistry.DIFF_REPORT,
         diff_report,
         schema_version=schema_version,
-        mode=_normalize_validation_mode(validation_mode),
+        mode=cast(Literal["strict", "warn"], _normalize_validation_mode(validation_mode)),
     )
 
 
