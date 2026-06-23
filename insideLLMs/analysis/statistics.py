@@ -1800,7 +1800,7 @@ def generate_summary_report(
             by_probe[r.probe_name] = []
         by_probe[r.probe_name].append(r)
 
-    report = {
+    report: dict[str, Any] = {
         "total_experiments": len(results),
         "unique_models": sorted(by_model.keys()),
         "unique_probes": sorted(by_probe.keys()),

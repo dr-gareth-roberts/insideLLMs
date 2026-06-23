@@ -130,7 +130,7 @@ try:  # Pydantic v2
 
     _PYDANTIC_V2 = True
 except Exception:  # pragma: no cover
-    ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
+    ConfigDict = None  # type: ignore[assignment, misc]  # None fallback for Pydantic v1
     _PYDANTIC_V2 = False
 
 

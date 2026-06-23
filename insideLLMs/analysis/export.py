@@ -2353,7 +2353,7 @@ def get_exporter(format: ExportFormat, config: Optional[ExportConfig] = None) ->
     if exporter_class is None:
         raise ValueError(f"Unsupported format: {format}")
 
-    return exporter_class(config)
+    return cast(Any, exporter_class)(config)
 
 
 def export_to_json(data: Any, output: Union[str, Path, TextIO], **kwargs) -> None:

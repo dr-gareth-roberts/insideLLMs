@@ -265,9 +265,9 @@ def _profile_probe_types(profile: str | None) -> list[str]:
     if not isinstance(probes, list):
         return []
     return [
-        probe.get("type")
+        probe_type
         for probe in probes
-        if isinstance(probe, dict) and isinstance(probe.get("type"), str)
+        if isinstance(probe, dict) and isinstance((probe_type := probe.get("type")), str)
     ]
 
 

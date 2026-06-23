@@ -4,7 +4,7 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from insideLLMs.registry import ensure_builtins_registered, model_registry
 
@@ -50,12 +50,15 @@ def cmd_compare(args: argparse.Namespace) -> int:
                     with open(input_path, encoding="utf-8") as f:
                         data = json.load(f)
                     if isinstance(data, list):
-                        inputs = [
-                            d.get("input", d.get("question", str(d)))
-                            if isinstance(d, dict)
-                            else str(d)
-                            for d in data
-                        ]
+                        inputs = cast(
+                            "list[str]",
+                            [
+                                d.get("input", d.get("question", str(d)))
+                                if isinstance(d, dict)
+                                else str(d)
+                                for d in data
+                            ],
+                        )
                     elif isinstance(data, dict):
                         inputs = [str(data.get("input", data.get("question", str(data))))]
                     else:

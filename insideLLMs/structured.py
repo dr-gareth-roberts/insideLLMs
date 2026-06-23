@@ -190,8 +190,8 @@ try:
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
-    BaseModel = None
-    ValidationError = None
+    BaseModel = None  # type: ignore[assignment, misc]
+    ValidationError = None  # type: ignore[assignment, misc]
 
 T = TypeVar("T")
 

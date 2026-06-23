@@ -1051,7 +1051,7 @@ class EnvironmentCapture:
 
     def compare(self, env1: EnvironmentInfo, env2: EnvironmentInfo) -> dict[str, Any]:
         """Compare two environment snapshots."""
-        differences = {
+        differences: dict[str, Any] = {
             "python_version_match": env1.python_version == env2.python_version,
             "platform_match": env1.platform_info == env2.platform_info,
             "package_differences": {},

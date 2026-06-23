@@ -111,7 +111,7 @@ def as_langchain_chat_model(model: ModelProtocol):
                 ConfigDict,  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
             )
         except Exception:  # pragma: no cover
-            ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
+            ConfigDict = None  # type: ignore[assignment, misc]  # None fallback for Pydantic v1
 
         from langchain_core.language_models.chat_models import BaseChatModel
         from langchain_core.messages import AIMessage

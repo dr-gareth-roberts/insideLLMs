@@ -110,7 +110,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.types import ExperimentResult, ProbeScore
 
@@ -1769,7 +1769,7 @@ class TensorBoardTracker(ExperimentTracker):
         run_name = run_name or self.config.experiment_name or datetime.now().isoformat()
         run_dir = os.path.join(self.log_dir, run_name)
 
-        self._writer = SummaryWriter(log_dir=run_dir)
+        self._writer = cast(Any, SummaryWriter)(log_dir=run_dir)
         self._run_active = True
         self._run_id = run_name
         self._step = 0

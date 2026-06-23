@@ -3,6 +3,7 @@
 import argparse
 import json
 import time
+from typing import Any, cast
 
 from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
 
@@ -61,7 +62,7 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
         if args.probe:
             print_subheader(f"Probe: {args.probe}")
             probe_factory = probe_registry.get(args.probe)
-            probe_factory()
+            cast(Any, probe_factory)()
             # Note: Probe evaluation would go here
             print_info(
                 f"Probe '{args.probe}' applied (detailed scoring available in full experiments)"

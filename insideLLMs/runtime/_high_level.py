@@ -525,9 +525,9 @@ def run_harness_from_config(
                 record["error"] = result.get("error")
                 record["error_type"] = result.get("error_type")
 
-                record_custom = (
-                    record.get("custom") if isinstance(record.get("custom"), dict) else {}
-                )
+                record_custom = record.get("custom")
+                if not isinstance(record_custom, dict):
+                    record_custom = {}
                 record_custom["harness"] = {
                     "experiment_id": experiment.experiment_id,
                     "model_type": model_config.get("type"),

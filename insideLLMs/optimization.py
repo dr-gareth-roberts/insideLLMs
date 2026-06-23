@@ -1680,7 +1680,7 @@ class FewShotSelector:
             )
 
         # Score each example
-        scored_examples = []
+        scored_examples: list[dict[str, Any]] = []
         for example in examples:
             relevance = self._calculate_relevance(query, example.get(input_key, ""))
             quality = self._calculate_quality(
@@ -1733,6 +1733,7 @@ class FewShotSelector:
                 if best is None:
                     break
 
+            assert best is not None  # i==0 sets it; else-branch is guarded by the break above
             selected.append(best)
 
             diversity = best.get("diversity", 1.0) if i > 0 else 1.0

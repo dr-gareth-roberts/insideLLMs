@@ -188,8 +188,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
         # Report results
         if config_errors:
             print_subheader("Errors")
-            for e in config_errors:
-                print(f"  {colorize('ERROR', Colors.RED)} {e}")
+            for err in config_errors:
+                print(f"  {colorize('ERROR', Colors.RED)} {err}")
 
         if warnings:
             print_subheader("Warnings")
