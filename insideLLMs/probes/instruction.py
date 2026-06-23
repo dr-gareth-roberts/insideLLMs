@@ -481,7 +481,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
 
         return "\n".join(parts)
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,
@@ -1097,7 +1097,7 @@ class MultiStepTaskProbe(ScoredProbe[str]):
         prompt = "\n".join(prompt_parts)
         return model.generate(prompt, **kwargs)
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,
@@ -1636,7 +1636,7 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         else:
             return ""
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,

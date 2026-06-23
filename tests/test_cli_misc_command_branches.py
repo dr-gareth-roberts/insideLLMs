@@ -49,7 +49,7 @@ def _report_args(run_dir: Path, **kwargs):
 
 
 def test_cmd_info_dataset_branch_renders_examples_and_expected_output(capsys):
-    fake_stats = SimpleNamespace(total_count=2, categories=["general"], difficulties=["easy"])
+    fake_stats = SimpleNamespace(total_examples=2, categories=["general"], difficulties=["easy"])
     fake_dataset = SimpleNamespace(
         description="Fake dataset",
         category=SimpleNamespace(value="custom"),

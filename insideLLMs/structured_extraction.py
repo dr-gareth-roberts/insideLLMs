@@ -114,7 +114,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from re import Pattern
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 
 class ExtractionFormat(Enum):
@@ -1373,7 +1373,7 @@ class StructuredExtractor:
 
         for extractor, _format_type in extractors:
             try:
-                result = extractor.extract(text)
+                result = cast(Any, extractor).extract(text)
                 if result.is_success and result.confidence > best_confidence:
                     best_result = result
                     best_confidence = result.confidence

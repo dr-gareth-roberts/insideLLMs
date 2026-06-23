@@ -908,7 +908,7 @@ class LoggerAdapter(logging.LoggerAdapter):
 
     """
 
-    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:
+    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:  # type: ignore[override]  # intentional subclass signature
         """Process the log message and kwargs before logging.
 
         Merges the adapter's persistent context with any extra fields

@@ -14,7 +14,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.crypto.canonical import canonical_json_bytes, digest_bytes
 from insideLLMs.exceptions import ModelError
@@ -108,7 +108,7 @@ class ReceiptMiddleware(PassthroughMiddleware):
         if self.next_middleware:
             response = self.next_middleware.process_chat(messages, **kwargs)
         elif self.model:
-            response = self.model.chat(messages, **kwargs)
+            response = cast(Any, self.model).chat(messages, **kwargs)
         else:
             raise ModelError("No model available in pipeline")
         latency_ms = (time.perf_counter() - start) * 1000

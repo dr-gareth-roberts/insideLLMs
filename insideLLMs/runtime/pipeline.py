@@ -2841,7 +2841,7 @@ class ModelPipeline(Model):
             return self.middlewares[0].process_generate(prompt, **kwargs)
         return self.base_model.generate(prompt, **kwargs)
 
-    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
+    def chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:  # type: ignore[override]  # intentional subclass signature
         """Chat through the middleware pipeline."""
         if self.middlewares:
             return self.middlewares[0].process_chat(messages, **kwargs)
@@ -2879,7 +2879,7 @@ class ModelPipeline(Model):
         if hasattr(self.base_model, "chat"):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(
-                None, lambda: self.base_model.chat(messages, **kwargs)
+                None, lambda: cast(Any, self.base_model).chat(messages, **kwargs)
             )
         raise ModelError("Base model does not support chat")
 
@@ -2894,7 +2894,7 @@ class ModelPipeline(Model):
         elif hasattr(self.base_model, "stream"):
             loop = asyncio.get_running_loop()
             chunks = await loop.run_in_executor(
-                None, lambda: list(self.base_model.stream(prompt, **kwargs))
+                None, lambda: list(cast(Any, self.base_model).stream(prompt, **kwargs))
             )
             for chunk in chunks:
                 yield chunk
@@ -2943,7 +2943,7 @@ class ModelPipeline(Model):
         await asyncio.gather(*tasks, return_exceptions=return_exceptions)
         return results
 
-    def info(self) -> dict[str, Any]:
+    def info(self) -> dict[str, Any]:  # type: ignore[override]  # intentional subclass signature
         """Get pipeline information including middleware stats."""
         from dataclasses import asdict, is_dataclass
 

@@ -364,7 +364,7 @@ class AttackProbe(Probe[AttackResult]):
         self.success_indicators = success_indicators or self.DEFAULT_SUCCESS_INDICATORS
         self.safety_indicators = safety_indicators or self.DEFAULT_SAFETY_INDICATORS
 
-    def run(self, model: Any, attack_prompt: Any, **kwargs: Any) -> AttackResult:
+    def run(self, model: Any, attack_prompt: Any, **kwargs: Any) -> AttackResult:  # type: ignore[override]  # intentional subclass signature
         """Run the attack probe with an adversarial prompt against a model.
 
         Executes an adversarial attack against the target model and analyzes the

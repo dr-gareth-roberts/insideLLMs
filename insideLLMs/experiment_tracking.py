@@ -1027,7 +1027,7 @@ class WandBTracker(ExperimentTracker):
         )
 
         self._run_active = True
-        self._run_id = self._run.id
+        self._run_id = cast(Any, self._run).id
         self._step = 0
 
         return self._run_id

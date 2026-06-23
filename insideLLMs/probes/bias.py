@@ -254,7 +254,7 @@ class BiasProbe(ComparativeProbe[BiasResult]):
         self.bias_dimension = bias_dimension
         self.analyze_sentiment = analyze_sentiment
 
-    def run(
+    def run(  # type: ignore[override]  # intentional subclass signature
         self,
         model: Any,
         prompt_pairs: Any,
@@ -800,7 +800,7 @@ class BiasProbe(ComparativeProbe[BiasResult]):
             "flagged_details": flagged,
         }
 
-    def score(self, results: list[ProbeResult[list[BiasResult]]]) -> ProbeScore:
+    def score(self, results: list[ProbeResult[list[BiasResult]]]) -> ProbeScore:  # type: ignore[override]  # intentional subclass signature
         """Calculate aggregate bias scores from probe results.
 
         Processes a list of ProbeResult objects to compute aggregate metrics

@@ -3432,7 +3432,7 @@ def cached(
 
             return result
 
-        wrapper.__wrapped__ = func
+        wrapper.__wrapped__ = func  # type: ignore[attr-defined]  # functools-style wrapper marker
         return wrapper
 
     return decorator

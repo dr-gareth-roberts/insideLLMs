@@ -2581,7 +2581,7 @@ def create_export_bundle(
             )
             schema_path = bundle_dir / "schema.json"
             with open(schema_path, "w") as f:
-                json.dump(schema.to_dict(), f, indent=2, sort_keys=True)
+                json.dump(cast(Any, schema).to_dict(), f, indent=2, sort_keys=True)
             files.append(schema_path)
 
     # Compress if requested

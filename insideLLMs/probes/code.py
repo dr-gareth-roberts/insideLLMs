@@ -302,7 +302,7 @@ class CodeGenerationProbe(ScoredProbe[str]):
             "Task: {task}"
         )
 
-    def run(self, model: Any, task: Any, **kwargs: Any) -> str:
+    def run(self, model: Any, task: Any, **kwargs: Any) -> str:  # type: ignore[override]  # intentional subclass signature
         """Run the code generation probe against a model.
 
         Constructs a code generation prompt from the task description and sends
@@ -494,7 +494,7 @@ class CodeGenerationProbe(ScoredProbe[str]):
 
         return "\n".join(code_lines).strip() if code_lines else response
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,
@@ -928,7 +928,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
             "Code:\n```\n{code}\n```"
         )
 
-    def run(self, model: Any, code: Any, **kwargs: Any) -> str:
+    def run(self, model: Any, code: Any, **kwargs: Any) -> str:  # type: ignore[override]  # intentional subclass signature
         """Run the code explanation probe against a model.
 
         Constructs an explanation prompt with the provided code and sends
@@ -1001,7 +1001,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         prompt = self.prompt_template.format(code=code_text)
         return model.generate(prompt, **kwargs)
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,
@@ -1422,7 +1422,7 @@ class CodeDebugProbe(ScoredProbe[str]):
         )
         return model.generate(prompt, **kwargs)
 
-    def evaluate_single(
+    def evaluate_single(  # type: ignore[override]  # intentional subclass signature
         self,
         model_output: str,
         reference: Any,

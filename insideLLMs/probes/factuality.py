@@ -216,7 +216,7 @@ class FactualityProbe(Probe):
         """
         super().__init__(name)
 
-    def run(self, model, factual_questions: Any, **kwargs):
+    def run(self, model, factual_questions: Any, **kwargs):  # type: ignore[override]  # intentional subclass signature
         """Execute the factuality probe on a model with the given questions.
 
         This method iterates through a list of factual questions, queries the

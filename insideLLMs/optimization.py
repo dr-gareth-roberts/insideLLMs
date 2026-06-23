@@ -2299,7 +2299,7 @@ class TokenBudgetOptimizer:
         total_tokens = prompt_tokens + system_tokens + example_tokens
         over_budget = total_tokens > available_tokens
 
-        result = {
+        result: dict[str, Any] = {
             "original_tokens": total_tokens,
             "available_tokens": available_tokens,
             "over_budget": over_budget,

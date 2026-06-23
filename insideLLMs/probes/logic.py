@@ -485,7 +485,7 @@ class LogicProbe(ScoredProbe[str]):
         )
         self.extract_answer = extract_answer
 
-    def run(self, model: Any, logic_problem: Any, **kwargs: Any) -> str:
+    def run(self, model: Any, logic_problem: Any, **kwargs: Any) -> str:  # type: ignore[override]  # intentional subclass signature
         """Run the logic probe on the given model with a logic problem.
 
         Formats the logic problem using the prompt template and sends it

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator, Sequence
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.models.base import ChatMessage, ModelProtocol
 
@@ -215,7 +215,7 @@ def as_langchain_runnable(model: ModelProtocol):
         if isinstance(inp, list):
             insidellms_messages = _lc_messages_to_insidellms(inp)
             try:
-                return model.chat(insidellms_messages)
+                return cast(Any, model).chat(insidellms_messages)
             except NotImplementedError:
                 return model.generate(_insidellms_messages_to_prompt(insidellms_messages))
         return model.generate(str(inp))

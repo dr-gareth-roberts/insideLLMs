@@ -27,7 +27,7 @@ def cmd_info(args: argparse.Namespace) -> int:
             print_key_value(
                 "Category", ds.category.value if hasattr(ds.category, "value") else ds.category
             )
-            print_key_value("Total examples", stats.total_count)
+            print_key_value("Total examples", stats.total_examples)
             print_key_value(
                 "Categories", ", ".join(stats.categories) if stats.categories else "N/A"
             )

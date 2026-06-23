@@ -2254,7 +2254,7 @@ def add_structured_method(model: "Model") -> "Model":
             **kwargs,
         )
 
-    model.generate_structured = generate_structured_method
+    model.generate_structured = generate_structured_method  # type: ignore[attr-defined]  # attach convenience method
     return model
 
 

@@ -783,5 +783,19 @@ class ProbeRunner(_RunnerBase):
 
         return self.last_experiment if return_experiment else final_results
 
+    def run_single(self, prompt: Any, **kwargs: Any) -> dict[str, Any]:
+        """Run the probe on a single input and return that input's result record.
+
+        Convenience wrapper around :meth:`run` for one-off, in-memory evaluation;
+        no run-directory artifacts are emitted.
+        """
+        kwargs.setdefault("emit_run_artifacts", False)
+        results = self.run([prompt], **kwargs)
+        if isinstance(results, list) and results:
+            first = results[0]
+            if isinstance(first, dict):
+                return first
+        return {}
+
 
 __all__ = ["ProbeRunner"]
