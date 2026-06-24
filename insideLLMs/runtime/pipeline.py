@@ -709,7 +709,9 @@ class Middleware(ABC):
                 return await self.model.agenerate(prompt, **kwargs)
             # Fall back to running sync method in executor
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
+            return await loop.run_in_executor(
+                None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
+            )
         raise ModelError("No model available in pipeline")
 
     async def aprocess_chat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
@@ -764,7 +766,9 @@ class Middleware(ABC):
                 return cast(str, await self.model.achat(messages, **kwargs))
             if hasattr(self.model, "chat"):
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, lambda: self.model.chat(messages, **kwargs))
+                return await loop.run_in_executor(
+                    None, lambda: cast(Any, self.model).chat(messages, **kwargs)
+                )
         raise ModelError("No chat implementation available")
 
     async def aprocess_stream(self, prompt: str, **kwargs: Any) -> AsyncIterator[str]:
@@ -828,7 +832,7 @@ class Middleware(ABC):
             elif hasattr(self.model, "stream"):
                 loop = asyncio.get_running_loop()
                 sync_iter = await loop.run_in_executor(
-                    None, lambda: list(self.model.stream(prompt, **kwargs))
+                    None, lambda: list(cast(Any, self.model).stream(prompt, **kwargs))
                 )
                 for chunk in sync_iter:
                     yield chunk
@@ -1024,7 +1028,9 @@ class PassthroughMiddleware(Middleware):
             if isinstance(self.model, AsyncModelProtocol):
                 return await self.model.agenerate(prompt, **kwargs)
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
+            return await loop.run_in_executor(
+                None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
+            )
         raise ModelError("No model available in pipeline")
 
 
@@ -1465,7 +1471,7 @@ class TraceMiddleware(PassthroughMiddleware):
                 else:
                     loop = asyncio.get_running_loop()
                     response = await loop.run_in_executor(
-                        None, lambda: self.model.generate(prompt, **clean_kwargs)
+                        None, lambda: cast(Any, self.model).generate(prompt, **clean_kwargs)
                     )
             else:
                 raise ModelError("No model available in pipeline")
@@ -1604,7 +1610,7 @@ class TraceMiddleware(PassthroughMiddleware):
                 elif hasattr(self.model, "chat"):
                     loop = asyncio.get_running_loop()
                     response = await loop.run_in_executor(
-                        None, lambda: self.model.chat(messages, **clean_kwargs)
+                        None, lambda: cast(Any, self.model).chat(messages, **clean_kwargs)
                     )
                 else:
                     raise ModelError("No chat implementation available")
@@ -1767,7 +1773,7 @@ class TraceMiddleware(PassthroughMiddleware):
                 elif hasattr(self.model, "stream"):
                     loop = asyncio.get_running_loop()
                     sync_chunks = await loop.run_in_executor(
-                        None, lambda: list(self.model.stream(prompt, **clean_kwargs))
+                        None, lambda: list(cast(Any, self.model).stream(prompt, **clean_kwargs))
                     )
                     for chunk in sync_chunks:
                         self._recorder.record_stream_chunk(chunk, chunk_index)
@@ -2168,7 +2174,7 @@ class CacheMiddleware(Middleware):
             else:
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(
-                    None, lambda: self.model.generate(prompt, **kwargs)
+                    None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
                 )
         else:
             raise ModelError("No model available in pipeline")
@@ -2564,7 +2570,9 @@ class RateLimitMiddleware(Middleware):
             if isinstance(self.model, AsyncModelProtocol):
                 return await self.model.agenerate(prompt, **kwargs)
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, lambda: self.model.generate(prompt, **kwargs))
+            return await loop.run_in_executor(
+                None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
+            )
         raise ModelError("No model available in pipeline")
 
 
@@ -2645,7 +2653,7 @@ class RetryMiddleware(Middleware):
                         return await self.model.agenerate(prompt, **kwargs)
                     loop = asyncio.get_running_loop()
                     return await loop.run_in_executor(
-                        None, lambda: self.model.generate(prompt, **kwargs)
+                        None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
                     )
                 raise ModelError("No model available in pipeline")
             except (RateLimitError, TimeoutError, ModelError) as e:
@@ -2747,7 +2755,7 @@ class CostTrackingMiddleware(Middleware):
             else:
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(
-                    None, lambda: self.model.generate(prompt, **kwargs)
+                    None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
                 )
         else:
             raise ModelError("No model available in pipeline")

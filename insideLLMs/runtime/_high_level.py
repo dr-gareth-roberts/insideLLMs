@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 from insideLLMs._serialization import (
     StrictSerializationError,
@@ -757,6 +757,7 @@ def create_experiment_result(
         probe_results = list(results)  # type: ignore[list-item]  # Runtime check confirms ProbeResult type
     else:
         for r in results:
+            r = cast("dict[str, Any]", r)
             status = _coerce_status(r.get("status"))
             probe_results.append(
                 ProbeResult(

@@ -33,7 +33,9 @@ from .._record_utils import _json_default, _read_jsonl_records
 
 def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
     """Render judge verdict details for terminal output."""
-    summary = judge_report.get("summary") if isinstance(judge_report.get("summary"), dict) else {}
+    summary = judge_report.get("summary")
+    if not isinstance(summary, dict):
+        summary = {}
     verdicts = (
         judge_report.get("verdicts") if isinstance(judge_report.get("verdicts"), list) else []
     )
@@ -52,7 +54,9 @@ def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
     for item in verdicts[:limit]:
         if not isinstance(item, dict):
             continue
-        label = item.get("label") if isinstance(item.get("label"), dict) else {}
+        label = item.get("label")
+        if not isinstance(label, dict):
+            label = {}
         model_label = label.get("model", item.get("model_id", "unknown"))
         probe_label = label.get("probe", item.get("probe_id", "unknown"))
         example_label = label.get("example", item.get("example_id", "unknown"))

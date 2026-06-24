@@ -84,7 +84,7 @@ insideLLMs.types.ProbeResult : Result container for probe evaluations.
 """
 
 import re
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from insideLLMs.probes.base import ScoredProbe
 from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
@@ -353,7 +353,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             if constraint_text:
                 prompt_parts.append(f"\n\nConstraints:\n{constraint_text}")
 
-        prompt = "".join(prompt_parts)
+        prompt = "".join(cast("list[str]", prompt_parts))
         return model.generate(prompt, **kwargs)
 
     def _format_constraints(self, constraints: dict[str, Any]) -> str:
@@ -581,7 +581,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         constraints = reference.get("constraints", reference) if isinstance(reference, dict) else {}
 
         checks = []
-        details = {}
+        details: dict[str, Any] = {}
 
         # Format check
         if "format" in constraints:
@@ -1225,7 +1225,7 @@ class MultiStepTaskProbe(ScoredProbe[str]):
             steps = []
             expected_patterns = {}
 
-        details = {}
+        details: dict[str, Any] = {}
         step_scores = []
 
         # Check for step indicators
@@ -1740,7 +1740,7 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         score = max(0.0, 1.0 - (25 / 50)) = 0.5
         """
         limit = reference if isinstance(reference, int) else self.limit
-        details = {}
+        details: dict[str, Any] = {}
         compliant = True
 
         if self.constraint_type == "word_limit":

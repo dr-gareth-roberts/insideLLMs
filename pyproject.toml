@@ -177,7 +177,6 @@ show_column_numbers = true
 disable_error_code = [
     "arg-type",
     "assignment",
-    "union-attr",
 ]
 
 # Strict checking for core modules

@@ -136,7 +136,7 @@ class ReceiptMiddleware(PassthroughMiddleware):
                 response = await self.model.agenerate(prompt, **kwargs)
             else:
                 response = await asyncio.get_running_loop().run_in_executor(
-                    None, lambda: self.model.generate(prompt, **kwargs)
+                    None, lambda: cast(Any, self.model).generate(prompt, **kwargs)
                 )
         else:
             raise ModelError("No model available in pipeline")
@@ -165,7 +165,7 @@ class ReceiptMiddleware(PassthroughMiddleware):
                 response = await self.model.achat(messages, **kwargs)
             else:
                 response = await asyncio.get_running_loop().run_in_executor(
-                    None, lambda: self.model.chat(messages, **kwargs)
+                    None, lambda: cast(Any, self.model).chat(messages, **kwargs)
                 )
         else:
             raise ModelError("No model available in pipeline")

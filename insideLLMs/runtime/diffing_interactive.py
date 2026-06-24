@@ -78,7 +78,9 @@ def build_interactive_review_lines(
     for item in review_items[:limit]:
         if not isinstance(item, Mapping):
             continue
-        label = item.get("label") if isinstance(item.get("label"), Mapping) else {}
+        label = item.get("label")
+        if not isinstance(label, Mapping):
+            label = {}
         model_label = label.get("model", item.get("model_id", "unknown"))
         probe_label = label.get("probe", item.get("probe_id", "unknown"))
         example_label = label.get("example", item.get("example_id", "unknown"))
@@ -98,7 +100,9 @@ def build_interactive_review_lines(
         for item in only_baseline[:limit]:
             if not isinstance(item, Mapping):
                 continue
-            label = item.get("label") if isinstance(item.get("label"), Mapping) else {}
+            label = item.get("label")
+            if not isinstance(label, Mapping):
+                label = {}
             lines.append(
                 f"    {label.get('model', item.get('model_id', 'unknown'))} | "
                 f"{label.get('probe', item.get('probe_id', 'unknown'))} | "
@@ -112,7 +116,9 @@ def build_interactive_review_lines(
         for item in only_candidate[:limit]:
             if not isinstance(item, Mapping):
                 continue
-            label = item.get("label") if isinstance(item.get("label"), Mapping) else {}
+            label = item.get("label")
+            if not isinstance(label, Mapping):
+                label = {}
             lines.append(
                 f"    {label.get('model', item.get('model_id', 'unknown'))} | "
                 f"{label.get('probe', item.get('probe_id', 'unknown'))} | "
