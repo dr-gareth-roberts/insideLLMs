@@ -8,7 +8,7 @@ import time
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runtime._artifact_utils import _default_run_root
@@ -146,8 +146,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             ]
             total = experiment_result.total_count
         else:
-            raw_results = results
-            total = len(results)
+            raw_results = cast("list[dict[str, Any]]", results)
+            total = len(raw_results)
 
         success_count = sum(1 for r in raw_results if r.get("status") == "success")
         error_count = sum(1 for r in raw_results if r.get("status") == "error")

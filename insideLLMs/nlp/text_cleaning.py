@@ -55,7 +55,7 @@ See Also:
 import re
 import string
 import unicodedata
-from typing import Optional
+from typing import Literal, Optional, cast
 
 # ===== Text Cleaning and Normalization =====
 
@@ -254,7 +254,7 @@ def normalize_unicode(text: str, form: str = "NFKC") -> str:
         characters to their standard equivalents. Use NFC for preserving
         visual representation while normalizing composed characters.
     """
-    return unicodedata.normalize(form, text)
+    return unicodedata.normalize(cast(Literal["NFC", "NFD", "NFKC", "NFKD"], form), text)
 
 
 def remove_emojis(text: str) -> str:

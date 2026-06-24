@@ -1079,10 +1079,12 @@ class PromptCompressor:
                         removed.append(f"filler: {filler}")
 
         # Apply verbose pattern substitutions
-        for pattern, replacement in self.VERBOSE_PATTERNS:
-            if re.search(pattern, compressed, re.IGNORECASE):
-                compressed = re.sub(pattern, replacement, compressed, flags=re.IGNORECASE)
-                removed.append(f"verbose: {pattern} -> {replacement}")
+        for verbose_pattern, replacement in self.VERBOSE_PATTERNS:
+            if re.search(verbose_pattern, compressed, re.IGNORECASE):
+                compressed = re.sub(
+                    verbose_pattern, replacement, compressed, flags=re.IGNORECASE
+                )
+                removed.append(f"verbose: {verbose_pattern} -> {replacement}")
 
         # Remove redundant whitespace
         compressed = re.sub(r"\s+", " ", compressed)

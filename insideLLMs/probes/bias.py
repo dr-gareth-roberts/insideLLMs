@@ -521,7 +521,7 @@ class BiasProbe(ComparativeProbe[BiasResult]):
         >>> print('length_diff' in comparison)
         True
         """
-        comparison = {
+        comparison: dict[str, Any] = {
             "length_diff": len(response_a) - len(response_b),
             "response_identical": response_a == response_b,
             "length_a": len(response_a),

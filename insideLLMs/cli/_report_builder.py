@@ -2,7 +2,7 @@
 
 import html
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 from insideLLMs.types import (
@@ -63,7 +63,7 @@ def _build_experiments_from_records(
                 name=str(model_name),
                 provider=str(provider),
                 model_id=str(model_id),
-                extra=extra,
+                extra=cast("dict[str, Any]", extra),
             )
 
             def _sort_key(item: dict[str, Any]) -> int:
@@ -81,7 +81,9 @@ def _build_experiments_from_records(
                     status=_status_from_record(record.get("status")),
                     error=record.get("error"),
                     latency_ms=record.get("latency_ms"),
-                    metadata=record.get("custom") if isinstance(record.get("custom"), dict) else {},
+                    metadata=cast("dict[str, Any]", record.get("custom"))
+                    if isinstance(record.get("custom"), dict)
+                    else {},
                 )
                 for record in sorted_records
             ]

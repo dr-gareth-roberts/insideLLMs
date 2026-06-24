@@ -4,10 +4,11 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from insideLLMs.runtime.diffing import (
     DiffGatePolicy,
+    JudgePolicy,
     build_diff_computation,
     compute_diff_exit_code,
     judge_diff_report,
@@ -151,7 +152,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
     if bool(getattr(args, "judge", False)):
         judge_computation = judge_diff_report(
             diff_report,
-            policy=str(getattr(args, "judge_policy", "strict")),
+            policy=cast(JudgePolicy, str(getattr(args, "judge_policy", "strict"))),
             limit=int(getattr(args, "judge_limit", args.limit)),
         )
         judge_report = judge_computation.judge_report

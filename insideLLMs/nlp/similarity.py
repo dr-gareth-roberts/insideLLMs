@@ -59,7 +59,7 @@ Notes
 - For large-scale comparisons, consider vectorized approaches
 """
 
-from typing import Callable
+from typing import Callable, cast
 
 from insideLLMs.nlp.dependencies import ensure_sklearn, ensure_spacy
 from insideLLMs.nlp.tokenization import simple_tokenize
@@ -404,7 +404,7 @@ def levenshtein_distance(text1: str, text2: str) -> int:
     if not text2:
         return len(text1)
 
-    previous_row = range(len(text2) + 1)
+    previous_row = cast("list[int]", range(len(text2) + 1))
     for i, c1 in enumerate(text1):
         current_row = [i + 1]
         for j, c2 in enumerate(text2):
@@ -617,7 +617,7 @@ def jaro_similarity(s1: str, s2: str) -> float:
     if matches == 0:
         return 0.0
 
-    t = 0
+    t: float = 0
     k = 0
     for i in range(len_s1):
         if not s1_matches[i]:

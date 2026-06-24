@@ -462,7 +462,7 @@ def extract_keywords_textrank(text: str, num_keywords: int = 5, window_size: int
     for _ in range(num_iterations):
         new_ranks = ranks.copy()
         for node in graph:
-            rank_sum = 0
+            rank_sum: float = 0
             # Accumulates neighbor rank contribution to current node
             for neighbor in graph[node]:
                 neighbor_links_sum = sum(graph[neighbor].values())

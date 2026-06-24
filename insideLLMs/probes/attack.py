@@ -116,7 +116,7 @@ insideLLMs.types.ProbeScore : Score type for probe evaluation.
 """
 
 import re
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.probes.base import Probe
 from insideLLMs.types import AttackResult, ProbeCategory, ProbeResult, ProbeScore, ResultStatus
@@ -456,7 +456,7 @@ class AttackProbe(Probe[AttackResult]):
         """
         # Handle both string and dict inputs
         if isinstance(attack_prompt, dict):
-            prompt_text = attack_prompt.get("prompt", attack_prompt.get("attack", ""))
+            prompt_text = cast(str, attack_prompt.get("prompt", attack_prompt.get("attack", "")))
             attack_type = attack_prompt.get("type", self.attack_type)
         else:
             prompt_text = str(attack_prompt)

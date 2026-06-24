@@ -590,7 +590,7 @@ class CodeGenerationProbe(ScoredProbe[str]):
         """
         code = self.extract_code(model_output)
         score_components = []
-        details = {}
+        details: dict[str, Any] = {}
 
         # Check for syntax validity (basic)
         syntax_valid = self._check_syntax(code)
@@ -1089,7 +1089,7 @@ class CodeExplanationProbe(ScoredProbe[str]):
         >>> print(result.metadata["label"])
         clear
         """
-        details = {}
+        details: dict[str, Any] = {}
 
         # Length check
         word_count = len(model_output.split())
@@ -1529,7 +1529,7 @@ class CodeDebugProbe(ScoredProbe[str]):
         >>> print(result.metadata["label"])
         partially_fixed
         """
-        details = {}
+        details: dict[str, Any] = {}
 
         # Check for explanation
         explanation_indicators = [

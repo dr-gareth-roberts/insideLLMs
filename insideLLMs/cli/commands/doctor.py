@@ -389,7 +389,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     capabilities = _build_capabilities(checks) if include_capabilities else None
 
     if args.format == "json":
-        payload = {"checks": checks, "warnings": warn_checks}
+        payload: dict[str, Any] = {"checks": checks, "warnings": warn_checks}
         if capabilities is not None:
             payload["capabilities"] = capabilities
         print(json.dumps(payload, indent=2, default=_json_default))

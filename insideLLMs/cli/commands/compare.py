@@ -74,7 +74,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
                             except json.JSONDecodeError as e:
                                 raise ValueError(f"Invalid JSON on line {line_no}: {e}") from e
                             inputs.append(
-                                data.get("input", data.get("question", str(data)))
+                                cast("str", data.get("input", data.get("question", str(data))))
                                 if isinstance(data, dict)
                                 else str(data)
                             )
