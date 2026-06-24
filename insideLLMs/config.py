@@ -108,7 +108,7 @@ create_example_config : Generate a complete example configuration
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union, cast
 
 from insideLLMs._serialization import serialize_value as _serialize_value
 
@@ -1758,13 +1758,13 @@ def create_example_config() -> ExperimentConfig:
         name="Example Experiment",
         description="An example experiment configuration",
         model=ModelConfig(
-            provider=ModelProvider.OPENAI if PYDANTIC_AVAILABLE else "openai",
+            provider=cast(Any, ModelProvider.OPENAI if PYDANTIC_AVAILABLE else "openai"),
             model_id="gpt-4",
             temperature=0.7,
             max_tokens=1000,
         ),
         probe=ProbeConfig(
-            type=ProbeType.LOGIC if PYDANTIC_AVAILABLE else "logic",
+            type=cast(Any, ProbeType.LOGIC if PYDANTIC_AVAILABLE else "logic"),
             name="Logic Reasoning Test",
             params={"difficulty": "medium"},
         ),

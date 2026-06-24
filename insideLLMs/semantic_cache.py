@@ -174,7 +174,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 
 from insideLLMs.caching import CacheEntryMixin
 
@@ -194,7 +194,7 @@ try:
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
-    np = None
+    np = None  # type: ignore[assignment]  # optional-dep fallback
 
 
 T = TypeVar("T")
@@ -1197,7 +1197,7 @@ class VectorCache:
             expires_at = None
             if ttl or self.config.ttl_seconds:
                 ttl_val = ttl or self.config.ttl_seconds
-                expires_at = datetime.now() + timedelta(seconds=ttl_val)
+                expires_at = datetime.now() + timedelta(seconds=cast(float, ttl_val))
 
             entry = SemanticCacheEntry(
                 key=key,
@@ -1458,7 +1458,7 @@ class SemanticCache:
                 raise ImportError("Redis support requires redis-py")
             self._redis = RedisCache(self.config, redis_client)
         else:
-            self._redis = None
+            self._redis = None  # type: ignore[assignment]  # lazy-init
 
         # Set up vector cache for semantic lookup
         self._vector_cache = VectorCache(self.config, embedder)

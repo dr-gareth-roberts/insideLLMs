@@ -11,7 +11,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import yaml
 
@@ -105,7 +105,7 @@ def _semver_tuple(version: Optional[str]) -> tuple[int, int, int]:
     """
     from insideLLMs.schemas.registry import semver_tuple
 
-    return semver_tuple(version)
+    return semver_tuple(cast(str, version))
 
 
 def _atomic_write_text(path: Path, text: str) -> None:

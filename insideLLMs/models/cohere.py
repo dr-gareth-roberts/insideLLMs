@@ -520,7 +520,7 @@ class CohereModel(Model):
         client = self._get_client()
 
         # Map common parameter names
-        params = {
+        params: dict[str, Any] = {
             "model": self.model_name,
             "message": prompt,
         }
@@ -710,7 +710,7 @@ class CohereModel(Model):
                     current_message = msg.get("content", "")
                     break
 
-        params = {
+        params: dict[str, Any] = {
             "model": self.model_name,
             "message": current_message,
             "chat_history": chat_history if chat_history else None,
@@ -843,7 +843,7 @@ class CohereModel(Model):
         """
         client = self._get_client()
 
-        params = {
+        params: dict[str, Any] = {
             "model": self.model_name,
             "message": prompt,
         }
@@ -1072,7 +1072,7 @@ class CohereModel(Model):
         """
         client = self._get_client()
 
-        params = {
+        params: dict[str, Any] = {
             "texts": texts,
             "model": "embed-english-v3.0",  # Cohere's embedding model
             "input_type": input_type,
@@ -1235,7 +1235,7 @@ class CohereModel(Model):
         """
         client = self._get_client()
 
-        params = {
+        params: dict[str, Any] = {
             "query": query,
             "documents": documents,
             "model": model,

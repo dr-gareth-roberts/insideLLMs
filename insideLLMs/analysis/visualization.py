@@ -156,7 +156,7 @@ import re
 import warnings as _warnings
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from insideLLMs.types import ExperimentResult
 
@@ -1226,7 +1226,7 @@ def plot_latency_distribution(
 
 def plot_metric_comparison(
     experiments: list[ExperimentResult],
-    metrics: list[str] = None,
+    metrics: Optional[list[str]] = None,
     title: str = "Metric Comparison",
     figsize: tuple[int, int] = (12, 6),
     save_path: Optional[str] = None,
@@ -1678,7 +1678,7 @@ def plot_factuality_results(
     else:
         by_cat: dict[str, Any] = {}
         for row in response_data:
-            cat = row["Category"]
+            cat = cast(str, row["Category"])
             if cat not in by_cat:
                 by_cat[cat] = []
             by_cat[cat].append(row["Response Length"])

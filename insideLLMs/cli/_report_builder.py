@@ -177,7 +177,10 @@ def _build_experiments_from_records(
                 status=_status_from_record(record.get("status")),
                 error=record.get("error"),
                 latency_ms=record.get("latency_ms"),
-                metadata=record.get("custom") if isinstance(record.get("custom"), dict) else {},
+                metadata=cast(
+                    "dict[str, Any]",
+                    record.get("custom") if isinstance(record.get("custom"), dict) else {},
+                ),
             )
             for record in group_records
         ]

@@ -327,7 +327,7 @@ class ModelNotFoundError(ModelError):
     """
 
     def __init__(self, model_id: str, available: Optional[list] = None):
-        details = {"model_id": model_id}
+        details: dict[str, Any] = {"model_id": model_id}
         if available:
             details["available_models"] = available
         super().__init__(f"Model not found: {model_id}", details)
@@ -479,7 +479,7 @@ class ModelGenerationError(ModelError):
         reason: str,
         original_error: Optional[Exception] = None,
     ):
-        details = {
+        details: dict[str, Any] = {
             "model_id": model_id,
             "prompt_preview": prompt[:100] + "..." if len(prompt) > 100 else prompt,
             "reason": reason,
@@ -570,7 +570,7 @@ class RateLimitError(ModelError):
         model_id: str,
         retry_after: Optional[float] = None,
     ):
-        details = {"model_id": model_id}
+        details: dict[str, Any] = {"model_id": model_id}
         if retry_after:
             details["retry_after_seconds"] = retry_after
         super().__init__(
@@ -667,7 +667,7 @@ class APIError(ModelError):
         message: str = "API error",
         response_body: Optional[str] = None,
     ):
-        details = {"model_id": model_id}
+        details: dict[str, Any] = {"model_id": model_id}
         if status_code:
             details["status_code"] = status_code
         if response_body:
@@ -871,7 +871,7 @@ class ProbeNotFoundError(ProbeError):
     """
 
     def __init__(self, probe_type: str, available: Optional[list] = None):
-        details = {"probe_type": probe_type}
+        details: dict[str, Any] = {"probe_type": probe_type}
         if available:
             details["available_probes"] = available
         super().__init__(f"Probe not found: {probe_type}", details)
@@ -942,7 +942,7 @@ class ProbeValidationError(ProbeError):
     """
 
     def __init__(self, probe_type: str, reason: str, invalid_input: Any = None):
-        details = {"probe_type": probe_type, "reason": reason}
+        details: dict[str, Any] = {"probe_type": probe_type, "reason": reason}
         if invalid_input is not None:
             details["invalid_input"] = str(invalid_input)[:100]
         super().__init__(f"Probe validation failed: {reason}", details)
@@ -1026,7 +1026,7 @@ class ProbeExecutionError(ProbeError):
         sample_index: Optional[int] = None,
         original_error: Optional[Exception] = None,
     ):
-        details = {"probe_type": probe_type, "reason": reason}
+        details: dict[str, Any] = {"probe_type": probe_type, "reason": reason}
         if sample_index is not None:
             details["sample_index"] = sample_index
         if original_error:
@@ -1378,7 +1378,7 @@ class DatasetFormatError(DatasetError):
     """
 
     def __init__(self, reason: str, expected_format: Optional[str] = None):
-        details = {"reason": reason}
+        details: dict[str, Any] = {"reason": reason}
         if expected_format:
             details["expected_format"] = expected_format
         super().__init__(f"Invalid dataset format: {reason}", details)
@@ -1456,7 +1456,7 @@ class DatasetValidationError(DatasetError):
         row_index: Optional[int] = None,
         field: Optional[str] = None,
     ):
-        details = {"reason": reason}
+        details: dict[str, Any] = {"reason": reason}
         if row_index is not None:
             details["row_index"] = row_index
         if field:
@@ -1580,7 +1580,7 @@ class ConfigValidationError(ConfigurationError):
     """
 
     def __init__(self, field: str, reason: str, value: Any = None):
-        details = {"field": field, "reason": reason}
+        details: dict[str, Any] = {"field": field, "reason": reason}
         if value is not None:
             details["value"] = str(value)[:100]
         super().__init__(f"Invalid configuration for '{field}': {reason}", details)
@@ -1710,7 +1710,7 @@ class ConfigParseError(ConfigurationError):
     """
 
     def __init__(self, path: str, reason: str, line: Optional[int] = None):
-        details = {"path": path, "reason": reason}
+        details: dict[str, Any] = {"path": path, "reason": reason}
         if line is not None:
             details["line"] = line
         super().__init__(f"Failed to parse configuration: {reason}", details)
@@ -1902,7 +1902,7 @@ class CacheCorruptionError(CacheError):
     """
 
     def __init__(self, reason: str, key: Optional[str] = None):
-        details = {"reason": reason}
+        details: dict[str, Any] = {"reason": reason}
         if key:
             details["key"] = key
         super().__init__(f"Cache corruption detected: {reason}", details)
@@ -2019,7 +2019,7 @@ class EvaluatorNotFoundError(EvaluationError):
     """
 
     def __init__(self, evaluator_type: str, available: Optional[list] = None):
-        details = {"evaluator_type": evaluator_type}
+        details: dict[str, Any] = {"evaluator_type": evaluator_type}
         if available:
             details["available_evaluators"] = available
         super().__init__(f"Evaluator not found: {evaluator_type}", details)
@@ -2095,7 +2095,7 @@ class EvaluationFailedError(EvaluationError):
         prediction: Optional[str] = None,
         reference: Optional[str] = None,
     ):
-        details = {"reason": reason}
+        details: dict[str, Any] = {"reason": reason}
         if prediction:
             details["prediction_preview"] = prediction[:100]
         if reference:

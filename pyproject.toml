@@ -175,8 +175,6 @@ show_column_numbers = true
 # Progressively re-enabling error codes. Phase 1 keeps the most impactful
 # disabled; phase 2+ will remove more from this list.
 disable_error_code = [
-    "arg-type",
-    "assignment",
 ]
 
 # Strict checking for core modules

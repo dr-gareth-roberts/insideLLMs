@@ -90,6 +90,7 @@ from typing import (
     Any,
     Optional,
     TypeVar,
+    cast,
 )
 
 T = TypeVar("T")
@@ -2175,8 +2176,8 @@ class PerformanceTracker:
         if self._token_counts:
             input_tokens = [t[0] for t in self._token_counts]
             output_tokens = [t[1] for t in self._token_counts]
-            profile.add_metric("input_tokens", input_tokens, "tokens")
-            profile.add_metric("output_tokens", output_tokens, "tokens")
+            profile.add_metric("input_tokens", cast("list[float]", input_tokens), "tokens")
+            profile.add_metric("output_tokens", cast("list[float]", output_tokens), "tokens")
             profile.add_metric(
                 "total_tokens",
                 [t[0] + t[1] for t in self._token_counts],

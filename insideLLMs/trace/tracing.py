@@ -151,7 +151,7 @@ import hashlib
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional, cast
 
 from insideLLMs._serialization import serialize_value, stable_json_dumps
 
@@ -1001,7 +1001,7 @@ class TraceRecorder:
         --------
         record_generate_end : Record the end of a generation.
         """
-        payload = {"prompt": prompt}
+        payload: dict[str, Any] = {"prompt": prompt}
         if kwargs:
             payload["params"] = kwargs
         return self.record(TraceEventKind.GENERATE_START, payload)
@@ -1135,7 +1135,7 @@ class TraceRecorder:
         record_stream_chunk : Record an individual stream chunk.
         record_stream_end : Record the end of streaming.
         """
-        payload = {"prompt": prompt}
+        payload: dict[str, Any] = {"prompt": prompt}
         if kwargs:
             payload["params"] = kwargs
         return self.record(TraceEventKind.STREAM_START, payload)
@@ -1868,7 +1868,7 @@ def trace_fingerprint(events: list[TraceEvent] | list[dict[str, Any]]) -> str:
     if events and isinstance(events[0], TraceEvent):
         event_dicts = [e.to_dict() for e in events]
     else:
-        event_dicts = list(events)
+        event_dicts = list(cast("list[dict[str, Any]]", events))
 
     # Sort events by sequence to ensure deterministic ordering
     sorted_events = sorted(event_dicts, key=lambda e: e.get("seq", 0))

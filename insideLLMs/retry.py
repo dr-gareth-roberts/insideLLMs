@@ -107,6 +107,7 @@ from typing import (
     Literal,
     Optional,
     TypeVar,
+    cast,
 )
 
 from insideLLMs.exceptions import (
@@ -1119,7 +1120,7 @@ def execute_with_retry(
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
         attempts=len(history) + 1,
-        last_exception=last_exception,
+        last_exception=cast(Exception, last_exception),
         history=history,
     )
 
@@ -1265,7 +1266,7 @@ async def execute_with_retry_async(
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
         attempts=len(history) + 1,
-        last_exception=last_exception,
+        last_exception=cast(Exception, last_exception),
         history=history,
     )
 

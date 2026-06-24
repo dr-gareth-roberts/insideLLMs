@@ -92,7 +92,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 
 # Create library logger
 logger = logging.getLogger("insideLLMs")
@@ -691,14 +691,14 @@ def configure_logging(
         level = getattr(logging, level.upper())
 
     # Configure root logger
-    logger.setLevel(level)
+    logger.setLevel(cast("int | str", level))
 
     # Remove existing handlers
     logger.handlers.clear()
 
     # Add console handler
     console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setLevel(level)
+    console_handler.setLevel(cast("int | str", level))
     if colored and sys.stderr.isatty():
         console_handler.setFormatter(ColoredFormatter(include_extra=include_extra))
     else:
@@ -708,7 +708,7 @@ def configure_logging(
     # Add file handler if specified
     if log_file:
         file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(level)
+        file_handler.setLevel(cast("int | str", level))
         file_handler.setFormatter(StructuredFormatter(include_extra=include_extra))
         logger.addHandler(file_handler)
 

@@ -806,7 +806,7 @@ class OllamaModel(Model):
         if resolved_api_key and "Authorization" not in resolved_headers:
             resolved_headers["Authorization"] = f"Bearer {resolved_api_key}"
         self.headers = resolved_headers or None
-        self._client = None
+        self._client: Optional[Any] = None
 
     def _get_client(self):
         """Lazily initialize the Ollama client.
@@ -1496,7 +1496,7 @@ class VLLMModel(Model):
         self.model_name = model_name
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self._client = None
+        self._client: Optional[Any] = None
 
     def _get_client(self):
         """Lazily initialize the OpenAI-compatible client.

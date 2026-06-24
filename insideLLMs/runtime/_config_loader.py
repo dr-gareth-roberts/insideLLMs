@@ -454,8 +454,10 @@ def _create_model_from_config(
                 pipeline_async = prefer_async_pipeline
             pipeline_name = pipeline_cfg.get("name")
             if pipeline_async:
-                return AsyncModelPipeline(base_model, middlewares=middlewares, name=pipeline_name)
-            return ModelPipeline(base_model, middlewares=middlewares, name=pipeline_name)
+                return AsyncModelPipeline(
+                    cast(Any, base_model), middlewares=middlewares, name=pipeline_name
+                )
+            return ModelPipeline(cast(Any, base_model), middlewares=middlewares, name=pipeline_name)
 
     return base_model
 

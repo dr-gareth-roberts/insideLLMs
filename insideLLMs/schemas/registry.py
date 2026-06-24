@@ -228,7 +228,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable, Optional, Type, cast
 
 
 def normalize_semver(version: str) -> str:
@@ -1394,11 +1394,11 @@ class SchemaRegistry:
         elif v == "1.0.0":
             from insideLLMs.schemas import v1_0_0
 
-            model = v1_0_0.get_schema_model(schema_name)
+            model = cast(Any, v1_0_0.get_schema_model(schema_name))
         elif v == "1.0.1":
             from insideLLMs.schemas import v1_0_1
 
-            model = v1_0_1.get_schema_model(schema_name)
+            model = cast(Any, v1_0_1.get_schema_model(schema_name))
         else:
             raise KeyError(f"Unknown schema version: {schema_name}@{v}")
 

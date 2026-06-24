@@ -177,6 +177,7 @@ from typing import (
     Callable,
     Optional,
     TypeVar,
+    cast,
 )
 
 from insideLLMs.tokens import estimate_tokens as _canonical_estimate_tokens
@@ -2013,7 +2014,7 @@ class TracedModel:
             prompt,
             self._collector,
         ) as ctx:
-            response = self._model.chat(messages, **kwargs)
+            response = self._model.chat(cast(Any, messages), **kwargs)
             ctx["response"] = response if self._config.log_responses else ""
             return response
 
@@ -2408,7 +2409,7 @@ class OTelTracedModel:
             span.set_attribute("llm.message_count", len(messages))
 
             try:
-                response = self._model.chat(messages, **kwargs)
+                response = self._model.chat(cast(Any, messages), **kwargs)
                 span.set_attribute("llm.response_length", len(response))
                 span.set_attribute("llm.success", True)
                 return response

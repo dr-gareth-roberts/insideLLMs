@@ -2047,7 +2047,7 @@ class LocalFileTracker(ExperimentTracker):
         self._run_dir: Optional[Path] = None
         self._metrics: list[dict[str, Any]] = []
         self._params: dict[str, Any] = {}
-        self._artifacts: list[str] = []
+        self._artifacts: list[dict[str, Any]] = []
 
     def start_run(
         self,

@@ -6,7 +6,7 @@ along with progress callback handling utilities.
 
 import inspect
 from pathlib import Path
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Literal, Optional, Union, cast
 
 from insideLLMs.config_types import ProgressInfo
 from insideLLMs.models.base import Model
@@ -104,7 +104,7 @@ def _invoke_progress_callback(
     cast(RichProgressCallback, callback)(info)
 
 
-def _normalize_validation_mode(mode: Optional[str]) -> str:
+def _normalize_validation_mode(mode: Optional[str]) -> Literal["strict", "warn"]:
     """Normalize validation mode to the validator's accepted values.
 
     The schema validator accepts "strict" or "warn". Historically, runner
@@ -137,7 +137,7 @@ def _normalize_validation_mode(mode: Optional[str]) -> str:
     normalized = str(mode).strip().lower()
     if normalized in {"lenient", "warn"}:
         return "warn"
-    return normalized
+    return cast("Literal['strict', 'warn']", normalized)
 
 
 class _RunnerBase:

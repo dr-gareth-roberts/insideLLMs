@@ -93,6 +93,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Optional,
+    cast,
 )
 
 if TYPE_CHECKING:
@@ -2412,7 +2413,7 @@ class MultipleChoiceEvaluator(Evaluator):
 
     name = "multiple_choice"
 
-    def __init__(self, choices: list[str] = None):
+    def __init__(self, choices: Optional[list[str]] = None):
         """Initialize the MultipleChoiceEvaluator.
 
         Args:
@@ -2989,7 +2990,7 @@ class JudgeModel:
                     {"role": "user", "content": eval_prompt},
                 ]
                 raw_response = self.judge_model.chat(
-                    messages, temperature=self.temperature, **kwargs
+                    cast(Any, messages), temperature=self.temperature, **kwargs
                 )
             else:
                 full_prompt = f"{self.system_prompt}\n\n{eval_prompt}"
@@ -3057,7 +3058,7 @@ class JudgeModel:
         Returns:
             List of JudgeResults.
         """
-        refs: list[Optional[str]] = references or [None] * len(prompts)
+        refs: list[Optional[str]] = cast("list[Optional[str]]", references or [None] * len(prompts))
         return [self.evaluate(p, r, ref, **kwargs) for p, r, ref in zip(prompts, responses, refs)]
 
     def compare(
@@ -3092,7 +3093,7 @@ class JudgeModel:
                     {"role": "user", "content": eval_prompt},
                 ]
                 raw_response = self.judge_model.chat(
-                    messages, temperature=self.temperature, **kwargs
+                    cast(Any, messages), temperature=self.temperature, **kwargs
                 )
             else:
                 full_prompt = f"{self.system_prompt}\n\n{eval_prompt}"

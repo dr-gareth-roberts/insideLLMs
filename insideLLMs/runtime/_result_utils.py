@@ -814,11 +814,11 @@ def _build_result_record(
     primary_metric = None
     if isinstance(output, dict):
         if isinstance(output.get("scores"), dict):
-            scores = output.get("scores")
+            scores = cast("dict[str, Any]", output.get("scores"))
         elif output.get("score") is not None:
             scores = {"score": output.get("score")}
         if isinstance(output.get("usage"), dict):
-            usage = output.get("usage")
+            usage = cast("dict[str, Any]", output.get("usage"))
         primary_metric = output.get("primary_metric")
 
     err_str: Optional[str] = None

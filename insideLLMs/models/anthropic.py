@@ -102,7 +102,7 @@ insideLLMs.exceptions : Exception classes for error handling
 
 import os
 from collections.abc import Iterator, Sequence
-from typing import Optional
+from typing import Any, Optional, cast
 
 import anthropic
 from anthropic import APIError as AnthropicAPIError
@@ -557,7 +557,7 @@ class AnthropicModel(Model):
                 model=self.model_name,
                 max_tokens=kwargs.get("max_tokens", 1024),
                 temperature=kwargs.get("temperature", 0.7),
-                messages=anthropic_messages,
+                messages=cast(Any, anthropic_messages),
             )
             block = response.content[0]
             return getattr(block, "text", str(block))

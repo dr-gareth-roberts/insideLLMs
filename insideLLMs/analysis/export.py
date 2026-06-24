@@ -3,6 +3,7 @@ Data export and serialization utilities for LLM experiments.
 
 This module provides a comprehensive toolkit for exporting experimental data
 from LLM analysis runs to various formats. It supports both batch and streaming
+from typing import Literal
 exports, data compression, schema validation, and flexible pipeline composition
 for complex data transformation workflows.
 
@@ -1314,7 +1315,7 @@ class JSONExporter(Exporter):
 
         # Unwrap single item
         if len(prepared) == 1 and isinstance(data, dict):
-            prepared = prepared[0]
+            prepared = prepared[0]  # type: ignore[assignment]  # unwrap single record
 
         indent = 2 if self.config.pretty_print else None
         return json.dumps(prepared, indent=indent, ensure_ascii=False, default=str)
@@ -1786,7 +1787,7 @@ class CSVExporter(Exporter):
             output,
             fieldnames=fieldnames,
             delimiter=self.delimiter,
-            quoting=self.quoting,
+            quoting=self.quoting,  # type: ignore[arg-type]  # csv quoting constant
         )
         writer.writeheader()
 
@@ -2112,7 +2113,7 @@ class DataSchema:
                 "any": object,
             }.get(field_def.type, object)
 
-            if value is not None and not isinstance(value, expected_type):
+            if value is not None and not isinstance(value, cast(Any, expected_type)):
                 errors.append(
                     f"Field {field_def.name}: expected {field_def.type}, got {type(value).__name__}"
                 )
@@ -2432,7 +2433,7 @@ def stream_export(
         return exporter.export_stream(data, output)
     else:
         # Fall back to regular export (loads all into memory)
-        exporter = get_exporter(format, config)
+        exporter = cast(Any, get_exporter(format, config))
         data_list = list(data)
         exporter.export(data_list, output)
         return len(data_list)
@@ -2574,7 +2575,7 @@ def create_export_bundle(
 
                 schema_fields.append(SchemaField(name=key, type=field_type))
 
-            schema = DataSchema(
+            schema = DataSchema(  # type: ignore[assignment]  # schema var reused as DataSchema
                 name=name,
                 version="1.0",
                 fields=schema_fields,
@@ -2588,7 +2589,9 @@ def create_export_bundle(
     if compress:
         archiver = DataArchiver(CompressionType.ZIP)
         archive_path = output_dir / f"{name}.zip"
-        archiver.create_archive(files, archive_path, bundle_dir, deterministic=deterministic)
+        archiver.create_archive(
+            cast("list[str | Path]", files), archive_path, bundle_dir, deterministic=deterministic
+        )
         shutil.rmtree(bundle_dir)
         return archive_path
 

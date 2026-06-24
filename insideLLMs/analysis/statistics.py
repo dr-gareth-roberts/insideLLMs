@@ -87,7 +87,7 @@ insideLLMs.analysis.evaluation : Evaluation metrics
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from insideLLMs.types import (
     ExperimentResult,
@@ -1512,7 +1512,7 @@ def extract_metric_from_results(
             elif metric == "mean_latency_ms" and result.score.mean_latency_ms is not None:
                 values.append(result.score.mean_latency_ms)
             elif metric in result.score.custom_metrics:
-                values.append(result.score.custom_metrics[metric])
+                values.append(cast(float, result.score.custom_metrics[metric]))
     return values
 
 

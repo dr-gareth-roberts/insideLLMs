@@ -111,7 +111,7 @@ from datetime import datetime
 from enum import Enum
 from html import escape as _html_escape
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.types import (
@@ -899,7 +899,7 @@ def _score_to_markdown_lines(score: ProbeScore) -> list[str]:
         lines.append("### Custom Metrics")
         for name in sorted(score.custom_metrics):
             value = score.custom_metrics[name]
-            lines.append(f"- **{name}:** {_format_number(value, 4)}")
+            lines.append(f"- **{name}:** {_format_number(cast(Any, value), 4)}")
 
     lines.append("")
     return lines

@@ -162,6 +162,7 @@ from typing import (
     Generic,
     Optional,
     TypeVar,
+    cast,
 )
 
 T = TypeVar("T")
@@ -2230,7 +2231,7 @@ def run_async(coro: Awaitable[T]) -> T:
         return loop.run_until_complete(coro)
     except RuntimeError:
         # No running loop, create a new one
-        return asyncio.run(coro)
+        return asyncio.run(cast(Any, coro))
 
 
 # ---------------------------------------------------------------------------

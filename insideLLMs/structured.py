@@ -1787,7 +1787,7 @@ class StructuredOutputGenerator(Generic[T]):
                         {"role": "user", "content": prompt},
                     ]
                     response = self.model.chat(
-                        messages, temperature=self.config.temperature, **model_kwargs
+                        cast(Any, messages), temperature=self.config.temperature, **model_kwargs
                     )
                 else:
                     full_prompt = f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}"
@@ -2623,7 +2623,7 @@ def quick_extract(
             {"role": "system", "content": STRUCTURED_OUTPUT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
-        raw_response = model.chat(messages, temperature=0.0)
+        raw_response = model.chat(cast(Any, messages), temperature=0.0)
     else:
         raw_response = model.generate(
             f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}", temperature=0.0
@@ -2734,7 +2734,7 @@ def batch_extract(
                     {"role": "system", "content": STRUCTURED_OUTPUT_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ]
-                raw_response = model.chat(messages, temperature=0.0)
+                raw_response = model.chat(cast(Any, messages), temperature=0.0)
             else:
                 raw_response = model.generate(
                     f"{STRUCTURED_OUTPUT_SYSTEM_PROMPT}\n\n{prompt}", temperature=0.0
@@ -2757,7 +2757,7 @@ def batch_extract(
             # Create error result
             results.append(
                 StructuredResult(
-                    data=None,
+                    data=cast(Any, None),
                     raw_response=str(e),
                     schema=schema,
                     prompt=text,

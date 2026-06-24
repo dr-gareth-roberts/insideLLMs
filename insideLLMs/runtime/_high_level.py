@@ -484,7 +484,7 @@ def run_harness_from_config(
             experiment = create_experiment_result(
                 model,
                 probe,
-                results,
+                cast(Any, results),
                 config=experiment_config,
                 experiment_id=experiment_id,
                 started_at=experiment_started_at,
@@ -499,7 +499,7 @@ def run_harness_from_config(
             else:
                 probe_category_str = str(probe_category)
 
-            for example_index, result in enumerate(results):
+            for example_index, result in enumerate(cast(Any, results)):
                 record_started_at, record_completed_at = _deterministic_item_times(
                     experiment_base_time,
                     example_index,

@@ -10,7 +10,7 @@ import sys
 import time
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from insideLLMs._serialization import (
     StrictSerializationError,
@@ -370,7 +370,7 @@ class ProbeRunner(_RunnerBase):
             from insideLLMs.runtime.receipt import ReceiptMiddleware
 
             effective_model = ModelPipeline(
-                self.model,
+                cast(Any, self.model),
                 middlewares=[ReceiptMiddleware(receipt_sink=receipt_sink)],
             )
 

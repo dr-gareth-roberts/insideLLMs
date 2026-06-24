@@ -93,7 +93,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, cast
 
 # Type alias for event-kind-aware normaliser function
 TracePayloadNormaliserFunc = Callable[[str, Mapping[str, Any]], Mapping[str, Any]]
@@ -1181,7 +1181,7 @@ class TraceConfig:
             tool_schemas[tool_name] = ToolSchema(
                 name=tool_name,
                 required_args=required_args,
-                arg_types=arg_types,
+                arg_types=cast("dict[str, type]", arg_types),
                 optional_args=optional_args,
             )
 
