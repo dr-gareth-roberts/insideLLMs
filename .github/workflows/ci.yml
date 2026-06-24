@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Cache pip
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-lint-${{ hashFiles('pyproject.toml') }}
@@ -50,7 +50,7 @@ jobs:
           python-version: "3.12"
 
       - name: Cache pip
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-typecheck-${{ hashFiles('pyproject.toml') }}
@@ -87,7 +87,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Cache pip
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-test-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
@@ -117,7 +117,7 @@ jobs:
           python-version: "3.12"
 
       - name: Cache pip
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-determinism-${{ hashFiles('pyproject.toml') }}
@@ -142,7 +142,7 @@ jobs:
           python-version: "3.12"
 
       - name: Cache pip
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: pip-contracts-${{ hashFiles('pyproject.toml') }}
