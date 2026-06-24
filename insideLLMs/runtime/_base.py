@@ -118,8 +118,11 @@ def _normalize_validation_mode(mode: Optional[str]) -> Literal["strict", "warn"]
 
     Returns
     -------
-    str
-        Normalized mode: "strict", "warn", or the original value.
+    Literal["strict", "warn"]
+        The normalized mode. ``None`` maps to ``"strict"``; ``"lenient"`` and
+        ``"warn"`` map to ``"warn"``; any other value is lowercased and returned
+        unchanged. The result is typed as the validator's accepted literals
+        (an unrecognized passthrough value is cast to that type for the caller).
 
     Examples
     --------
