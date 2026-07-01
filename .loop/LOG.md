@@ -117,3 +117,26 @@ after: both constructors validate max_size and raise a clear ValueError for
   4 new regression tests + 20 test_caching pass; ruff + format + mypy clean
   (217 files); full fast suite 6825 passed, failures only known env nlp/tuf.
 commit: abc1d4c
+
+## [2026-07-01T00:00Z] W7-0008 — verified
+
+category: bug (silent wrong count) | file: insideLLMs/streaming.py
+before: `ContentDetector` re-ran `re.finditer` over the whole rolling buffer on
+  every `check()`, re-appending earlier-chunk matches. `check("First: 123")`
+  then `check(" Second: 456")` re-returned `123`, and `get_all_detections()`
+  reported `[123, 123, 456]` (len 3) — an inflated, untrustworthy detection count.
+after: track a per-pattern buffer offset already reported; emit only matches
+  starting at/after it, and realign offsets when the buffer trims. `check2` →
+  `[456]`; `get_all` → `[123, 456]` (len 2); a pattern split across two calls
+  ("hel" + "lo") still completes exactly once. 85 streaming tests pass; ruff +
+  format + mypy clean (217 files); full fast suite 6827 passed, failures only
+  known env nlp/tuf. Per-pattern offset avoids one pattern masking another's
+  cross-chunk match.
+commit: 02a4a0b
+
+### Milestone: all 5 seed HIGH (🔴) core bugs resolved
+
+W7-0001 (safety pct regex), W7-0006 (caching hang), W7-0008 (streaming
+double-count), W7-0009 (table misalignment) — verified. W7-0007 (async runner
+records.jsonl sync/async divergence) — escalated (Stable artefact surface).
+Zero open 🔴 items remain in core. Remaining open items are 🟠/🟡/ℹ️ leads.
