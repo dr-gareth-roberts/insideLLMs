@@ -82,6 +82,6 @@ def test_pae_format() -> None:
     from insideLLMs.attestations.dsse import pae
 
     out = pae("application/vnd.in-toto+json", b'{"a":1}')
-    assert out.startswith(b"DSSEV1 ")
+    assert out.startswith(b"DSSEv1 ")
     assert b"application" in out
     assert b'{"a":1}' in out

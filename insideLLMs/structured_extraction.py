@@ -1197,6 +1197,27 @@ class TableExtractor:
         result = self._extract_whitespace_table(text)
         return result
 
+    @staticmethod
+    def _split_markdown_row(line: str, expected_cells: Optional[int] = None) -> list[str]:
+        """Split a markdown table row into cells, preserving empty interior cells.
+
+        Only the empty strings produced by the outer border pipes are dropped; a
+        blank interior cell is kept as "" so cells stay aligned with the header
+        (otherwise a blank cell shifts every following value into the wrong
+        column and drops the last one). ``expected_cells`` disambiguates a lone
+        trailing pipe on a border-less row ("Bob | 30 |"): it is kept as a real
+        empty final cell unless dropping it is needed to match the header width.
+        """
+        line = line.strip()
+        has_leading = line.startswith("|")
+        has_trailing = line.endswith("|")
+        cells = [cell.strip() for cell in line.split("|")]
+        if has_leading:
+            cells = cells[1:]
+        if has_trailing and (has_leading or expected_cells is None or len(cells) > expected_cells):
+            cells = cells[:-1]
+        return cells
+
     def _extract_markdown_table(self, text: str) -> ExtractionResult:
         """Extract markdown-style table."""
         lines = [line.strip() for line in text.split("\n") if line.strip()]
@@ -1214,7 +1235,7 @@ class TableExtractor:
 
         # Parse header
         header_line = table_lines[0]
-        headers = [cell.strip() for cell in header_line.split("|") if cell.strip()]
+        headers = self._split_markdown_row(header_line)
 
         # Skip separator line if present
         data_start = 1
@@ -1224,8 +1245,8 @@ class TableExtractor:
         # Parse rows
         rows = []
         for line in table_lines[data_start:]:
-            cells = [cell.strip() for cell in line.split("|") if cell.strip()]
-            if cells:
+            cells = self._split_markdown_row(line, expected_cells=len(headers))
+            if any(cells):
                 row = dict(zip(headers, cells))
                 rows.append(row)
 
