@@ -102,3 +102,18 @@ after: note rewritten to state canon_v2 domain-separates leaves (0x00) and nodes
   behaviour change. ruff + format + mypy clean; 20 crypto/disclosure tests pass;
   disclosure.py doctest failures 0.
 commit: 48519c2
+
+## [2026-07-01T00:00Z] W7-0006 — verified
+
+category: bug (infinite hang / robustness) | file: insideLLMs/caching.py
+before: `InMemoryCache(max_size=0).set("a", 1)` and `StrategyCache(max_size=0).set(...)`
+  both hang forever (`timeout 5` → exit 124). The eviction loop
+  `while len(cache) >= max_size: evict_lru()` can never progress when
+  max_size <= 0 (an empty cache is already >= 0 and there is nothing to evict).
+after: both constructors validate max_size and raise a clear ValueError for
+  non-positive values (InMemoryCache.__init__, StrategyCache via resolved
+  CacheConfig). Valid caches unchanged. Fail-fast chosen over silently picking
+  unbounded/disabled semantics — an immediate error beats an undebuggable hang.
+  4 new regression tests + 20 test_caching pass; ruff + format + mypy clean
+  (217 files); full fast suite 6825 passed, failures only known env nlp/tuf.
+commit: abc1d4c

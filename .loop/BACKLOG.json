@@ -79,14 +79,14 @@
       "category": "bug",
       "severity": "🔴 HIGH",
       "location": "insideLLMs/caching.py:1206",
-      "found_by": "workflow reader (wave-7 seed, unverified lead)",
+      "found_by": "workflow reader (concurrency-cache) + manual repro",
       "description": "InMemoryCache.set() hangs in an infinite loop when max_size <= 0 because the eviction while-loop condition len(self._cache) >= self._max_size is permanently true while _evict_lru() returns early on an empty cache, so no progress is ever made.",
       "evidence": "Ran: InMemoryCache(max_size=0).set('a', 1) -> process times out (exit 124). Loop at line 1206 `while len(self._cache) >= self._max_size: self._evict_lru()`; with max_size=0 and empty cache, _evict_lru() (line 1252) returns immediately without deleting, so the condition never becomes false. Same defect confirmed in StrategyCache.set (caching.py:1737, `while len(self._entries) >= self.config.max_size`) and VectorCache.set (semantic_cache.py:1185, `while len(self._entries) >= self.config.max_size`), both also time out with max_size=0.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "proposed_fix: Guard the eviction loop against non-positive capacity, e.g. `while self._max_size > 0 and len(self._cache) >= self._max_size:` (and the analogous conditions in StrategyCache.set and VectorCache.set), or validate max_size > 0 in the constructors. | reader_confidence=high"
+      "fix_commit": "abc1d4c",
+      "verification": "BEFORE: `timeout 5 python3 -c \"InMemoryCache(max_size=0).set('a',1)\"` -> exit 124 (hang); same for StrategyCache(max_size=0). Root: eviction loop `while len(cache) >= max_size` with max_size<=0 never progresses (_evict_lru no-op on empty). FIX: raise ValueError for max_size<=0 in InMemoryCache.__init__ and StrategyCache.__init__ (resolved CacheConfig). AFTER: both raise a clear ValueError; valid caches construct/set/get normally. 4 new regression tests + 20 test_caching pass; ruff+format+mypy clean (217 files); full fast suite 6825 passed, failures only known env nlp/tuf. No existing caller uses max_size<=0.",
+      "notes": "Fail-fast chosen over silently treating max_size<=0 as unbounded/disabled (ambiguous; lru_cache treats 0 as disabled, others as unbounded) — an immediate error is more debuggable than a hang or silent surprise. Not a Stable surface."
     },
     {
       "id": "W7-0007",
