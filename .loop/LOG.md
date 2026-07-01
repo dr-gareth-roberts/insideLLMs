@@ -140,3 +140,26 @@ W7-0001 (safety pct regex), W7-0006 (caching hang), W7-0008 (streaming
 double-count), W7-0009 (table misalignment) — verified. W7-0007 (async runner
 records.jsonl sync/async divergence) — escalated (Stable artefact surface).
 Zero open 🔴 items remain in core. Remaining open items are 🟠/🟡/ℹ️ leads.
+
+## [2026-07-01T00:00Z] W7-0011 — verified
+
+category: bug (spec-compliance / interop) | file: insideLLMs/attestations/dsse.py
+before: `pae("application/vnd.in-toto+json", b"hello")` → `b"DSSEV1 28 ..."`
+  (uppercase V). The DSSE spec mandates the lowercase version tag `DSSEv1`, so
+  signatures computed over this PAE could not be verified by spec-compliant
+  verifiers (cosign, in-toto).
+after: `pae(...)` → `b"DSSEv1 28 application/vnd.in-toto+json 5 hello"`. `pae` is
+  an exported helper but is not wired into the internal signing path (only
+  `__all__` + one test), so no produced artifact/signature changes. Corrected the
+  literal + docstring, updated the existing assertion, and added a full-PAE spec
+  regression test. 89 attestation/streaming/regression tests pass; ruff + format
+  + mypy clean (217 files); full suite 6829 passed, failures only env nlp/tuf.
+commit: 58d2884
+
+### Review-response note (W7-0008 streaming)
+
+Addressed Sourcery + Copilot review of the streaming fix (7460d31): add_pattern
+now resets a name's scan offset on pattern redefinition; the skip-condition
+comment was corrected to describe the intentional never-inflate start-based skip.
+The Copilot SWE agent independently strengthened the redefinition test (7703da2);
+integrated via rebase.

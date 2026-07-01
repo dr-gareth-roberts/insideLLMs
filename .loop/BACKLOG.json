@@ -149,14 +149,14 @@
       "category": "bug",
       "severity": "🟠 MEDIUM",
       "location": "insideLLMs/attestations/dsse.py:88",
-      "found_by": "workflow reader (wave-7 seed, unverified lead)",
+      "found_by": "workflow reader (crypto-sec) + manual repro",
       "description": "The DSSE Pre-Authentication Encoding uses the version prefix 'DSSEV1' (uppercase V) instead of the spec-mandated 'DSSEv1' (lowercase v), so any signature computed over this PAE cannot be verified by a spec-compliant DSSE verifier (cosign, in-toto) and vice-versa.",
       "evidence": "The DSSE PROTOCOL.md defines PAE(type,body) = 'DSSEv1' + SP + LEN(type) + SP + type + SP + LEN(body) + SP + body with a lowercase 'v'. The code emits b'DSSEV1 ...': `python3 -c \"from insideLLMs.attestations.dsse import pae; print(pae('application/vnd.in-toto+json', b'hello'))\"` -> b'DSSEV1 28 application/vnd.in-toto+json 5 hello'. pae is a public exported function (attestations.__all__ includes 'pae') documented as 'Pre-Authentication Encoding for DSSE (used by signers)', so the wrong byte string produces non-interoperable signatures.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "proposed_fix: Change the literal on line 88 from b\"DSSEV1 \" to b\"DSSEv1 \" (lowercase v) and update the docstring and tests/test_attestations.py:85 assertion accordingly. | reader_confidence=high"
+      "fix_commit": "58d2884",
+      "verification": "BEFORE: pae('application/vnd.in-toto+json', b'hello') -> b'DSSEV1 28 ...' (uppercase V). DSSE spec mandates lowercase 'DSSEv1', so signatures over this PAE were non-interoperable with cosign/in-toto. AFTER: -> b'DSSEv1 28 application/vnd.in-toto+json 5 hello'. pae is exported but NOT wired into the internal signing path (only __all__ + one test), so no produced artifact/signature changes. Updated literal+docstring, existing test assertion, and added full-PAE spec regression test. 89 attestation/streaming/regression tests pass; ruff+format+mypy clean (217 files); full suite 6829 passed, failures only known env nlp/tuf.",
+      "notes": "Not a STABILITY_MATRIX Stable surface; not frozen in any contract doc. Rebased onto Copilot test tweak 7703da2."
     },
     {
       "id": "W7-0012",
