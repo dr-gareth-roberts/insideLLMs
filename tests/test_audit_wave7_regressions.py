@@ -128,3 +128,15 @@ def test_content_detector_resets_scan_pos_when_pattern_redefined():
     detector.add_pattern("p", r"[a-z]+")  # same name, different pattern
     # 'abc' sits at the buffer start (before the old offset); it must still match.
     assert [d["match"] for d in detector.check("")] == ["abc"]
+
+
+# W7-0011 — the DSSE Pre-Authentication Encoding must use the spec version tag
+# "DSSEv1" (lowercase v). The old "DSSEV1" produced signatures no spec-compliant
+# verifier (cosign, in-toto) would accept.
+def test_dsse_pae_uses_spec_version_tag():
+    from insideLLMs.attestations.dsse import pae
+
+    out = pae("application/vnd.in-toto+json", b"hello")
+    # Full DSSE PAE: "DSSEv1" SP LEN(type) SP type SP LEN(body) SP body
+    assert out == b"DSSEv1 28 application/vnd.in-toto+json 5 hello"
+    assert not out.startswith(b"DSSEV1 ")
