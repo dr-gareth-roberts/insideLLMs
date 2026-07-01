@@ -93,14 +93,14 @@
       "category": "bug",
       "severity": "🔴 HIGH",
       "location": "insideLLMs/runtime/_async_runner.py:458-465",
-      "found_by": "workflow reader (wave-7 seed, unverified lead)",
+      "found_by": "workflow reader (runtime-runner) + manual diagnosis",
       "description": "On the async stop_on_error path, items after the first failure are written to records.jsonl with status \"skipped\" even though they never executed, and a later resume=True run treats those skipped placeholders as completed work and never re-runs them.",
       "evidence": "When stop_event is set, run_single sets results[index] = {..., \"status\": \"skipped\"} (line 459-464), and write_ready_records() (line 404-405 only breaks on None, never on status) persists it. Reproduced: async run over 5 prompts with stop_on_error=True failing at index 1 writes 5 records: idx0=success, idx1=error, idx2/3/4=skipped (the sync runner writes only idx0=success, idx1=error and stops). Then resume=True with a probe that no longer fails returns: [success, error, skipped, skipped, skipped] -- items 2,3,4 were never executed on either run yet resume declares them done. _validate_resume_record only checks record_index and input fingerprint (both match, since the skipped dict stores \"input\": item) and never rejects status==\"skipped\", so the corrupt prefix is accepted.",
-      "status": "open",
-      "escalation_reason": null,
+      "status": "escalated",
+      "escalation_reason": "Touches the Stable records.jsonl artefact + resume/determinism controls (§1.9/§7). Diagnosis: async _async_runner.run_single writes a status='skipped' placeholder record for every item after the first stop_on_error failure (line 458-465); write_ready_records only stops on None, so these persist. The SYNC runner instead breaks and raises (( _sync_runner.py:509-513 ) — it writes NO skipped records. So identical config yields DIFFERENT records.jsonl depending on sync vs async execution, violating 'deterministic for identical inputs/config'. On resume, completed=len(existing_records) counts the skipped placeholders as done, so failed-then-skipped items never re-run. 'skipped' IS a valid schema status (docs/ARTIFACT_CONTRACT.md:30), so this is a semantics decision, not a schema bug. PROPOSAL for sign-off: make async match sync (stop without writing skipped placeholders) OR write skipped records AND have resume re-execute status=='skipped' items — either way document it and add a determinism/contract regression asserting sync==async records for the stop_on_error path. Needs make check + golden-path + determinism + contract per A5.",
       "fix_commit": null,
       "verification": null,
-      "notes": "proposed_fix: Do not persist placeholder records for items that never ran: in run_single, when stop_event.is_set(), leave results[index] as None (return without assigning) so write_ready_records stops at the gap and records.jsonl stays a contiguous prefix of actually-completed items; the trailing None entries are already handled because the run raises stop_error before the all-results-present check. (Alternatively, skip writing when status==\"skipped\" in write_ready_records and reject status==\"skipped\" in _validate_resume_record.) | reader_confidence=high"
+      "notes": "Highest goal-relevance (path-dependent records.jsonl breaks diff-gating trust) but Stable-surface product decision — logged, not unilaterally changed."
     },
     {
       "id": "W7-0008",
@@ -121,14 +121,14 @@
       "category": "bug",
       "severity": "🔴 HIGH",
       "location": "insideLLMs/structured_extraction.py:1227",
-      "found_by": "workflow reader (wave-7 seed, unverified lead)",
+      "found_by": "workflow reader (runtime/structured) + manual repro",
       "description": "TableExtractor._extract_markdown_table drops empty cells via `if cell.strip()` when splitting a row, so a blank cell shifts all following values left into the wrong columns and silently loses the last column.",
       "evidence": "python3 -c import: extract_table('| Name | Age | City |\\n|------|-----|------|\\n| Bob  |     | NYC  |\\n') returns rows=[{'Name':'Bob','Age':'NYC'}] — 'NYC' (a City value) is mapped to 'Age' and 'City' is dropped. Header parsing (line 1217) and row parsing (line 1227) both use `[cell.strip() for cell in line.split('|') if cell.strip()]`, which collapses empty cells so zip(headers, cells) misaligns.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "proposed_fix: Do not filter empty cells inside a row/header. Split on '|', drop only the leading/trailing empties from the outer pipes (e.g. strip the line of leading/trailing '|' first, then split and .strip() each cell without the `if cell.strip()` filter), preserving positional alignment. | reader_confidence=high"
+      "fix_commit": "aaa9bf4",
+      "verification": "Added TableExtractor._split_markdown_row (strips only outer border pipes, keeps blank interior cells) and used it for header+rows with `if any(cells)`. BEFORE: extract('| Bob | | NYC |') -> {'Name':'Bob','Age':'NYC'} (City value mislabeled Age, City dropped). AFTER: {'Name':'Bob','Age':'','City':'NYC'}; no-outer-pipe rows still parse. tests/test_audit_wave7_regressions.py (2 new) pass; 132 table/structured tests pass; ruff+format clean; full mypy clean (217 files); full fast suite 6823 passed, failures only known env nlp/tuf.",
+      "notes": "Not a STABILITY_MATRIX Stable surface. Ragged rows (fewer cells than headers) left as-is (pre-existing zip truncation, out of scope)."
     },
     {
       "id": "W7-0010",
