@@ -1373,7 +1373,7 @@ class SafetyHallucinationIndicatorDetector:
 
     # Patterns for specific claims
     SPECIFIC_CLAIM_PATTERNS = [
-        re.compile(r"\b\d+(?:\.\d+)?%\b"),  # Percentages
+        re.compile(r"\b\d+(?:\.\d+)?%"),  # Percentages ('%' already delimits the token)
         re.compile(r"\$\d+(?:,\d{3})*(?:\.\d{2})?\b"),  # Dollar amounts
         re.compile(r"\b(?:19|20)\d{2}\b"),  # Years
     ]
