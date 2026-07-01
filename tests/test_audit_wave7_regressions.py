@@ -60,3 +60,31 @@ def test_markdown_table_without_outer_pipes():
     text = "Name | Age | City\nBob | 30 | NYC\n"
     rows = TableExtractor().extract(text).extracted_data["rows"]
     assert rows == [{"Name": "Bob", "Age": "30", "City": "NYC"}]
+
+
+# W7-0008 — a non-positive max_size must fail fast at construction instead of
+# hanging forever. The eviction loop `while len(cache) >= max_size` could never
+# make progress when max_size <= 0 (an empty cache is already >= 0 and there is
+# nothing to evict), so `.set()` spun indefinitely.
+def test_inmemory_cache_rejects_nonpositive_max_size():
+    import pytest
+
+    from insideLLMs.caching import InMemoryCache
+
+    for bad in (0, -1):
+        with pytest.raises(ValueError, match="max_size"):
+            InMemoryCache(max_size=bad)
+    # A valid cache still constructs and stores.
+    cache = InMemoryCache(max_size=2)
+    cache.set("a", 1)
+    assert cache.get("a") == 1
+
+
+# W7-0008 — the same guard must protect StrategyCache (max_size via CacheConfig).
+def test_strategy_cache_rejects_nonpositive_max_size():
+    import pytest
+
+    from insideLLMs.caching import StrategyCache
+
+    with pytest.raises(ValueError, match="max_size"):
+        StrategyCache(max_size=0)

@@ -1166,6 +1166,8 @@ class InMemoryCache(BaseCacheABC[T]):
         max_size: int = 1000,
         default_ttl: Optional[int] = None,
     ):
+        if max_size <= 0:
+            raise ValueError(f"max_size must be a positive integer, got {max_size}")
         self._cache: dict[str, dict] = {}
         self._max_size = max_size
         self._default_ttl = default_ttl
@@ -1678,6 +1680,10 @@ class StrategyCache:
                 max_size=max_size if max_size is not None else resolved.max_size,
             )
         self.config = resolved
+        if self.config.max_size <= 0:
+            raise ValueError(
+                f"CacheConfig.max_size must be a positive integer, got {self.config.max_size}"
+            )
         self._entries: OrderedDict[str, CacheEntry] = OrderedDict()
         self._stats = CacheStats()
         self._lock = threading.RLock()
