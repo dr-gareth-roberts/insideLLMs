@@ -126,8 +126,8 @@ before: `ContentDetector` re-ran `re.finditer` over the whole rolling buffer on
   then `check(" Second: 456")` re-returned `123`, and `get_all_detections()`
   reported `[123, 123, 456]` (len 3) — an inflated, untrustworthy detection count.
 after: track a per-pattern buffer offset already reported; emit only matches
-  starting at/after it, and realign offsets when the buffer trims. `check2` →
-  `[456]`; `get_all` → `[123, 456]` (len 2); a pattern split across two calls
+  starting at/after it, and realign offsets when the buffer trims. The second
+  `check()` → `[456]`; `get_all` → `[123, 456]` (len 2); a pattern split across two calls
   ("hel" + "lo") still completes exactly once. 85 streaming tests pass; ruff +
   format + mypy clean (217 files); full fast suite 6827 passed, failures only
   known env nlp/tuf. Per-pattern offset avoids one pattern masking another's

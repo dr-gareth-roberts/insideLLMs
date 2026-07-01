@@ -2519,6 +2519,10 @@ class ContentDetector:
         >>> len(detector.patterns)
         2
         """
+        # Redefining a name with a different regex must re-scan the buffer from
+        # the start, so drop any stale scan offset held for that name.
+        if self.patterns.get(name) != pattern:
+            self._scan_pos.pop(name, None)
         self.patterns[name] = pattern
 
     def check(self, content: str) -> list[dict[str, Any]]:
@@ -2567,8 +2571,12 @@ class ContentDetector:
             already_scanned = self._scan_pos.get(name, 0)
             furthest = already_scanned
             for match in re.finditer(pattern, self._buffer):
-                # Skip matches already reported on an earlier check() call; only
-                # emit ones reaching into not-yet-reported buffer content.
+                # Skip matches that begin inside already-reported buffer content,
+                # so a detection is never counted twice. A match that begins in
+                # reported content but only completes now (e.g. a greedy run that
+                # grew across the chunk boundary) keeps its earlier, shorter
+                # report rather than being re-emitted — chosen so counts never
+                # inflate, at the cost of not upgrading a grown match.
                 if match.start() < already_scanned:
                     continue
                 detection = {

@@ -114,3 +114,17 @@ def test_content_detector_matches_pattern_spanning_chunks():
     detector.add_pattern("greeting", r"hello")
     assert detector.check("hel") == []
     assert [d["match"] for d in detector.check("lo world")] == ["hello"]
+
+
+# W7-0008 — redefining a pattern under an existing name must reset that name's
+# scan offset, or matches near the buffer start are wrongly skipped as already
+# reported (raised in review of the streaming fix).
+def test_content_detector_resets_scan_pos_when_pattern_redefined():
+    from insideLLMs.streaming import ContentDetector
+
+    detector = ContentDetector()
+    detector.add_pattern("p", r"\d+")
+    detector.check("abc 123")  # matches 123 and advances the scan offset
+    detector.add_pattern("p", r"[a-z]+")  # same name, different pattern
+    # 'abc' sits at the buffer start (before the old offset); it must still match.
+    assert [d["match"] for d in detector.check("")] == ["abc"]
