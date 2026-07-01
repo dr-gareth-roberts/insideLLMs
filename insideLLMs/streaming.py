@@ -2632,6 +2632,9 @@ class ContentDetector:
         """
         self._buffer = ""
         self.detections.clear()
+        # Reset per-pattern scan offsets too, or a fresh check() after clear()
+        # would skip matches at the start of the new buffer as "already scanned".
+        self._scan_pos.clear()
 
 
 class StreamingWindowAnalyzer:

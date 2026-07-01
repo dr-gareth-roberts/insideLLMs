@@ -163,3 +163,13 @@ now resets a name's scan offset on pattern redefinition; the skip-condition
 comment was corrected to describe the intentional never-inflate start-based skip.
 The Copilot SWE agent independently strengthened the redefinition test (7703da2);
 integrated via rebase.
+
+### Review-response note (W7-0008 / W7-0009 second round, CodeRabbit)
+
+- streaming.py: `ContentDetector.clear()` now also clears `_scan_pos`, so a
+  `check()` after `clear()` no longer skips matches at the start of the reset
+  buffer. Regression test added.
+- structured_extraction.py: `_split_markdown_row` now takes `expected_cells` and
+  keeps a trailing empty cell on a border-less row ("Bob | 30 |") instead of
+  dropping the last column; the row parser passes `len(headers)`. Regression
+  test added. Interior-blank behaviour (W7-0009) unchanged.

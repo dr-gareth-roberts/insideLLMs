@@ -62,6 +62,16 @@ def test_markdown_table_without_outer_pipes():
     assert rows == [{"Name": "Bob", "Age": "30", "City": "NYC"}]
 
 
+# W7-0009 — a border-less row ending in a pipe keeps its trailing empty cell
+# instead of dropping the last column (raised in review of the table fix).
+def test_markdown_table_trailing_blank_cell_on_borderless_row():
+    from insideLLMs.structured_extraction import TableExtractor
+
+    text = "Name | Age | City\nBob | 30 |\n"
+    rows = TableExtractor().extract(text).extracted_data["rows"]
+    assert rows == [{"Name": "Bob", "Age": "30", "City": ""}]
+
+
 # W7-0006 — a non-positive max_size must fail fast at construction instead of
 # hanging forever. The eviction loop `while len(cache) >= max_size` could never
 # make progress when max_size <= 0 (an empty cache is already >= 0 and there is
@@ -128,6 +138,20 @@ def test_content_detector_resets_scan_pos_when_pattern_redefined():
     detector.add_pattern("p", r"[a-z]+")  # same name, different pattern
     # 'abc' sits at the buffer start (before the old offset); it must still match.
     assert [d["match"] for d in detector.check("")] == ["abc"]
+
+
+# W7-0008 — clear() must also reset the per-pattern scan offsets, or a fresh
+# check() after clear() skips matches at the start of the new buffer (raised in
+# review of the streaming fix).
+def test_content_detector_clear_resets_scan_pos():
+    from insideLLMs.streaming import ContentDetector
+
+    detector = ContentDetector()
+    detector.add_pattern("num", r"\d+")
+    detector.check("first 123")  # advances the scan offset past index 0
+    detector.clear()
+    # After clear the buffer restarts at 0; the new match must be found.
+    assert [d["match"] for d in detector.check("456")] == ["456"]
 
 
 # W7-0011 — the DSSE Pre-Authentication Encoding must use the spec version tag
