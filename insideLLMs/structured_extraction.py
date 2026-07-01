@@ -1197,6 +1197,22 @@ class TableExtractor:
         result = self._extract_whitespace_table(text)
         return result
 
+    @staticmethod
+    def _split_markdown_row(line: str) -> list[str]:
+        """Split a markdown table row into cells, preserving empty interior cells.
+
+        Only the empty strings produced by the outer border pipes are dropped; a
+        blank interior cell is kept as "" so cells stay aligned with the header
+        (otherwise a blank cell shifts every following value into the wrong
+        column and drops the last one).
+        """
+        line = line.strip()
+        if line.startswith("|"):
+            line = line[1:]
+        if line.endswith("|"):
+            line = line[:-1]
+        return [cell.strip() for cell in line.split("|")]
+
     def _extract_markdown_table(self, text: str) -> ExtractionResult:
         """Extract markdown-style table."""
         lines = [line.strip() for line in text.split("\n") if line.strip()]
@@ -1214,7 +1230,7 @@ class TableExtractor:
 
         # Parse header
         header_line = table_lines[0]
-        headers = [cell.strip() for cell in header_line.split("|") if cell.strip()]
+        headers = self._split_markdown_row(header_line)
 
         # Skip separator line if present
         data_start = 1
@@ -1224,8 +1240,8 @@ class TableExtractor:
         # Parse rows
         rows = []
         for line in table_lines[data_start:]:
-            cells = [cell.strip() for cell in line.split("|") if cell.strip()]
-            if cells:
+            cells = self._split_markdown_row(line)
+            if any(cells):
                 row = dict(zip(headers, cells))
                 rows.append(row)
 

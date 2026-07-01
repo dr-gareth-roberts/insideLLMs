@@ -38,3 +38,25 @@ def test_docstring_percentage_example_holds():
     detector = SafetyHallucinationIndicatorDetector()
     result = detector.analyze("Studies show 75% of experts agree this is definitely true.")
     assert result["indicators"]["has_specific_claims"] is True
+
+
+# W7-0009 — a blank cell in a markdown table row must not shift the following
+# values left. The old parser filtered empty cells before zip(headers, cells),
+# so a blank cell silently moved every later value into the wrong column and
+# dropped the last column.
+def test_markdown_table_blank_cell_keeps_columns_aligned():
+    from insideLLMs.structured_extraction import TableExtractor
+
+    text = "| Name | Age | City |\n|------|-----|------|\n| Bob  |     | NYC  |\n"
+    rows = TableExtractor().extract(text).extracted_data["rows"]
+    # 'NYC' is a City value and must stay in City, not slide into Age.
+    assert rows == [{"Name": "Bob", "Age": "", "City": "NYC"}]
+
+
+# W7-0009 — rows without outer border pipes must still parse correctly.
+def test_markdown_table_without_outer_pipes():
+    from insideLLMs.structured_extraction import TableExtractor
+
+    text = "Name | Age | City\nBob | 30 | NYC\n"
+    rows = TableExtractor().extract(text).extracted_data["rows"]
+    assert rows == [{"Name": "Bob", "Age": "30", "City": "NYC"}]
