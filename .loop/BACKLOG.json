@@ -541,14 +541,14 @@
       "category": "docs_drift",
       "severity": "🟠 MEDIUM",
       "location": "insideLLMs/privacy/disclosure.py:8-13",
-      "found_by": "workflow reader (wave-7 seed, unverified lead)",
+      "found_by": "workflow reader (crypto-sec) + manual repro",
       "description": "The module security-note docstring claims leaf and internal-node hashes share the same construction with no leaf/node domain-separation prefix, but the default canon_v2 path actually applies the leaf/node prefixes, so the stated behavior is the opposite of reality.",
       "evidence": "Docstring states: 'Leaf and internal-node hashes currently share the same hash construction (no leaf/node domain-separation prefix). This matches the artifact-spine records_merkle_root ... Adding leaf/node domain separation ... requires a canon-version bump; it is tracked as a separate, versioned hardening'. But merkle_inclusion_proof/verify_inclusion_proof call _leaf_digest(..., canon_version=DEFAULT_CANON_VERSION) where DEFAULT_CANON_VERSION='canon_v2', and _leaf_digest for canon_v2 returns digest_bytes(_LEAF_PREFIX + canonical_bytes). Verified: `python3 -c \"from insideLLMs.crypto.merkle import _leaf_digest, digest_bytes; from insideLLMs.crypto.canonical import canonical_json_bytes; cb=canonical_json_bytes({'i':0}); print(_leaf_digest(cb,'sha256','canon_v2')==digest_bytes(cb))\"` prints False. Rebuilding a 4-leaf root without any prefix (the docstring's claimed construction) yields 7a56cdfe... while merkle_root_from_items yields 845bc88f..., i.e. they differ, proving domain separation is already active. The 'requires a canon-version bump / tracked as separate hardening' statement describes work that has already been done.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "proposed_fix: Rewrite the security note to state that canon_v2 (the default) domain-separates leaf hashes (\\x00 prefix) from node hashes (\\x01 prefix) via crypto.merkle._LEAF_PREFIX/_NODE_PREFIX, and that only the legacy canon_v1 path omits the prefixes; remove the stale 'tracked as a separate, versioned hardening' language. | reader_confidence=high"
+      "fix_commit": "48519c2",
+      "verification": "Verified reversal: DEFAULT_CANON_VERSION=='canon_v2'; _leaf_digest(cb,'sha256','canon_v2') != digest_bytes(cb) (leaf 0x00 prefix applied) while canon_v1 == plain digest. crypto/merkle.py:23-26 + tests test_crypto_merkle/test_crypto_canonical confirm canon_v2 domain-separates leaf/node. disclosure.py uses DEFAULT_CANON_VERSION throughout. Rewrote the note to state canon_v2 domain-separates (0x00 leaf / 0x01 node) and only legacy canon_v1 omits prefixes. ruff+format+mypy clean; 20 crypto/disclosure tests pass; no doctest change.",
+      "notes": "Docs-only, no behaviour change; corrected note matches already-tested canon_v2 behaviour."
     },
     {
       "id": "W7-0040",

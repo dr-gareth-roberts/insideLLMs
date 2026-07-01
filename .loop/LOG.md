@@ -86,3 +86,19 @@ after: added `_split_markdown_row` (strips only the outer border pipes, keeps
   clean; full `mypy insideLLMs` clean (217 files); full fast suite 6823 passed,
   failures only the known env-only nlp/tuf set. Coverage ≥ 91% baseline.
 commit: aaa9bf4
+
+## [2026-07-01T00:00Z] W7-0039 — verified
+
+category: docs_drift (misleading security note) | file: insideLLMs/privacy/disclosure.py
+before: the module security note claimed leaf/internal-node hashes share the same
+  construction with "no leaf/node domain-separation prefix", tracked as future
+  "versioned hardening". Reversed: `DEFAULT_CANON_VERSION == "canon_v2"`, and
+  `_leaf_digest(cb, "sha256", "canon_v2") != digest_bytes(cb)` (0x00 leaf prefix
+  applied); only canon_v1 omits prefixes (`crypto/merkle.py:23-26`). disclosure.py
+  uses canon_v2 throughout, so its proofs are already domain-separated — an
+  auditor would have wrongly concluded the second-preimage hardening was absent.
+after: note rewritten to state canon_v2 domain-separates leaves (0x00) and nodes
+  (0x01) and that only legacy canon_v1 omits the prefixes. Docs-only, no
+  behaviour change. ruff + format + mypy clean; 20 crypto/disclosure tests pass;
+  disclosure.py doctest failures 0.
+commit: 48519c2
