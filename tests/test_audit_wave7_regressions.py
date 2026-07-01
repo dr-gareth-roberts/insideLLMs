@@ -124,7 +124,7 @@ def test_content_detector_resets_scan_pos_when_pattern_redefined():
 
     detector = ContentDetector()
     detector.add_pattern("p", r"\d+")
-    detector.check("abc 123")  # matches 123 and advances the scan offset
+    assert [d["match"] for d in detector.check("abc 123")] == ["123"]  # advances offset
     detector.add_pattern("p", r"[a-z]+")  # same name, different pattern
     # 'abc' sits at the buffer start (before the old offset); it must still match.
     assert [d["match"] for d in detector.check("")] == ["abc"]
