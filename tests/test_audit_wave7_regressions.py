@@ -62,7 +62,7 @@ def test_markdown_table_without_outer_pipes():
     assert rows == [{"Name": "Bob", "Age": "30", "City": "NYC"}]
 
 
-# W7-0008 — a non-positive max_size must fail fast at construction instead of
+# W7-0006 — a non-positive max_size must fail fast at construction instead of
 # hanging forever. The eviction loop `while len(cache) >= max_size` could never
 # make progress when max_size <= 0 (an empty cache is already >= 0 and there is
 # nothing to evict), so `.set()` spun indefinitely.
@@ -80,7 +80,7 @@ def test_inmemory_cache_rejects_nonpositive_max_size():
     assert cache.get("a") == 1
 
 
-# W7-0008 — the same guard must protect StrategyCache (max_size via CacheConfig).
+# W7-0006 — the same guard must protect StrategyCache (max_size via CacheConfig).
 def test_strategy_cache_rejects_nonpositive_max_size():
     import pytest
 
@@ -88,3 +88,29 @@ def test_strategy_cache_rejects_nonpositive_max_size():
 
     with pytest.raises(ValueError, match="max_size"):
         StrategyCache(max_size=0)
+
+
+# W7-0008 — ContentDetector.check re-scanned the whole rolling buffer every call
+# and re-appended matches from earlier chunks, double-counting them. A match must
+# be reported exactly once, while patterns spanning two chunks still complete.
+def test_content_detector_does_not_double_count_across_chunks():
+    from insideLLMs.streaming import ContentDetector
+
+    detector = ContentDetector()
+    detector.add_pattern("num", r"\d+")
+    first = detector.check("First: 123")
+    second = detector.check(" Second: 456")
+
+    assert [d["match"] for d in first] == ["123"]
+    assert [d["match"] for d in second] == ["456"]  # 123 must not reappear
+    assert [d["match"] for d in detector.get_all_detections()] == ["123", "456"]
+
+
+# W7-0008 — a pattern split across two check() calls must still be detected once.
+def test_content_detector_matches_pattern_spanning_chunks():
+    from insideLLMs.streaming import ContentDetector
+
+    detector = ContentDetector()
+    detector.add_pattern("greeting", r"hello")
+    assert detector.check("hel") == []
+    assert [d["match"] for d in detector.check("lo world")] == ["hello"]

@@ -2497,6 +2497,9 @@ class ContentDetector:
         self.detections: list[dict[str, Any]] = []
         self._buffer = ""
         self._buffer_size = 10000
+        # Per-pattern buffer offset already reported, so matches from earlier
+        # chunks are not re-detected (and double-counted) on later check() calls.
+        self._scan_pos: dict[str, int] = {}
 
     def add_pattern(self, name: str, pattern: str) -> None:
         """Add a regex pattern to detect.
@@ -2553,12 +2556,21 @@ class ContentDetector:
         # Add to buffer
         self._buffer += content
         if len(self._buffer) > self._buffer_size:
+            trimmed = len(self._buffer) - self._buffer_size
             self._buffer = self._buffer[-self._buffer_size :]
+            # Buffer content shifted left by `trimmed`; realign scan offsets so
+            # already-reported matches are still recognised as reported.
+            self._scan_pos = {name: max(0, pos - trimmed) for name, pos in self._scan_pos.items()}
 
         detected = []
         for name, pattern in self.patterns.items():
-            matches = list(re.finditer(pattern, self._buffer))
-            for match in matches:
+            already_scanned = self._scan_pos.get(name, 0)
+            furthest = already_scanned
+            for match in re.finditer(pattern, self._buffer):
+                # Skip matches already reported on an earlier check() call; only
+                # emit ones reaching into not-yet-reported buffer content.
+                if match.start() < already_scanned:
+                    continue
                 detection = {
                     "pattern_name": name,
                     "pattern": pattern,
@@ -2569,6 +2581,9 @@ class ContentDetector:
                 }
                 detected.append(detection)
                 self.detections.append(detection)
+                if match.end() > furthest:
+                    furthest = match.end()
+            self._scan_pos[name] = furthest
 
         return detected
 
