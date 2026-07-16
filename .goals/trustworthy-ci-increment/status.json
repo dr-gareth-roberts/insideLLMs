@@ -14,6 +14,14 @@
       "issue_count": 2,
       "blocking_issues": 1,
       "summary": "Commit title exceeds 72-character limit (80 chars); coverage at 90% vs 91.0% baseline"
+    },
+    {
+      "iteration": 2,
+      "verdict": "FAIL",
+      "timestamp": "2026-07-17T09:17:28.463457+10:00",
+      "issue_count": 1,
+      "blocking_issues": 1,
+      "summary": "Coverage 90.08% < 91.0% baseline (criterion 4 unmet); all other criteria pass; no W7-0010 regression"
     }
   ]
 }
