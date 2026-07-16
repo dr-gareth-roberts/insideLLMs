@@ -1,7 +1,7 @@
 {
   "goal_id": "trustworthy-ci-increment",
-  "status": "building",
-  "iteration": 2,
+  "status": "blocked",
+  "iteration": 3,
   "builder_model": "Claude:Sonnet-4.6",
   "inspector_model": "Claude:Haiku-4.5",
   "initial_sha": "ca93ac2",
@@ -22,6 +22,13 @@
       "issue_count": 1,
       "blocking_issues": 1,
       "summary": "Coverage 90.08% < 91.0% baseline (criterion 4 unmet); all other criteria pass; no W7-0010 regression"
+    },
+    {
+      "iteration": 3,
+      "verdict": "BLOCKED",
+      "timestamp": "2026-07-17T09:30:52.990082+10:00",
+      "reason": "Coverage gap of 237 items (90.08% \u2192 91.0%) exceeds W7-0010 scope (~5 items)",
+      "summary": "W7-0010 fix complete and verified; conservative decision to preserve immutable baseline and defer coverage recovery to separate increment"
     }
   ]
 }
