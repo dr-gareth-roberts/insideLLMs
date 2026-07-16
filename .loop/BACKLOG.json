@@ -138,10 +138,10 @@
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "async_timeout raises asyncio.CancelledError on timeout, not asyncio.TimeoutError as its docstring documents; it calls task.cancel() without converting the resulting CancelledError, so callers catching TimeoutError miss it and a late-firing timer can cancel code after the context block.",
       "evidence": "Ran `async with async_timeout(0.1): await asyncio.sleep(5)` -> caught asyncio.CancelledError, printed 'got CancelledError (docstring says TimeoutError)'. Docstring (line 2191-2192) states 'Raises: asyncio.TimeoutError: If timeout exceeded'. Code (lines 2198-2209) only registers loop.call_later(seconds, task.cancel) and yields with no CancelledError->TimeoutError translation.",
-      "status": "open",
+      "status": "done",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
+      "fix_commit": "381fc33",
+      "verification": "BEFORE: `async with async_timeout(0.05): await asyncio.sleep(5)` raised asyncio.CancelledError, not asyncio.TimeoutError. AFTER: same code raises asyncio.TimeoutError as documented. External cancel (task.cancel() from outside) still propagates asyncio.CancelledError unchanged. 2 regression tests in test_audit_wave7_regressions.py pass; 36 async_utils tests pass; full fast suite 6744 passed, 5 failures only pre-existing jinja2 env-only (same without our change). ruff check clean; ruff format clean; mypy insideLLMs clean (217 files). Coverage 90% (unchanged from pre-change baseline — jinja2 env gap predates this fix).",
       "notes": "proposed_fix: Track whether the timer fired and translate: wrap the yield in try/except asyncio.CancelledError and, if the handle already fired, `raise asyncio.TimeoutError(...)`; or replace the implementation with asyncio.timeout()/asyncio.wait_for semantics. | reader_confidence=high"
     },
     {

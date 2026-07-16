@@ -173,3 +173,41 @@ integrated via rebase.
   keeps a trailing empty cell on a border-less row ("Bob | 30 |") instead of
   dropping the last column; the row parser passes `len(headers)`. Regression
   test added. Interior-blank behaviour (W7-0009) unchanged.
+
+## [2026-07-17T08:24Z] W7-0010 — verified
+
+category: bug (wrong exception type) | file: insideLLMs/async_utils.py:2184-2209
+
+before: `async_timeout` called `task.cancel()` via `loop.call_later` but never
+  translated the resulting `asyncio.CancelledError` into `asyncio.TimeoutError`
+  as its docstring promised. Reproduction:
+  ```python
+  async with async_timeout(0.05):
+      await asyncio.sleep(5)
+  ```
+  → caught `asyncio.CancelledError` (docstring says `asyncio.TimeoutError`).
+  Callers that `except asyncio.TimeoutError` silently missed all timeouts.
+  An external cancellation was indistinguishable from an internal timeout.
+
+after: added `_on_timeout` closure that sets `timed_out = True` before calling
+  `task.cancel()`. In the `except asyncio.CancelledError` block: if `timed_out`,
+  re-raise as `asyncio.TimeoutError(f"async_timeout: operation exceeded {seconds}s")`;
+  otherwise re-raise unchanged so external cancellations still propagate as
+  `asyncio.CancelledError`. The `finally: handle.cancel()` block is unchanged.
+  Same fix recommended by the backlog proposed_fix.
+
+evidence after:
+  - `async with async_timeout(0.05): await asyncio.sleep(5)` → `asyncio.TimeoutError` ✓
+  - external `task.cancel()` through the context → `asyncio.CancelledError` ✓
+  - `test_async_timeout_handles_missing_current_task` (task is None branch) → pass ✓
+
+tests: 2 regression tests added to `tests/test_audit_wave7_regressions.py`
+  (`test_async_timeout_raises_TimeoutError_not_CancelledError`,
+   `test_async_timeout_external_cancel_propagates_CancelledError`).
+  Both fail before the fix, both pass after.
+  36 async_utils tests pass; 6744 total pass, 5 failed (pre-existing jinja2 env
+  gap — same count without our change confirmed via `git stash` check).
+  ruff check clean; ruff format --check clean; mypy insideLLMs clean (217 files).
+
+coverage: 90% branch (pre-change baseline also 90% — jinja2 env gap predates this
+  fix, not a regression introduced here; our change adds 2 new exercised paths).
