@@ -6,8 +6,8 @@ Acceptance criterion (goal.md):
     --fail-on-regressions` exits nonzero for a genuine regression and
     succeeds when no regression exists."
 
-This file provides two new end-to-end tests that drive the actual CLI entry
-point (insideLLMs.cli.main) to prove both exit-status paths.  It supplements
+This file provides four new end-to-end tests that drive the actual CLI entry
+point (insideLLMs.cli.main) to prove all exit-status paths.  It supplements
 the unit-level tests that already exist in test_cli_diff_harness_coverage.py
 and test_cli_diff_engine.py.
 """
