@@ -259,3 +259,78 @@ by the 2 regression tests — and does not reduce coverage (pre-fix baseline in
 same env: also 90%).
 
 W7-0010 behavioral fix confirmed correct under the clean environment.
+
+## [2026-07-17T10:24Z] W7-0071 — coverage_gap recovery to ≥91%
+
+category: coverage_gap | wave: W7 | id: W7-0071
+
+### Starting state (before)
+
+```
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+→ 6743 passed, 162 skipped, 7 deselected, 0 failed
+→ TOTAL  19735 stmts  1545 miss  5996 branch  654 partial
+→ 23178/25731 = 90.0781%
+```
+
+Notable gaps:
+- `insideLLMs/caching.py`              59%  (263 missing stmts, 30 partial branches)
+- `insideLLMs/cli/commands/doctor.py`  34%  (90 missing stmts — all tests skipped: `importorskip("nltk")`)
+- `insideLLMs/analysis/visualization.py` 90% (minor remaining gaps)
+
+### Tests added
+
+**`tests/test_caching_coverage_w7.py`** (110 tests) — behavioral coverage of:
+- `CacheConfig.to_dict`, `CacheEntry.to_dict`, `CacheLookupResult.to_dict`, `CacheStats.to_dict`
+- `generate_cache_key` (model/params/kwargs/md5), `generate_model_cache_key` with extra kwargs
+- `InMemoryCache` — TTL expiry, delete, stats, LRU eviction, `has()`
+- `DiskCache` — CRUD, stats, TTL, export/import, default path
+- `StrategyCache` — LFU / FIFO / SIZE eviction, delete, `contains`, `values`, `items`
+- `PromptCache` — `cache_response`, `get_response`, `get_by_prompt`, `find_similar`
+- `CachedModel` — generate (cache miss→hit), model/cache properties, `__getattr__`, non-deterministic skip
+- `CacheWarmer` — add (priority ordering), warm (skip/success/error/no-generator), queue ops
+- `MemoizedFunction` + `memoize` decorator (with/without parens)
+- `CacheNamespace` — `get_prompt_cache`, `delete_cache`, `list_caches`, `get_all_stats`, `clear_all`
+- `ResponseDeduplicator` — unique/duplicate (exact + similarity-based), `get_unique`, `clear`
+- `AsyncCacheAdapter` — async get/set/delete/clear
+- Convenience functions: `create_cache`, `create_prompt_cache`, `create_cache_warmer`, `create_namespace`, `get_cache_key`, `cached_response`, `cached` decorator
+- Global default cache: `get_default_cache`, `set_default_cache`, `clear_default_cache`
+
+**`tests/test_doctor_coverage_w7.py`** (20 tests) — behavioral coverage of:
+- `_plugins_disabled_via_env()` — env var "1" / "true" / "YES" / "" / unset / "false"
+- `_entrypoint_plugins()` — normal path, exception path (→ empty list + warning), sorted output
+- `_capability_status()` — all 5 branches: ready, missing_deps, missing_creds, both, requires_external_service
+- `_build_capabilities()` — full capability tree, plugins disabled env, unknown model fallback, plotly availability
+- `_print_capabilities_summary()` — blocked models, ready/not-ready extras, disabled plugins warning
+- `cmd_doctor` text format — normal run, fail_on_warn, with capabilities, info for API keys, all-pass success message
+- `cmd_doctor` json format — capabilities True/False, fail_on_warn
+
+**`tests/test_diff_fail_on_regressions_w7.py`** (4 tests, `@pytest.mark.determinism`) — focused proof:
+- `--fail-on-regressions` exits nonzero (rc≠0) for score drop 0.9→0.6
+- `--fail-on-regressions` exits 0 for same score (0.8==0.8)
+- `--fail-on-regressions` exits 0 for improvement (0.7→0.95)
+- Without `--fail-on-regressions`, exits 0 even with regression
+
+### Ending state (after)
+
+```
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+→ 6877 passed, 162 skipped, 7 deselected, 0 failed
+→ TOTAL  19735 stmts  1213 miss  5996 branch  634 partial
+→ 23614/25731 = 91.7726%
+```
+
+Gain: +436 covered items (target was +238).
+
+### Quality gates
+
+| Gate | Command | Result |
+|------|---------|--------|
+| lint+typecheck+test | `make check` | ✅ 6884 passed, 162 skipped, 0 failed; ruff clean; mypy clean (217 files) |
+| golden-path diff | `make golden-path` | ✅ pass |
+| determinism | `python3 -m pytest -m determinism` | ✅ 22 passed, 5 skipped |
+| contract | `python3 -m pytest -m contract` | ✅ 48 passed, 5 skipped |
+| coverage gate | `python3 -m pytest -m "not slow and not integration" --cov=insideLLMs` | ✅ 91.7726% ≥ 91.0% |
+| diff exit status | `test_diff_fail_on_regressions_w7.py` | ✅ 4/4 pass |
+
+Wave 7 ID: W7-0071 | Commit: TBD (see fix_commit in BACKLOG.json after push)

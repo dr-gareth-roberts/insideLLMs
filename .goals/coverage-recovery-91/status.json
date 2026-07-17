@@ -1,0 +1,10 @@
+{
+  "goal_id": "coverage-recovery-91",
+  "status": "building",
+  "iteration": 1,
+  "builder_model": "Claude:Sonnet-4.6",
+  "inspector_model": "Claude:Haiku-4.5",
+  "initial_sha": "74af0b7",
+  "created_at": "2026-07-17T10:18:08.953+10:00",
+  "history": []
+}
