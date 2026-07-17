@@ -154,6 +154,58 @@ def test_content_detector_clear_resets_scan_pos():
     assert [d["match"] for d in detector.check("456")] == ["456"]
 
 
+# W7-0010 — async_timeout must raise asyncio.TimeoutError (as documented), not
+# asyncio.CancelledError. The old implementation called task.cancel() without
+# translating the resulting CancelledError, so callers that catch TimeoutError
+# silently missed the timeout and an external cancel was indistinguishable from
+# an internal one.
+def test_async_timeout_raises_TimeoutError_not_CancelledError():
+    import asyncio
+
+    from insideLLMs.async_utils import async_timeout
+
+    async def _run() -> str:
+        try:
+            async with async_timeout(0.05):
+                await asyncio.sleep(5)
+        except asyncio.TimeoutError:
+            return "TimeoutError"
+        except asyncio.CancelledError:
+            return "CancelledError"
+        return "no_exception"
+
+    assert asyncio.run(_run()) == "TimeoutError"
+
+
+# W7-0010 — an external task cancellation must still propagate as CancelledError,
+# not be swallowed or mistakenly converted to TimeoutError.
+def test_async_timeout_external_cancel_propagates_CancelledError():
+    import asyncio
+
+    from insideLLMs.async_utils import async_timeout
+
+    async def _inner() -> str:
+        try:
+            async with async_timeout(10.0):  # long — will not fire
+                await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            return "CancelledError"
+        except asyncio.TimeoutError:
+            return "TimeoutError"
+        return "no_exception"
+
+    async def _run() -> str:
+        task = asyncio.create_task(_inner())
+        await asyncio.sleep(0.02)
+        task.cancel()
+        try:
+            return await task
+        except asyncio.CancelledError:
+            return "CancelledError_from_task"
+
+    assert asyncio.run(_run()) == "CancelledError"
+
+
 # W7-0011 — the DSSE Pre-Authentication Encoding must use the spec version tag
 # "DSSEv1" (lowercase v). The old "DSSEV1" produced signatures no spec-compliant
 # verifier (cosign, in-toto) would accept.

@@ -7,7 +7,7 @@
     {
       "id": "W7-0001",
       "category": "bug",
-      "severity": "🔴 HIGH",
+      "severity": "\ud83d\udd34 HIGH",
       "location": "insideLLMs/safety.py:1376",
       "found_by": "workflow reader (safety-val) + manual repro",
       "description": "SafetyHallucinationIndicatorDetector percentage pattern r\"\\b\\d+(?:\\.\\d+)?%\\b\" never matched normal percentages, so percentages were never counted as specific claims and did not contribute to hallucination risk_score.",
@@ -21,7 +21,7 @@
     {
       "id": "W7-0002",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "CHANGELOG.md:22-25,89-116",
       "found_by": "manual read (cross-check CHANGELOG vs module + IMPORT_PATHS.md)",
       "description": "CHANGELOG declares insideLLMs.visualization deprecated and removed in v2.0.0 with a v1.1.0->v1.2.0->v2.0.0 timeline claiming 'Deprecation warnings issued', but the module docstring and docs/IMPORT_PATHS.md both classify it 'Indefinite support / not deprecated', the shim emits zero warnings, and the project is at 0.2.0 (v1.x/v2.0 are fictional).",
@@ -35,13 +35,13 @@
     {
       "id": "W7-0003",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/trace_contracts.py:1, insideLLMs/tracing.py:1",
-      "found_by": "manual read (MONSTER_LOOP §9)",
+      "found_by": "manual read (MONSTER_LOOP \u00a79)",
       "description": "trace_contracts.py and tracing.py are compatibility shims (docstrings say so, with Migration Guides) but carry no target removal version and are absent from the docs/IMPORT_PATHS.md 'Compatibility Shims' inventory, unlike export/visualization/pipeline.",
       "evidence": "Both files: 'This is a compatibility shim. For new code, prefer importing directly from insideLLMs.trace.*' with no version. docs/IMPORT_PATHS.md shim table (lines 43-47) lists export/visualization/pipeline only. AUDIT_FINDINGS.md marks 'Deprecated module sunset plan' as done, but no versioned sunset exists for these two.",
       "status": "escalated",
-      "escalation_reason": "Removal version is a product decision (§7); do not delete shims or restamp docs 'done' without an explicit decision. Proposal: add both to the shim inventory with either 'Indefinite support' (matching sibling trace shims) or an explicit removal version, for sign-off.",
+      "escalation_reason": "Removal version is a product decision (\u00a77); do not delete shims or restamp docs 'done' without an explicit decision. Proposal: add both to the shim inventory with either 'Indefinite support' (matching sibling trace shims) or an explicit removal version, for sign-off.",
       "fix_commit": null,
       "verification": null,
       "notes": "diffing.py is a deliberate public facade (not a deprecated shim); correctly excluded from the inventory."
@@ -49,7 +49,7 @@
     {
       "id": "W7-0004",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/safety.py:580,1452,1454,1544,2243",
       "found_by": "python3 -m doctest insideLLMs/safety.py",
       "description": "Five pre-existing docstring examples in safety.py fail as doctests (PIIReport, analyze uncertainty_count/risk_score, get_risk_level, quick_safety_check), independent of the W7-0001 fix.",
@@ -63,10 +63,10 @@
     {
       "id": "W7-0005",
       "category": "dead_code",
-      "severity": "ℹ️ INFO",
+      "severity": "\u2139\ufe0f INFO",
       "location": "insideLLMs (vulture --min-confidence 80, 17 hits)",
       "found_by": "vulture insideLLMs --min-confidence 80",
-      "description": "All core vulture hits are false positives or documented-intentional: __exit__ exc_tb protocol params (8x), models/base.py:1481 'if False: yield' async-gen idiom (pragma-no-cover), callback-protocol params total_batch (runtime _sync/_async runner), and documented 'reserved for future use' params (results.py include_statistics, analysis/visualization.py show_error_bars). contrib hits (allow_exec/sandbox_contract/quality_threshold/Depends) are lower-trust and not deletion candidates (§1.6).",
+      "description": "All core vulture hits are false positives or documented-intentional: __exit__ exc_tb protocol params (8x), models/base.py:1481 'if False: yield' async-gen idiom (pragma-no-cover), callback-protocol params total_batch (runtime _sync/_async runner), and documented 'reserved for future use' params (results.py include_statistics, analysis/visualization.py show_error_bars). contrib hits (allow_exec/sandbox_contract/quality_threshold/Depends) are lower-trust and not deletion candidates (\u00a71.6).",
       "evidence": "ruff check/format/mypy all clean; each vulture hit inspected. No actionable core dead code at confidence>=80.",
       "status": "wontfix",
       "escalation_reason": null,
@@ -77,7 +77,7 @@
     {
       "id": "W7-0006",
       "category": "bug",
-      "severity": "🔴 HIGH",
+      "severity": "\ud83d\udd34 HIGH",
       "location": "insideLLMs/caching.py:1206",
       "found_by": "workflow reader (concurrency-cache) + manual repro",
       "description": "InMemoryCache.set() hangs in an infinite loop when max_size <= 0 because the eviction while-loop condition len(self._cache) >= self._max_size is permanently true while _evict_lru() returns early on an empty cache, so no progress is ever made.",
@@ -86,26 +86,26 @@
       "escalation_reason": null,
       "fix_commit": "abc1d4c",
       "verification": "BEFORE: `timeout 5 python3 -c \"InMemoryCache(max_size=0).set('a',1)\"` -> exit 124 (hang); same for StrategyCache(max_size=0). Root: eviction loop `while len(cache) >= max_size` with max_size<=0 never progresses (_evict_lru no-op on empty). FIX: raise ValueError for max_size<=0 in InMemoryCache.__init__ and StrategyCache.__init__ (resolved CacheConfig). AFTER: both raise a clear ValueError; valid caches construct/set/get normally. 4 new regression tests + 20 test_caching pass; ruff+format+mypy clean (217 files); full fast suite 6825 passed, failures only known env nlp/tuf. No existing caller uses max_size<=0.",
-      "notes": "Fail-fast chosen over silently treating max_size<=0 as unbounded/disabled (ambiguous; lru_cache treats 0 as disabled, others as unbounded) — an immediate error is more debuggable than a hang or silent surprise. Not a Stable surface."
+      "notes": "Fail-fast chosen over silently treating max_size<=0 as unbounded/disabled (ambiguous; lru_cache treats 0 as disabled, others as unbounded) \u2014 an immediate error is more debuggable than a hang or silent surprise. Not a Stable surface."
     },
     {
       "id": "W7-0007",
       "category": "bug",
-      "severity": "🔴 HIGH",
+      "severity": "\ud83d\udd34 HIGH",
       "location": "insideLLMs/runtime/_async_runner.py:458-465",
       "found_by": "workflow reader (runtime-runner) + manual diagnosis",
       "description": "On the async stop_on_error path, items after the first failure are written to records.jsonl with status \"skipped\" even though they never executed, and a later resume=True run treats those skipped placeholders as completed work and never re-runs them.",
       "evidence": "When stop_event is set, run_single sets results[index] = {..., \"status\": \"skipped\"} (line 459-464), and write_ready_records() (line 404-405 only breaks on None, never on status) persists it. Reproduced: async run over 5 prompts with stop_on_error=True failing at index 1 writes 5 records: idx0=success, idx1=error, idx2/3/4=skipped (the sync runner writes only idx0=success, idx1=error and stops). Then resume=True with a probe that no longer fails returns: [success, error, skipped, skipped, skipped] -- items 2,3,4 were never executed on either run yet resume declares them done. _validate_resume_record only checks record_index and input fingerprint (both match, since the skipped dict stores \"input\": item) and never rejects status==\"skipped\", so the corrupt prefix is accepted.",
       "status": "escalated",
-      "escalation_reason": "Touches the Stable records.jsonl artefact + resume/determinism controls (§1.9/§7). Diagnosis: async _async_runner.run_single writes a status='skipped' placeholder record for every item after the first stop_on_error failure (line 458-465); write_ready_records only stops on None, so these persist. The SYNC runner instead breaks and raises (( _sync_runner.py:509-513 ) — it writes NO skipped records. So identical config yields DIFFERENT records.jsonl depending on sync vs async execution, violating 'deterministic for identical inputs/config'. On resume, completed=len(existing_records) counts the skipped placeholders as done, so failed-then-skipped items never re-run. 'skipped' IS a valid schema status (docs/ARTIFACT_CONTRACT.md:30), so this is a semantics decision, not a schema bug. PROPOSAL for sign-off: make async match sync (stop without writing skipped placeholders) OR write skipped records AND have resume re-execute status=='skipped' items — either way document it and add a determinism/contract regression asserting sync==async records for the stop_on_error path. Needs make check + golden-path + determinism + contract per A5.",
+      "escalation_reason": "Touches the Stable records.jsonl artefact + resume/determinism controls (\u00a71.9/\u00a77). Diagnosis: async _async_runner.run_single writes a status='skipped' placeholder record for every item after the first stop_on_error failure (line 458-465); write_ready_records only stops on None, so these persist. The SYNC runner instead breaks and raises (( _sync_runner.py:509-513 ) \u2014 it writes NO skipped records. So identical config yields DIFFERENT records.jsonl depending on sync vs async execution, violating 'deterministic for identical inputs/config'. On resume, completed=len(existing_records) counts the skipped placeholders as done, so failed-then-skipped items never re-run. 'skipped' IS a valid schema status (docs/ARTIFACT_CONTRACT.md:30), so this is a semantics decision, not a schema bug. PROPOSAL for sign-off: make async match sync (stop without writing skipped placeholders) OR write skipped records AND have resume re-execute status=='skipped' items \u2014 either way document it and add a determinism/contract regression asserting sync==async records for the stop_on_error path. Needs make check + golden-path + determinism + contract per A5.",
       "fix_commit": null,
       "verification": null,
-      "notes": "Highest goal-relevance (path-dependent records.jsonl breaks diff-gating trust) but Stable-surface product decision — logged, not unilaterally changed."
+      "notes": "Highest goal-relevance (path-dependent records.jsonl breaks diff-gating trust) but Stable-surface product decision \u2014 logged, not unilaterally changed."
     },
     {
       "id": "W7-0008",
       "category": "bug",
-      "severity": "🔴 HIGH",
+      "severity": "\ud83d\udd34 HIGH",
       "location": "insideLLMs/streaming.py:2560",
       "found_by": "workflow reader (misc-top/streaming) + manual repro",
       "description": "ContentDetector.check re-runs re.finditer over the entire rolling buffer on every call, so matches found in earlier chunks are re-detected and re-appended to self.detections each subsequent call, double-counting them.",
@@ -119,11 +119,11 @@
     {
       "id": "W7-0009",
       "category": "bug",
-      "severity": "🔴 HIGH",
+      "severity": "\ud83d\udd34 HIGH",
       "location": "insideLLMs/structured_extraction.py:1227",
       "found_by": "workflow reader (runtime/structured) + manual repro",
       "description": "TableExtractor._extract_markdown_table drops empty cells via `if cell.strip()` when splitting a row, so a blank cell shifts all following values left into the wrong columns and silently loses the last column.",
-      "evidence": "python3 -c import: extract_table('| Name | Age | City |\\n|------|-----|------|\\n| Bob  |     | NYC  |\\n') returns rows=[{'Name':'Bob','Age':'NYC'}] — 'NYC' (a City value) is mapped to 'Age' and 'City' is dropped. Header parsing (line 1217) and row parsing (line 1227) both use `[cell.strip() for cell in line.split('|') if cell.strip()]`, which collapses empty cells so zip(headers, cells) misaligns.",
+      "evidence": "python3 -c import: extract_table('| Name | Age | City |\\n|------|-----|------|\\n| Bob  |     | NYC  |\\n') returns rows=[{'Name':'Bob','Age':'NYC'}] \u2014 'NYC' (a City value) is mapped to 'Age' and 'City' is dropped. Header parsing (line 1217) and row parsing (line 1227) both use `[cell.strip() for cell in line.split('|') if cell.strip()]`, which collapses empty cells so zip(headers, cells) misaligns.",
       "status": "verified",
       "escalation_reason": null,
       "fix_commit": "aaa9bf4",
@@ -133,21 +133,21 @@
     {
       "id": "W7-0010",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/async_utils.py:2184-2209",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "async_timeout raises asyncio.CancelledError on timeout, not asyncio.TimeoutError as its docstring documents; it calls task.cancel() without converting the resulting CancelledError, so callers catching TimeoutError miss it and a late-firing timer can cancel code after the context block.",
       "evidence": "Ran `async with async_timeout(0.1): await asyncio.sleep(5)` -> caught asyncio.CancelledError, printed 'got CancelledError (docstring says TimeoutError)'. Docstring (line 2191-2192) states 'Raises: asyncio.TimeoutError: If timeout exceeded'. Code (lines 2198-2209) only registers loop.call_later(seconds, task.cancel) and yields with no CancelledError->TimeoutError translation.",
-      "status": "open",
+      "status": "done",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
+      "fix_commit": "381fc33",
+      "verification": "BEFORE: `async with async_timeout(0.05): await asyncio.sleep(5)` raised asyncio.CancelledError, not asyncio.TimeoutError. AFTER: same code raises asyncio.TimeoutError as documented. External cancel (task.cancel() from outside) still propagates asyncio.CancelledError unchanged. 2 regression tests in test_audit_wave7_regressions.py pass. GATE (iter-2, jinja2 installed): make check \u2192 ruff clean, mypy clean (217 files), pytest 6750 passed 0 failed 162 skipped. Coverage (comparable baseline command, jinja2 present): 90.08% branch (TOTAL 19735 stmts/1545 miss/5996 branches/654 partial). jinja2 was declared optional dep (pandas extras) and was missing; installing it clears all 5 visualization test failures. Our fix does not reduce coverage (pre-fix baseline also 90.08%).",
       "notes": "proposed_fix: Track whether the timer fired and translate: wrap the yield in try/except asyncio.CancelledError and, if the handle already fired, `raise asyncio.TimeoutError(...)`; or replace the implementation with asyncio.timeout()/asyncio.wait_for semantics. | reader_confidence=high"
     },
     {
       "id": "W7-0011",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/attestations/dsse.py:88",
       "found_by": "workflow reader (crypto-sec) + manual repro",
       "description": "The DSSE Pre-Authentication Encoding uses the version prefix 'DSSEV1' (uppercase V) instead of the spec-mandated 'DSSEv1' (lowercase v), so any signature computed over this PAE cannot be verified by a spec-compliant DSSE verifier (cosign, in-toto) and vice-versa.",
@@ -161,7 +161,7 @@
     {
       "id": "W7-0012",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/cli/commands/export.py:65-111",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "For `--format csv` and `--format latex`, when the input has zero results the file is never written (the write is guarded by `if results:`), yet the command still prints `OK Exported to: <path>` and returns 0, falsely reporting a created file that does not exist.",
@@ -175,7 +175,7 @@
     {
       "id": "W7-0013",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/cli/commands/validate.py:74",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "`insidellms validate <run_dir>` crashes with an uncaught AttributeError when manifest.json contains `\"schemas\": null` (or any non-dict), instead of reporting a clean validation error, because `manifest_obj.get(\"schemas\", {}).get(...)` calls `.get` on None.",
@@ -189,7 +189,7 @@
     {
       "id": "W7-0014",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/datasets/tuf_client.py:67-72",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "When the `tuf` package is importable, `fetch_dataset` reports `status: \"verified\"` and `method: \"tuf.ngclient\"` in its proof even though it never constructs a `tuf.ngclient.Updater` or performs any verification; it always runs the mock write path, so the `allow_mock=False` guard gives false assurance of real cryptographic verification.",
@@ -203,7 +203,7 @@
     {
       "id": "W7-0015",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/schemas/registry.py:1606",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "get_json_schema() uses schema.setdefault('title', f'{schema_name}@{version}'), but Pydantic's generated JSON schema always already contains a 'title' (the model class name), so the setdefault never fires and the documented versioned title 'SchemaName@version' is never produced; the version-tagging feature is effectively dead code.",
@@ -217,7 +217,7 @@
     {
       "id": "W7-0016",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/semantic_cache.py:1264-1341",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "VectorCache.get_similar double-counts statistics: it first calls self.get() which records a miss for the exact-match failure, then records a hit for the semantic match, so a single semantic-hit lookup increments BOTH misses and hits, corrupting hit_rate and miss counts (this is the default path for SemanticCache.get/get_similar).",
@@ -231,11 +231,11 @@
     {
       "id": "W7-0017",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/structured.py:802",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "dataclass_to_json_schema passes dataclasses.Field.type straight to _python_type_to_json_schema, but when the dataclass's defining module uses `from __future__ import annotations` field.type is a string ('str','int'), which is unknown to the converter and yields an empty `{}` schema, so every field loses its type.",
-      "evidence": "Wrote /scratchpad/dc_test.py with `from __future__ import annotations` and a dataclass Event(title:str, attendees:int); dataclass_to_json_schema(Event) returns {'type':'object','properties':{'title':{},'attendees':{}},'required':[...]} — all field schemas empty. Without future-annotations the same call correctly yields {'title':{'type':'string'},...}. _python_type_to_json_schema('str') hits the final `return {}` branch because a str is not in type_mapping and has no get_origin.",
+      "evidence": "Wrote /scratchpad/dc_test.py with `from __future__ import annotations` and a dataclass Event(title:str, attendees:int); dataclass_to_json_schema(Event) returns {'type':'object','properties':{'title':{},'attendees':{}},'required':[...]} \u2014 all field schemas empty. Without future-annotations the same call correctly yields {'title':{'type':'string'},...}. _python_type_to_json_schema('str') hits the final `return {}` branch because a str is not in type_mapping and has no get_origin.",
       "status": "open",
       "escalation_reason": null,
       "fix_commit": null,
@@ -245,7 +245,7 @@
     {
       "id": "W7-0018",
       "category": "bug",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/trace/trace_config.py:2020-2037",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "_parse_contracts_config uses fallback default key names for call_id_key, tool_key and args_key that contradict the dataclass field defaults (and the documented Attributes) whenever a non-empty contracts dict omits these sub-keys.",
@@ -259,7 +259,7 @@
     {
       "id": "W7-0019",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/comparison.py:250-251",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "MetricSummary class docstring claims percentile_95 == 1000 for the 10-value example, but the implementation returns 2000.",
@@ -273,7 +273,7 @@
     {
       "id": "W7-0020",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/statistics.py:1155-1159",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "cohens_d docstring claims the small-effect example yields interpret_cohens_d(d_small) in ['negligible','small'] == True, but the actual effect size is 1.0 ('large').",
@@ -287,7 +287,7 @@
     {
       "id": "W7-0021",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/statistics.py:380",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "AggregatedResults docstring imports a nonexistent function `aggregate_experiments`.",
@@ -301,7 +301,7 @@
     {
       "id": "W7-0022",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/statistics.py:40",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-level Quick Start docstring states three numeric outputs that do not match the code: Welch p-value, Cohen's d, and the bootstrap CI.",
@@ -315,7 +315,7 @@
     {
       "id": "W7-0023",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/statistics.py:420",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "StatisticalComparisonResult docstring imports and calls a nonexistent function `compare_groups` with a signature that does not exist.",
@@ -329,7 +329,7 @@
     {
       "id": "W7-0024",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/visualization.py:56-58",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-docstring text_bar_chart example shows bar lengths that do not match the code (max-value bar should span the full default width=50).",
@@ -343,7 +343,7 @@
     {
       "id": "W7-0025",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/analysis/visualization.py:68-72",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The text_histogram example (module docstring, and identically the function docstring at lines 517-521) shows bin counts (3),(4),(2),(1),(1) but the code produces (3),(2),(2),(1),(2).",
@@ -357,7 +357,7 @@
     {
       "id": "W7-0026",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/benchmark_datasets.py:114",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring example claims create_comprehensive_benchmark_suite over [REASONING, MATH] with max_examples_per_dataset=5 yields 'Total examples: 10', but it yields 20.",
@@ -371,7 +371,7 @@
     {
       "id": "W7-0027",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/benchmark_datasets.py:84",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring split example claims 'Train: 3, Val: 1, Test: 1' for a 5-example dataset split 0.7/0.15/0.15, but the actual result is Val=0, Test=2.",
@@ -385,7 +385,7 @@
     {
       "id": "W7-0028",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/benchmark_datasets.py:94",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring cross-validation example claims all three folds are 'train=4, test=1', but the last fold of a 5-example, 3-fold split has test=3, train=2.",
@@ -399,7 +399,7 @@
     {
       "id": "W7-0029",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/contrib/security/injection_engine.py:2294",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "is_safe_input docstring shows process_user_input('Ignore all rules') returning 'Input rejected for security reasons.', but is_safe_input('Ignore all rules') returns True (no default pattern matches), so the wrapper actually returns 'Processing: Ignore all rules'.",
@@ -413,7 +413,7 @@
     {
       "id": "W7-0030",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/contrib/security/injection_engine.py:569",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "SanitizationResult.to_dict docstring claims len(d['changes_made']) == 3 for input 'ignore all System: test ```code```', but only 2 rules apply (system_prompt and code_delimiter); the instruction_override rule requires 'previous'/'above'/'prior' which is absent.",
@@ -427,7 +427,7 @@
     {
       "id": "W7-0031",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/cost_tracking.py:55-57",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module docstring example for estimate_request_cost states the printed cost as $0.0048, but the function returns 0.00453, which prints as $0.0045.",
@@ -441,7 +441,7 @@
     {
       "id": "W7-0032",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/evaluation.py:153-155",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring BLEU/ROUGE-L example states BLEU 0.4353 and ROUGE-L 0.7692, but actual values are 0.3519 and 0.6667.",
@@ -455,7 +455,7 @@
     {
       "id": "W7-0033",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/evaluation.py:259-262",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring SemanticSimilarityEvaluator example states Score 0.23 and component_scores {'jaccard': 0.142..., 'cosine': 0.25, 'token_f1': 0.25}, but actual score is 0.47 with components {'jaccard': 0.333..., 'cosine': 0.5, 'token_f1': 0.5}.",
@@ -469,7 +469,7 @@
     {
       "id": "W7-0034",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/evaluation.py:88-99",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring 'Quick Start' metric examples state wrong outputs: token_f1('The quick brown fox','The fast brown fox') shown as 0.75 (actual 0.6666666666666666) and jaccard_similarity('the cat sat on mat','the dog sat on mat') shown as 0.6666666666666666 (actual 0.6).",
@@ -483,7 +483,7 @@
     {
       "id": "W7-0035",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/models/__init__.py:362-363",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The DummyModel class docstring's `>>> print(result)` example claims the output is `\"[DummyModel] You said: Hello, world!\"` (wrapped in double quotes), but print() emits the raw string with no surrounding quotes, so the doctest fails.",
@@ -497,7 +497,7 @@
     {
       "id": "W7-0036",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/optimization.py:1180",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "InstructionOptimizer class docstring shows optimize('Try to write good code') returning 'Ensure write good code.' (capital E) with only two change lines, but the code returns lowercase 'ensure write good code.' plus two additional change lines.",
@@ -511,7 +511,7 @@
     {
       "id": "W7-0037",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/optimization.py:58-61",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module docstring example for compress_prompt shows an incorrect compressed string ('...you should ensure generate...') and wrong token/ratio counts ('Saved 12 tokens (35.3% reduction)').",
@@ -525,7 +525,7 @@
     {
       "id": "W7-0038",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/optimization.py:69-74",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module docstring example for optimize_instruction shows capitalized output 'Ensure write something good about the topic.' and omits the 'Added ending punctuation' change that the code actually emits.",
@@ -539,7 +539,7 @@
     {
       "id": "W7-0039",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/privacy/disclosure.py:8-13",
       "found_by": "workflow reader (crypto-sec) + manual repro",
       "description": "The module security-note docstring claims leaf and internal-node hashes share the same construction with no leaf/node domain-separation prefix, but the default canon_v2 path actually applies the leaf/node prefixes, so the stated behavior is the opposite of reality.",
@@ -553,7 +553,7 @@
     {
       "id": "W7-0040",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/probes/bias.py:609-611",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "BiasProbe._simple_sentiment mixed-sentiment docstring example claims a score of 0.00 but the method returns 1.00.",
@@ -567,7 +567,7 @@
     {
       "id": "W7-0041",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/probes/logic.py:731",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "LogicProbe.evaluate_single docstring's first example (transitivity A > C) claims is_correct is True, but the method returns False.",
@@ -581,7 +581,7 @@
     {
       "id": "W7-0042",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/probes/logic.py:975-989",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Two LogicProbe._extract_final_answer docstring examples state outputs that the code does not produce ('The result must be X' and 'Z').",
@@ -595,7 +595,7 @@
     {
       "id": "W7-0043",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/runtime/reproducibility.py:124-127",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-level docstring example for ConfigVersionManager.diff states 'Changed: {\\'lr\\': ..., \\'batch\\': ...}' but the actual dict key order is nondeterministic (usually 'batch' first) because ConfigVersionManager._diff_configs iterates over an unordered set union of keys.",
@@ -609,7 +609,7 @@
     {
       "id": "W7-0044",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/safety.py:1453",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "SafetyHallucinationIndicatorDetector.analyze docstring claims uncertainty_count == 3 for 'I think this might possibly be true.', but the actual count is 2 (the phrase 'might be' does not appear; only 'i think' and 'possibly' match).",
@@ -623,7 +623,7 @@
     {
       "id": "W7-0045",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/safety.py:1544",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "SafetyHallucinationIndicatorDetector.get_risk_level docstring claims 'According to research, this is obviously true.' yields HIGH/CRITICAL and prints 'Content should be fact-checked', but the risk level is MEDIUM so nothing is printed.",
@@ -637,7 +637,7 @@
     {
       "id": "W7-0046",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/safety.py:580",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "PIIReport docstring example claims get_by_type('phone_us') returns 1 match for the input, but it returns 0 because '555-0001' is only 7 digits and does not match the 10-digit phone_us pattern.",
@@ -651,7 +651,7 @@
     {
       "id": "W7-0047",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/schemas/validator.py:857-859",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Batch-validation docstring examples include a record {'input': 'q2', 'status': 'error', 'error_message': 'timeout'}; the field is named 'error', not 'error_message', and _BaseSchema forbids extra fields, so that record FAILS validation. The examples claim 2 valid / 1 failed, but the actual result is 1 valid / 2 failed.",
@@ -665,7 +665,7 @@
     {
       "id": "W7-0048",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/schemas/validator.py:97-98",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Public docstring examples that call validator.validate() without an explicit schema_version still expect 'Version: 1.0.0' / 'ProbeResult@1.0.0', but DEFAULT_SCHEMA_VERSION is now '1.0.1', so the printed version is '1.0.1'.",
@@ -679,7 +679,7 @@
     {
       "id": "W7-0049",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/tokens.py:53-56",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-level analyze_tokens example states unique_tokens=13 and token_diversity 0.81, but the code returns 12 and 0.75 for the given sentence.",
@@ -693,7 +693,7 @@
     {
       "id": "W7-0050",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/tokens.py:64",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-level split_by_tokens example states 'Split into 3 chunks', but the code returns 202 chunks for the given input (and produces degenerate 1-char trailing chunks).",
@@ -707,7 +707,7 @@
     {
       "id": "W7-0051",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/tokens.py:75",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-level ContextWindowManager example prints 'Remaining tokens: 4076', but adding the two example strings leaves 4085 remaining.",
@@ -721,7 +721,7 @@
     {
       "id": "W7-0052",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/trace/trace_contracts.py:1225",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The validate_tool_order must_precede docstring example asserts a violation detail string that the function never produces.",
@@ -735,11 +735,11 @@
     {
       "id": "W7-0053",
       "category": "bug",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/logging_utils.py:942-945",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "LoggerAdapter.process mutates the caller-supplied kwargs['extra'] dict in place (adding adapter context keys and a nested 'extra_data' key), so reusing the same extra dict across log calls accumulates stale context and a self-referential nesting.",
-      "evidence": "Ran: adapter=LoggerAdapter(get_logger(), {'session':'abc'}); caller_extra={'event':'click'}; adapter.process('m', {'extra': caller_extra}); afterward caller_extra == {'event':'click', 'session':'abc', 'extra_data': {'event':'click','session':'abc'}} — the caller's original dict was mutated. Line 942 'extra = kwargs.get(\"extra\", {})' takes a reference, and lines 943-944 mutate it and store a copy under 'extra_data'.",
+      "evidence": "Ran: adapter=LoggerAdapter(get_logger(), {'session':'abc'}); caller_extra={'event':'click'}; adapter.process('m', {'extra': caller_extra}); afterward caller_extra == {'event':'click', 'session':'abc', 'extra_data': {'event':'click','session':'abc'}} \u2014 the caller's original dict was mutated. Line 942 'extra = kwargs.get(\"extra\", {})' takes a reference, and lines 943-944 mutate it and store a copy under 'extra_data'.",
       "status": "open",
       "escalation_reason": null,
       "fix_commit": null,
@@ -749,7 +749,7 @@
     {
       "id": "W7-0054",
       "category": "bug",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/models/__init__.py:399",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "DummyModel.generate (and chat) tests `canned_response` for truthiness (`if self.canned_response:`), so a legitimately configured empty-string canned response is silently ignored and the model echoes the prompt instead of returning the empty string the user asked for.",
@@ -763,7 +763,7 @@
     {
       "id": "W7-0055",
       "category": "bug",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/runtime/_ultimate.py:100",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The fallback branches that write records.merkle.json / receipts.merkle.json (precomputed-root case) and the dataset.merkle.json / promptset.merkle.json writers hardcode canon_version 'canon_v1', while the computed path writes the actual DEFAULT_CANON_VERSION 'canon_v2', mislabeling the canonicalization scheme in the integrity metadata.",
@@ -777,7 +777,7 @@
     {
       "id": "W7-0056",
       "category": "bug",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/semantic_cache.py:1418-1423",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "VectorCache._update_stats computes avg_lookup_time_ms as elapsed = avg*total then avg = elapsed/total, a pure no-op, and avg_lookup_time_ms is never populated anywhere else in VectorCache, so SemanticCache/VectorCache always report avg_lookup_time_ms == 0.0 despite computing per-lookup lookup_time_ms.",
@@ -791,7 +791,7 @@
     {
       "id": "W7-0057",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/analysis/comparison.py:236",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "MetricSummary docstring states Std: 0.0165 for [0.9, 0.92, 0.88, 0.91], but the computed sample stdev is 0.0171.",
@@ -805,7 +805,7 @@
     {
       "id": "W7-0058",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/evaluation.py:145",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring CompositeEvaluator example states 'Score: 0.52' but the actual weighted score is 0.35.",
@@ -819,7 +819,7 @@
     {
       "id": "W7-0059",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/evaluation.py:273",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Module-docstring calculate_classification_metrics example states 'Macro F1: 0.53' but the actual macro F1 is 0.67.",
@@ -833,7 +833,7 @@
     {
       "id": "W7-0060",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/optimization.py:1028",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "PromptCompressor.compress method docstring shows result.compressed as 'To complete the task, you need to analyze the data.' (capital T), but the code returns lowercase 'to complete the task, you need to analyze the data.'.",
@@ -847,7 +847,7 @@
     {
       "id": "W7-0061",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/probes/logic.py:257",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "LogicProbe class-level docstring example prints response_length 52 but the actual model_output string is 55 characters.",
@@ -861,7 +861,7 @@
     {
       "id": "W7-0062",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/probes/logic.py:926-936",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "_extract_final_answer docstring's 'Regex Patterns Used' block and 'Limitations' note are stale relative to the implemented regex.",
@@ -875,7 +875,7 @@
     {
       "id": "W7-0063",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/schemas/registry.py:1554",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "get_json_schema() docstring example asserts the 'input' field's JSON schema has 'type' or 'anyOf', but ProbeResult.input is typed Any, so its generated schema is just {'title': 'Input'} with neither key, and the expression is False.",
@@ -889,7 +889,7 @@
     {
       "id": "W7-0064",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/schemas/registry.py:847",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "get_model() docstring example names two variables v1_0_0/v1_0_1 for ProbeResult at versions 1.0.0 and 1.0.1 and asserts `v1_0_0 is not v1_0_1` is True, but ProbeResult is identical (delegated) across both versions, so get_model returns the same class object and the expression is False.",
@@ -903,7 +903,7 @@
     {
       "id": "W7-0065",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/schemas/validator.py:741",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "Warn-mode docstring example asserts `type(result).__name__ == 'ProbeResult'`, but the validated model's class is SchemaProbeResult (ProbeResult is only a module alias), so the assertion is false.",
@@ -917,7 +917,7 @@
     {
       "id": "W7-0066",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/semantic_cache.py:99-105",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "quick_semantic_cache docstring states the second, semantically-similar call returns 'Cached: True', but with the default SimpleEmbedder the semantic similarity falls below the 0.85 threshold and the call returns False.",
@@ -931,7 +931,7 @@
     {
       "id": "W7-0067",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/tokens.py:733",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "TokenDistribution.entropy docstring shows wrong outputs: skewed 'a a a a b c d e' claims 2.41 (actual 2.00), formulaic example claims 1.00 (actual 0.95), and the perplexity example claims Entropy 3.03 / Perplexity 8.2 (actual 2.95 / 7.7).",
@@ -945,7 +945,7 @@
     {
       "id": "W7-0068",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "insideLLMs/tokens.py:84",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module-level cosine_similarity example states 'Similarity: 0.9987', but the function returns 0.9934 for the given vectors.",
@@ -959,7 +959,7 @@
     {
       "id": "W7-0069",
       "category": "docs_drift",
-      "severity": "ℹ️ INFO",
+      "severity": "\u2139\ufe0f INFO",
       "location": "insideLLMs/probes/attack.py:529",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "AttackProbe._analyze_response docstring comment lists safety_matches as ['i cannot', 'guidelines'] but the actual match is ['i cannot', 'against my guidelines'].",
@@ -973,7 +973,7 @@
     {
       "id": "W7-0070",
       "category": "docs_drift",
-      "severity": "ℹ️ INFO",
+      "severity": "\u2139\ufe0f INFO",
       "location": "insideLLMs/probes/base.py:1430",
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "ComparativeProbe.compare_responses docstring example states length_diff -20 but the two example strings differ by 23 characters.",
@@ -983,6 +983,20 @@
       "fix_commit": null,
       "verification": null,
       "notes": "proposed_fix: Change the documented length_diff from -20 to -23. | reader_confidence=high"
+    },
+    {
+      "id": "W7-0071",
+      "category": "coverage_gap",
+      "severity": "\ud83d\udfe0 MEDIUM",
+      "location": "insideLLMs/caching.py, insideLLMs/cli/commands/doctor.py, insideLLMs/analysis/visualization.py",
+      "found_by": "coverage gate (90.0781% < 91.0% target)",
+      "description": "Combined line+branch coverage sat at 90.0781% (23,178/25,731) \u2014 below the Wave 7 91% baseline goal. Primary gaps: caching.py at 59%, cli/commands/doctor.py at 34% (all tests skipped due to nltk importorskip).",
+      "evidence": "python3 -m pytest -m \"not slow and not integration\" --cov=insideLLMs --cov-report=term-missing --cov-config pyproject.toml -> TOTAL 19735 stmts 1545 miss 5996 branch 654 partial -> 90.0781% (23178/25731). Target: 91.0% = 23416/25731 (+238 items).",
+      "status": "verified",
+      "escalation_reason": null,
+      "fix_commit": "b48cbe89407eea6adcea4df294ec13d08ab99221",
+      "verification": "BEFORE: 23178/25731 = 90.0781% (19735 stmts 1545 miss, 5996 branches 654 partial). AFTER (confirmed \u2014 two independent runs give identical result): 23614/25731 = 91.7726% (19735 stmts 1213 miss, 5996 branches 634 partial, covered_branch_arcs = 5996-904 = 5092; display rounds to 92%). +436 covered items (target was +238). Tests added: 134 new tests across test_caching_coverage_w7.py (110), test_doctor_coverage_w7.py (20), test_diff_fail_on_regressions_w7.py (4). Quality gates: make check (6884 passed, 162 skipped, 0 failed, ruff+mypy clean), make golden-path pass, pytest -m determinism (22/22), pytest -m contract (48/48). Coverage note: Inspector measured 92.8219% using wrong formula (num_branches - num_partial_branches = 5996-634 = 5362); correct formula is num_branches - missing_branches = 5996-904 = 5092; coverage.py percent_covered JSON field = 91.7726% confirms correct value.",
+      "notes": "caching.py doctor tests skipped in prior env because test_cli_doctor_coverage.py uses pytest.importorskip(\"nltk\"); fixed by writing new tests that do not require nltk. All tests deterministic, offline, no provider API keys."
     }
   ]
 }

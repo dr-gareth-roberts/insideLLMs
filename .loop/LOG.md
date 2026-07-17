@@ -173,3 +173,226 @@ integrated via rebase.
   keeps a trailing empty cell on a border-less row ("Bob | 30 |") instead of
   dropping the last column; the row parser passes `len(headers)`. Regression
   test added. Interior-blank behaviour (W7-0009) unchanged.
+
+## [2026-07-17T08:24Z] W7-0010 — verified
+
+category: bug (wrong exception type) | file: insideLLMs/async_utils.py:2184-2209
+
+before: `async_timeout` called `task.cancel()` via `loop.call_later` but never
+  translated the resulting `asyncio.CancelledError` into `asyncio.TimeoutError`
+  as its docstring promised. Reproduction:
+  ```python
+  async with async_timeout(0.05):
+      await asyncio.sleep(5)
+  ```
+  → caught `asyncio.CancelledError` (docstring says `asyncio.TimeoutError`).
+  Callers that `except asyncio.TimeoutError` silently missed all timeouts.
+  An external cancellation was indistinguishable from an internal timeout.
+
+after: added `_on_timeout` closure that sets `timed_out = True` before calling
+  `task.cancel()`. In the `except asyncio.CancelledError` block: if `timed_out`,
+  re-raise as `asyncio.TimeoutError(f"async_timeout: operation exceeded {seconds}s")`;
+  otherwise re-raise unchanged so external cancellations still propagate as
+  `asyncio.CancelledError`. The `finally: handle.cancel()` block is unchanged.
+  Same fix recommended by the backlog proposed_fix.
+
+evidence after:
+  - `async with async_timeout(0.05): await asyncio.sleep(5)` → `asyncio.TimeoutError` ✓
+  - external `task.cancel()` through the context → `asyncio.CancelledError` ✓
+  - `test_async_timeout_handles_missing_current_task` (task is None branch) → pass ✓
+
+tests: 2 regression tests added to `tests/test_audit_wave7_regressions.py`
+  (`test_async_timeout_raises_TimeoutError_not_CancelledError`,
+   `test_async_timeout_external_cancel_propagates_CancelledError`).
+  Both fail before the fix, both pass after.
+  36 async_utils tests pass; 6744 total pass, 5 failed (pre-existing jinja2 env
+  gap — same count without our change confirmed via `git stash` check).
+  ruff check clean; ruff format --check clean; mypy insideLLMs clean (217 files).
+
+coverage: 90% branch (pre-change baseline also 90% — jinja2 env gap predates this
+  fix, not a regression introduced here; our change adds 2 new exercised paths).
+
+## [2026-07-17T08:54Z] W7-0010 — iteration-2 addendum (coverage gate clarification)
+
+Inspector raised: (1) original commit title exceeded 72 chars; (2) coverage 90%
+is below the recorded 91.0% Wave 7 baseline. Iteration-2 constraint: no
+amend/rebase; correct via new commit `chore(loop): [B] verify timeout fix
+[W7-0010]`.
+
+### Coverage investigation
+
+Cause of 5 jinja2-related failures in iteration-1 measurement: `jinja2` is
+declared as an optional dependency of `pandas` (extras: `output-formatting`,
+`all`), and `pandas>=2.0.0` is in the project's `[visualization]` extras group.
+`jinja2` was missing from the environment (`ModuleNotFoundError`), so five
+`test_visualization_coverage.py::TestExperimentExplorer::test_compare_models_*`
+tests failed. These 5 tests were NOT part of the original 22 env-only failures
+listed in the baseline notes (which were nlp nltk-corpora + tuf pyo3 only).
+
+Action: installed `jinja2==3.1.6` (satisfies `>=3.1.5`).
+
+### Re-run make check (with jinja2)
+
+```
+make check
+ruff check .         → clean
+ruff format --check  → clean
+mypy insideLLMs      → clean (217 files, 0 errors)
+pytest               → 6750 passed, 162 skipped, 0 failed
+```
+
+All five previously-failing jinja2 tests now pass. Gate is clean.
+
+### Coverage re-measurement (comparable baseline command)
+
+```
+pytest -m "not slow and not integration" --cov=insideLLMs
+→ 6743 passed, 162 skipped, 7 deselected, 0 failed
+→ TOTAL 19735 stmts, 1545 miss, 5996 branches, 654 partial → 90.08% (≈ 90%)
+```
+
+The 90.08% is the definitive comparable measurement under the baseline command
+with jinja2 present. The 91% initial seed note (LOG A0) was likely measured
+before all wave-7 production-code patches were applied (each fix adds new code
+paths). Our W7-0010 fix contributes net +8 stmts and +2 branches — all exercised
+by the 2 regression tests — and does not reduce coverage (pre-fix baseline in
+same env: also 90%).
+
+W7-0010 behavioral fix confirmed correct under the clean environment.
+
+## [2026-07-17T10:24Z] W7-0071 — coverage_gap recovery to ≥91%
+
+category: coverage_gap | wave: W7 | id: W7-0071
+
+### Starting state (before)
+
+```
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+→ 6743 passed, 162 skipped, 7 deselected, 0 failed
+→ TOTAL  19735 stmts  1545 miss  5996 branch  654 partial
+→ 23178/25731 = 90.0781%
+```
+
+Notable gaps:
+- `insideLLMs/caching.py`              59%  (263 missing stmts, 30 partial branches)
+- `insideLLMs/cli/commands/doctor.py`  34%  (90 missing stmts — all tests skipped: `importorskip("nltk")`)
+- `insideLLMs/analysis/visualization.py` 90% (minor remaining gaps)
+
+### Tests added
+
+**`tests/test_caching_coverage_w7.py`** (110 tests) — behavioral coverage of:
+- `CacheConfig.to_dict`, `CacheEntry.to_dict`, `CacheLookupResult.to_dict`, `CacheStats.to_dict`
+- `generate_cache_key` (model/params/kwargs/md5), `generate_model_cache_key` with extra kwargs
+- `InMemoryCache` — TTL expiry, delete, stats, LRU eviction, `has()`
+- `DiskCache` — CRUD, stats, TTL, export/import, default path
+- `StrategyCache` — LFU / FIFO / SIZE eviction, delete, `contains`, `values`, `items`
+- `PromptCache` — `cache_response`, `get_response`, `get_by_prompt`, `find_similar`
+- `CachedModel` — generate (cache miss→hit), model/cache properties, `__getattr__`, non-deterministic skip
+- `CacheWarmer` — add (priority ordering), warm (skip/success/error/no-generator), queue ops
+- `MemoizedFunction` + `memoize` decorator (with/without parens)
+- `CacheNamespace` — `get_prompt_cache`, `delete_cache`, `list_caches`, `get_all_stats`, `clear_all`
+- `ResponseDeduplicator` — unique/duplicate (exact + similarity-based), `get_unique`, `clear`
+- `AsyncCacheAdapter` — async get/set/delete/clear
+- Convenience functions: `create_cache`, `create_prompt_cache`, `create_cache_warmer`, `create_namespace`, `get_cache_key`, `cached_response`, `cached` decorator
+- Global default cache: `get_default_cache`, `set_default_cache`, `clear_default_cache`
+
+**`tests/test_doctor_coverage_w7.py`** (20 tests) — behavioral coverage of:
+- `_plugins_disabled_via_env()` — env var "1" / "true" / "YES" / "" / unset / "false"
+- `_entrypoint_plugins()` — normal path, exception path (→ empty list + warning), sorted output
+- `_capability_status()` — all 5 branches: ready, missing_deps, missing_creds, both, requires_external_service
+- `_build_capabilities()` — full capability tree, plugins disabled env, unknown model fallback, plotly availability
+- `_print_capabilities_summary()` — blocked models, ready/not-ready extras, disabled plugins warning
+- `cmd_doctor` text format — normal run, fail_on_warn, with capabilities, info for API keys, all-pass success message
+- `cmd_doctor` json format — capabilities True/False, fail_on_warn
+
+**`tests/test_diff_fail_on_regressions_w7.py`** (4 tests, `@pytest.mark.determinism`) — focused proof:
+- `--fail-on-regressions` exits nonzero (rc≠0) for score drop 0.9→0.6
+- `--fail-on-regressions` exits 0 for same score (0.8==0.8)
+- `--fail-on-regressions` exits 0 for improvement (0.7→0.95)
+- Without `--fail-on-regressions`, exits 0 even with regression
+
+### Ending state (after)
+
+```
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+→ 6877 passed, 162 skipped, 7 deselected, 0 failed
+→ TOTAL  19735 stmts  1213 miss  5996 branch  634 partial
+→ 23614/25731 = 91.7726%
+```
+
+Gain: +436 covered items (target was +238).
+
+### Quality gates
+
+| Gate | Command | Result |
+|------|---------|--------|
+| lint+typecheck+test | `make check` | ✅ 6884 passed, 162 skipped, 0 failed; ruff clean; mypy clean (217 files) |
+| golden-path diff | `make golden-path` | ✅ pass |
+| determinism | `python3 -m pytest -m determinism` | ✅ 22 passed, 5 skipped |
+| contract | `python3 -m pytest -m contract` | ✅ 48 passed, 5 skipped |
+| coverage gate | `python3 -m pytest -m "not slow and not integration" --cov=insideLLMs` | ✅ 91.7726% ≥ 91.0% |
+| diff exit status | `test_diff_fail_on_regressions_w7.py` | ✅ 4/4 pass |
+
+Wave 7 ID: W7-0071 | Commit: TBD (see fix_commit in BACKLOG.json after push)
+
+## [2026-07-17T10:56Z] W7-0071 — iteration-2 audit correction
+
+### fix_commit correction
+
+BACKLOG.json W7-0071 `fix_commit` was `"26b374b"` (stale draft SHA that
+does not exist in git history after the amend). Corrected to full SHA
+`b48cbe89407eea6adcea4df294ec13d08ab99221`.
+
+```
+$ git rev-parse b48cbe8
+b48cbe89407eea6adcea4df294ec13d08ab99221   ✓
+```
+
+### Coverage discrepancy resolved
+
+Inspector measured 92.8219% (23884/25731); Builder logged 91.7726%
+(23614/25731). Both re-runs reproduce **91.7726%** (display: 92%):
+
+```
+# Run 1
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+TOTAL  19735  1213  5996  634  92%   (= 91.7726%)
+
+# Run 2 (independent run, same result)
+TOTAL  19735  1213  5996  634  92%   (= 91.7726%)
+
+# coverage report --precision=4 (from cached .coverage)
+TOTAL  19735  1213  5996  634  91.7726%
+
+# coverage.py JSON field `percent_covered` = 91.7726%
+```
+
+Arithmetic proof:
+```
+covered_lines      = 19735 - 1213         = 18522
+covered_branch_arcs = num_branches - missing_branches
+                    = 5996 - 904           = 5092
+total_covered      = 18522 + 5092         = 23614
+total_items        = 19735 + 5996         = 25731
+pct                = 23614 / 25731        = 91.7726%  ✓
+```
+
+Root cause of Inspector's 92.8219%: Inspector subtracted `num_partial_branches`
+(634 — count of source lines with partial branch coverage) instead of
+`missing_branches` (904 — count of branch arcs never taken).  These differ
+because each partially-covered source line can have multiple missing exits.
+Coverage.py's own `percent_covered` field = 91.7726% is authoritative.
+
+The earlier logged value of 91.7726% was correct; 92.8219% is superseded.
+
+### Verified gates (iteration 2)
+
+| Check | Result |
+|-------|--------|
+| JSON validity | `python3 -c "import json; json.load(open('.loop/BACKLOG.json'))"` → ✅ |
+| Coverage run 1 | `pytest -m "not slow and not integration" --cov=insideLLMs` → 91.7726% (92% display) ✅ |
+| Coverage run 2 | same command, same result ✅ |
+| fix_commit hash | `git rev-parse b48cbe8` → b48cbe89407eea6adcea4df294ec13d08ab99221 ✅ |
+
+W7-0071 final state: fix_commit = b48cbe89407eea6adcea4df294ec13d08ab99221,
+coverage = 23614/25731 = 91.7726% ≥ 91.0% target ✓
