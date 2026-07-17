@@ -1,6 +1,6 @@
 {
   "goal_id": "coverage-recovery-91",
-  "status": "passed",
+  "status": "completed",
   "iteration": 2,
   "builder_model": "Claude:Sonnet-4.6",
   "inspector_model": "Claude:Haiku-4.5",
