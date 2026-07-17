@@ -1,7 +1,7 @@
 {
   "goal_id": "coverage-recovery-91",
-  "status": "failed",
-  "iteration": 1,
+  "status": "building",
+  "iteration": 2,
   "builder_model": "Claude:Sonnet-4.6",
   "inspector_model": "Claude:Haiku-4.5",
   "initial_sha": "74af0b7",

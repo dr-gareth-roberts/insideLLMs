@@ -334,3 +334,65 @@ Gain: +436 covered items (target was +238).
 | diff exit status | `test_diff_fail_on_regressions_w7.py` | ✅ 4/4 pass |
 
 Wave 7 ID: W7-0071 | Commit: TBD (see fix_commit in BACKLOG.json after push)
+
+## [2026-07-17T10:56Z] W7-0071 — iteration-2 audit correction
+
+### fix_commit correction
+
+BACKLOG.json W7-0071 `fix_commit` was `"26b374b"` (stale draft SHA that
+does not exist in git history after the amend). Corrected to full SHA
+`b48cbe89407eea6adcea4df294ec13d08ab99221`.
+
+```
+$ git rev-parse b48cbe8
+b48cbe89407eea6adcea4df294ec13d08ab99221   ✓
+```
+
+### Coverage discrepancy resolved
+
+Inspector measured 92.8219% (23884/25731); Builder logged 91.7726%
+(23614/25731). Both re-runs reproduce **91.7726%** (display: 92%):
+
+```
+# Run 1
+python3 -m pytest -m "not slow and not integration" --cov=insideLLMs --cov-report=term-missing
+TOTAL  19735  1213  5996  634  92%   (= 91.7726%)
+
+# Run 2 (independent run, same result)
+TOTAL  19735  1213  5996  634  92%   (= 91.7726%)
+
+# coverage report --precision=4 (from cached .coverage)
+TOTAL  19735  1213  5996  634  91.7726%
+
+# coverage.py JSON field `percent_covered` = 91.7726%
+```
+
+Arithmetic proof:
+```
+covered_lines      = 19735 - 1213         = 18522
+covered_branch_arcs = num_branches - missing_branches
+                    = 5996 - 904           = 5092
+total_covered      = 18522 + 5092         = 23614
+total_items        = 19735 + 5996         = 25731
+pct                = 23614 / 25731        = 91.7726%  ✓
+```
+
+Root cause of Inspector's 92.8219%: Inspector subtracted `num_partial_branches`
+(634 — count of source lines with partial branch coverage) instead of
+`missing_branches` (904 — count of branch arcs never taken).  These differ
+because each partially-covered source line can have multiple missing exits.
+Coverage.py's own `percent_covered` field = 91.7726% is authoritative.
+
+The earlier logged value of 91.7726% was correct; 92.8219% is superseded.
+
+### Verified gates (iteration 2)
+
+| Check | Result |
+|-------|--------|
+| JSON validity | `python3 -c "import json; json.load(open('.loop/BACKLOG.json'))"` → ✅ |
+| Coverage run 1 | `pytest -m "not slow and not integration" --cov=insideLLMs` → 91.7726% (92% display) ✅ |
+| Coverage run 2 | same command, same result ✅ |
+| fix_commit hash | `git rev-parse b48cbe8` → b48cbe89407eea6adcea4df294ec13d08ab99221 ✅ |
+
+W7-0071 final state: fix_commit = b48cbe89407eea6adcea4df294ec13d08ab99221,
+coverage = 23614/25731 = 91.7726% ≥ 91.0% target ✓
