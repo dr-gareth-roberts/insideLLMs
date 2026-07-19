@@ -46,3 +46,21 @@ omit shrink: removed openrouter, publish/*, tuf_client, integrations/* (now meas
 focused 100%: diffing_interactive, optimize_prompt, tuf_client, publish, integrations, openrouter
 check-fast: green (6762 passed)
 commit: 1d41664
+
+## [2026-07-20T10:20Z] W7-0008 — slice5+6 (measured hotspots)
+category: structure | files: tests/test_coverage_w7_0008_slice5.py, tests/test_coverage_w7_0008_slice6.py
+before TOTAL: **95%** (20004 / 745 miss) after slice4
+after TOTAL: **96%** (20004 / 570 miss)
+slice5: harness dry-run/red-team/cleanup, interactive probe, structured quick_extract/providers, viz import flags/explorer/seaborn
+slice6: DSSE errors, policy SCITT, sign/verify/attest CLI, generate-suite, dataset_utils, structured parse_obj/to_dict
+omit: unchanged (providers + nlp/* + contrib/*)
+check-fast: green (6790 passed)
+commits: 194658e, 1a5b5d5
+
+## [2026-07-20T10:45Z] W7-0008 — slice7 (diffing/config/export)
+category: structure | files: tests/test_coverage_w7_0008_slice7.py
+before TOTAL: **96%** (570 miss)
+after TOTAL: **96%** (503 miss) — still 96% floor, −67 miss
+focused: runtime.diffing helpers/judge, _config_loader pipeline/HF, _result_utils strict, export bundle validate/schema + DataArchiver decompress
+omit: unchanged
+check-fast: green (6794 passed)
