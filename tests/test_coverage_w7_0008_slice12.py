@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 import types
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -28,24 +27,22 @@ from insideLLMs.runtime._ultimate import (
 from insideLLMs.schemas.registry import SchemaRegistry, semver_tuple
 
 
-def test_semantic_cache_import_and_cosine(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis_mod = types.ModuleType("redis")
-    redis_mod.Redis = MagicMock
-    monkeypatch.setitem(sys.modules, "redis", redis_mod)
-    np_mod = types.ModuleType("numpy")
-    np_mod.array = lambda x: x
-    np_mod.dot = lambda a, b: sum(i * j for i, j in zip(a, b))
-    np_mod.linalg = types.SimpleNamespace(norm=lambda a: 0.0 if not any(a) else 1.0)
-    monkeypatch.setitem(sys.modules, "numpy", np_mod)
+def test_semantic_cache_cosine_and_redis_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cover cosine fallback + RedisCache(client=) without reloading the module.
 
-    for key in list(sys.modules):
-        if key == "insideLLMs.semantic_cache" or key.startswith("insideLLMs.semantic_cache."):
-            del sys.modules[key]
-
+    Reloading semantic_cache poisons other suites that hold RedisCache class
+    references from the original module object (patch targets the new module).
+    """
     import insideLLMs.semantic_cache as sc
 
-    assert sc.REDIS_AVAILABLE is True
-    assert sc.NUMPY_AVAILABLE is True
+    # numpy path (zero-norm + happy)
+    fake_np = types.SimpleNamespace(
+        array=lambda x: x,
+        dot=lambda a, b: sum(i * j for i, j in zip(a, b)),
+        linalg=types.SimpleNamespace(norm=lambda a: 0.0 if not any(a) else 1.0),
+    )
+    monkeypatch.setattr(sc, "NUMPY_AVAILABLE", True)
+    monkeypatch.setattr(sc, "np", fake_np)
     assert sc.cosine_similarity([1.0, 0.0], [1.0, 0.0]) == 1.0
     assert sc.cosine_similarity([0.0, 0.0], [1.0, 0.0]) == 0.0
 
@@ -54,13 +51,14 @@ def test_semantic_cache_import_and_cosine(monkeypatch: pytest.MonkeyPatch) -> No
     assert sc.cosine_similarity([1.0, 0.0], [0.0, 1.0]) == 0.0
     assert sc.cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
 
+    monkeypatch.setattr(sc, "REDIS_AVAILABLE", True)
+    monkeypatch.setattr(sc, "redis", types.SimpleNamespace(Redis=MagicMock))
     client = MagicMock()
     cache = sc.RedisCache(client=client)
     assert cache._client is client
-
-    for key in list(sys.modules):
-        if key == "insideLLMs.semantic_cache" or key.startswith("insideLLMs.semantic_cache."):
-            del sys.modules[key]
+    # no-client path constructs redis.Redis(...)
+    cache2 = sc.RedisCache()
+    assert cache2._client is not None
 
 
 def test_retry_else_backoff_and_circuit_half_open() -> None:
