@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema version compatibility checking in diff command
 - Delimiter escape protection in defensive prompt builder
 
+### Deprecated
+- **`results.jsonl` legacy alias** (Stable artifact surface)
+  - Canonical file is `records.jsonl`; harness runs still emit `results.jsonl` as a symlink or copy for backward compatibility.
+  - **Removal planned in v0.3.0.** After removal, use `records.jsonl` only; update diff snapshot and CI scripts that reference the alias.
+  - See `docs/ARTIFACT_CONTRACT.md` (Legacy Artifact Aliases).
+
 ### Changed
 - Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
 - Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
