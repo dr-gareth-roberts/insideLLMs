@@ -43,7 +43,7 @@
       "escalation_reason": null,
       "fix_commit": "52a5729",
       "notes": "Policy: deprecate + remove v2.0.0 (match CHANGELOG). Added DeprecationWarning on import to match CHANGELOG/MIGRATION. Full-package 100% tracked as W7-0008.",
-      "verification": "make check-fast green (6730 passed); pytest tests/test_audit_wave7_regressions.py tests/test_visualization.py --cov=insideLLMs.visualization shows 100% (5/5 stmts); DeprecationWarning on shim import; docs aligned with CHANGELOG v2.0.0"
+      "verification": "make check-fast green (6730 passed); pytest tests/test_audit_wave7_regressions.py -q --cov=insideLLMs.visualization --cov-report=term-missing → 100% (5 stmts, 0 miss; was module-not-imported); DeprecationWarning on shim import; docs aligned with CHANGELOG v2.0.0"
     },
     {
       "id": "W7-0004",
