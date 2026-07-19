@@ -5,6 +5,7 @@ This module provides test coverage for the unified caching infrastructure.
 
 import pytest
 
+import insideLLMs
 from insideLLMs.caching import (
     CacheConfig,
     CacheEntry,
@@ -18,6 +19,11 @@ from insideLLMs.caching import (
     PromptCache,
     StrategyCache,
 )
+
+
+def test_package_root_cache_exports_use_canonical_module():
+    assert insideLLMs.InMemoryCache is InMemoryCache
+    assert insideLLMs.DiskCache is DiskCache
 
 
 class TestCacheStrategy:

@@ -163,7 +163,7 @@ Notes
 
 See Also
 --------
-insideLLMs.caching_unified : Unified caching system with multiple backends
+insideLLMs.caching : Unified caching system with multiple backends
 insideLLMs.tokens.EmbeddingUtils : Utilities for working with embeddings
 """
 
