@@ -138,7 +138,7 @@ class ComparisonMetric(Enum):
     THROUGHPUT = "throughput"
     COST = "cost"
     ERROR_RATE = "error_rate"
-    TOKEN_USAGE = "token_usage"
+    TOKEN_USAGE = "token_usage"  # noqa: S105
     QUALITY_SCORE = "quality_score"
 
 

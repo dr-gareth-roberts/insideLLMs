@@ -2536,7 +2536,7 @@ class DistributedCheckpointManager:
             import pickle
 
             with open(path, "rb") as f:
-                data = pickle.load(f)
+                data = pickle.load(f)  # noqa: S301  # guarded by allow_unsafe_pickle flag above
 
         pending_tasks = [Task.from_dict(t) for t in data["pending_tasks"]]
         completed_results = [TaskResult(**r) for r in data["completed_results"]]
@@ -3052,7 +3052,7 @@ class DistributedExperimentRunner:
         """
         tasks = [
             Task(
-                id=hashlib.md5(prompt.encode()).hexdigest()[:12],
+                id=hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()[:12],
                 payload=prompt,
             )
             for prompt in prompts

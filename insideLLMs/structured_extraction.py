@@ -1398,7 +1398,7 @@ class StructuredExtractor:
                 if result.is_success and result.confidence > best_confidence:
                     best_result = result
                     best_confidence = result.confidence
-            except Exception as _:
+            except Exception:  # noqa: S112
                 continue
 
         if best_result:
@@ -1483,7 +1483,7 @@ class ResponseParser:
                         }
                         result.extracted_data = filtered
                     return result
-            except Exception as _:
+            except Exception:  # noqa: S112
                 continue
 
         return ExtractionResult(

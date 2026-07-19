@@ -197,7 +197,7 @@ class EnvVars:
     COHERE_API_KEY: Final[str] = "COHERE_API_KEY"
 
     #: HuggingFace token
-    HF_TOKEN: Final[str] = "HF_TOKEN"
+    HF_TOKEN: Final[str] = "HF_TOKEN"  # noqa: S105
 
     #: Directory for insideLLMs run artifacts
     INSIDELLMS_RUN_ROOT: Final[str] = "INSIDELLMS_RUN_ROOT"

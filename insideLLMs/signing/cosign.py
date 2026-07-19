@@ -68,7 +68,7 @@ def sign_blob(blob_path: Path | str, output_bundle_path: Path | str) -> None:
     if not blob_path.exists():
         raise FileNotFoundError(f"Blob to sign not found: {blob_path}")
     output_bundle_path.parent.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [str(cosign), "sign-blob", str(blob_path), "--bundle", str(output_bundle_path)],
         capture_output=True,
         text=True,
@@ -116,5 +116,5 @@ def verify_bundle(
     if identity_constraints:
         _validate_identity_constraints(identity_constraints)
         cmd.extend(["--cert-identity", identity_constraints])
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)  # noqa: S603
     return result.returncode == 0

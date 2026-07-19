@@ -803,7 +803,7 @@ class DeploymentConfig:
     title: str = "insideLLMs API"
     description: str = "API for LLM probing and evaluation"
     version: str = "1.0.0"
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104
     port: int = 8000
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
     enable_docs: bool = True
@@ -2982,7 +2982,7 @@ def create_app(
 
 def quick_deploy(
     model: Any,
-    host: str = "0.0.0.0",
+    host: str = "0.0.0.0",  # noqa: S104
     port: int = 8000,
     **kwargs: Any,
 ) -> None:

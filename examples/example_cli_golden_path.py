@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 def _run_cli(repo_root: Path, *args: str) -> None:
-    subprocess.run(
+    subprocess.run(  # noqa: S603
         [sys.executable, "-m", "insideLLMs.cli", *args],
         cwd=str(repo_root),
         check=True,

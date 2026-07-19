@@ -2536,6 +2536,6 @@ def get_retry_delay(
     base_delay = 1.0
     max_delay = 60.0
     delay = min(base_delay * (2**attempt), max_delay)
-    rng = random.Random(seed) if seed is not None else random
+    rng = random.Random(seed) if seed is not None else random  # noqa: S311
     jitter = rng.uniform(0, delay * 0.1)
     return delay + jitter

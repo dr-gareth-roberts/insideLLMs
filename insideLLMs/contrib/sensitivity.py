@@ -1105,7 +1105,7 @@ class PromptPerturbator:
 
         >>> perturbator = PromptPerturbator()
         """
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311
         self._synonyms = {
             "explain": ["describe", "elaborate", "clarify"],
             "write": ["compose", "create", "generate"],

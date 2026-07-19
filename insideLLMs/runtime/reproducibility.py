@@ -1010,7 +1010,7 @@ class SeedManager:
     def derive_seed(self, key: str) -> int:
         """Derive a deterministic seed from the global seed and a key."""
         combined = f"{self.global_seed}:{key}"
-        hash_value = hashlib.md5(combined.encode()).hexdigest()
+        hash_value = hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
         return int(hash_value[:8], 16)
 
 
@@ -1052,7 +1052,7 @@ class EnvironmentCapture:
 
             for dist in importlib.metadata.distributions():
                 packages[dist.metadata["Name"]] = dist.version
-        except Exception as _:
+        except Exception:  # noqa: S110
             pass
         return packages
 

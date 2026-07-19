@@ -307,7 +307,7 @@ class RepresentationSpace(Enum):
         semantic: concept_clusters
     """
 
-    TOKEN = "token"
+    TOKEN = "token"  # noqa: S105
     SEQUENCE = "sequence"
     SEMANTIC = "semantic"
     TASK = "task"

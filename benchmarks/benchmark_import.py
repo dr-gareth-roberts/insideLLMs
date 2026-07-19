@@ -22,10 +22,11 @@ import insideLLMs
 end = time.time()
 print(f"{(end-start)*1000:.2f}")
 """
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
+        check=False,
     )
     return float(result.stdout.strip())
 
@@ -55,10 +56,11 @@ heavy = ['transformers', 'torch', 'tensorflow']
 loaded = [h for h in heavy if h in sys.modules]
 print(",".join(loaded) if loaded else "none")
 """
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
+        check=False,
     )
     return result.stdout.strip()
 

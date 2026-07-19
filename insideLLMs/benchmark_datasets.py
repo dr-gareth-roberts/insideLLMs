@@ -887,7 +887,7 @@ class BenchmarkDataset:
 
     def _generate_id(self, text: str) -> str:
         """Generate unique ID from text."""
-        hash_obj = hashlib.md5(text.encode())
+        hash_obj = hashlib.md5(text.encode(), usedforsecurity=False)
         return hash_obj.hexdigest()[:12]
 
 
