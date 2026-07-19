@@ -95,3 +95,14 @@ fix: do not reload semantic_cache (poisons RedisCache class refs in other suites
 check-fast: green (6826 passed)
 commits: 3bb9cb4, 427c2a1
 next: measured still ~340 miss; nlp/* + contrib/* still omitted — continue burn then omit shrink
+
+## [2026-07-20T10:00Z] W7-0008 — slice13+14 + nlp/contrib omit shrink
+category: structure | files: tests/test_coverage_w7_0008_slice13.py, slice14.py, test_nlp_omit_shrink_solid.py, tests/contrib/test_diffing_facade.py, test_evalbom.py, pyproject.toml
+before: TOTAL **97%** / **305** miss; omit globs `nlp/*` + `contrib/*`
+after: TOTAL **98%** (20927 stmts / **256** miss)
+slice13: async stop_skip/batch progress/validate/ultimate/incomplete; CLI schema/export/compare/diff; local llama/vllm mocks; probe run_batch status mapping; WandB/MLflow no-run-id
+slice14: for_each_async stop_flag; ExperimentTracker ABC `pass` via unbound calls; _run_common filter/trackers; schema/compare/diff edges; tensorboard import reload (restored)
+omit shrink (no new omit): nlp solid measured (`__init__`, char_level, encoding, text_cleaning, text_transformation); contrib `__init__`/diffing/evalbom measured; remaining nlp/contrib listed explicitly
+check-fast: green (6841 passed)
+blockers: Protocol `...` (probes/base:199); schema unknown-op dead code (149-150 after remap); OTEL import-time lines; remaining ~250 measured misses
+next: burn 256→0 (observability/async_utils/CLI/sync_runner/high_level); continue nlp then contrib module-by-module

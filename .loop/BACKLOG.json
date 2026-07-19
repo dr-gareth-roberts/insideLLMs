@@ -111,9 +111,9 @@
       "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
       "status": "in_progress",
       "escalation_reason": null,
-      "fix_commit": "427c2a1",
-      "verification": null,
-      "notes": "True-100% campaign. TOTAL 97% measured; miss burned 473→~340. Omit: */tests/*, */__pycache__/*, nlp/*, contrib/* (providers removed @100% mocked). Commits: b3f2b44, 8afbbe8, 3bb9cb4, 427c2a1. Next: measured→0 then nlp→contrib omit shrink. Watch: never reload semantic_cache/provider modules mid-suite without restoring class refs."
+      "fix_commit": null,
+      "verification": "make check-fast green (6841 passed); TOTAL 98% / 256 miss after slice13+14 + omit shrink",
+      "notes": "True-100% campaign. TOTAL 98% (20927 stmts / 256 miss). Omit: */tests/*, */__pycache/*, explicit weak nlp (11 files) + explicit remaining contrib (37 modules). Measured solid: nlp __init__/char_level/encoding/text_cleaning/text_transformation; contrib __init__/diffing/evalbom. Watch: never reload semantic_cache mid-suite; experiment_tracking reload must restore sys.modules. Next: 256→0 then more nlp/contrib un-omit."
     }
   ]
 }
