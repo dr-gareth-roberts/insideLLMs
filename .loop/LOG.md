@@ -71,3 +71,19 @@ category: structure | files: tests/test_coverage_w7_0008_slice8.py
 focused: RunConfigBuilder setters, ProgressInfo.is_complete, Fibonacci/circuit breaker, TokenDistribution/VocabCoverage, sync StrictSerializationError
 omit: unchanged
 check-fast: green (6798 passed)
+
+## [2026-07-20T23:20Z] W7-0008 — slice9 + provider omit shrink
+category: structure | files: tests/test_coverage_w7_0008_slice9.py, *_openai/anthropic/huggingface/cohere/gemini_mock.py, pyproject.toml
+before TOTAL: **96%** (20004 / 473 miss); omit had 5 providers + nlp + contrib
+after TOTAL: **97%** (20453 / 415 miss)
+omit shrink: removed openai/anthropic/huggingface/cohere/gemini (mocked SDK, 449 stmts @100% focused)
+slice9: artifact_utils guards, attack analysis, sync resume/ultimate, lazy getattr
+check-fast: green (6810 passed)
+commit: b3f2b44
+
+## [2026-07-20T23:45Z] W7-0008 — slice10+11 (measured burn)
+category: structure | files: tests/test_coverage_w7_0008_slice10.py, tests/test_coverage_w7_0008_slice11.py
+slice10: viz show/seaborn/plotly import reload + interactive HTML exceptions; optimization clarity/selector/budget; DiskCache eviction/CachedModel/CacheWarmer; tokens VocabCoverage/EmbeddingUtils/truncate
+slice11: safety RiskLevel/Bias/ContentSafetyAnalyzer; high_level coerce/create_experiment/run_probe_async; workflows path guards
+omit: still nlp/* + contrib/* only (+ tests/__pycache__)
+next: continue measured→0; then nlp omit shrink when cluster high
