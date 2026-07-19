@@ -1,0 +1,14 @@
+{
+  "name": "chaos-cup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CHAOS CUP — outrageous arcade soccer. Zero runtime deps; the game is a single self-contained index.html. playwright-core is a DEV-only dependency used by the loop's verification harness.",
+  "type": "module",
+  "scripts": {
+    "verify": "node verify.mjs",
+    "serve": "node -e \"const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{let u=q.url==='/'?'/index.html':q.url;u=u.split('?')[0];const fp=p.join(process.cwd(),u);f.readFile(fp,(e,d)=>{if(e){s.writeCode=404;s.end('404')}else{s.end(d)}})}).listen(8123,()=>console.log('http://localhost:8123'))\""
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
