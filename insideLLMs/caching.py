@@ -938,9 +938,9 @@ def generate_cache_key(
     key_string = "|".join(key_parts)
 
     if algorithm == "md5":
-        return hashlib.md5(key_string.encode()).hexdigest()
+        return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
     elif algorithm == "sha1":
-        return hashlib.sha1(key_string.encode()).hexdigest()
+        return hashlib.sha1(key_string.encode(), usedforsecurity=False).hexdigest()
     else:
         return hashlib.sha256(key_string.encode()).hexdigest()
 
@@ -2010,7 +2010,7 @@ class PromptCache(StrategyCache):
         entry = self.set(key, response, metadata=entry_metadata)
 
         # Track prompt -> key mapping
-        prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
+        prompt_hash = hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()
         self._prompt_keys[prompt_hash] = key
 
         return entry
@@ -2027,7 +2027,7 @@ class PromptCache(StrategyCache):
 
     def get_by_prompt(self, prompt: str) -> CacheLookupResult:
         """Get cached response by prompt alone (ignoring model/params)."""
-        prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
+        prompt_hash = hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()
         key = self._prompt_keys.get(prompt_hash)
 
         if key:

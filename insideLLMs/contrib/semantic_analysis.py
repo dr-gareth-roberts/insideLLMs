@@ -1164,7 +1164,7 @@ class TextSimilarityAnalyzer:
 
     def _get_embedding(self, text: str, use_cache: bool = True) -> list[float]:
         """Get embedding for text, using cache if available."""
-        cache_key = hashlib.md5(text.encode()).hexdigest()
+        cache_key = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()
 
         if use_cache and cache_key in self._cache:
             return self._cache[cache_key]

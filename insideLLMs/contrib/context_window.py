@@ -623,7 +623,8 @@ class ContextBlock:
             self.token_count = estimate_tokens(self.content)
         if not self.block_id:
             self.block_id = hashlib.md5(
-                f"{self.content[:100]}{self.timestamp}".encode()
+                f"{self.content[:100]}{self.timestamp}".encode(),
+                usedforsecurity=False,
             ).hexdigest()[:12]
 
     def to_dict(self) -> dict[str, Any]:
@@ -1218,7 +1219,7 @@ class TokenCounter:
             return 0
 
         # Check cache
-        cache_key = hashlib.md5(text.encode()).hexdigest()
+        cache_key = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()
         if cache_key in self._cache:
             self._cache_hits += 1
             return self._cache[cache_key]

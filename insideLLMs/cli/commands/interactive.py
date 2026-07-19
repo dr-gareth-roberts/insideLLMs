@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import subprocess
 import time
 from pathlib import Path
 from typing import Optional
@@ -90,7 +91,10 @@ def cmd_interactive(args: argparse.Namespace) -> int:
             for i, h in enumerate(history[-20:], 1):
                 print(f"  {i:3}. {h[:60]}")
         elif prompt.lower() == "clear":
-            os.system("cls" if os.name == "nt" else "clear")
+            subprocess.run(  # noqa: S603
+                ["cmd", "/c", "cls"] if os.name == "nt" else ["clear"],
+                check=False,
+            )
         elif prompt.lower().startswith("model "):
             new_model = prompt[6:].strip()
             try:

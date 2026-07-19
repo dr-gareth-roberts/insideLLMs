@@ -2664,7 +2664,7 @@ class InteractiveSession(HITLSession):
         for callback in self._callbacks.get(event, []):
             try:
                 callback(*args, **kwargs)
-            except Exception as _:
+            except Exception:  # noqa: S110
                 pass  # Ignore callback errors
 
     def generate_and_review(

@@ -2370,7 +2370,7 @@ class ModelEnsemble:
                         response=response,
                     )
                 )
-            except Exception as _:
+            except Exception:  # noqa: S112
                 # Skip failed models
                 continue
 
@@ -2430,7 +2430,7 @@ class ModelEnsemble:
             try:
                 response = model_fn(prompt)
                 outputs.append(ModelOutput(model_id=model_id, response=response))
-            except Exception as _:
+            except Exception:  # noqa: S112
                 continue
 
         # Apply each method

@@ -238,7 +238,7 @@ class DiversityMetric(Enum):
     DiversityScore : Result class containing metric values and interpretations
     """
 
-    TYPE_TOKEN_RATIO = "type_token_ratio"
+    TYPE_TOKEN_RATIO = "type_token_ratio"  # noqa: S105
     HAPAX_LEGOMENA = "hapax_legomena"
     YULES_K = "yules_k"
     SIMPSONS_D = "simpsons_d"

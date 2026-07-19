@@ -178,7 +178,7 @@ class StreamEventType(Enum):
     'tool_call'
     """
 
-    TOKEN = "token"
+    TOKEN = "token"  # noqa: S105
     CHUNK = "chunk"
     START = "start"
     END = "end"

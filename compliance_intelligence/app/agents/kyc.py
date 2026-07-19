@@ -105,14 +105,14 @@ def _simulate_kyc(entity, state: PipelineState) -> KYCFinding:
     # Simulate watchlist hits
     hits = []
     if is_sanctioned:
-        hits = random.sample(WATCHLISTS[:4], k=random.randint(1, 3))
+        hits = random.sample(WATCHLISTS[:4], k=random.randint(1, 3))  # noqa: S311
     elif entity.high_risk_jurisdiction:
-        if random.random() > 0.5:
-            hits = [random.choice(WATCHLISTS)]
+        if random.random() > 0.5:  # noqa: S311
+            hits = [random.choice(WATCHLISTS)]  # noqa: S311
 
     # Simulate verification
     verified = not (entity.entity_type == EntityType.SHELL_COMPANY)
-    if entity.entity_type == EntityType.TRUST and random.random() > 0.6:
+    if entity.entity_type == EntityType.TRUST and random.random() > 0.6:  # noqa: S311
         verified = False
 
     risk_flags = []
