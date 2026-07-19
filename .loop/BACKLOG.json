@@ -109,11 +109,11 @@
       "found_by": "W7-0003 coverage requirement",
       "description": "Standing item: raise whole-package coverage toward 100% separately from per-increment module coverage gates.",
       "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
-      "status": "escalated",
-      "escalation_reason": "True-100% bar not met in this campaign pass. Progress 90%→94% TOTAL under shrinking omit; remaining work exceeds single-pass capacity. Remaining omit (product reasons): (1) models/{openai,anthropic,huggingface,cohere,gemini}.py — optional provider SDKs not in [dev]; need mock-first suites or CI [providers] extra before omit removal. (2) nlp/* (~11k LOC) — optional nltk/sklearn/spacy; needs [nlp] installed in cov job or extensive stubs. (3) contrib/* (~105k LOC) — research satellite; product decision whether CI-gated 100% applies to contrib or move to separate coverage job. Remaining measured misses (top): runtime/_async_runner.py:71, analysis/visualization.py:53, config_types.py:51, cli/commands/harness.py:37, structured.py:33, registry.py:26, exceptions.py:26, runtime/diffing.py:24, caching.py:23 (+~560 more). No new omit/pragma added; omit only shrunk (crypto, openrouter, publish, tuf, integrations).",
+      "status": "in_progress",
+      "escalation_reason": null,
       "fix_commit": "1d41664",
       "verification": null,
-      "notes": "Slice commits: 9945277 (slice1), 286cb47 (slice2), 1d41664 (slice3); escalation meta 53edadc. Baseline 90.0 → latest 94.0. Do not conflate with W7-0003."
+      "notes": "Resumed true-100% campaign. Baseline wave 90.0; last TOTAL 94.0 (934 miss). Priority: measured→0 then shrink provider/nlp/contrib omit with mocks. Slices: 9945277, 286cb47, 1d41664."
     }
   ]
 }
