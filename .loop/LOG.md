@@ -18,5 +18,5 @@ notes: Docs-only; CHANGELOG already had the product decision — fixed drift in 
 category: docs_drift | files: insideLLMs/visualization.py, docs/IMPORT_PATHS.md, tests/test_audit_wave7_regressions.py
 before: docs aligned to v2.0.0 in 678406b, but CHANGELOG/MIGRATION said "Deprecation warnings issued" while shim emitted none; coverage of warning path N/A
 after: shim issues DeprecationWarning (stacklevel=1, filterable via module=insideLLMs.visualization); docstring + regression tests pin policy; visualization.py cov 100% (5 stmts); make check-fast green
-commit: (pending)
+commit: 52a5729
 notes: CLI/report already use canonical analysis.visualization; Stable surfaces untouched. Full-repo 100% coverage logged as W7-0008.

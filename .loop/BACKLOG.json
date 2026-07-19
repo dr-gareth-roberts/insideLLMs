@@ -41,7 +41,7 @@
       "evidence": "CHANGELOG Unreleased L22-24 vs visualization.py L173-175 vs IMPORT_PATHS.md L46.",
       "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
+      "fix_commit": "52a5729",
       "notes": "Policy: deprecate + remove v2.0.0 (match CHANGELOG). Added DeprecationWarning on import to match CHANGELOG/MIGRATION. Full-package 100% tracked as W7-0008.",
       "verification": "make check-fast green (6730 passed); pytest tests/test_audit_wave7_regressions.py tests/test_visualization.py --cov=insideLLMs.visualization shows 100% (5/5 stmts); DeprecationWarning on shim import; docs aligned with CHANGELOG v2.0.0"
     },
