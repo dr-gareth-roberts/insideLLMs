@@ -41,8 +41,7 @@
       "evidence": "CHANGELOG Unreleased L22-24 vs visualization.py L173-175 vs IMPORT_PATHS.md L46.",
       "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": "make check: 6736 passed, 162 skipped; coverage 90% (baseline 90%); test_audit_wave7_regressions.py PASS",
+      "fix_commit": "678406b",
       "notes": "Aligned IMPORT_PATHS and visualization.py docstring with CHANGELOG v2.0.0 removal; no runtime behavior change."
     },
     {

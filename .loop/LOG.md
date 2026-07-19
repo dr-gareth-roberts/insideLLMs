@@ -11,6 +11,6 @@ notes: Alias still emitted (W7-0002 escalated separately — Stable surface remo
 category: docs_drift | files: docs/IMPORT_PATHS.md, insideLLMs/visualization.py, tests/test_audit_wave7_regressions.py
 before: IMPORT_PATHS.md L46 `Indefinite support`; visualization.py L173-174 `is not deprecated` / `indefinitely`; CHANGELOG Unreleased L24 `removed in v2.0.0`
 after: IMPORT_PATHS and shim docstring state `Deprecated; removal in v2.0.0`; regression test locks consistency; `make check` 6736 passed, coverage 90%
-commit: (pending)
+commit: 678406b
 notes: Docs-only; CHANGELOG already had the product decision — fixed drift in matrix and module docstring
 
