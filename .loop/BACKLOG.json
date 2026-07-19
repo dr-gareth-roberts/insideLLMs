@@ -6,7 +6,7 @@
     {
       "id": "W7-0001",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "CHANGELOG.md:8-26 / docs/ARTIFACT_CONTRACT.md:55",
       "found_by": "manual read | Map prior audit leads subagent",
       "description": "ARTIFACT_CONTRACT promises results.jsonl removal timeline in changelog; no announcement ever published.",
@@ -20,7 +20,7 @@
     {
       "id": "W7-0002",
       "category": "structure",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/cli/commands/harness.py:484-492",
       "found_by": "manual read",
       "description": "results.jsonl legacy alias still emitted on every harness run; removal requires Stable artifact decision.",
@@ -34,20 +34,21 @@
     {
       "id": "W7-0003",
       "category": "docs_drift",
-      "severity": "🟠 MEDIUM",
+      "severity": "\ud83d\udfe0 MEDIUM",
       "location": "insideLLMs/visualization.py vs CHANGELOG.md vs docs/IMPORT_PATHS.md",
       "found_by": "manual read | A1 scan seed",
       "description": "visualization shim policy conflicts: CHANGELOG deprecates v2.0.0 removal; shim docstring says indefinite; IMPORT_PATHS says indefinite.",
       "evidence": "CHANGELOG Unreleased L22-24 vs visualization.py L173-175 vs IMPORT_PATHS.md L46.",
       "status": "verified",
       "escalation_reason": null,
-      "fix_commit": "678406b",
-      "notes": "Aligned IMPORT_PATHS and visualization.py docstring with CHANGELOG v2.0.0 removal; no runtime behavior change."
+      "fix_commit": null,
+      "notes": "Policy: deprecate + remove v2.0.0 (match CHANGELOG). Added DeprecationWarning on import to match CHANGELOG/MIGRATION. Full-package 100% tracked as W7-0008.",
+      "verification": "make check-fast green (6730 passed); pytest tests/test_audit_wave7_regressions.py tests/test_visualization.py --cov=insideLLMs.visualization shows 100% (5/5 stmts); DeprecationWarning on shim import; docs aligned with CHANGELOG v2.0.0"
     },
     {
       "id": "W7-0004",
       "category": "docs_drift",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "docs/AUDIT_FINDINGS.md:177-187",
       "found_by": "manual read",
       "description": "Remaining-work table marks sunset plan Done while summary table still lists open deprecated-module notes.",
@@ -61,7 +62,7 @@
     {
       "id": "W7-0005",
       "category": "structure",
-      "severity": "🟡 LOW",
+      "severity": "\ud83d\udfe1 LOW",
       "location": "docs/IMPORT_PATHS.md:39-47",
       "found_by": "manual read",
       "description": "trace_contracts, tracing, evaluation shims missing from compatibility matrix.",
@@ -70,12 +71,12 @@
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "Per §7 escalate with removal version proposal (suggest v2.0.0 aligned with visualization)."
+      "notes": "Per \u00a77 escalate with removal version proposal (suggest v2.0.0 aligned with visualization)."
     },
     {
       "id": "W7-0006",
       "category": "structure",
-      "severity": "ℹ️ INFO",
+      "severity": "\u2139\ufe0f INFO",
       "location": "pyproject.toml:178-197",
       "found_by": "standing backlog",
       "description": "Phase 2 mypy: shrink disable_error_code list one code at a time.",
@@ -84,12 +85,12 @@
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "Standing backlog per MONSTER_LOOP §4."
+      "notes": "Standing backlog per MONSTER_LOOP \u00a74."
     },
     {
       "id": "W7-0007",
       "category": "structure",
-      "severity": "ℹ️ INFO",
+      "severity": "\u2139\ufe0f INFO",
       "location": "Makefile:45-46",
       "found_by": "standing backlog",
       "description": "typecheck-strict-runtime aspirational; not yet clean or CI-gated.",
@@ -98,7 +99,21 @@
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "Standing backlog per MONSTER_LOOP §4."
+      "notes": "Standing backlog per MONSTER_LOOP \u00a74."
+    },
+    {
+      "id": "W7-0008",
+      "category": "structure",
+      "severity": "\u2139\ufe0f INFO",
+      "location": "coverage / pyproject.toml",
+      "found_by": "W7-0003 coverage requirement",
+      "description": "Standing item: raise whole-package coverage toward 100% separately from per-increment module coverage gates.",
+      "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
+      "status": "open",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": null,
+      "notes": "Standing backlog; do not conflate with W7-0003 shim-module 100% gate."
     }
   ]
 }

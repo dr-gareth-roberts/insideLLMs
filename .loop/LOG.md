@@ -14,3 +14,9 @@ after: IMPORT_PATHS and shim docstring state `Deprecated; removal in v2.0.0`; re
 commit: 678406b
 notes: Docs-only; CHANGELOG already had the product decision — fixed drift in matrix and module docstring
 
+## [2026-07-20T07:25Z] W7-0003 — verified (warning path)
+category: docs_drift | files: insideLLMs/visualization.py, docs/IMPORT_PATHS.md, tests/test_audit_wave7_regressions.py
+before: docs aligned to v2.0.0 in 678406b, but CHANGELOG/MIGRATION said "Deprecation warnings issued" while shim emitted none; coverage of warning path N/A
+after: shim issues DeprecationWarning (stacklevel=1, filterable via module=insideLLMs.visualization); docstring + regression tests pin policy; visualization.py cov 100% (5 stmts); make check-fast green
+commit: (pending)
+notes: CLI/report already use canonical analysis.visualization; Stable surfaces untouched. Full-repo 100% coverage logged as W7-0008.
