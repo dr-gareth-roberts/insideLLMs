@@ -35,4 +35,14 @@ before: measured TOTAL **90%**; crypto/* omitted
 after (focused): `insideLLMs.crypto` + `cli.commands.doctor` → **100%**; caching improved in-slice
 omit shrink: removed `insideLLMs/crypto/*` (only shrink; no new omit/pragma)
 dead-code: removed unreachable `digest_bytes` raise after SUPPORTED_ALGOS guard (A3-proven dead)
+commit: 286cb47
+after TOTAL: **93%** (19789 stmts / 1001 miss)
+
+## [2026-07-20T08:35Z] W7-0008 — slice3 (omit shrink + interactive/CLI)
+category: structure | files: pyproject.toml, tests/test_coverage_w7_0008_slice3.py, tests/test_langchain_integration_coverage.py
+before TOTAL: **93%**; omit still had openrouter/publish/tuf/integrations
+after TOTAL: **94%** (20004 stmts / 934 miss)
+omit shrink: removed openrouter, publish/*, tuf_client, integrations/* (now measured @100% focused)
+focused 100%: diffing_interactive, optimize_prompt, tuf_client, publish, integrations, openrouter
+check-fast: green (6762 passed)
 commit: pending
