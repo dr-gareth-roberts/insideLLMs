@@ -250,7 +250,7 @@ omit = [
     "insideLLMs/models/openrouter.py",
     "insideLLMs/nlp/*",
     "insideLLMs/publish/*",
-    "insideLLMs/crypto/*",
+    # crypto/* measured (W7-0008 omit shrink) — covered by tests/test_crypto_*.py + slice2
     "insideLLMs/datasets/tuf_client.py",
     "insideLLMs/integrations/*",
     "insideLLMs/contrib/*",

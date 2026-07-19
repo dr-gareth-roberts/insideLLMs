@@ -87,9 +87,8 @@ def digest_bytes(data: bytes, algo: str = DEFAULT_ALGO) -> str:
     """
     if algo not in SUPPORTED_ALGOS:
         raise ValueError(f"Unsupported digest algo: {algo!r}. Supported: {SUPPORTED_ALGOS}")
-    if algo == "sha256":
-        return hashlib.sha256(data).hexdigest()
-    raise ValueError(f"Unsupported digest algo: {algo!r}")
+    # SUPPORTED_ALGOS currently only includes sha256; guard above is the extension point.
+    return hashlib.sha256(data).hexdigest()
 
 
 def digest_obj(

@@ -28,3 +28,11 @@ before: measured TOTAL **90%** (19698 stmts, 1558 miss, branch-aware); omit list
 slice1 after (focused): encryption, cosign, slsa_provenance, builders, receipt, shadow → **100%** (412 stmts, 0 miss, 0 partial)
 omit: unchanged (only shrink allowed without escalation)
 next: caching.py (~263 miss), CLI doctor/diff/init, async_runner; then shrink omit starting with crypto/openrouter/publish
+
+## [2026-07-20T08:10Z] W7-0008 — slice2 (crypto omit shrink + CLI/caching)
+category: structure | files: pyproject.toml, insideLLMs/crypto/canonical.py, tests/test_coverage_w7_0008_slice2.py
+before: measured TOTAL **90%**; crypto/* omitted
+after (focused): `insideLLMs.crypto` + `cli.commands.doctor` → **100%**; caching improved in-slice
+omit shrink: removed `insideLLMs/crypto/*` (only shrink; no new omit/pragma)
+dead-code: removed unreachable `digest_bytes` raise after SUPPORTED_ALGOS guard (A3-proven dead)
+commit: pending
