@@ -241,13 +241,8 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
-    # Provider-specific modules requiring optional dependencies not in [dev]
-    "insideLLMs/models/openai.py",
-    "insideLLMs/models/anthropic.py",
-    "insideLLMs/models/huggingface.py",
-    "insideLLMs/models/cohere.py",
-    "insideLLMs/models/gemini.py",
-    # openrouter/publish/tuf/integrations measured (W7-0008 omit shrink)
+    # Provider adapters measured via mocked SDK tests (W7-0008 omit shrink)
+    # nlp/contrib still omitted until cluster coverage is high enough
     "insideLLMs/nlp/*",
     "insideLLMs/contrib/*",
 ]
