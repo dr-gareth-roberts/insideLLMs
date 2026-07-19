@@ -45,4 +45,4 @@ after TOTAL: **94%** (20004 stmts / 934 miss)
 omit shrink: removed openrouter, publish/*, tuf_client, integrations/* (now measured @100% focused)
 focused 100%: diffing_interactive, optimize_prompt, tuf_client, publish, integrations, openrouter
 check-fast: green (6762 passed)
-commit: pending
+commit: 1d41664
