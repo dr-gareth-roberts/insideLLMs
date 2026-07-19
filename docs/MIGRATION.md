@@ -37,13 +37,15 @@ find . -name "*.py" -exec sed -i '' \
 ```
 
 **Timeline:**
-- **v1.1.0** (Current): Deprecation warnings issued, old imports still work
-- **v1.2.0**: Continued warnings, compatibility layer maintained
-- **v2.0.0**: Old import path removed, must use new location
+- **0.2.0** (Current): Shim supported; no deprecation warning emitted yet
+- **v1.1.0**: Deprecation warnings begin; old imports still work
+- **v1.2.0**: Continued warnings; compatibility layer maintained
+- **v2.0.0**: Old import path removed; must use the new location
 
-**Suppressing warnings during migration:**
+**Suppressing warnings during migration (from v1.1.0 onward):**
 
-If you need to suppress deprecation warnings temporarily while migrating a large codebase:
+If you need to suppress deprecation warnings temporarily while migrating a large codebase
+after warnings start in v1.1.0:
 
 ```python
 # Option 1: Suppress specific deprecation warnings
@@ -67,7 +69,6 @@ with warnings.catch_warnings():
 
 ```python
 # Verify new imports work
-import sys
 import warnings
 
 # Enable all warnings
@@ -80,32 +81,29 @@ try:
 except ImportError as e:
     print(f"✗ New import failed: {e}")
 
-# Verify old import triggers warning
+# At 0.2.0 the old path still works with no warning; from v1.1.0 it warns.
 with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("always")
     from insideLLMs.visualization import text_bar_chart as old_text_bar_chart
-    
-    if w and issubclass(w[0].category, DeprecationWarning):
-        print("✓ Old import triggers deprecation warning")
-    else:
-        print("✗ Old import does not trigger warning")
+    print(f"Deprecation warnings captured: {len(w)}")
 ```
 
 #### 2. Other Planned Changes
 
 No other breaking changes are currently planned for v2.0.0.
 
-## Version 1.1.0 (Current)
+## Version 0.2.0 (Current)
 
-### New Features
+### Notes
 
-- International PII detection (EU, UK regions)
-- Rate limiting integration via `RunConfig`
-- Enhanced prompt injection defenses
+- Prefer `insideLLMs.analysis.visualization` for new code.
+- The `insideLLMs.visualization` shim remains supported and silent until v1.1.0.
+
+## Version 1.1.0 (Planned)
 
 ### Deprecations
 
-- `insideLLMs.visualization` → `insideLLMs.analysis.visualization`
+- `insideLLMs.visualization` → `insideLLMs.analysis.visualization` (warnings begin)
 
 ### Migration Checklist
 

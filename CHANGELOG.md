@@ -19,10 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
 - Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
 - Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes
-- **DEPRECATION**: `insideLLMs.visualization` module is deprecated
-  - Use `insideLLMs.analysis.visualization` instead
-  - Compatibility layer will be removed in v2.0.0
-  - See migration guide below
+- **DEPRECATION (scheduled)**: `insideLLMs.visualization` remains a supported
+  compatibility shim at 0.2.0; prefer `insideLLMs.analysis.visualization`.
+  Warnings start in v1.1.0; the shim is removed in v2.0.0. See migration guide.
 
 ### Fixed
 - Removed duplicate "Verifiable Evaluation Commands" and "Schema Validation Commands" sections from README
@@ -99,9 +98,10 @@ from insideLLMs.analysis.visualization import text_bar_chart
 ```
 
 **Timeline:**
-- v1.1.0 (current): Deprecation warnings issued, old imports still work
+- 0.2.0 (current): Shim supported; no deprecation warning emitted yet
+- v1.1.0: Deprecation warnings begin; old imports still work
 - v1.2.0: Continued deprecation warnings
-- v2.0.0: Old import path removed, must use new path
+- v2.0.0: Old import path removed; use the canonical path
 
 **Automated migration:**
 ```bash
