@@ -26,11 +26,11 @@
       "found_by": "manual read (cross-check CHANGELOG vs module + IMPORT_PATHS.md)",
       "description": "CHANGELOG declares insideLLMs.visualization deprecated and removed in v2.0.0 with a v1.1.0->v1.2.0->v2.0.0 timeline claiming 'Deprecation warnings issued', but the module docstring and docs/IMPORT_PATHS.md both classify it 'Indefinite support / not deprecated', the shim emits zero warnings, and the project is at 0.2.0 (v1.x/v2.0 are fictional).",
       "evidence": "python3 import of insideLLMs.visualization emits 0 warnings; docs/IMPORT_PATHS.md:46 lists it under 'Compatibility Shims (Still Supported) - Indefinite support'; visualization.py:171-176 states 'not deprecated ... indefinitely'. CHANGELOG.md:22 says 'is deprecated', :24 'removed in v2.0.0', :102 'Deprecation warnings issued'.",
-      "status": "in_progress",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "Fix direction: preserve sunset timeline (v1.1.0 warn start, v1.2.0 continue, v2.0.0 remove) but correct false 'current'/'warnings issued' claims and replace conflicting 'Indefinite support' wording. Docs-only; no warning emission at 0.2.0."
+      "fix_commit": "662bfb7dc8a774198eabaade5cec13597f97514b",
+      "verification": "BEFORE: CHANGELOG claimed visualization deprecated/removed in v2.0.0 with 'v1.1.0 (current): Deprecation warnings issued'; module docstring + IMPORT_PATHS.md said 'Indefinite support / not deprecated'; import emitted 0 warnings at package 0.2.0. AFTER: all four surfaces share one schedule \u2014 0.2.0 silent support, v1.1.0 warnings begin, v1.2.0 continue, v2.0.0 remove. Runtime unchanged: version=0.2.0, import warnings=0. make docs-audit pass; ruff+format+mypy clean (217 files); pytest 6999 passed / 1 known tuf residual (AGENTS.md) after jinja2 install cleared the 5 ExperimentExplorer failures; coverage 23678/25736 = 92.0034% >= 91.0% baseline. Side lead W7-0072 logged (broken TraceVisualizer example).",
+      "notes": "Docs-only alignment preserving the sunset product decision. No warning added at 0.2.0 (precedes documented v1.1.0 warn start). Not a Stable-surface change."
     },
     {
       "id": "W7-0003",
