@@ -13,8 +13,7 @@
       "evidence": "ARTIFACT_CONTRACT L55: 'timeline will be announced in changelog'; CHANGELOG [Unreleased] had no results.jsonl entry before W7-0001.",
       "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": "before: no results.jsonl in CHANGELOG; after: Deprecated section + ARTIFACT_CONTRACT cross-ref; make check-fast 6728 passed",
+      "fix_commit": "588a7af",
       "notes": "Docs-only increment: announce sunset. Actual alias removal is separate Stable-surface escalation (W7-0002)."
     },
     {
