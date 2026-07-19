@@ -20,3 +20,11 @@ before: docs aligned to v2.0.0 in 678406b, but CHANGELOG/MIGRATION said "Depreca
 after: shim issues DeprecationWarning (stacklevel=1) then sys.modules alias; wave7 tests import module; `--cov=insideLLMs.visualization` → 100% (5 stmts, 0 miss); `make check-fast` green (6730 passed, 162 skipped)
 commit: 52a5729
 notes: CLI/report already use canonical analysis.visualization; Stable surfaces untouched. Full-repo 100% coverage logged as W7-0008.
+
+## [2026-07-20T07:55Z] W7-0008 — in_progress (stricter bar + slice1)
+category: structure | files: tests/test_coverage_w7_0008_slice1.py, .loop/BACKLOG.json
+bar: True 100% with omit-list shrink toward empty; no new omit/pragma; no vanity deletes
+before: measured TOTAL **90%** (19698 stmts, 1558 miss, branch-aware); omit list unchanged (providers/nlp/publish/crypto/tuf/integrations/contrib)
+slice1 after (focused): encryption, cosign, slsa_provenance, builders, receipt, shadow → **100%** (412 stmts, 0 miss, 0 partial)
+omit: unchanged (only shrink allowed without escalation)
+next: caching.py (~263 miss), CLI doctor/diff/init, async_runner; then shrink omit starting with crypto/openrouter/publish

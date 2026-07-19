@@ -109,11 +109,11 @@
       "found_by": "W7-0003 coverage requirement",
       "description": "Standing item: raise whole-package coverage toward 100% separately from per-increment module coverage gates.",
       "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
-      "status": "open",
+      "status": "in_progress",
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "Standing backlog; do not conflate with W7-0003 shim-module 100% gate."
+      "notes": "True-100% bar (user escalate): shrink omit toward empty; no new omit/exclude/pragma; test or escalate each remaining omit. Baseline measured TOTAL 90.0 (19698 stmts / 1558 miss). Do not conflate with W7-0003."
     }
   ]
 }
