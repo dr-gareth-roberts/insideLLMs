@@ -396,3 +396,9 @@ The earlier logged value of 91.7726% was correct; 92.8219% is superseded.
 
 W7-0071 final state: fix_commit = b48cbe89407eea6adcea4df294ec13d08ab99221,
 coverage = 23614/25731 = 91.7726% ≥ 91.0% target ✓
+
+## [2026-07-19T20:58Z] W7-0002 — fixed
+category: docs_drift | file: CHANGELOG.md, docs/MIGRATION.md, docs/IMPORT_PATHS.md, insideLLMs/visualization.py
+before: CHANGELOG said visualization is deprecated / removed in v2.0.0 with "v1.1.0 (current): Deprecation warnings issued"; visualization.py + IMPORT_PATHS.md said "Indefinite support / not deprecated"; `insideLLMs.__version__==0.2.0` and importing `insideLLMs.visualization` emitted 0 warnings
+after: all four surfaces share one schedule (0.2.0 silent support → v1.1.0 warnings begin → v1.2.0 continue → v2.0.0 remove); runtime unchanged (version 0.2.0, 0 import warnings); `make docs-audit` pass; ruff+format+mypy clean; pytest 6999 passed + 1 known tuf residual; coverage 92.0034% >= 91.0%; logged side lead W7-0072 (broken TraceVisualizer example) without fixing it
+commit: 662bfb7dc8a774198eabaade5cec13597f97514b

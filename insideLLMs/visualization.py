@@ -170,9 +170,11 @@ True
 
 **Deprecation Timeline:**
 
-This shim is provided for backward compatibility and is not deprecated.
-Both import paths will continue to work indefinitely. However, documentation
-and new examples will use the canonical path at ``insideLLMs.analysis.visualization``.
+This shim is still supported at 0.2.0 and does not emit a deprecation warning
+yet. Prefer the canonical path for new code. Starting in v1.1.0 the shim will
+emit ``DeprecationWarning``; v1.2.0 continues those warnings; v2.0.0 removes
+the shim. Documentation and new examples use
+``insideLLMs.analysis.visualization``.
 
 See Also
 --------
