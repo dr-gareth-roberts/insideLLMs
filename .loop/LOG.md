@@ -86,4 +86,12 @@ category: structure | files: tests/test_coverage_w7_0008_slice10.py, tests/test_
 slice10: viz show/seaborn/plotly import reload + interactive HTML exceptions; optimization clarity/selector/budget; DiskCache eviction/CachedModel/CacheWarmer; tokens VocabCoverage/EmbeddingUtils/truncate
 slice11: safety RiskLevel/Bias/ContentSafetyAnalyzer; high_level coerce/create_experiment/run_probe_async; workflows path guards
 omit: still nlp/* + contrib/* only (+ tests/__pycache__)
-next: continue measured→0; then nlp omit shrink when cluster high
+commits: 8afbbe8
+
+## [2026-07-21T00:30Z] W7-0008 — slice12 + poison fix
+category: structure | files: tests/test_coverage_w7_0008_slice12.py
+slice12: semantic_cache cosine/redis client (in-place patch), retry circuit half-open, schema migrate/semver, BiasProbe dict shapes, ultimate merkle roots
+fix: do not reload semantic_cache (poisons RedisCache class refs in other suites)
+check-fast: green (6826 passed)
+commits: 3bb9cb4, 427c2a1
+next: measured still ~340 miss; nlp/* + contrib/* still omitted — continue burn then omit shrink
