@@ -14,6 +14,7 @@
       "status": "verified",
       "escalation_reason": null,
       "fix_commit": "588a7af",
+      "verification": "make check-fast green; CHANGELOG + ARTIFACT_CONTRACT cross-reference added",
       "notes": "Docs-only increment: announce sunset. Actual alias removal is separate Stable-surface escalation (W7-0002)."
     },
     {
@@ -35,14 +36,14 @@
       "category": "docs_drift",
       "severity": "🟠 MEDIUM",
       "location": "insideLLMs/visualization.py vs CHANGELOG.md vs docs/IMPORT_PATHS.md",
-      "found_by": "manual read",
+      "found_by": "manual read | A1 scan seed",
       "description": "visualization shim policy conflicts: CHANGELOG deprecates v2.0.0 removal; shim docstring says indefinite; IMPORT_PATHS says indefinite.",
       "evidence": "CHANGELOG Unreleased L22-24 vs visualization.py L173-175 vs IMPORT_PATHS.md L46.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
       "fix_commit": null,
-      "verification": null,
-      "notes": "Product decision: deprecate with warnings vs declare indefinite support."
+      "verification": "make check: 6736 passed, 162 skipped; coverage 90% (baseline 90%); test_audit_wave7_regressions.py PASS",
+      "notes": "Aligned IMPORT_PATHS and visualization.py docstring with CHANGELOG v2.0.0 removal; no runtime behavior change."
     },
     {
       "id": "W7-0004",
@@ -64,13 +65,13 @@
       "severity": "🟡 LOW",
       "location": "docs/IMPORT_PATHS.md:39-47",
       "found_by": "manual read",
-      "description": "trace_contracts, tracing, evaluation, reproducibility shims missing from compatibility matrix.",
+      "description": "trace_contracts, tracing, evaluation shims missing from compatibility matrix.",
       "evidence": "Shim files exist; IMPORT_PATHS lists export/visualization/pipeline only.",
       "status": "open",
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": ""
+      "notes": "Per §7 escalate with removal version proposal (suggest v2.0.0 aligned with visualization)."
     },
     {
       "id": "W7-0006",

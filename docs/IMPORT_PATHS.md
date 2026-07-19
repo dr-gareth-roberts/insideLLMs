@@ -43,7 +43,7 @@ These re-export from canonical modules for backward compatibility. Prefer canoni
 | Shim | Canonical target | Status |
 |------|------------------|--------|
 | `insideLLMs.export` | `insideLLMs.analysis.export` | Indefinite support |
-| `insideLLMs.visualization` | `insideLLMs.analysis.visualization` | Indefinite support |
+| `insideLLMs.visualization` | `insideLLMs.analysis.visualization` | Deprecated; removal in v2.0.0 |
 | `insideLLMs.pipeline` | `insideLLMs.runtime.pipeline` | Indefinite support |
 
 ## Internal Modules (Avoid External Use)
