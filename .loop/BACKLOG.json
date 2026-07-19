@@ -111,9 +111,9 @@
       "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
       "status": "in_progress",
       "escalation_reason": null,
-      "fix_commit": "1a5b5d5",
+      "fix_commit": "dd234f5",
       "verification": null,
-      "notes": "True-100% campaign. Last TOTAL 96% (570 miss of 20004). Omit still: openai/anthropic/huggingface/cohere/gemini, nlp/*, contrib/*. Slices: 9945277, 286cb47, 1d41664, 09a2648, 194658e, 1a5b5d5 (+slice7 pending). Priority: measured→0 then shrink omit with mocks."
+      "notes": "True-100% campaign. Last measured TOTAL 96% (~503 miss before slice8). Omit still: openai/anthropic/huggingface/cohere/gemini, nlp/*, contrib/*. Slices: …194658e, 1a5b5d5, dd234f5 +slice8. Priority: measured→0 then shrink omit with mocks."
     }
   ]
 }

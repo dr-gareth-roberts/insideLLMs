@@ -64,3 +64,10 @@ after TOTAL: **96%** (503 miss) — still 96% floor, −67 miss
 focused: runtime.diffing helpers/judge, _config_loader pipeline/HF, _result_utils strict, export bundle validate/schema + DataArchiver decompress
 omit: unchanged
 check-fast: green (6794 passed)
+commit: dd234f5
+
+## [2026-07-20T11:10Z] W7-0008 — slice8 (config/retry/tokens/sync)
+category: structure | files: tests/test_coverage_w7_0008_slice8.py
+focused: RunConfigBuilder setters, ProgressInfo.is_complete, Fibonacci/circuit breaker, TokenDistribution/VocabCoverage, sync StrictSerializationError
+omit: unchanged
+check-fast: green (6798 passed)
