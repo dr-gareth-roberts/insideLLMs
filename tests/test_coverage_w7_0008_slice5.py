@@ -622,26 +622,31 @@ def test_visualization_seaborn_and_plotly_pandas_paths(monkeypatch: pytest.Monke
         monkeypatch.setattr(viz, "PLOTLY_AVAILABLE", True)
         # CI does not install the visualization extra; stub pandas for the
         # success branch so this coverage path stays runnable offline.
-        if "pandas" not in sys.modules:
+        # Never leave a bare ModuleType in sys.modules — that poisons later
+        # suites that `import pandas` and expect DataFrame.
+        prior_pandas = sys.modules.get("pandas")
+        invented_pandas = "pandas" not in sys.modules
+        if invented_pandas:
             sys.modules["pandas"] = types.ModuleType("pandas")
-        viz.check_plotly_deps()
-
-        # pandas missing on that path
-        real_import = __import__
-
-        def no_pandas(name, *a, **kw):
-            if name == "pandas" or (isinstance(name, str) and name.startswith("pandas.")):
-                raise ImportError("nope")
-            return real_import(name, *a, **kw)
-
-        saved_pandas = sys.modules.pop("pandas", None)
         try:
+            viz.check_plotly_deps()
+
+            # pandas missing on that path
+            real_import = __import__
+
+            def no_pandas(name, *a, **kw):
+                if name == "pandas" or (isinstance(name, str) and name.startswith("pandas.")):
+                    raise ImportError("nope")
+                return real_import(name, *a, **kw)
+
+            sys.modules.pop("pandas", None)
             with patch("builtins.__import__", side_effect=no_pandas):
                 with pytest.raises(ImportError, match="pandas is required"):
                     viz.check_plotly_deps()
         finally:
-            if saved_pandas is not None:
-                sys.modules["pandas"] = saved_pandas
+            sys.modules.pop("pandas", None)
+            if prior_pandas is not None and not invented_pandas:
+                sys.modules["pandas"] = prior_pandas
     finally:
         for key, value in saved.items():
             if value is None:

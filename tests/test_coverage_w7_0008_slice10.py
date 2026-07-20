@@ -81,44 +81,43 @@ def test_viz_show_paths_and_seaborn_branches(monkeypatch: pytest.MonkeyPatch) ->
         def sort_values(self, *args, **kwargs):
             return self
 
+    saved = {k: viz.__dict__.get(k) for k in ("plt", "pd", "sns")}
     fake_plt = MagicMock()
     viz.__dict__["plt"] = fake_plt
     viz.__dict__["pd"] = types.SimpleNamespace(DataFrame=_FakeDF)
     monkeypatch.setattr(viz, "MATPLOTLIB_AVAILABLE", True)
     monkeypatch.setattr(viz, "check_visualization_deps", lambda: None)
 
-    exps = [_exp("A"), _exp("B")]
-    viz.plot_accuracy_comparison(exps, save_path=None)
-    viz.plot_metric_comparison(exps, metrics=["accuracy"], save_path=None)
-    viz.plot_success_rate_over_time([("t1", 0.5), ("t2", 0.8)], save_path=None)
-
-    bias = [{"output": [("response A is longer", "response B")]}]
-    fact = [
-        {
-            "output": [
-                {"category": "science", "model_answer": "The sun is a star."},
-                {"category": "history", "model_answer": "Rome was an empire."},
-            ]
-        }
-    ]
-
-    # non-seaborn path already covered elsewhere; force seaborn True
-    original_seaborn = viz.SEABORN_AVAILABLE
-    original_sns = viz.__dict__.get("sns")
-    monkeypatch.setattr(viz, "SEABORN_AVAILABLE", True)
-    fake_sns = MagicMock()
-    viz.__dict__["sns"] = fake_sns
     try:
+        exps = [_exp("A"), _exp("B")]
+        viz.plot_accuracy_comparison(exps, save_path=None)
+        viz.plot_metric_comparison(exps, metrics=["accuracy"], save_path=None)
+        viz.plot_success_rate_over_time([("t1", 0.5), ("t2", 0.8)], save_path=None)
+
+        bias = [{"output": [("response A is longer", "response B")]}]
+        fact = [
+            {
+                "output": [
+                    {"category": "science", "model_answer": "The sun is a star."},
+                    {"category": "history", "model_answer": "Rome was an empire."},
+                ]
+            }
+        ]
+
+        # non-seaborn path already covered elsewhere; force seaborn True
+        monkeypatch.setattr(viz, "SEABORN_AVAILABLE", True)
+        fake_sns = MagicMock()
+        viz.__dict__["sns"] = fake_sns
         viz.plot_bias_results(bias, save_path=None)
         viz.plot_factuality_results(fact, save_path=None)
         assert fake_sns.barplot.called
         assert fake_sns.boxplot.called
     finally:
-        if original_sns is not None:
-            viz.__dict__["sns"] = original_sns
-        else:
-            viz.__dict__.pop("sns", None)
-        monkeypatch.setattr(viz, "SEABORN_AVAILABLE", original_seaborn)
+        for key, value in saved.items():
+            if value is None:
+                viz.__dict__.pop(key, None)
+            else:
+                viz.__dict__[key] = value
 
 
 def test_viz_reload_optional_import_success() -> None:
@@ -223,72 +222,79 @@ def test_viz_interactive_html_exception_and_stabilize(tmp_path: Path, monkeypatc
         def __getitem__(self, key):
             return []
 
-    viz.__dict__["pd"] = types.SimpleNamespace(DataFrame=_FakeDF)
+    saved = {k: viz.__dict__.get(k) for k in ("pd", "px")}
+    try:
+        viz.__dict__["pd"] = types.SimpleNamespace(DataFrame=_FakeDF)
 
-    class BoomPx:
-        @staticmethod
-        def bar(*a, **k):
-            raise ValueError("token boom")
+        class BoomPx:
+            @staticmethod
+            def bar(*a, **k):
+                raise ValueError("token boom")
 
-    viz.__dict__["px"] = BoomPx
-    monkeypatch.setattr(
-        viz,
-        "interactive_accuracy_comparison",
-        MagicMock(side_effect=ValueError("no")),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_latency_distribution",
-        MagicMock(side_effect=KeyError("k")),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_metric_radar",
-        MagicMock(return_value=_Fig('<div id="abc123" class="plotly-graph-div"></div>')),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_heatmap",
-        MagicMock(return_value=_Fig(bad_html)),
-    )
+        viz.__dict__["px"] = BoomPx
+        monkeypatch.setattr(
+            viz,
+            "interactive_accuracy_comparison",
+            MagicMock(side_effect=ValueError("no")),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_latency_distribution",
+            MagicMock(side_effect=KeyError("k")),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_metric_radar",
+            MagicMock(return_value=_Fig('<div id="abc123" class="plotly-graph-div"></div>')),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_heatmap",
+            MagicMock(return_value=_Fig(bad_html)),
+        )
 
-    out = tmp_path / "r.html"
-    viz.create_interactive_html_report(exps, save_path=str(out), title="T")
-    assert out.exists()
+        out = tmp_path / "r.html"
+        viz.create_interactive_html_report(exps, save_path=str(out), title="T")
+        assert out.exists()
 
-    calls = {"n": 0}
+        calls = {"n": 0}
 
-    class FlipPx:
-        @staticmethod
-        def bar(*a, **k):
-            calls["n"] += 1
-            if calls["n"] == 1:
-                return _Fig('<div id="x1" class="plotly-graph-div"></div>')
-            raise KeyError("status")
+        class FlipPx:
+            @staticmethod
+            def bar(*a, **k):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    return _Fig('<div id="x1" class="plotly-graph-div"></div>')
+                raise KeyError("status")
 
-    viz.__dict__["px"] = FlipPx
-    monkeypatch.setattr(
-        viz,
-        "interactive_accuracy_comparison",
-        MagicMock(return_value=_Fig('<div id="same" class="plotly-graph-div"></div>')),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_latency_distribution",
-        MagicMock(return_value=_Fig(bad_html)),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_metric_radar",
-        MagicMock(return_value=_Fig(bad_html)),
-    )
-    monkeypatch.setattr(
-        viz,
-        "interactive_heatmap",
-        MagicMock(return_value=_Fig(bad_html)),
-    )
-    viz.create_interactive_html_report(exps, save_path=str(tmp_path / "r2.html"))
-    viz.__dict__.pop("px", None)
+        viz.__dict__["px"] = FlipPx
+        monkeypatch.setattr(
+            viz,
+            "interactive_accuracy_comparison",
+            MagicMock(return_value=_Fig('<div id="same" class="plotly-graph-div"></div>')),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_latency_distribution",
+            MagicMock(return_value=_Fig(bad_html)),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_metric_radar",
+            MagicMock(return_value=_Fig(bad_html)),
+        )
+        monkeypatch.setattr(
+            viz,
+            "interactive_heatmap",
+            MagicMock(return_value=_Fig(bad_html)),
+        )
+        viz.create_interactive_html_report(exps, save_path=str(tmp_path / "r2.html"))
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                viz.__dict__.pop(key, None)
+            else:
+                viz.__dict__[key] = value
 
 
 def test_optimization_clarity_selector_budget() -> None:
