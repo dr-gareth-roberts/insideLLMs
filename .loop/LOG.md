@@ -118,3 +118,16 @@ escalations: schema.py:149-150 unreachable after op remap (2 attempts); Protocol
 check-fast: green (6853 passed)
 omit remaining: 8 nlp + 36 contrib + tests/__pycache__
 next: burn 229→0; un-omit extraction/language_detection/text_metrics; more small contrib modules
+
+## [2026-07-20T00:20Z] W7-0008 — slice16-17 + A3 dead-code + nlp/contrib un-omit
+category: structure | files: schema.py, nlp/{language_detection,text_metrics}.py, slice16/17, nlp omit-shrink tests, pyproject.toml
+before: TOTAL **98%** / **229** miss; omit 8 nlp + 36 contrib
+after: TOTAL **98%** (21462 stmts / **163** miss) — −66 miss, +346 measured stmts
+A3: deleted schema unknown-op fallthrough (remap → if list / if dump / else validate); deleted unreachable nlp guards (trigrams-empty after len≥20; flesch zero-len after early returns) with proof tests
+slice16: benchmark_datasets sampling/suite; scitt errors; factuality/code edges; rate_limit throttle/retry; Protocol unbound + ModelWrapper getattr; CLI diff match; high_level ImportError restore
+slice17: claims compiler all ops/errors @100%; tracing deepcopy/fingerprint/order; rate_limit async throttle + executor direct; CLI diff error/truncation @100%; safety risk ladder; schema validate warn
+omit shrink: un-omit nlp extraction/language_detection/similarity/text_metrics + contrib benchmark (all 0 stmt miss; extraction/similarity 97–99% branch)
+check-fast: green (6878 passed)
+omit remaining: **4 nlp** + **35 contrib** + tests/__pycache__
+escalations: Protocol `...` covered via unbound calls (models/base @100%); schema fallthrough deleted not omitted
+next: burn 163→0 (comparison/evaluation/config_loader/retry/CLI run); un-omit remaining nlp then small contrib

@@ -112,8 +112,8 @@
       "status": "in_progress",
       "escalation_reason": null,
       "fix_commit": null,
-      "verification": "make check-fast green (6853 passed); TOTAL 98% / 229 miss after slice15 + nlp/contrib un-omit",
-      "notes": "True-100% campaign. TOTAL 98% (21116 stmts / 229 miss). Omit: */tests/*, */__pycache/*, 8 weak nlp + 36 contrib. Measured nlp: __init__/char_level/encoding/text_cleaning/text_transformation/chunking/classification/tokenization. Measured contrib: __init__/diffing/evalbom/model_identity. Escalated: schema unknown-op dead path after remap. Next: 229→0; more nlp/contrib un-omit."
+      "verification": "make check-fast green (6878 passed); TOTAL 98% / 163 miss after slice16-17 + nlp/contrib un-omit",
+      "notes": "True-100% campaign. TOTAL 98% (21462 stmts / 163 miss). Omit: */tests/*, */__pycache/*, 4 weak nlp + 35 contrib. Measured nlp +extraction/language_detection/similarity/text_metrics; contrib +benchmark. A3: schema fallthrough + nlp dead guards deleted. Next: 163→0; remaining nlp then contrib."
     }
   ]
 }
