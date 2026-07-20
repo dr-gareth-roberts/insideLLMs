@@ -142,3 +142,14 @@ omit shrink: un-omit nlp dependencies/feature_extraction/keyword_extraction + co
 check-fast: green (6893 passed)
 omit remaining: **1 nlp** (`text_analysis`) + **33 contrib** + tests/__pycache__
 next: burn 136→0 (trace_contracts/config_loader/injection_engine/export/evaluation); mock-cover text_analysis or keep omitted; more contrib (retrieval/hallucination near-ready)
+
+## [2026-07-20T01:00Z] W7-0008 — slice19-20 + text_analysis/contrib un-omit
+category: structure | files: slice19/20, nlp omit-shrink text_analysis, contrib omit-shrink cal/ret/qual/hall, pyproject.toml
+before: TOTAL **98%** / **136** miss; omit 1 nlp + 33 contrib
+after: TOTAL **99%** (23459 stmts / **91** miss) — −45 miss, +1520 measured stmts
+slice19: artifact_utils/config_loader/evaluation/injection/trace_contracts/CLI run/retry async
+slice20: retrieval Protocol `...` + zero-norm; export ABC/decompress/bundle schema; artifact root/run_root/short; registry ImportError; result_utils hash fallbacks; otel jaeger/otlp stubs; semantic_cache import branches via exec; privacy odd-sibling; CLI validate/trend
+omit shrink: un-omit nlp **text_analysis** + contrib **calibration/hallucination/quality/retrieval** (0 stmt miss)
+check-fast: green (6916 passed)
+omit remaining: **0 nlp** + **29 contrib** + tests/__pycache__
+next: burn 91→0 (CLI harness/validate, config_loader branches, tokens/diffing/sync_runner/code probe); un-omit more contrib with tests

@@ -112,8 +112,8 @@
       "status": "in_progress",
       "escalation_reason": null,
       "fix_commit": null,
-      "verification": "make check-fast green (6893 passed); TOTAL 98% / 136 miss after slice18 + nlp/contrib un-omit",
-      "notes": "True-100% campaign. TOTAL 98% (21939 stmts / 136 miss). Omit: */tests/*, */__pycache/*, 1 nlp (text_analysis) + 33 contrib. Measured +dependencies/feature_extraction/keyword_extraction/templates/introspection. A3: retry exhaustion None-fallback → assert. Next: 136→0; text_analysis; near-ready contrib."
+      "verification": "make check-fast green (6916 passed); TOTAL 99% / 91 miss after slice19-20 + text_analysis/contrib un-omit",
+      "notes": "True-100% campaign. TOTAL 99% (23459 stmts / 91 miss). Omit: */tests/*, */__pycache/*, 0 nlp + 29 contrib. Un-omitted text_analysis + calibration/hallucination/quality/retrieval. Next: 91→0 measured; un-omit more contrib with tests."
     }
   ]
 }
