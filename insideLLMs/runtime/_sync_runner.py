@@ -735,14 +735,10 @@ class ProbeRunner(_RunnerBase):
             )
 
             if run_mode == "ultimate":
+                import insideLLMs as _pkg
                 from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
 
-                try:
-                    import insideLLMs as _pkg
-
-                    _ver = getattr(_pkg, "__version__", None)
-                except ImportError:
-                    _ver = None
+                _ver = getattr(_pkg, "__version__", None)
                 run_ultimate_post_artifact(
                     resolved_run_dir,
                     dataset_spec=dataset_spec,

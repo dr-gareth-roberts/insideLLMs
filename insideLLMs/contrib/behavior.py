@@ -72,8 +72,7 @@ Detecting behavioral patterns in a response:
 >>> patterns = detect_patterns(response)
 >>> for p in patterns:
 ...     print(f"{p.pattern.value}: {p.confidence:.2f}")
-hedging: 0.45
-uncertainty: 0.35
+hedging: 1.00
 
 Analyzing consistency across multiple responses:
 
@@ -86,7 +85,7 @@ Analyzing consistency across multiple responses:
 ... ]
 >>> report = analyze_consistency(prompt, responses)
 >>> print(f"Consistency score: {report.consistency_score:.2f}")
-Consistency score: 0.82
+Consistency score: 0.52
 
 Creating a behavioral fingerprint:
 
@@ -119,7 +118,7 @@ Analyzing prompt sensitivity:
 ... ]
 >>> result = analyze_sensitivity(original, orig_response, variations, var_responses)
 >>> print(f"Sensitivity score: {result.sensitivity_score:.2f}")
-Sensitivity score: 0.35
+Sensitivity score: 0.67
 
 Assessing model calibration:
 
@@ -652,8 +651,7 @@ class BehaviorFingerprint:
     >>> for pattern, freq in fp.pattern_frequencies.items():
     ...     if freq > 0.5:
     ...         print(f"{pattern}: {freq:.1%} of responses")
-    verbosity: 80.0% of responses
-    hedging: 60.0% of responses
+    hedging: 100.0% of responses
 
     Converting to dictionary for storage:
 
@@ -667,8 +665,8 @@ class BehaviorFingerprint:
     >>> fp = create_behavior_fingerprint("polite-model", responses)
     >>> for phrase, count in fp.common_phrases[:5]:
     ...     print(f"'{phrase}' appears {count} times")
-    'thank you for' appears 15 times
-    'i hope this' appears 12 times
+    '42, but' appears 2 times
+    'i'm not' appears 2 times
 
     See Also
     --------
@@ -1007,8 +1005,7 @@ class PatternDetector:
     >>> patterns = detector.detect_patterns(response)
     >>> for p in patterns:
     ...     print(f"{p.pattern.value}: {p.confidence:.2f}")
-    hedging: 0.45
-    uncertainty: 0.35
+    hedging: 1.00
 
     Detecting refusal:
 
@@ -1166,9 +1163,8 @@ class PatternDetector:
         >>> patterns = detector.detect_patterns(response)
         >>> for p in sorted(patterns, key=lambda x: -x.confidence):
         ...     print(f"{p.pattern.value}: {p.confidence:.2f} - {p.evidence[:2]}")
-        hedging: 0.60 - ['i think', 'perhaps']
+        hedging: 1.00 - ['i think', 'perhaps']
         sycophancy: 0.40 - ['great question']
-        uncertainty: 0.35 - ["i'm not sure"]
 
         Checking for specific patterns:
 
@@ -1629,7 +1625,7 @@ class ConsistencyAnalyzer:
         ...     ["4", "The answer is 4", "2 + 2 = 4"]
         ... )
         >>> print(f"Score: {report.consistency_score:.2f}")
-        Score: 0.75
+        Score: 0.36
 
         Handling edge cases:
 
@@ -1913,7 +1909,7 @@ class BehaviorProfiler:
         >>> from insideLLMs.contrib.behavior import BehaviorProfiler
         >>> profiler = BehaviorProfiler()
         >>> print(type(profiler.pattern_detector))
-        <class 'insideLLMs.behavior.PatternDetector'>
+        <class 'insideLLMs.contrib.behavior.PatternDetector'>
         """
         self.pattern_detector = PatternDetector()
 
@@ -2185,7 +2181,7 @@ class PromptSensitivityAnalyzer:
     ...     original, orig_response, variations, var_responses
     ... )
     >>> print(f"Sensitivity: {result.sensitivity_score:.2f}")
-    Sensitivity: 0.15
+    Sensitivity: 0.42
 
     Detecting high sensitivity:
 
@@ -2223,7 +2219,7 @@ class PromptSensitivityAnalyzer:
         >>> from insideLLMs.contrib.behavior import PromptSensitivityAnalyzer
         >>> analyzer = PromptSensitivityAnalyzer()
         >>> print(type(analyzer.consistency_analyzer))
-        <class 'insideLLMs.behavior.ConsistencyAnalyzer'>
+        <class 'insideLLMs.contrib.behavior.ConsistencyAnalyzer'>
         """
         self.consistency_analyzer = ConsistencyAnalyzer()
 

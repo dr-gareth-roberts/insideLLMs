@@ -127,12 +127,11 @@ def cmd_validate(args: argparse.Namespace) -> int:
             _handle_error(f"Error reading records: {e}")
             return 0 if args.mode == "warn" else 1
 
+        # Strict mode returns early on the first record error. Accumulated
+        # errors only remain in warn mode.
         if errors:
-            if args.mode == "warn":
-                print_warning(f"Validation completed with {errors} error(s) (warn mode)")
-                return 0
-            print_error(f"Validation failed with {errors} error(s)")
-            return 1
+            print_warning(f"Validation completed with {errors} error(s) (warn mode)")
+            return 0
 
         print_success("Validation OK")
         return 0

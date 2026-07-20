@@ -30,7 +30,7 @@
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "Fix direction is unambiguous (align CHANGELOG to the already-recorded 'indefinite support' decision). Docs-only, no code/Stable-surface impact."
+      "notes": "Fix direction is unambiguous (align CHANGELOG to the already-recorded 'indefinite support' decision). Docs-only, no code/Stable-surface impact. [merge 2026-07-20] See also W7-0072: working tree currently has deprecate@v2.0.0, which conflicts with this item's proposed indefinite-support stance."
     },
     {
       "id": "W7-0003",
@@ -516,11 +516,11 @@
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "The module docstring example for compress_prompt shows an incorrect compressed string ('...you should ensure generate...') and wrong token/ratio counts ('Saved 12 tokens (35.3% reduction)').",
       "evidence": "Ran the docstring example verbatim: compress_prompt('In order to complete the task, please note that you should basically try to generate a response.', target_reduction=0.3). result.compressed is 'to complete the task, you should try to generate a response.' (compressor does NOT strengthen 'try to' to 'ensure'), and the printout is 'Saved 9 tokens (36.0% reduction)', not the documented compressed text or 'Saved 12 tokens (35.3% reduction)'.",
-      "status": "open",
+      "status": "review",
       "escalation_reason": null,
       "fix_commit": null,
       "verification": null,
-      "notes": "proposed_fix: Update the docstring expected output to the actual: compressed 'to complete the task, you should try to generate a response.' and 'Saved 9 tokens (36.0% reduction)'. | reader_confidence=high"
+      "notes": "proposed_fix: Update the docstring expected output to the actual: compressed 'to complete the task, you should try to generate a response.' and 'Saved 9 tokens (36.0% reduction)'. | reader_confidence=high [merge 2026-07-20] Parallel branch delivered contract tests (tests/test_results_jsonl_contract.py) under its own W7-0001; reconcile status against that evidence."
     },
     {
       "id": "W7-0038",
@@ -997,6 +997,104 @@
       "fix_commit": "b48cbe89407eea6adcea4df294ec13d08ab99221",
       "verification": "BEFORE: 23178/25731 = 90.0781% (19735 stmts 1545 miss, 5996 branches 654 partial). AFTER (confirmed \u2014 two independent runs give identical result): 23614/25731 = 91.7726% (19735 stmts 1213 miss, 5996 branches 634 partial, covered_branch_arcs = 5996-904 = 5092; display rounds to 92%). +436 covered items (target was +238). Tests added: 134 new tests across test_caching_coverage_w7.py (110), test_doctor_coverage_w7.py (20), test_diff_fail_on_regressions_w7.py (4). Quality gates: make check (6884 passed, 162 skipped, 0 failed, ruff+mypy clean), make golden-path pass, pytest -m determinism (22/22), pytest -m contract (48/48). Coverage note: Inspector measured 92.8219% using wrong formula (num_branches - num_partial_branches = 5996-634 = 5362); correct formula is num_branches - missing_branches = 5996-904 = 5092; coverage.py percent_covered JSON field = 91.7726% confirms correct value.",
       "notes": "caching.py doctor tests skipped in prior env because test_cli_doctor_coverage.py uses pytest.importorskip(\"nltk\"); fixed by writing new tests that do not require nltk. All tests deterministic, offline, no provider API keys."
+    },
+    {
+      "id": "W7-0072",
+      "category": "docs_drift",
+      "severity": "\ud83d\udd34 HIGH",
+      "status": "open",
+      "description": "CONFLICT: visualization shim policy \u2014 parallel branch landed DeprecationWarning + removal in v2.0.0; main W7-0002 proposes aligning docs to indefinite support / not deprecated.",
+      "location": "insideLLMs/visualization.py; docs/IMPORT_PATHS.md; CHANGELOG.md",
+      "evidence": "Working tree currently contains deprecate@v2.0.0 code/docs from branch cursor/cloud-agent-1784521140528-vn76b; main backlog W7-0002 still requests the opposite docs stance.",
+      "verification": "Product decision recorded; CHANGELOG, IMPORT_PATHS, visualization.py, and tests/test_audit_wave7_regressions.py agree on one policy.",
+      "found_by": "merge-conflict-review",
+      "fix_commit": null,
+      "escalation_reason": "Conflicting intents across parallel Wave-7 campaigns",
+      "notes": "Do not autoclose main W7-0002 or this item without an explicit product decision. Code currently matches deprecate@v2.0.0."
+    },
+    {
+      "id": "W7-0073",
+      "category": "docs_drift",
+      "severity": "\ud83d\udfe0 MEDIUM",
+      "location": "insideLLMs/visualization.py vs CHANGELOG.md vs docs/IMPORT_PATHS.md",
+      "found_by": "manual read | A1 scan seed",
+      "description": "visualization shim policy conflicts: CHANGELOG deprecates v2.0.0 removal; shim docstring says indefinite; IMPORT_PATHS says indefinite.",
+      "evidence": "CHANGELOG Unreleased L22-24 vs visualization.py L173-175 vs IMPORT_PATHS.md L46.",
+      "status": "verified",
+      "escalation_reason": null,
+      "fix_commit": "52a5729",
+      "notes": "Policy: deprecate + remove v2.0.0 (match CHANGELOG). Added DeprecationWarning on import to match CHANGELOG/MIGRATION. Full-package 100% tracked as W7-0008. [imported from parallel branch item W7-0003 during merge origin/main]",
+      "verification": "make check-fast green (6730 passed); pytest tests/test_audit_wave7_regressions.py -q --cov=insideLLMs.visualization --cov-report=term-missing \u2192 100% (5 stmts, 0 miss; was module-not-imported); DeprecationWarning on shim import; docs aligned with CHANGELOG v2.0.0"
+    },
+    {
+      "id": "W7-0074",
+      "category": "docs_drift",
+      "severity": "\ud83d\udfe1 LOW",
+      "location": "docs/AUDIT_FINDINGS.md:177-187",
+      "found_by": "manual read",
+      "description": "Remaining-work table marks sunset plan Done while summary table still lists open deprecated-module notes.",
+      "evidence": "AUDIT_FINDINGS L22 vs L183; six shims removed in 0.2.0 but five shims remain without unified matrix.",
+      "status": "open",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": null,
+      "notes": "[imported from parallel branch item W7-0004 during merge origin/main]"
+    },
+    {
+      "id": "W7-0075",
+      "category": "structure",
+      "severity": "\ud83d\udfe1 LOW",
+      "location": "docs/IMPORT_PATHS.md:39-47",
+      "found_by": "manual read",
+      "description": "trace_contracts, tracing, evaluation shims missing from compatibility matrix.",
+      "evidence": "Shim files exist; IMPORT_PATHS lists export/visualization/pipeline only.",
+      "status": "open",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": null,
+      "notes": "Per \u00a77 escalate with removal version proposal (suggest v2.0.0 aligned with visualization). [imported from parallel branch item W7-0005 during merge origin/main]"
+    },
+    {
+      "id": "W7-0076",
+      "category": "structure",
+      "severity": "\u2139\ufe0f INFO",
+      "location": "pyproject.toml:178-197",
+      "found_by": "standing backlog",
+      "description": "Phase 2 mypy: shrink disable_error_code list one code at a time.",
+      "evidence": "pyproject.toml comment: Phase 1 keeps impactful codes disabled.",
+      "status": "open",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": null,
+      "notes": "Standing backlog per MONSTER_LOOP \u00a74. [imported from parallel branch item W7-0006 during merge origin/main]"
+    },
+    {
+      "id": "W7-0077",
+      "category": "structure",
+      "severity": "\u2139\ufe0f INFO",
+      "location": "Makefile:45-46",
+      "found_by": "standing backlog",
+      "description": "typecheck-strict-runtime aspirational; not yet clean or CI-gated.",
+      "evidence": "Makefile comment on typecheck-strict-runtime target.",
+      "status": "open",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": null,
+      "notes": "Standing backlog per MONSTER_LOOP \u00a74. [imported from parallel branch item W7-0007 during merge origin/main]"
+    },
+    {
+      "id": "W7-0078",
+      "category": "structure",
+      "severity": "\u2139\ufe0f INFO",
+      "location": "coverage / pyproject.toml",
+      "found_by": "W7-0003 coverage requirement",
+      "description": "Standing item: raise whole-package coverage toward 100% separately from per-increment module coverage gates.",
+      "evidence": "Wave baseline_coverage_pct is 90.0; per-increment requires 100% only on touched modules.",
+      "status": "in_progress",
+      "escalation_reason": null,
+      "fix_commit": null,
+      "verification": "make check-fast green (7097 passed); measured stmts 23421 / 0 miss (statement 100% of measured); combined Cover 99% from branch partials",
+      "notes": "True-100% campaign. Measured statement misses burned to 0 (slices 21-24). Combined Cover still 99% (277 BrPart). Omit remaining: */tests/*, */__pycache/*, 29 contrib modules. Next: un-omit contrib with existing tests until omit empty. [imported from parallel branch item W7-0008 during merge origin/main]"
     }
   ]
 }

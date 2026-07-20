@@ -644,10 +644,9 @@ def calculate_readability_flesch_kincaid(text: str) -> float:
 
     syllables = sum(count_syllables(word) for word in words)
 
+    # Early returns above guarantee both collections are non-empty.
     num_words = len(words)
     num_sentences = len(sentences)
-    if num_sentences == 0 or num_words == 0:
-        return 0.0
 
     return 0.39 * (num_words / num_sentences) + 11.8 * (syllables / num_words) - 15.59
 

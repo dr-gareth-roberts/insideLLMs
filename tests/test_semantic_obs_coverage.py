@@ -63,6 +63,18 @@ from insideLLMs.semantic_cache import (
 class TestRedisCacheMocked:
     """Tests for RedisCache using a mock Redis client."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_redis_flag_on_bound_class(self, monkeypatch, request):
+        """Patch REDIS_AVAILABLE on the module object RedisCache actually uses.
+
+        Coverage slices that reload ``semantic_cache`` can leave this class
+        bound to a stale module while ``@patch("…REDIS_AVAILABLE")`` targets
+        the live ``sys.modules`` entry. Patching ``__globals__`` keeps both
+        in sync for mocked redis tests.
+        """
+        want = request.node.name != "test_redis_cache_init_no_redis"
+        monkeypatch.setitem(RedisCache.__init__.__globals__, "REDIS_AVAILABLE", want)
+
     def _make_mock_redis_client(self):
         """Create a mock redis client with basic behavior."""
         client = MagicMock()
@@ -537,6 +549,12 @@ class TestVectorCacheEdgeCases:
 
 class TestSemanticCacheWithRedis:
     """Tests for SemanticCache with Redis backend (mocked)."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_redis_flag_on_bound_classes(self, monkeypatch, request):
+        want = request.node.name != "test_init_redis_not_available"
+        monkeypatch.setitem(SemanticCache.__init__.__globals__, "REDIS_AVAILABLE", want)
+        monkeypatch.setitem(RedisCache.__init__.__globals__, "REDIS_AVAILABLE", want)
 
     @patch("insideLLMs.semantic_cache.REDIS_AVAILABLE", True)
     def test_init_with_redis_backend(self):

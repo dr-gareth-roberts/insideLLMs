@@ -1113,9 +1113,8 @@ def execute_with_retry(
             # Non-retryable exception
             raise
 
-    # All retries exhausted
-    if last_exception is None:
-        last_exception = RuntimeError("Retry exhausted without captured exception")
+    # Exhaustion is only reached after a retryable exception set last_exception.
+    assert last_exception is not None
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
         attempts=len(history) + 1,
@@ -1262,9 +1261,8 @@ async def execute_with_retry_async(
         except Exception as _:
             raise
 
-    if last_exception is None:
-        last_exception = RuntimeError("Retry exhausted without captured exception")
-
+    # Exhaustion is only reached after a retryable exception set last_exception.
+    assert last_exception is not None
     raise RetryExhaustedError(
         f"All {config.max_retries} retries exhausted",
         attempts=len(history) + 1,

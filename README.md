@@ -203,9 +203,10 @@ of canonical artifacts:
 
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
+insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
 ```
 
-Exit code `2` if behaviour changed, `0` if not. That's your CI gate.
+Exit code `2` if behaviour changed, `0` if not. That's your CI gate. Use `--fail-on-trajectory-drift` when you also want multi-turn trajectory drift to fail the gate.
 
 ## CI integration
 
@@ -286,6 +287,8 @@ insidellms interactive     Interactive exploration session
 insidellms welcome         Getting-started guide
 insidellms validate        Validate config or run directory
 ```
+
+Production shadow capture (FastAPI) lives under `insideLLMs.shadow.fastapi` — see the production shadow-capture guide in the docs index.
 
 <details>
 <summary><b>Compliance presets</b></summary>

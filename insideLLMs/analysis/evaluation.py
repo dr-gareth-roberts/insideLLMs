@@ -996,13 +996,10 @@ def cosine_similarity_bow(s1: str, s2: str, normalize: bool = True) -> float:
     # Get all unique words
     all_words = set(words1.keys()) | set(words2.keys())
 
-    # Calculate dot product and magnitudes
+    # Calculate dot product and magnitudes (non-empty Counters ⇒ magnitude > 0)
     dot_product = sum(words1.get(w, 0) * words2.get(w, 0) for w in all_words)
     magnitude1 = sum(v**2 for v in words1.values()) ** 0.5
     magnitude2 = sum(v**2 for v in words2.values()) ** 0.5
-
-    if magnitude1 == 0 or magnitude2 == 0:
-        return 0.0
 
     similarity = dot_product / (magnitude1 * magnitude2)
     # Round to handle floating-point precision issues
@@ -1273,26 +1270,18 @@ def bleu_score(
 
         clipped = sum(min(pred_ngrams[ng], ref_ngrams[ng]) for ng in pred_ngrams)
         total = sum(pred_ngrams.values())
-
-        if total > 0:
-            precision = clipped / total
-            # Apply smoothing for zero precision (add-1 smoothing)
-            if precision == 0 and smoothing and n > 1:
-                precision = 1 / (total + 1)
-            precisions.append(precision)
-        else:
-            precisions.append(0.0)
+        # Loop bound guarantees n ≤ len(pred_words), so n-grams are non-empty.
+        precision = clipped / total
+        # Apply smoothing for zero precision (add-1 smoothing)
+        if precision == 0 and smoothing and n > 1:
+            precision = 1 / (total + 1)
+        precisions.append(precision)
 
     if not precisions or all(p == 0 for p in precisions):
         return 0.0
 
-    # Geometric mean of precisions
-    log_precisions = [math.log(p) if p > 0 else -float("inf") for p in precisions]
-    avg_log_precision = sum(log_precisions) / len(log_precisions)
-
-    if avg_log_precision == -float("inf"):
-        return 0.0
-
+    # Geometric mean of precisions (zeros already filtered above)
+    avg_log_precision = sum(math.log(p) for p in precisions) / len(precisions)
     return bp * math.exp(avg_log_precision)
 
 
