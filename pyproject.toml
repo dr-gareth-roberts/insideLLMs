@@ -244,19 +244,14 @@ omit = [
     # nlp: solid modules measured (incl. chunking/classification/tokenization).
     # Weak modules remain omitted until covered.
     "insideLLMs/nlp/dependencies.py",
-    "insideLLMs/nlp/extraction.py",
     "insideLLMs/nlp/feature_extraction.py",
     "insideLLMs/nlp/keyword_extraction.py",
-    "insideLLMs/nlp/language_detection.py",
-    "insideLLMs/nlp/similarity.py",
     "insideLLMs/nlp/text_analysis.py",
-    "insideLLMs/nlp/text_metrics.py",
-    # contrib: __init__/diffing/evalbom/model_identity measured; rest omitted
+    # contrib: __init__/diffing/evalbom/model_identity/benchmark measured; rest omitted
     "insideLLMs/contrib/adapters.py",
     "insideLLMs/contrib/adversarial.py",
     "insideLLMs/contrib/agents.py",
     "insideLLMs/contrib/behavior.py",
-    "insideLLMs/contrib/benchmark.py",
     "insideLLMs/contrib/calibration.py",
     "insideLLMs/contrib/chains.py",
     "insideLLMs/contrib/context_window.py",
