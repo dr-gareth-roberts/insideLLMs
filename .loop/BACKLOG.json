@@ -112,8 +112,8 @@
       "status": "in_progress",
       "escalation_reason": null,
       "fix_commit": null,
-      "verification": "make check-fast green (6841 passed); TOTAL 98% / 256 miss after slice13+14 + omit shrink",
-      "notes": "True-100% campaign. TOTAL 98% (20927 stmts / 256 miss). Omit: */tests/*, */__pycache/*, explicit weak nlp (11 files) + explicit remaining contrib (37 modules). Measured solid: nlp __init__/char_level/encoding/text_cleaning/text_transformation; contrib __init__/diffing/evalbom. Watch: never reload semantic_cache mid-suite; experiment_tracking reload must restore sys.modules. Next: 256→0 then more nlp/contrib un-omit."
+      "verification": "make check-fast green (6853 passed); TOTAL 98% / 229 miss after slice15 + nlp/contrib un-omit",
+      "notes": "True-100% campaign. TOTAL 98% (21116 stmts / 229 miss). Omit: */tests/*, */__pycache/*, 8 weak nlp + 36 contrib. Measured nlp: __init__/char_level/encoding/text_cleaning/text_transformation/chunking/classification/tokenization. Measured contrib: __init__/diffing/evalbom/model_identity. Escalated: schema unknown-op dead path after remap. Next: 229→0; more nlp/contrib un-omit."
     }
   ]
 }

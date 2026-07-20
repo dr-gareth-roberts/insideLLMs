@@ -106,3 +106,15 @@ omit shrink (no new omit): nlp solid measured (`__init__`, char_level, encoding,
 check-fast: green (6841 passed)
 blockers: Protocol `...` (probes/base:199); schema unknown-op dead code (149-150 after remap); OTEL import-time lines; remaining ~250 measured misses
 next: burn 256→0 (observability/async_utils/CLI/sync_runner/high_level); continue nlp then contrib module-by-module
+
+## [2026-07-20T10:15Z] W7-0008 — slice15 + nlp/contrib un-omit
+category: structure | files: tests/test_coverage_w7_0008_slice15.py, test_nlp_omit_shrink_chunking_tok_clf.py, tests/contrib/test_model_identity.py, pyproject.toml
+before: TOTAL **98%** / **256** miss
+after: TOTAL **98%** (21116 stmts / **229** miss) — −27 miss, +189 measured stmts
+slice15: OTEL import reload + jaeger/otlp ImportError; async str/first_completed; ProbeProtocol.run; high_level coerce; sync ImportError/timeout; safety flags; CLI schema/list/quicktest/unknown cmd
+nlp un-omit @100% mocked: chunking, classification, tokenization
+contrib un-omit @100%: model_identity (edge fingerprint/drift)
+escalations: schema.py:149-150 unreachable after op remap (2 attempts); Protocol `...` executed via unbound call (returns None; coverage counts)
+check-fast: green (6853 passed)
+omit remaining: 8 nlp + 36 contrib + tests/__pycache__
+next: burn 229→0; un-omit extraction/language_detection/text_metrics; more small contrib modules
