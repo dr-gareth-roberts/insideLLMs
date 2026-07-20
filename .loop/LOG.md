@@ -131,3 +131,14 @@ check-fast: green (6878 passed)
 omit remaining: **4 nlp** + **35 contrib** + tests/__pycache__
 escalations: Protocol `...` covered via unbound calls (models/base @100%); schema fallthrough deleted not omitted
 next: burn 163→0 (comparison/evaluation/config_loader/retry/CLI run); un-omit remaining nlp then small contrib
+
+## [2026-07-20T00:45Z] W7-0008 — slice18 + nlp/contrib un-omit + retry A3
+category: structure | files: retry.py, slice18, nlp omit-shrink deps/feat/kw, pyproject.toml, introspection test
+before: TOTAL **98%** / **163** miss; omit 4 nlp + 35 contrib
+after: TOTAL **98%** (21939 stmts / **136** miss) — −27 miss, +477 measured stmts
+A3: retry exhaustion `last_exception is None` fallbacks → assert (unreachable after retryable break)
+slice18: comparison/cost/tracker/report; evaluation extract/bleu/evaluate_predictions; artifact_utils edges; config_loader hf/probe; CLI run formats/tracker; resources fsync; openvex @100%
+omit shrink: un-omit nlp dependencies/feature_extraction/keyword_extraction + contrib templates/introspection (0 stmt miss; text_analysis remains)
+check-fast: green (6893 passed)
+omit remaining: **1 nlp** (`text_analysis`) + **33 contrib** + tests/__pycache__
+next: burn 136→0 (trace_contracts/config_loader/injection_engine/export/evaluation); mock-cover text_analysis or keep omitted; more contrib (retrieval/hallucination near-ready)
