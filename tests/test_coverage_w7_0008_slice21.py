@@ -692,34 +692,42 @@ def test_comparison_empty_metric_values() -> None:
 
 
 def test_semantic_cache_redis_import_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cover redis-ImportError branch without reloading the live semantic_cache module.
+
+    Reloading ``insideLLMs.semantic_cache`` poisons suites that hold class
+    references from the original module object (``@patch`` then targets the
+    replacement module while ``RedisCache`` still reads the old globals).
+    """
+    import insideLLMs.semantic_cache as sc
+
+    src_path = Path(sc.__file__)
+    src = src_path.read_text(encoding="utf-8")
+    mod_name = "insideLLMs._semantic_cache_redis_import_err_cov"
+    module = types.ModuleType(mod_name)
+    module.__file__ = str(src_path)
+    module.__package__ = "insideLLMs"
+    sys.modules[mod_name] = module
+
     real_import = builtins.__import__
-    saved = {
-        k: sys.modules[k]
-        for k in list(sys.modules)
-        if k == "redis" or k.startswith("redis.") or k == "insideLLMs.semantic_cache"
+    saved_redis = {
+        k: sys.modules[k] for k in list(sys.modules) if k == "redis" or k.startswith("redis.")
     }
 
-    def _restore() -> None:
-        monkeypatch.undo()
-        for key in list(sys.modules):
-            if key == "redis" or key.startswith("redis.") or key == "insideLLMs.semantic_cache":
-                sys.modules.pop(key, None)
-        sys.modules.update(saved)
-        if "insideLLMs.semantic_cache" not in sys.modules:
-            importlib.import_module("insideLLMs.semantic_cache")
+    def _block_redis(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: A002
+        if name == "redis" or (isinstance(name, str) and name.startswith("redis.")):
+            raise ImportError("blocked")
+        return real_import(name, globals, locals, fromlist, level)
 
+    for key in list(saved_redis):
+        sys.modules.pop(key, None)
+    builtins.__import__ = _block_redis
     try:
-
-        def _block_redis(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "redis" or name.startswith("redis."):
-                raise ImportError("blocked")
-            return real_import(name, globals, locals, fromlist, level)
-
-        monkeypatch.setattr(builtins, "__import__", _block_redis)
-        for key in list(sys.modules):
-            if key == "redis" or key.startswith("redis.") or key == "insideLLMs.semantic_cache":
-                sys.modules.pop(key, None)
-        mod = importlib.import_module("insideLLMs.semantic_cache")
-        assert mod.REDIS_AVAILABLE is False
+        exec(compile(src, str(src_path), "exec"), module.__dict__)
+        assert module.REDIS_AVAILABLE is False
     finally:
-        _restore()
+        builtins.__import__ = real_import
+        sys.modules.pop(mod_name, None)
+        for key in list(sys.modules):
+            if key == "redis" or key.startswith("redis."):
+                sys.modules.pop(key, None)
+        sys.modules.update(saved_redis)

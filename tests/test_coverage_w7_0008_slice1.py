@@ -38,6 +38,8 @@ from insideLLMs.signing import cosign as cosign_mod
 
 
 def test_encrypt_decrypt_roundtrip_and_blank_lines(tmp_path: Path) -> None:
+    if not encryption_mod.CRYPTO_AVAILABLE:
+        pytest.skip("cryptography not available")
     from cryptography.fernet import Fernet
 
     path = tmp_path / "data.jsonl"
@@ -100,6 +102,8 @@ def test_encrypt_import_error_sets_flag() -> None:
 
 
 def test_encrypt_cleans_temp_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if not encryption_mod.CRYPTO_AVAILABLE:
+        pytest.skip("cryptography not available")
     from cryptography.fernet import Fernet
 
     path = tmp_path / "data.jsonl"
@@ -131,6 +135,8 @@ def test_encrypt_cleans_temp_on_failure(tmp_path: Path, monkeypatch: pytest.Monk
 def test_decrypt_cleans_temp_and_skips_blank_lines(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    if not encryption_mod.CRYPTO_AVAILABLE:
+        pytest.skip("cryptography not available")
     from cryptography.fernet import Fernet
 
     path = tmp_path / "data.jsonl"

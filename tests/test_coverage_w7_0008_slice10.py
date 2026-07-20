@@ -70,22 +70,22 @@ def _exp(name="m", tokens=10) -> ExperimentResult:
 def test_viz_show_paths_and_seaborn_branches(monkeypatch: pytest.MonkeyPatch) -> None:
     import insideLLMs.analysis.visualization as viz
 
-    monkeypatch.setattr(viz.plt, "show", MagicMock())
-    monkeypatch.setattr(viz.plt, "savefig", MagicMock())
-    monkeypatch.setattr(viz.plt, "close", MagicMock())
-    monkeypatch.setattr(viz.plt, "figure", MagicMock())
-    monkeypatch.setattr(viz.plt, "bar", MagicMock())
-    monkeypatch.setattr(viz.plt, "subplot", MagicMock())
-    monkeypatch.setattr(viz.plt, "title", MagicMock())
-    monkeypatch.setattr(viz.plt, "xlabel", MagicMock())
-    monkeypatch.setattr(viz.plt, "ylabel", MagicMock())
-    monkeypatch.setattr(viz.plt, "xticks", MagicMock())
-    monkeypatch.setattr(viz.plt, "tight_layout", MagicMock())
-    monkeypatch.setattr(viz.plt, "ylim", MagicMock())
-    monkeypatch.setattr(viz.plt, "legend", MagicMock())
-    monkeypatch.setattr(viz.plt, "grid", MagicMock())
-    monkeypatch.setattr(viz.plt, "boxplot", MagicMock())
-    monkeypatch.setattr(viz.plt, "plot", MagicMock())
+    # CI omits the visualization extra; bind fakes when matplotlib/pandas absent.
+    class _FakeDF:
+        def __init__(self, data, **kwargs):
+            self._rows = data if isinstance(data, list) else []
+
+        def __getitem__(self, key):
+            return [row.get(key) for row in self._rows if isinstance(row, dict)]
+
+        def sort_values(self, *args, **kwargs):
+            return self
+
+    fake_plt = MagicMock()
+    viz.__dict__["plt"] = fake_plt
+    viz.__dict__["pd"] = types.SimpleNamespace(DataFrame=_FakeDF)
+    monkeypatch.setattr(viz, "MATPLOTLIB_AVAILABLE", True)
+    monkeypatch.setattr(viz, "check_visualization_deps", lambda: None)
 
     exps = [_exp("A"), _exp("B")]
     viz.plot_accuracy_comparison(exps, save_path=None)
@@ -210,7 +210,20 @@ def test_viz_interactive_html_exception_and_stabilize(tmp_path: Path, monkeypatc
 
     monkeypatch.setattr(viz, "PLOTLY_AVAILABLE", True)
     monkeypatch.setattr(viz, "check_plotly_deps", lambda: None)
-    monkeypatch.setattr(viz, "pd", __import__("pandas"))
+
+    # Avoid requiring the visualization extra (pandas) in CI.
+    # Use __dict__ — setattr fails when the optional import left `pd` unbound.
+    class _FakeDF:
+        def __init__(self, data, **kwargs):
+            self.data = data
+
+        def melt(self, **kwargs):
+            return self
+
+        def __getitem__(self, key):
+            return []
+
+    viz.__dict__["pd"] = types.SimpleNamespace(DataFrame=_FakeDF)
 
     class BoomPx:
         @staticmethod

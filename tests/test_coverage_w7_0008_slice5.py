@@ -620,6 +620,10 @@ def test_visualization_seaborn_and_plotly_pandas_paths(monkeypatch: pytest.Monke
         # check_plotly_deps: matplotlib unavailable → import pandas path
         monkeypatch.setattr(viz, "MATPLOTLIB_AVAILABLE", False)
         monkeypatch.setattr(viz, "PLOTLY_AVAILABLE", True)
+        # CI does not install the visualization extra; stub pandas for the
+        # success branch so this coverage path stays runnable offline.
+        if "pandas" not in sys.modules:
+            sys.modules["pandas"] = types.ModuleType("pandas")
         viz.check_plotly_deps()
 
         # pandas missing on that path
@@ -630,9 +634,14 @@ def test_visualization_seaborn_and_plotly_pandas_paths(monkeypatch: pytest.Monke
                 raise ImportError("nope")
             return real_import(name, *a, **kw)
 
-        with patch("builtins.__import__", side_effect=no_pandas):
-            with pytest.raises(ImportError, match="pandas is required"):
-                viz.check_plotly_deps()
+        saved_pandas = sys.modules.pop("pandas", None)
+        try:
+            with patch("builtins.__import__", side_effect=no_pandas):
+                with pytest.raises(ImportError, match="pandas is required"):
+                    viz.check_plotly_deps()
+        finally:
+            if saved_pandas is not None:
+                sys.modules["pandas"] = saved_pandas
     finally:
         for key, value in saved.items():
             if value is None:

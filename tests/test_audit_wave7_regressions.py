@@ -7,6 +7,7 @@ import sys
 import warnings
 from pathlib import Path
 
+
 # W7-0001 — the SafetyHallucinationIndicatorDetector percentage pattern must
 # match normally-formatted percentages. The old pattern r"\b\d+(?:\.\d+)?%\b"
 # ended in \b immediately after '%'; since '%' is a non-word char, that word
