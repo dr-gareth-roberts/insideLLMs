@@ -241,10 +241,8 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
-    # nlp: solid modules measured (__init__/char_level/encoding/text_cleaning/
-    # text_transformation). Weak modules remain omitted until covered.
-    "insideLLMs/nlp/chunking.py",
-    "insideLLMs/nlp/classification.py",
+    # nlp: solid modules measured (incl. chunking/classification/tokenization).
+    # Weak modules remain omitted until covered.
     "insideLLMs/nlp/dependencies.py",
     "insideLLMs/nlp/extraction.py",
     "insideLLMs/nlp/feature_extraction.py",
@@ -253,8 +251,7 @@ omit = [
     "insideLLMs/nlp/similarity.py",
     "insideLLMs/nlp/text_analysis.py",
     "insideLLMs/nlp/text_metrics.py",
-    "insideLLMs/nlp/tokenization.py",
-    # contrib: __init__/diffing/evalbom measured; rest omitted until covered
+    # contrib: __init__/diffing/evalbom/model_identity measured; rest omitted
     "insideLLMs/contrib/adapters.py",
     "insideLLMs/contrib/adversarial.py",
     "insideLLMs/contrib/agents.py",
@@ -276,7 +273,6 @@ omit = [
     "insideLLMs/contrib/knowledge.py",
     "insideLLMs/contrib/latency.py",
     "insideLLMs/contrib/leaderboard.py",
-    "insideLLMs/contrib/model_identity.py",
     "insideLLMs/contrib/orchestration.py",
     "insideLLMs/contrib/parsing.py",
     "insideLLMs/contrib/preprocessing.py",
