@@ -149,7 +149,7 @@ See Also
 --------
 insideLLMs.prompts : Prompt template construction and management
 insideLLMs.tracer : Tracing and observability for chain execution
-insideLLMs.cache : Caching for LLM responses within chains
+insideLLMs.caching : Caching for LLM responses within chains
 """
 
 import re

@@ -25,7 +25,7 @@ def _message_content_to_text(content: Any) -> str:
         return "\n".join([p for p in parts if p])
     try:
         return json.dumps(content, sort_keys=True, ensure_ascii=False)
-    except Exception as _:
+    except Exception:  # noqa: S110
         return str(content)
 
 
@@ -110,7 +110,7 @@ def as_langchain_chat_model(model: ModelProtocol):
             from pydantic import (
                 ConfigDict,  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
             )
-        except Exception as _:  # pragma: no cover
+        except Exception:  # noqa: S110  # pragma: no cover
             ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
 
         from langchain_core.language_models.chat_models import BaseChatModel
@@ -169,7 +169,7 @@ def as_langchain_chat_model(model: ModelProtocol):
             try:
                 from langchain_core.messages import AIMessageChunk
                 from langchain_core.outputs import ChatGenerationChunk
-            except Exception as _:  # pragma: no cover
+            except Exception:  # noqa: S110  # pragma: no cover
                 # If chunk classes aren't available, fall back to non-streaming.
                 result = self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
                 yield from result.generations
@@ -183,10 +183,10 @@ def as_langchain_chat_model(model: ModelProtocol):
                     if run_manager is not None:
                         try:
                             run_manager.on_llm_new_token(str(chunk))
-                        except Exception as _:
+                        except Exception:  # noqa: S110
                             pass
                     yield ChatGenerationChunk(message=AIMessageChunk(content=str(chunk)))
-            except Exception as _:
+            except Exception:  # noqa: S110
                 result = self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
                 yield from result.generations
 

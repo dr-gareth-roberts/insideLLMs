@@ -5,12 +5,13 @@ Security notes
 - Proofs are **direction-aware** (each step records whether the sibling is the
   left or right node), so :func:`verify_inclusion_proof` can reconstruct the root
   without out-of-band knowledge of the tree shape.
-- Leaf and internal-node hashes currently share the same hash construction (no
-  leaf/node domain-separation prefix). This matches the artifact-spine
-  ``records_merkle_root`` so existing roots stay reproducible. Adding leaf/node
-  domain separation (to fully close second-preimage ambiguity) changes every
-  root and therefore requires a canon-version bump; it is tracked as a separate,
-  versioned hardening rather than silently breaking existing artifacts.
+- Leaf and internal-node hashes are **domain-separated** under the default
+  ``canon_v2`` scheme: leaves are hashed with a ``0x00`` prefix and internal
+  nodes with a ``0x01`` prefix (``crypto.merkle._LEAF_PREFIX`` / ``_NODE_PREFIX``),
+  which closes second-preimage ambiguity. This matches the artifact-spine
+  ``records_merkle_root``, which also defaults to ``canon_v2``. The legacy
+  ``canon_v1`` scheme used no prefixes and remains supported only for reading
+  artifacts produced before the ``canon_v2`` bump.
 """
 
 from __future__ import annotations

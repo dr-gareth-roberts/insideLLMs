@@ -2244,7 +2244,7 @@ class ConsistencyTester:
         ]
         import random
 
-        return random.choice(prefixes) + question
+        return random.choice(prefixes) + question  # noqa: S311
 
     def _simplify(self, question: str) -> str:
         """Simplify a question by removing filler words.
@@ -2301,7 +2301,7 @@ class ConsistencyTester:
         ]
         import random
 
-        return question.rstrip("?") + "?" + random.choice(suffixes)
+        return question.rstrip("?") + "?" + random.choice(suffixes)  # noqa: S311
 
     def _calculate_consistency(
         self,

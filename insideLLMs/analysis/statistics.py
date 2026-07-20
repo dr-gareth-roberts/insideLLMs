@@ -1080,7 +1080,7 @@ def bootstrap_confidence_interval(
     import random
 
     # Local RNG so reproducibility does not mutate process-global random state.
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
 
     if not values:
         return ConfidenceInterval(

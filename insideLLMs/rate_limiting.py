@@ -137,7 +137,7 @@ class RateLimitStrategy(Enum):
         True
     """
 
-    TOKEN_BUCKET = "token_bucket"
+    TOKEN_BUCKET = "token_bucket"  # noqa: S105
     SLIDING_WINDOW = "sliding_window"
     FIXED_WINDOW = "fixed_window"
     LEAKY_BUCKET = "leaky_bucket"
@@ -1758,7 +1758,7 @@ class RetryHandler:
         # Apply jitter
         if self.config.jitter:
             jitter_range = delay * self.config.jitter_factor
-            delay += random.uniform(-jitter_range, jitter_range)
+            delay += random.uniform(-jitter_range, jitter_range)  # noqa: S311
 
         return max(0, delay)
 

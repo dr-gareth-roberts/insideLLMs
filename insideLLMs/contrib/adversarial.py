@@ -978,7 +978,7 @@ class TextPerturbator:
             >>> print(len(set(results)) > 1)  # Different perturbations
             True
         """
-        self.rng = random.Random(seed)
+        self.rng = random.Random(seed)  # noqa: S311
 
     def perturb_typo(self, text: str, num_typos: int = 1) -> PerturbedText:
         """Add realistic keyboard typos to text.

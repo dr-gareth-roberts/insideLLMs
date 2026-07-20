@@ -1712,13 +1712,28 @@ class FewShotSelector:
                 best = None
                 best_score = -1
 
+                # Hoist values derived from ``selected`` out of the per-candidate
+                # loop: they only change once per outer iteration, not per
+                # candidate. Previously each candidate rebuilt the membership
+                # list and re-derived the selected inputs (O(selected) of
+                # allocation per candidate), and ``_calculate_diversity``
+                # re-tokenized every selected input on each of the (potentially
+                # thousands of) calls. Precomputing the inputs and their
+                # tokenized word sets here removes that redundant per-candidate
+                # allocation and tokenization. The diversity scoring itself is
+                # still O(candidates * selected); this cuts the constant factor.
+                selected_examples = [s["example"] for s in selected]
+                selected_inputs = [s["example"].get(input_key, "") for s in selected]
+                selected_word_sets = [set(text.lower().split()) for text in selected_inputs]
+
                 for candidate in scored_examples:
-                    if candidate["example"] in [s["example"] for s in selected]:
+                    if candidate["example"] in selected_examples:
                         continue
 
                     diversity = self._calculate_diversity(
                         candidate["example"].get(input_key, ""),
-                        [s["example"].get(input_key, "") for s in selected],
+                        selected_inputs,
+                        selected_word_sets,
                     )
 
                     combined = (1 - self.diversity_weight) * candidate[
@@ -1821,7 +1836,12 @@ class FewShotSelector:
         overlap = len(query_words & example_words)
         return overlap / len(query_words)
 
-    def _calculate_diversity(self, candidate: str, selected: list[str]) -> float:
+    def _calculate_diversity(
+        self,
+        candidate: str,
+        selected: list[str],
+        selected_word_sets: Optional[list[set[str]]] = None,
+    ) -> float:
         """Calculate how different a candidate is from selected examples.
 
         Uses Jaccard distance (1 - Jaccard similarity) to measure diversity.
@@ -1834,6 +1854,15 @@ class FewShotSelector:
             The candidate example input text.
         selected : list of str
             List of input texts from already-selected examples.
+        selected_word_sets : list of set, optional
+            Pre-tokenized word sets for ``selected``. When provided, the
+            tokenization of the already-selected inputs is reused instead of
+            being recomputed on every call. Callers that invoke this method
+            repeatedly against the same ``selected`` collection (as the greedy
+            selection loop does, once per candidate) should pass this to avoid
+            redundant O(selected) tokenization per call. Must align
+            element-for-element with ``selected``; a cache whose length does not
+            match ``selected`` is ignored and recomputed.
 
         Returns
         -------
@@ -1857,11 +1886,17 @@ class FewShotSelector:
 
         candidate_words = set(candidate.lower().split())
 
+        # Recompute when no cache is supplied, or when a supplied cache does not
+        # correspond element-for-element to ``selected`` (guards against a
+        # mismatched/stale cache silently producing wrong diversity scores).
+        if selected_word_sets is None or len(selected_word_sets) != len(selected):
+            selected_word_sets = [set(sel.lower().split()) for sel in selected]
+
         similarities = []
-        for sel in selected:
-            sel_words = set(sel.lower().split())
-            if candidate_words | sel_words:
-                sim = len(candidate_words & sel_words) / len(candidate_words | sel_words)
+        for sel_words in selected_word_sets:
+            union = candidate_words | sel_words
+            if union:
+                sim = len(candidate_words & sel_words) / len(union)
                 similarities.append(sim)
 
         if not similarities:

@@ -1698,7 +1698,7 @@ def _config_to_dict(config: Any) -> dict[str, Any]:
     if PYDANTIC_AVAILABLE and hasattr(config, "model_dump") and not isinstance(config, type):
         try:
             return config.model_dump()  # type: ignore[return-value]
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     result = {}

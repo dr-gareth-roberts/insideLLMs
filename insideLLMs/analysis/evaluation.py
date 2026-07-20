@@ -3046,7 +3046,7 @@ class JudgeModel:
         Returns:
             List of JudgeResults.
         """
-        refs = references or [None] * len(prompts)
+        refs: list[Optional[str]] = references or [None] * len(prompts)
         return [self.evaluate(p, r, ref, **kwargs) for p, r, ref in zip(prompts, responses, refs)]
 
     def compare(

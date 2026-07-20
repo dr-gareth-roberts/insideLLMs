@@ -137,6 +137,10 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 - Registry/plugin system with lazy loading
 - Trace configuration for deterministic CI enforcement
 
+### Changed
+- Consolidated caching under `insideLLMs.caching`; replace imports from the removed
+  `insideLLMs.cache` and `insideLLMs.caching_unified` modules.
+
 ## [0.1.0] - 2024-09-01
 
 ### Added

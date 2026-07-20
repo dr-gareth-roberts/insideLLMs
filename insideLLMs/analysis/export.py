@@ -169,6 +169,7 @@ from typing import (
     Protocol,
     TextIO,
     Union,
+    cast,
 )
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
@@ -1259,7 +1260,7 @@ class JSONExporter(Exporter):
             with open(output, "w", encoding=self.config.encoding) as f:
                 f.write(content)
         else:
-            output.write(content)
+            cast(TextIO, output).write(content)
 
     def export_string(self, data: Any) -> str:
         """Export data to a JSON string.
@@ -1437,7 +1438,7 @@ class JSONLExporter(Exporter):
             with open(output, "w", encoding=self.config.encoding) as f:
                 f.write(content)
         else:
-            output.write(content)
+            cast(TextIO, output).write(content)
 
     def export_string(self, data: Any) -> str:
         """Export data to a JSONL-formatted string.
@@ -1733,7 +1734,7 @@ class CSVExporter(Exporter):
             with open(output, "w", encoding=self.config.encoding, newline="") as f:
                 f.write(content)
         else:
-            output.write(content)
+            cast(TextIO, output).write(content)
 
     def export_string(self, data: Any) -> str:
         """Export data to a CSV-formatted string.
@@ -1867,7 +1868,7 @@ class MarkdownExporter(Exporter):
             with open(output, "w", encoding=self.config.encoding) as f:
                 f.write(content)
         else:
-            output.write(content)
+            cast(TextIO, output).write(content)
 
     def export_string(self, data: Any) -> str:
         """Export data to Markdown string.

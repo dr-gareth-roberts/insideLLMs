@@ -104,6 +104,7 @@ from typing import (
     Any,
     Callable,
     Generic,
+    Literal,
     Optional,
     TypeVar,
 )
@@ -430,7 +431,7 @@ class RetryConfig:
         # Add jitter if enabled
         if self.jitter:
             jitter_range = delay * self.jitter_factor
-            delay += random.uniform(-jitter_range, jitter_range)
+            delay += random.uniform(-jitter_range, jitter_range)  # noqa: S311
 
         return max(0, delay)
 
@@ -1934,7 +1935,7 @@ class CircuitBreaker:
 
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
         """Exit the circuit breaker context manager.
 
         Records success or failure based on whether an exception occurred

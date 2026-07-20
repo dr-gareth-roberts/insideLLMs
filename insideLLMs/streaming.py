@@ -178,7 +178,7 @@ class StreamEventType(Enum):
     'tool_call'
     """
 
-    TOKEN = "token"
+    TOKEN = "token"  # noqa: S105
     CHUNK = "chunk"
     START = "start"
     END = "end"
@@ -2497,6 +2497,9 @@ class ContentDetector:
         self.detections: list[dict[str, Any]] = []
         self._buffer = ""
         self._buffer_size = 10000
+        # Per-pattern buffer offset already reported, so matches from earlier
+        # chunks are not re-detected (and double-counted) on later check() calls.
+        self._scan_pos: dict[str, int] = {}
 
     def add_pattern(self, name: str, pattern: str) -> None:
         """Add a regex pattern to detect.
@@ -2516,6 +2519,10 @@ class ContentDetector:
         >>> len(detector.patterns)
         2
         """
+        # Redefining a name with a different regex must re-scan the buffer from
+        # the start, so drop any stale scan offset held for that name.
+        if self.patterns.get(name) != pattern:
+            self._scan_pos.pop(name, None)
         self.patterns[name] = pattern
 
     def check(self, content: str) -> list[dict[str, Any]]:
@@ -2553,12 +2560,25 @@ class ContentDetector:
         # Add to buffer
         self._buffer += content
         if len(self._buffer) > self._buffer_size:
+            trimmed = len(self._buffer) - self._buffer_size
             self._buffer = self._buffer[-self._buffer_size :]
+            # Buffer content shifted left by `trimmed`; realign scan offsets so
+            # already-reported matches are still recognised as reported.
+            self._scan_pos = {name: max(0, pos - trimmed) for name, pos in self._scan_pos.items()}
 
         detected = []
         for name, pattern in self.patterns.items():
-            matches = list(re.finditer(pattern, self._buffer))
-            for match in matches:
+            already_scanned = self._scan_pos.get(name, 0)
+            furthest = already_scanned
+            for match in re.finditer(pattern, self._buffer):
+                # Skip matches that begin inside already-reported buffer content,
+                # so a detection is never counted twice. A match that begins in
+                # reported content but only completes now (e.g. a greedy run that
+                # grew across the chunk boundary) keeps its earlier, shorter
+                # report rather than being re-emitted — chosen so counts never
+                # inflate, at the cost of not upgrading a grown match.
+                if match.start() < already_scanned:
+                    continue
                 detection = {
                     "pattern_name": name,
                     "pattern": pattern,
@@ -2569,6 +2589,9 @@ class ContentDetector:
                 }
                 detected.append(detection)
                 self.detections.append(detection)
+                if match.end() > furthest:
+                    furthest = match.end()
+            self._scan_pos[name] = furthest
 
         return detected
 
@@ -2609,6 +2632,9 @@ class ContentDetector:
         """
         self._buffer = ""
         self.detections.clear()
+        # Reset per-pattern scan offsets too, or a fresh check() after clear()
+        # would skip matches at the start of the new buffer as "already scanned".
+        self._scan_pos.clear()
 
 
 class StreamingWindowAnalyzer:

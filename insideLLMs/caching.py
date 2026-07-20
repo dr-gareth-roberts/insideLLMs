@@ -938,9 +938,9 @@ def generate_cache_key(
     key_string = "|".join(key_parts)
 
     if algorithm == "md5":
-        return hashlib.md5(key_string.encode()).hexdigest()
+        return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
     elif algorithm == "sha1":
-        return hashlib.sha1(key_string.encode()).hexdigest()
+        return hashlib.sha1(key_string.encode(), usedforsecurity=False).hexdigest()
     else:
         return hashlib.sha256(key_string.encode()).hexdigest()
 
@@ -1166,6 +1166,8 @@ class InMemoryCache(BaseCacheABC[T]):
         max_size: int = 1000,
         default_ttl: Optional[int] = None,
     ):
+        if max_size <= 0:
+            raise ValueError(f"max_size must be a positive integer, got {max_size}")
         self._cache: dict[str, dict] = {}
         self._max_size = max_size
         self._default_ttl = default_ttl
@@ -1678,6 +1680,10 @@ class StrategyCache:
                 max_size=max_size if max_size is not None else resolved.max_size,
             )
         self.config = resolved
+        if self.config.max_size <= 0:
+            raise ValueError(
+                f"CacheConfig.max_size must be a positive integer, got {self.config.max_size}"
+            )
         self._entries: OrderedDict[str, CacheEntry] = OrderedDict()
         self._stats = CacheStats()
         self._lock = threading.RLock()
@@ -2004,7 +2010,7 @@ class PromptCache(StrategyCache):
         entry = self.set(key, response, metadata=entry_metadata)
 
         # Track prompt -> key mapping
-        prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
+        prompt_hash = hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()
         self._prompt_keys[prompt_hash] = key
 
         return entry
@@ -2021,7 +2027,7 @@ class PromptCache(StrategyCache):
 
     def get_by_prompt(self, prompt: str) -> CacheLookupResult:
         """Get cached response by prompt alone (ignoring model/params)."""
-        prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
+        prompt_hash = hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()
         key = self._prompt_keys.get(prompt_hash)
 
         if key:

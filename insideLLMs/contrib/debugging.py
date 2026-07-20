@@ -2437,7 +2437,7 @@ class PromptFlowAnalyzer:
                             "suggestion": suggestion,
                         }
                     )
-            except Exception as _:
+            except Exception:  # noqa: S110
                 pass  # Skip failing patterns
 
         return findings

@@ -122,7 +122,9 @@ def cmd_export(args: argparse.Namespace) -> int:
             try:
                 from insideLLMs.privacy.encryption import encrypt_jsonl
 
-                assert key_b64 is not None
+                if key_b64 is None:
+                    print_error("Encryption key is required")
+                    return 1
                 encrypt_jsonl(output_path, key=key_b64.encode())
                 print_key_value("Encrypted", "yes")
             except RuntimeError as e:
