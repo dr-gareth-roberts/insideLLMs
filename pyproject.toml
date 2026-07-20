@@ -241,15 +241,13 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
-    # nlp: solid modules measured (incl. chunking/classification/tokenization).
-    # Weak modules remain omitted until covered.
-    "insideLLMs/nlp/text_analysis.py",
-    # contrib: measured __init__/diffing/evalbom/model_identity/benchmark/templates; rest omitted
+    # nlp: text_analysis measured @ 100% stmt (un-omitted).
+    # contrib: measured __init__/diffing/evalbom/model_identity/benchmark/templates/
+    # introspection/calibration/hallucination/quality/retrieval; rest omitted until covered.
     "insideLLMs/contrib/adapters.py",
     "insideLLMs/contrib/adversarial.py",
     "insideLLMs/contrib/agents.py",
     "insideLLMs/contrib/behavior.py",
-    "insideLLMs/contrib/calibration.py",
     "insideLLMs/contrib/chains.py",
     "insideLLMs/contrib/context_window.py",
     "insideLLMs/contrib/conversation.py",
@@ -259,7 +257,6 @@ omit = [
     "insideLLMs/contrib/diversity.py",
     "insideLLMs/contrib/ensemble.py",
     "insideLLMs/contrib/fingerprinting.py",
-    "insideLLMs/contrib/hallucination.py",
     "insideLLMs/contrib/hitl.py",
     "insideLLMs/contrib/knowledge.py",
     "insideLLMs/contrib/latency.py",
@@ -269,9 +266,7 @@ omit = [
     "insideLLMs/contrib/preprocessing.py",
     "insideLLMs/contrib/prompt_testing.py",
     "insideLLMs/contrib/prompt_utils.py",
-    "insideLLMs/contrib/quality.py",
     "insideLLMs/contrib/reasoning.py",
-    "insideLLMs/contrib/retrieval.py",
     "insideLLMs/contrib/routing.py",
     "insideLLMs/contrib/semantic_analysis.py",
     "insideLLMs/contrib/sensitivity.py",
