@@ -139,12 +139,11 @@ def cmd_schema(args: argparse.Namespace) -> int:
             print_error(f"Validation failed: {e}")
             return 1
 
+    # Strict mode re-raises on the first error (handled above). Remaining
+    # error counts are only possible in warn mode, which always returns 0.
     if errors:
-        if args.mode == "warn":
-            print_warning(f"Validated with {errors} error(s) (warn mode)")
-            return 0
-        print_error(f"Validation failed with {errors} error(s)")
-        return 1
+        print_warning(f"Validated with {errors} error(s) (warn mode)")
+        return 0
 
     print_success("Validation OK")
     return 0

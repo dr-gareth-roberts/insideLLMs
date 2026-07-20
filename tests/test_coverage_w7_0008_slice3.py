@@ -259,13 +259,25 @@ def test_optimize_prompt_cli_branches(tmp_path: Path, capsys, monkeypatch) -> No
 
 
 def test_tuf_client_mock_and_require_tuf() -> None:
-    with pytest.raises(RuntimeError, match="tuf module not available"):
-        fetch_dataset("ds", "1.0", allow_mock=False)
+    # Force ImportError path even when real `tuf` is installed.
+    real_import = __import__
 
-    path, proof = fetch_dataset("ds", "1.0", allow_mock=True, base_url="https://example.com")
-    assert path.exists()
-    assert proof["status"] == "mock-verified"
-    assert proof["base_url"] == "https://example.com"
+    def _block_tuf(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "tuf" or name.startswith("tuf."):
+            raise ImportError("blocked for coverage")
+        return real_import(name, globals, locals, fromlist, level)
+
+    import builtins
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(builtins, "__import__", _block_tuf)
+        with pytest.raises(RuntimeError, match="tuf module not available"):
+            fetch_dataset("ds", "1.0", allow_mock=False)
+
+        path, proof = fetch_dataset("ds", "1.0", allow_mock=True, base_url="https://example.com")
+        assert path.exists()
+        assert proof["status"] == "mock-verified"
+        assert proof["base_url"] == "https://example.com"
 
     # pretend tuf is available
     fake_tuf = types.ModuleType("tuf")
@@ -279,8 +291,13 @@ def test_tuf_client_mock_and_require_tuf() -> None:
         assert proof2["method"] == "tuf.ngclient"
         assert path2.exists()
     finally:
+        # Restore real modules if they were installed; otherwise clear fakes.
         sys.modules.pop("tuf", None)
         sys.modules.pop("tuf.ngclient", None)
+        try:
+            import tuf.ngclient  # noqa: F401
+        except ImportError:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -495,7 +512,19 @@ def test_langchain_helpers_without_deps() -> None:
 
     assert lc._call_with_stop(no_stop, stop=["X"]) == "plain"
 
-    with pytest.raises(lc.LangChainIntegrationError):
-        lc.as_langchain_chat_model(MagicMock())
-    with pytest.raises(lc.LangChainIntegrationError):
-        lc.as_langchain_runnable(MagicMock())
+    # Force missing langchain_core even when the extra is installed.
+    real_import = __import__
+
+    def _block_lc(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "langchain_core" or name.startswith("langchain_core."):
+            raise ImportError("blocked for coverage")
+        return real_import(name, globals, locals, fromlist, level)
+
+    import builtins
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(builtins, "__import__", _block_lc)
+        with pytest.raises(lc.LangChainIntegrationError):
+            lc.as_langchain_chat_model(MagicMock())
+        with pytest.raises(lc.LangChainIntegrationError):
+            lc.as_langchain_runnable(MagicMock())

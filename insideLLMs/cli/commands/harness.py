@@ -584,12 +584,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
         if _semver_tuple(args.schema_version) >= (1, 0, 1):
             manifest["run_completed"] = True
 
-        try:
-            import insideLLMs
+        import insideLLMs
 
-            manifest["library_version"] = getattr(insideLLMs, "__version__", None)
-        except (ImportError, AttributeError):
-            pass
+        manifest["library_version"] = getattr(insideLLMs, "__version__", None)
 
         if args.validate_output:
             from insideLLMs.schemas import OutputValidator, SchemaRegistry

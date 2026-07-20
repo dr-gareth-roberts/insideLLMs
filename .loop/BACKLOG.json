@@ -112,8 +112,8 @@
       "status": "in_progress",
       "escalation_reason": null,
       "fix_commit": null,
-      "verification": "make check-fast green (6916 passed); TOTAL 99% / 91 miss after slice19-20 + text_analysis/contrib un-omit",
-      "notes": "True-100% campaign. TOTAL 99% (23459 stmts / 91 miss). Omit: */tests/*, */__pycache/*, 0 nlp + 29 contrib. Un-omitted text_analysis + calibration/hallucination/quality/retrieval. Next: 91→0 measured; un-omit more contrib with tests."
+      "verification": "make check-fast green (7097 passed); measured stmts 23421 / 0 miss (statement 100% of measured); combined Cover 99% from branch partials",
+      "notes": "True-100% campaign. Measured statement misses burned to 0 (slices 21-24). Combined Cover still 99% (277 BrPart). Omit remaining: */tests/*, */__pycache/*, 29 contrib modules. Next: un-omit contrib with existing tests until omit empty."
     }
   ]
 }

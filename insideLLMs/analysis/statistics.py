@@ -1452,8 +1452,8 @@ def mann_whitney_u(
 
     p_value = 2 * (1 - _normal_cdf(abs(z_stat)))
 
-    # Effect size: rank-biserial correlation
-    effect_size = 1 - 2 * u_stat / (n1 * n2)
+    # Effect size: rank-biserial correlation (signed via U1, not min(U1,U2))
+    effect_size = (2 * u1 / (n1 * n2)) - 1
     if effect_size < -0.1:
         effect_interp = "group 2 higher"
     elif effect_size > 0.1:

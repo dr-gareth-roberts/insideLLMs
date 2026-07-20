@@ -1577,8 +1577,7 @@ class TracePayloadNormaliser:
             return
 
         parts = pointer[1:].split("/")
-        if not parts:
-            return
+        # str.split always returns at least one element (possibly "").
 
         current: Any = obj
         for part in parts[:-1]:

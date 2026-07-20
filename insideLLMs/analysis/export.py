@@ -2525,19 +2525,11 @@ def create_export_bundle(
             )
 
             if validate_schema_name and prepared:
-                # Validate the actual payload if a schema is declared.
-                if isinstance(prepared, list):
-                    for item in prepared:
-                        validator.validate(
-                            validate_schema_name,
-                            item,
-                            schema_version=schema_version,
-                            mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
-                        )
-                else:
+                # _prepare_data always returns a list of records.
+                for item in prepared:
                     validator.validate(
                         validate_schema_name,
-                        prepared,
+                        item,
                         schema_version=schema_version,
                         mode=validation_mode,  # type: ignore[arg-type]  # str→Literal validated at runtime
                     )

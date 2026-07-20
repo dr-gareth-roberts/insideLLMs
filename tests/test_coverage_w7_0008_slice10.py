@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 import types
 from pathlib import Path
@@ -103,6 +104,7 @@ def test_viz_show_paths_and_seaborn_branches(monkeypatch: pytest.MonkeyPatch) ->
 
     # non-seaborn path already covered elsewhere; force seaborn True
     original_seaborn = viz.SEABORN_AVAILABLE
+    original_sns = viz.__dict__.get("sns")
     monkeypatch.setattr(viz, "SEABORN_AVAILABLE", True)
     fake_sns = MagicMock()
     viz.__dict__["sns"] = fake_sns
@@ -112,57 +114,82 @@ def test_viz_show_paths_and_seaborn_branches(monkeypatch: pytest.MonkeyPatch) ->
         assert fake_sns.barplot.called
         assert fake_sns.boxplot.called
     finally:
-        viz.__dict__.pop("sns", None)
+        if original_sns is not None:
+            viz.__dict__["sns"] = original_sns
+        else:
+            viz.__dict__.pop("sns", None)
         monkeypatch.setattr(viz, "SEABORN_AVAILABLE", original_seaborn)
 
 
-def test_viz_reload_optional_import_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_viz_reload_optional_import_success() -> None:
     """Hit seaborn/plotly/ipywidgets import-success lines via reload with stubs."""
-    sns = types.ModuleType("seaborn")
-    sns.barplot = MagicMock()
-    sns.boxplot = MagicMock()
-    monkeypatch.setitem(sys.modules, "seaborn", sns)
+    import insideLLMs.analysis as analysis_pkg
 
-    px = types.ModuleType("plotly.express")
-    go = types.ModuleType("plotly.graph_objects")
-    sub = types.ModuleType("plotly.subplots")
-    plotly = types.ModuleType("plotly")
-    plotly.express = px
-    plotly.graph_objects = go
-    plotly.subplots = sub
-    sub.make_subplots = MagicMock()
-    monkeypatch.setitem(sys.modules, "plotly", plotly)
-    monkeypatch.setitem(sys.modules, "plotly.express", px)
-    monkeypatch.setitem(sys.modules, "plotly.graph_objects", go)
-    monkeypatch.setitem(sys.modules, "plotly.subplots", sub)
+    original_viz = sys.modules.get("insideLLMs.analysis.visualization")
+    saved_keys = (
+        "seaborn",
+        "plotly",
+        "plotly.express",
+        "plotly.graph_objects",
+        "plotly.subplots",
+        "ipywidgets",
+        "IPython",
+        "IPython.display",
+        "insideLLMs.analysis.visualization",
+    )
+    saved = {k: sys.modules[k] for k in saved_keys if k in sys.modules}
 
-    ipy = types.ModuleType("ipywidgets")
-    ipython_display = types.ModuleType("IPython.display")
-    ipython = types.ModuleType("IPython")
-    ipython.display = ipython_display
-    ipython_display.display = MagicMock()
-    monkeypatch.setitem(sys.modules, "ipywidgets", ipy)
-    monkeypatch.setitem(sys.modules, "IPython", ipython)
-    monkeypatch.setitem(sys.modules, "IPython.display", ipython_display)
+    def _restore() -> None:
+        for key in saved_keys:
+            sys.modules.pop(key, None)
+        sys.modules.update(saved)
+        if original_viz is not None:
+            sys.modules["insideLLMs.analysis.visualization"] = original_viz
+            analysis_pkg.visualization = original_viz
+        elif "insideLLMs.analysis.visualization" not in sys.modules:
+            importlib.import_module("insideLLMs.analysis.visualization")
 
-    for key in list(sys.modules):
-        if key == "insideLLMs.analysis.visualization" or key.startswith(
-            "insideLLMs.analysis.visualization."
-        ):
-            del sys.modules[key]
+    try:
+        sns = types.ModuleType("seaborn")
+        sns.barplot = MagicMock()
+        sns.boxplot = MagicMock()
+        sys.modules["seaborn"] = sns
 
-    import insideLLMs.analysis.visualization as viz
+        px = types.ModuleType("plotly.express")
+        go = types.ModuleType("plotly.graph_objects")
+        sub = types.ModuleType("plotly.subplots")
+        plotly = types.ModuleType("plotly")
+        plotly.express = px
+        plotly.graph_objects = go
+        plotly.subplots = sub
+        sub.make_subplots = MagicMock()
+        sys.modules["plotly"] = plotly
+        sys.modules["plotly.express"] = px
+        sys.modules["plotly.graph_objects"] = go
+        sys.modules["plotly.subplots"] = sub
 
-    assert viz.SEABORN_AVAILABLE is True
-    assert viz.PLOTLY_AVAILABLE is True
-    assert viz.IPYWIDGETS_AVAILABLE is True
+        ipy = types.ModuleType("ipywidgets")
+        ipython_display = types.ModuleType("IPython.display")
+        ipython = types.ModuleType("IPython")
+        ipython.display = ipython_display
+        ipython_display.display = MagicMock()
+        sys.modules["ipywidgets"] = ipy
+        sys.modules["IPython"] = ipython
+        sys.modules["IPython.display"] = ipython_display
 
-    # cleanup for other tests
-    for key in list(sys.modules):
-        if key == "insideLLMs.analysis.visualization" or key.startswith(
-            "insideLLMs.analysis.visualization."
-        ):
-            del sys.modules[key]
+        for key in list(sys.modules):
+            if key == "insideLLMs.analysis.visualization" or key.startswith(
+                "insideLLMs.analysis.visualization."
+            ):
+                del sys.modules[key]
+
+        import insideLLMs.analysis.visualization as viz
+
+        assert viz.SEABORN_AVAILABLE is True
+        assert viz.PLOTLY_AVAILABLE is True
+        assert viz.IPYWIDGETS_AVAILABLE is True
+    finally:
+        _restore()
 
 
 def test_viz_interactive_html_exception_and_stabilize(tmp_path: Path, monkeypatch) -> None:

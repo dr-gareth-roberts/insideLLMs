@@ -4,7 +4,7 @@ import argparse
 import json
 import time
 
-from insideLLMs.registry import ensure_builtins_registered, probe_registry
+from insideLLMs.registry import NotFoundError, ensure_builtins_registered, probe_registry
 
 from .._output import (
     Colors,
@@ -78,7 +78,7 @@ def cmd_quicktest(args: argparse.Namespace) -> int:
 
         return 0
 
-    except KeyError as e:
+    except NotFoundError as e:
         print_error(f"Unknown model or probe: {e}")
         return 1
     except Exception as e:

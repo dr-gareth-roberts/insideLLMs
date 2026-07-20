@@ -153,3 +153,14 @@ omit shrink: un-omit nlp **text_analysis** + contrib **calibration/hallucination
 check-fast: green (6916 passed)
 omit remaining: **0 nlp** + **29 contrib** + tests/__pycache__
 next: burn 91→0 (CLI harness/validate, config_loader branches, tokens/diffing/sync_runner/code probe); un-omit more contrib with tests
+
+## [2026-07-20T05:15Z] W7-0008 — slices 21-24: measured statement misses → 0
+category: structure | files: slice21-24, mann_whitney signed effect, dead-code deletes, CLI NotFoundError, pydantic v2-only base schema, viz/oras pollution fixes
+before: TOTAL **99%** / **~91-70** stmt miss; suite pollution from oras/redis/seaborn stubs
+after: measured **23421 stmts / 0 miss** (statement 100% of measured); Cover **99%** from 277 branch partials
+slice21-24: CLI/windows-color, progress setattr, cost budgets, trend index, trace redaction, harness strict-ser, encrypt success, Redis unavailable, ProbeRunner batch validate, ExperimentResult tracker log
+A3/dead: logic extract fallthrough; cosine zero-magnitude; bleu empty-precision; schema/validate unreachable strict error tails; export non-list prepared; pydantic v1 Config (deps require >=2); harness/runners ImportError around `import insideLLMs`
+bugfix: mann_whitney effect size now signed via U1; info/quicktest catch NotFoundError (was dead KeyError)
+omit remaining: **29 contrib** + tests/__pycache__
+check-fast: green (7097 passed)
+next: un-omit contrib modules with existing tests until omit empty (true 100% bar)

@@ -3,7 +3,12 @@
 import argparse
 import json
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
+from insideLLMs.registry import (
+    NotFoundError,
+    ensure_builtins_registered,
+    model_registry,
+    probe_registry,
+)
 
 from .._output import Colors, colorize, print_error, print_header, print_key_value, print_subheader
 
@@ -57,7 +62,7 @@ def cmd_info(args: argparse.Namespace) -> int:
 
         return 0
 
-    except KeyError:
+    except NotFoundError:
         print_error(f"{args.type.capitalize()} '{args.name}' not found")
         return 1
     except Exception as e:
