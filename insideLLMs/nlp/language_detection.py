@@ -494,9 +494,8 @@ def detect_language_by_char_ngrams(text: str) -> str:
     if len(text_cleaned) < 20:
         return "unknown"
 
+    # len(text_cleaned) >= 20 ⇒ range(len - 2) is non-empty ⇒ trigrams non-empty.
     trigrams = [text_cleaned[i : i + 3] for i in range(len(text_cleaned) - 2)]
-    if not trigrams:
-        return "unknown"
 
     trigram_freq = Counter(trigrams)
     most_common_text_trigrams = [t for t, _ in trigram_freq.most_common(20)]

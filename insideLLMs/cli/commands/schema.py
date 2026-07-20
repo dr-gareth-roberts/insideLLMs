@@ -10,6 +10,9 @@ from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 from .._output import print_error, print_header, print_key_value, print_success, print_warning
 from .._record_utils import _json_default
 
+# Ops recognized after shortcut remap. Unknown CLI tokens become dump.
+_SCHEMA_OPS = frozenset({"list", "dump", "validate"})
+
 
 def cmd_schema(args: argparse.Namespace) -> int:
     """Inspect/dump/validate versioned output schemas."""
@@ -23,7 +26,7 @@ def cmd_schema(args: argparse.Namespace) -> int:
     version = getattr(args, "version", DEFAULT_SCHEMA_VERSION)
 
     # Shortcut UX: `insidellms schema <SchemaName>` -> dump schema
-    if op not in {"list", "dump", "validate"}:
+    if op not in _SCHEMA_OPS:
         name = name or op
         op = "dump"
 
@@ -72,79 +75,76 @@ def cmd_schema(args: argparse.Namespace) -> int:
             print(payload)
         return 0
 
-    if op == "validate":
-        if not name:
-            print_error(
-                "Missing schema name. Use: insidellms schema validate --name <SchemaName> -i <file>"
-            )
-            return 1
-        if not getattr(args, "input", None):
-            print_error("Missing --input for schema validate")
-            return 1
+    # After remap, the only remaining op is validate.
+    if not name:
+        print_error(
+            "Missing schema name. Use: insidellms schema validate --name <SchemaName> -i <file>"
+        )
+        return 1
+    if not getattr(args, "input", None):
+        print_error("Missing --input for schema validate")
+        return 1
 
-        in_path = Path(args.input)
-        if not in_path.exists():
-            print_error(f"Input file not found: {in_path}")
-            return 1
+    in_path = Path(args.input)
+    if not in_path.exists():
+        print_error(f"Input file not found: {in_path}")
+        return 1
 
-        validator = OutputValidator(registry)
-        errors = 0
+    validator = OutputValidator(registry)
+    errors = 0
 
-        def validate_one(obj: Any) -> None:
-            nonlocal errors
-            try:
-                validator.validate(
-                    name,
-                    obj,
-                    schema_version=version,
-                    mode="strict",
-                )
-            except OutputValidationError as e:
-                errors += 1
-                if args.mode == "warn":
-                    print_warning(str(e))
-                else:
-                    raise
-
+    def validate_one(obj: Any) -> None:
+        nonlocal errors
         try:
-            if in_path.suffix.lower() == ".jsonl":
-                with open(in_path, encoding="utf-8") as f:
-                    for line_no, line in enumerate(f, start=1):
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            obj = json.loads(line)
-                        except json.JSONDecodeError as e:
-                            errors += 1
-                            if args.mode == "warn":
-                                print_warning(f"Invalid JSON on line {line_no}: {e}")
-                                continue
-                            raise
-                        validate_one(obj)
-            else:
-                obj = json.loads(in_path.read_text())
-                if isinstance(obj, list):
-                    for item in obj:
-                        validate_one(item)
-                else:
-                    validate_one(obj)
-        except Exception as e:
+            validator.validate(
+                name,
+                obj,
+                schema_version=version,
+                mode="strict",
+            )
+        except OutputValidationError as e:
+            errors += 1
             if args.mode == "warn":
-                print_warning(f"Validation completed with errors: {e}")
+                print_warning(str(e))
             else:
-                print_error(f"Validation failed: {e}")
-                return 1
+                raise
 
-        if errors:
-            if args.mode == "warn":
-                print_warning(f"Validated with {errors} error(s) (warn mode)")
-                return 0
-            print_error(f"Validation failed with {errors} error(s)")
+    try:
+        if in_path.suffix.lower() == ".jsonl":
+            with open(in_path, encoding="utf-8") as f:
+                for line_no, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError as e:
+                        errors += 1
+                        if args.mode == "warn":
+                            print_warning(f"Invalid JSON on line {line_no}: {e}")
+                            continue
+                        raise
+                    validate_one(obj)
+        else:
+            obj = json.loads(in_path.read_text())
+            if isinstance(obj, list):
+                for item in obj:
+                    validate_one(item)
+            else:
+                validate_one(obj)
+    except Exception as e:
+        if args.mode == "warn":
+            print_warning(f"Validation completed with errors: {e}")
+        else:
+            print_error(f"Validation failed: {e}")
             return 1
 
-        print_success("Validation OK")
-        return 0
+    if errors:
+        if args.mode == "warn":
+            print_warning(f"Validated with {errors} error(s) (warn mode)")
+            return 0
+        print_error(f"Validation failed with {errors} error(s)")
+        return 1
 
-    print_error(f"Unknown schema op: {op}")
-    return 1
+    print_success("Validation OK")
+    return 0
