@@ -243,11 +243,8 @@ omit = [
     "*/__pycache__/*",
     # nlp: solid modules measured (incl. chunking/classification/tokenization).
     # Weak modules remain omitted until covered.
-    "insideLLMs/nlp/dependencies.py",
-    "insideLLMs/nlp/feature_extraction.py",
-    "insideLLMs/nlp/keyword_extraction.py",
     "insideLLMs/nlp/text_analysis.py",
-    # contrib: __init__/diffing/evalbom/model_identity/benchmark measured; rest omitted
+    # contrib: measured __init__/diffing/evalbom/model_identity/benchmark/templates; rest omitted
     "insideLLMs/contrib/adapters.py",
     "insideLLMs/contrib/adversarial.py",
     "insideLLMs/contrib/agents.py",
@@ -264,7 +261,6 @@ omit = [
     "insideLLMs/contrib/fingerprinting.py",
     "insideLLMs/contrib/hallucination.py",
     "insideLLMs/contrib/hitl.py",
-    "insideLLMs/contrib/introspection.py",
     "insideLLMs/contrib/knowledge.py",
     "insideLLMs/contrib/latency.py",
     "insideLLMs/contrib/leaderboard.py",
@@ -282,7 +278,6 @@ omit = [
     "insideLLMs/contrib/steering.py",
     "insideLLMs/contrib/synthesis.py",
     "insideLLMs/contrib/template_versioning.py",
-    "insideLLMs/contrib/templates.py",
 ]
 
 [tool.coverage.report]
