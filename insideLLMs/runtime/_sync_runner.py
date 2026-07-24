@@ -201,7 +201,7 @@ class ProbeRunner(_RunnerBase):
         schema_version : Optional[str], default None
             Schema version for validation.
         validation_mode : Optional[str], default None
-            Validation mode: "strict" or "lenient".
+            Validation mode: "strict", "lenient", or the "warn" alias.
         emit_run_artifacts : Optional[bool], default None
             If True, write records.jsonl and manifest.json.
         run_dir : Optional[Union[str, Path]], default None
@@ -232,6 +232,11 @@ class ProbeRunner(_RunnerBase):
             If True, return ExperimentResult instead of list.
         **probe_kwargs : Any
             Additional kwargs passed to the probe.
+
+        Raises
+        ------
+        ValueError
+            If ``validation_mode`` is unsupported.
 
         Returns
         -------

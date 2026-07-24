@@ -67,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
 - `insidellms init` now refuses to overwrite an existing config unless
   `--overwrite` is passed.
+- Runtime validation helpers now reject unsupported validation modes instead of
+  silently treating them as strict validation. Supported values are `strict`,
+  `lenient`, and `warn`.
 
 ### Security
 - Added delimiter escape sanitization to prevent injection bypass
