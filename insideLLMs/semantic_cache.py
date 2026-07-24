@@ -1102,6 +1102,8 @@ class RedisCache:
             # Count only value keys, not metadata keys
             self._stats.entry_count = len([k for k in keys if not k.endswith(":meta")])
         except Exception:  # noqa: S110
+            # Redis clients expose backend-specific exception classes. Stats
+            # collection is best-effort and must not break cache callers.
             pass
         return self._stats
 

@@ -200,7 +200,7 @@ def run_experiment_from_config(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version for validation.
     validation_mode : str, default "strict"
-        Validation mode: "strict" or "lenient".
+        Validation mode: "strict", "lenient", or the "warn" alias.
     emit_run_artifacts : bool, default True
         If True, write records.jsonl and manifest.json.
     run_dir : Optional[Union[str, Path]], default None
@@ -223,6 +223,11 @@ def run_experiment_from_config(
         Number of workers for Probe.run_batch.
     return_experiment : bool, default False
         If True, return ExperimentResult.
+
+    Raises
+    ------
+    ValueError
+        If ``validation_mode`` is unsupported.
 
     Returns
     -------
@@ -318,11 +323,16 @@ def run_harness_from_config(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version for validation.
     validation_mode : str, default "strict"
-        Validation mode: "strict" or "lenient".
+        Validation mode: "strict", "lenient", or the "warn" alias.
     strict_serialization : Optional[bool], default None
         If True, fail on non-deterministic values.
     deterministic_artifacts : Optional[bool], default None
         If True, omit host-dependent manifest fields.
+
+    Raises
+    ------
+    ValueError
+        If ``validation_mode`` is unsupported.
 
     Returns
     -------
@@ -641,7 +651,7 @@ async def run_experiment_from_config_async(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version.
     validation_mode : str, default "strict"
-        Validation mode.
+        Validation mode: "strict", "lenient", or the "warn" alias.
     emit_run_artifacts : bool, default True
         If True, write artifacts.
     run_dir : Optional[Union[str, Path]], default None
@@ -664,6 +674,11 @@ async def run_experiment_from_config_async(
         Number of batch workers.
     return_experiment : bool, default False
         If True, return ExperimentResult.
+
+    Raises
+    ------
+    ValueError
+        If ``validation_mode`` is unsupported.
 
     Returns
     -------

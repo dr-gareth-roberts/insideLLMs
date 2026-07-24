@@ -184,6 +184,8 @@ def as_langchain_chat_model(model: ModelProtocol):
                         try:
                             run_manager.on_llm_new_token(str(chunk))
                         except Exception:  # noqa: S110
+                            # Third-party callbacks must not interrupt model
+                            # streaming, regardless of their exception type.
                             pass
                     yield ChatGenerationChunk(message=AIMessageChunk(content=str(chunk)))
             except Exception:  # noqa: S110

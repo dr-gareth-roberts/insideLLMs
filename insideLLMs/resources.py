@@ -252,7 +252,8 @@ def open_records_file(
     -----
     - The file is automatically flushed before closing to ensure all
       data is written to disk.
-    - Close errors are silently suppressed to ensure cleanup completes.
+    - Flush and close are both attempted. Cleanup errors propagate on a
+      successful body; expected I/O cleanup errors do not mask a body error.
     - For atomic writes (write-or-fail-completely), use `atomic_write_text`
       instead.
     - This function is NOT thread-safe. Use separate file handles per thread.
@@ -368,14 +369,32 @@ def open_records_file(
     Data preserved: True
     """
     fp = open(path, mode, encoding=encoding)
+    body_failed = False
     try:
         yield fp
+    except BaseException:
+        body_failed = True
+        raise
     finally:
+        cleanup_errors: list[BaseException] = []
         try:
             fp.flush()
+        except BaseException as exc:
+            cleanup_errors.append(exc)
+        try:
             fp.close()
-        except Exception:  # noqa: S110
-            pass
+        except BaseException as exc:
+            cleanup_errors.append(exc)
+
+        unexpected_error = next(
+            (error for error in cleanup_errors if not isinstance(error, (OSError, ValueError))),
+            None,
+        )
+        cleanup_error = unexpected_error or (cleanup_errors[0] if cleanup_errors else None)
+        if cleanup_error is not None and (not body_failed or unexpected_error is not None):
+            # Preserve an active body exception over expected stream cleanup
+            # failures. Unexpected failures still surface after close is tried.
+            raise cleanup_error
 
 
 def atomic_write_text(path: Path, text: str) -> None:
@@ -423,7 +442,8 @@ def atomic_write_text(path: Path, text: str) -> None:
        (using a `.filename.tmp` naming pattern).
     2. Write all content to the temporary file.
     3. Flush the file buffer to the OS.
-    4. Call `fsync()` to ensure data is written to disk (best-effort).
+    4. Call `fsync()` to ensure data is written to disk. A durability failure
+       propagates before the target is replaced.
     5. Atomically replace the target with the temporary file using
        `os.replace()`.
 
@@ -549,10 +569,7 @@ def atomic_write_text(path: Path, text: str) -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(text)
         f.flush()
-        try:
-            os.fsync(f.fileno())
-        except Exception:  # noqa: S110
-            pass
+        os.fsync(f.fileno())
     os.replace(tmp, path)
 
 
@@ -787,9 +804,9 @@ def ensure_run_sentinel(run_dir: Path) -> None:
 
     Raises
     ------
-    No exceptions are raised. All errors are silently suppressed to ensure
-    this function never disrupts the main workflow. This is intentional
-    because the sentinel is a safety feature, not a critical requirement.
+    Exception
+        Unexpected non-filesystem failures propagate. Expected ``OSError``
+        failures from writing the advisory marker are suppressed.
 
     See Also
     --------
@@ -800,7 +817,7 @@ def ensure_run_sentinel(run_dir: Path) -> None:
     - The sentinel file is named `.insidellms_run` (hidden on Unix systems).
     - The file contains the text "insideLLMs run directory\\n".
     - If the sentinel already exists, this function does nothing.
-    - All write errors are silently suppressed (read-only filesystem, etc.).
+    - Filesystem write errors are suppressed (read-only filesystem, etc.).
     - The `--overwrite` CLI flag checks for this sentinel before deleting
       a directory, providing protection against accidentally deleting
       unrelated directories.
@@ -921,7 +938,9 @@ def ensure_run_sentinel(run_dir: Path) -> None:
     if not marker.exists():
         try:
             marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:  # noqa: S110
+        except OSError:
+            # The sentinel is advisory and may be unavailable on read-only
+            # filesystems; programming errors must still surface.
             pass
 
 

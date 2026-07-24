@@ -91,7 +91,7 @@ dev = [
     "pytest>=7.3.0",
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
-    "ruff>=0.1.0",
+    "ruff==0.16.0",
     "mypy>=1.5.0",
     "black>=23.0.0",
     "isort>=5.12.0",
@@ -155,6 +155,9 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["insideLLMs"]
+
+[tool.ruff.format]
+exclude = ["*.md"]
 
 [tool.ruff.lint.per-file-ignores]
 "examples/**/*.py" = ["ARG", "F401", "UP"]

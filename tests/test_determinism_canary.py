@@ -142,6 +142,8 @@ def _run_cli(
 def _seeded_env(seed: str) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONHASHSEED"] = seed
+    env["NO_COLOR"] = "1"
+    env.pop("FORCE_COLOR", None)
     return env
 
 
