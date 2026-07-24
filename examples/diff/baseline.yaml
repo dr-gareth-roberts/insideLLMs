@@ -1,0 +1,10 @@
+model:
+  type: dummy
+  args:
+    canned_response: Paris is the capital of France.
+probe:
+  type: logic
+  args: {}
+dataset:
+  path: dataset.jsonl
+  format: jsonl
