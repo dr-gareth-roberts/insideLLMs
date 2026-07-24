@@ -1,5 +1,6 @@
 """Tests for insideLLMs/resources.py module."""
 
+import errno
 import os
 import tempfile
 from contextlib import ExitStack
@@ -87,19 +88,44 @@ class TestOpenRecordsFile:
         assert file_path.exists()
 
     def test_unexpected_cleanup_error_propagates(self, tmp_path):
-        """Programming errors during cleanup are not silently discarded."""
+        """Programming errors propagate after the file is closed."""
 
         class BrokenFile:
+            closed = False
+
             def flush(self):
                 raise RuntimeError("unexpected cleanup failure")
 
             def close(self):
-                return None
+                self.closed = True
 
-        with patch("builtins.open", return_value=BrokenFile()):
+        broken_file = BrokenFile()
+        with patch("builtins.open", return_value=broken_file):
             with pytest.raises(RuntimeError, match="unexpected cleanup failure"):
                 with open_records_file(tmp_path / "records.jsonl"):
                     pass
+
+        assert broken_file.closed is True
+
+    def test_body_error_wins_over_expected_cleanup_error(self, tmp_path):
+        """An expected cleanup failure does not mask an active body error."""
+
+        class BrokenFile:
+            closed = False
+
+            def flush(self):
+                raise OSError("expected cleanup failure")
+
+            def close(self):
+                self.closed = True
+
+        broken_file = BrokenFile()
+        with patch("builtins.open", return_value=broken_file):
+            with pytest.raises(ValueError, match="body failure"):
+                with open_records_file(tmp_path / "records.jsonl"):
+                    raise ValueError("body failure")
+
+        assert broken_file.closed is True
 
     def test_multiple_writes(self, tmp_path):
         """Test multiple writes to the same file handle."""
@@ -169,13 +195,19 @@ class TestAtomicWriteText:
         tmp_files = list(tmp_path.glob(".*tmp"))
         assert len(tmp_files) == 0
 
-    def test_unexpected_fsync_error_propagates(self, tmp_path):
-        """Only expected filesystem errors are treated as best-effort."""
+    @pytest.mark.parametrize("error_number", [errno.ENOSPC, errno.EIO])
+    def test_fsync_error_preserves_original_file(self, tmp_path, error_number):
+        """Durability failures propagate before the original file is replaced."""
         file_path = tmp_path / "test.txt"
+        file_path.write_text("original", encoding="utf-8")
+        error = OSError(error_number, os.strerror(error_number))
 
-        with patch("insideLLMs.resources.os.fsync", side_effect=RuntimeError("unexpected fsync")):
-            with pytest.raises(RuntimeError, match="unexpected fsync"):
-                atomic_write_text(file_path, "content")
+        with patch("insideLLMs.resources.os.fsync", side_effect=error):
+            with pytest.raises(OSError) as exc_info:
+                atomic_write_text(file_path, "replacement")
+
+        assert exc_info.value.errno == error_number
+        assert file_path.read_text(encoding="utf-8") == "original"
 
 
 class TestAtomicWriteYaml:

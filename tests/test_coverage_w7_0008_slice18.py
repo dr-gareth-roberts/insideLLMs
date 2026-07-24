@@ -442,11 +442,11 @@ def test_resources_flush_and_fsync_errors(tmp_path: Path) -> None:
         def fileno(self):
             return 1
 
-    # Exercise atomic_write_text fsync failure swallow (554-555)
+    # Durability failures propagate before the atomic replace.
     path = tmp_path / "a.txt"
     with patch("os.fsync", side_effect=OSError("fsync")):
-        resources.atomic_write_text(path, "hi")
-    assert path.read_text() == "hi"
+        with pytest.raises(OSError, match="fsync"):
+            resources.atomic_write_text(path, "hi")
 
     # Directly cover the finally-swallow pattern used by open helpers
     if open_cm is not None:
