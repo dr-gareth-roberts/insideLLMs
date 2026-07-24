@@ -38,7 +38,7 @@ def test_behavioral_diff_walkthrough(tmp_path: Path) -> None:
     _run_cli("run", str(EXAMPLE_ROOT / "candidate.yaml"), "--run-dir", str(candidate_run))
 
     report = _run_cli("diff", str(baseline_run), str(candidate_run))
-    assert "change" in report.stdout.lower()
+    assert "output changed" in report.stdout.lower()
 
     _run_cli(
         "diff",

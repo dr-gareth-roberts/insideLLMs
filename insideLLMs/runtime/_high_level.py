@@ -651,7 +651,7 @@ async def run_experiment_from_config_async(
     schema_version : str, default DEFAULT_SCHEMA_VERSION
         Schema version.
     validation_mode : str, default "strict"
-        Validation mode.
+        Validation mode: "strict", "lenient", or the "warn" alias.
     emit_run_artifacts : bool, default True
         If True, write artifacts.
     run_dir : Optional[Union[str, Path]], default None
@@ -674,6 +674,11 @@ async def run_experiment_from_config_async(
         Number of batch workers.
     return_experiment : bool, default False
         If True, return ExperimentResult.
+
+    Raises
+    ------
+    ValueError
+        If ``validation_mode`` is unsupported.
 
     Returns
     -------

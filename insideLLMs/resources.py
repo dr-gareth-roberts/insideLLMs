@@ -252,7 +252,8 @@ def open_records_file(
     -----
     - The file is automatically flushed before closing to ensure all
       data is written to disk.
-    - Close errors are silently suppressed to ensure cleanup completes.
+    - Flush and close are both attempted. Cleanup errors propagate on a
+      successful body; expected I/O cleanup errors do not mask a body error.
     - For atomic writes (write-or-fail-completely), use `atomic_write_text`
       instead.
     - This function is NOT thread-safe. Use separate file handles per thread.
@@ -441,7 +442,8 @@ def atomic_write_text(path: Path, text: str) -> None:
        (using a `.filename.tmp` naming pattern).
     2. Write all content to the temporary file.
     3. Flush the file buffer to the OS.
-    4. Call `fsync()` to ensure data is written to disk (best-effort).
+    4. Call `fsync()` to ensure data is written to disk. A durability failure
+       propagates before the target is replaced.
     5. Atomically replace the target with the temporary file using
        `os.replace()`.
 
