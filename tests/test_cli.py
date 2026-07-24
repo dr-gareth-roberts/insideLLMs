@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+import insideLLMs.cli._output as output_module
+
 
 class TestColors:
     """Test the Colors class."""
@@ -57,17 +59,13 @@ class TestColorize:
             assert Colors.RED in result
             assert "test" in result
 
-    def test_colorize_without_color_support(self):
+    def test_colorize_without_color_support(self, monkeypatch):
         """Test colorize when color is disabled."""
-        import insideLLMs.cli as cli_module
+        monkeypatch.setattr(output_module, "USE_COLOR", False)
 
-        original = cli_module.USE_COLOR
-        try:
-            cli_module.USE_COLOR = False
-            result = cli_module.colorize("test", cli_module.Colors.RED)
-            assert result == "test"
-        finally:
-            cli_module.USE_COLOR = original
+        result = output_module.colorize("test", output_module.Colors.RED)
+
+        assert result == "test"
 
 
 class TestProgressBar:
