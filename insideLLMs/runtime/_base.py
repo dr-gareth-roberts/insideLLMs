@@ -6,7 +6,7 @@ along with progress callback handling utilities.
 
 import inspect
 from pathlib import Path
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Literal, Optional, Union, cast
 
 from insideLLMs.config_types import ProgressInfo
 from insideLLMs.models.base import Model
@@ -103,12 +103,12 @@ def _invoke_progress_callback(
     cast(RichProgressCallback, callback)(info)
 
 
-def _normalize_validation_mode(mode: Optional[str]) -> str:
+def _normalize_validation_mode(mode: Optional[str]) -> Literal["strict", "warn"]:
     """Normalize validation mode to the validator's accepted values.
 
     The schema validator accepts "strict" or "warn". Historically, runner
-    configuration exposes "lenient" to mean "warn". This helper preserves
-    backward compatibility while keeping validator behavior explicit.
+    configuration exposes "lenient" to mean "warn". Unsupported values are
+    rejected instead of silently behaving like strict validation.
 
     Parameters
     ----------
@@ -117,8 +117,13 @@ def _normalize_validation_mode(mode: Optional[str]) -> str:
 
     Returns
     -------
-    str
-        Normalized mode: "strict", "warn", or the original value.
+    Literal["strict", "warn"]
+        A mode accepted by the schema validator.
+
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not "strict", "lenient", or "warn".
 
     Examples
     --------
@@ -134,9 +139,11 @@ def _normalize_validation_mode(mode: Optional[str]) -> str:
     if mode is None:
         return "strict"
     normalized = str(mode).strip().lower()
+    if normalized == "strict":
+        return "strict"
     if normalized in {"lenient", "warn"}:
         return "warn"
-    return normalized
+    raise ValueError(f"validation_mode must be 'strict', 'lenient', or 'warn', got {mode!r}")
 
 
 class _RunnerBase:
