@@ -4,6 +4,7 @@ import os
 import tempfile
 from contextlib import ExitStack
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -85,6 +86,21 @@ class TestOpenRecordsFile:
         # File should be closed and content should be written
         assert file_path.exists()
 
+    def test_unexpected_cleanup_error_propagates(self, tmp_path):
+        """Programming errors during cleanup are not silently discarded."""
+
+        class BrokenFile:
+            def flush(self):
+                raise RuntimeError("unexpected cleanup failure")
+
+            def close(self):
+                return None
+
+        with patch("builtins.open", return_value=BrokenFile()):
+            with pytest.raises(RuntimeError, match="unexpected cleanup failure"):
+                with open_records_file(tmp_path / "records.jsonl"):
+                    pass
+
     def test_multiple_writes(self, tmp_path):
         """Test multiple writes to the same file handle."""
         file_path = tmp_path / "records.jsonl"
@@ -152,6 +168,14 @@ class TestAtomicWriteText:
         # Check no .tmp files remain
         tmp_files = list(tmp_path.glob(".*tmp"))
         assert len(tmp_files) == 0
+
+    def test_unexpected_fsync_error_propagates(self, tmp_path):
+        """Only expected filesystem errors are treated as best-effort."""
+        file_path = tmp_path / "test.txt"
+
+        with patch("insideLLMs.resources.os.fsync", side_effect=RuntimeError("unexpected fsync")):
+            with pytest.raises(RuntimeError, match="unexpected fsync"):
+                atomic_write_text(file_path, "content")
 
 
 class TestAtomicWriteYaml:
@@ -246,6 +270,15 @@ class TestEnsureRunSentinel:
 
         # Should not raise, but may not create file
         ensure_run_sentinel(run_dir)
+
+    def test_unexpected_write_error_propagates(self, tmp_path):
+        """Only expected filesystem errors are suppressed."""
+        run_dir = tmp_path / "run_001"
+        run_dir.mkdir()
+
+        with patch.object(Path, "write_text", side_effect=RuntimeError("unexpected write")):
+            with pytest.raises(RuntimeError, match="unexpected write"):
+                ensure_run_sentinel(run_dir)
 
 
 class TestManagedRunDirectory:

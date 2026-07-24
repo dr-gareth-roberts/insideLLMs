@@ -374,7 +374,9 @@ def open_records_file(
         try:
             fp.flush()
             fp.close()
-        except Exception:  # noqa: S110
+        except (OSError, ValueError):
+            # Best-effort cleanup must not mask a prior error when a stream is
+            # already closed or its backing file is unavailable.
             pass
 
 
@@ -551,7 +553,9 @@ def atomic_write_text(path: Path, text: str) -> None:
         f.flush()
         try:
             os.fsync(f.fileno())
-        except Exception:  # noqa: S110
+        except OSError:
+            # Some filesystems do not support fsync. The following atomic
+            # replace still protects readers from partially written content.
             pass
     os.replace(tmp, path)
 
@@ -921,7 +925,9 @@ def ensure_run_sentinel(run_dir: Path) -> None:
     if not marker.exists():
         try:
             marker.write_text("insideLLMs run directory\n", encoding="utf-8")
-        except Exception:  # noqa: S110
+        except OSError:
+            # The sentinel is advisory and may be unavailable on read-only
+            # filesystems; programming errors must still surface.
             pass
 
 

@@ -80,7 +80,9 @@ def _invoke_progress_callback(
             callback_style = "legacy"
         try:
             setattr(callback, "_insidellms_progress_style", callback_style)
-        except Exception:  # noqa: S110
+        except (AttributeError, TypeError):
+            # Some callables cannot cache attributes. Signature detection is
+            # cheap enough to repeat for those objects.
             pass
 
     if callback_style == "legacy":
