@@ -43,7 +43,8 @@ so it exits with status `0` even when differences exist.
 
 ## 3. Turn the diff into a CI gate
 
-Use `--fail-on-changes` when any behavioural difference should fail a build:
+Use `--fail-on-changes` when regressions, output changes, or added/removed
+records should fail a build:
 
 ```bash
 insidellms diff \

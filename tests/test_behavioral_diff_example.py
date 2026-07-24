@@ -57,4 +57,7 @@ def test_behavioral_diff_walkthrough(tmp_path: Path) -> None:
         str(json_report),
     )
 
-    assert isinstance(json.loads(json_report.read_text(encoding="utf-8")), dict)
+    payload = json.loads(json_report.read_text(encoding="utf-8"))
+    assert payload["counts"]["other_changes"] == 1
+    assert len(payload["changes"]) == 1
+    assert payload["changes"][0]["kind"] == "output_changed"
