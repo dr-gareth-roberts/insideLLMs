@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_ROOT = REPOSITORY_ROOT / "examples" / "diff"
 
