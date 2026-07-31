@@ -14,6 +14,22 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
+# The strategy modules this benchmark reports on. Derived rather than hardcoded
+# so adding or removing a strategy cannot leave the reported count stale.
+STRATEGY_MODULES = (
+    "best_of_n",
+    "dag",
+    "escalation",
+    "evolution",
+    "prefix_cache",
+    "repair",
+    "retrieval",
+    "search",
+    "self_consistency",
+    "structured",
+    "tools",
+)
+
 
 async def _benchmark() -> dict[str, object]:
     from insideLLMs.inference import Candidate, InferenceRequest, PromptParts
@@ -48,7 +64,7 @@ async def _benchmark() -> dict[str, object]:
         ),
     )
     return {
-        "strategy_count": 11,
+        "strategy_count": len(STRATEGY_MODULES),
         "offline_evolution": True,
         "prefix_cache": {
             "cache_hits": int(cached.cache_key == repeated.cache_key),

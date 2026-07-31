@@ -6,6 +6,8 @@
 > `proof["status"] == "verified"` no longer reflects the code. Real
 > `tuf.ngclient.Updater` verification remains unimplemented.
 
+<!-- -->
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Implement the end-to-end logic for 3 core evaluation framework stubs (claims compiler, dataset fetching via TUF, and EvalBOM generation).

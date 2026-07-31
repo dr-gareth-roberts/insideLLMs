@@ -20,6 +20,12 @@ work items (P0–P3), split/extract candidates, and the execution-order checklis
 | insideLLMs total           | 236       | ~248k       | 67.4%       | ~63k            | 25.5%                |
 | tests                      | 226 files | ~96k        | —           | —               | 6826 pass / 161 skip |
 
+> **Baseline snapshot:** figures captured 2026-07-31 from `pytest` on a `[dev]`
+> install before the P0 work in this document landed. Skip counts track which
+> optional extras were absent, so they move with the environment; the current
+> counts on a `[dev]` install are reported in `README.md`. Treat these as the
+> audit's point-in-time baseline, not a live measurement.
+
 Product position (from docs/PRODUCTIZATION_ROADMAP.md): model-neutral
 reliability/evaluation harness; not a serving engine; new online behaviour via
 InferenceClient.

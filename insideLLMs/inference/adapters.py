@@ -11,6 +11,7 @@ from typing import Any
 
 from insideLLMs.types import ModelResponse
 
+from ._callbacks import is_async_callable
 from .schemas import Candidate, InferenceRequest
 
 # Accounting keys the proposer owns; caller-supplied request metadata must not
@@ -60,8 +61,11 @@ class ModelProposer:
             raise
 
     def _has_async_generation(self) -> bool:
+        # Mirror _generate's dispatch: callable objects with an async __call__
+        # are awaited directly there, so they must count as async here too or
+        # sampling silently drops to the sequential path.
         return any(
-            inspect.iscoroutinefunction(getattr(self.model, method_name, None))
+            is_async_callable(getattr(self.model, method_name, None))
             for method_name in ("agenerate_with_metadata", "agenerate")
         )
 

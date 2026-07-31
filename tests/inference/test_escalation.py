@@ -29,7 +29,7 @@ async def test_adaptive_escalation_runs_next_step_only_below_confidence_threshol
     assert result.stop_reason is StopReason.VERIFIED
     assert calls == ["cheap", "verify"]
     assert result.spend.calls == 2
-    assert result.spend.cost == 0.3
+    assert result.spend.cost == pytest.approx(0.3)
     assert result.provenance["actions"] == ("cheap-model", "add-verifier")
 
 

@@ -131,7 +131,10 @@ async def evolve_artifacts(
     started = time.monotonic()
     rng = random.Random(config.seed)
     selector = select_parent or _default_select
-    timed_callbacks = (evaluate, mutate, selector, validation_evaluate, final_validation)
+    # Only caller-supplied callbacks are policed: a sync callback that blocks
+    # would outlive the deadline in its worker thread. The built-in selector is
+    # pure in-memory work, so it never needs to be async.
+    timed_callbacks = (evaluate, mutate, select_parent, validation_evaluate, final_validation)
     if config.max_seconds is not None and any(
         callback is not None and not is_async_callable(callback) for callback in timed_callbacks
     ):
@@ -327,6 +330,6 @@ async def evolve_artifacts(
             "selection_fitness": "fitness",
             "validation_used_for_selection": False,
             "initial_artifact_count": len(initial_artifacts),
-            "time_budget_enforced": True,
+            "time_budget_enforced": config.max_seconds is not None,
         },
     )

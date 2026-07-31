@@ -29,6 +29,7 @@ async def sample_consistent(
     if max_samples < 1:
         raise ValueError("max_samples must be positive")
     candidates: list[Candidate] = []
+    keys: list[str | None] = []
     counts: Counter[str] = Counter()
     first_output_by_key: dict[str, str] = {}
     stop_reason = StopReason.EXHAUSTED
@@ -37,6 +38,7 @@ async def sample_consistent(
         candidate = await resolve(sample(request, index))
         key = normalize(candidate)
         candidates.append(candidate)
+        keys.append(key)
         if key is not None:
             counts[key] += 1
             first_output_by_key.setdefault(key, candidate.output)
@@ -61,13 +63,15 @@ async def sample_consistent(
         confidence=votes / len(candidates),
         candidates=tuple(candidates),
         trace=tuple(
+            # Reuse the key computed during sampling: re-normalizing could
+            # disagree with the vote counts for a stateful normalizer.
             TraceEvent(
                 id=candidate.id,
                 kind="self-consistency-sample",
                 calls=1,
-                metadata={"normalized_answer": normalize(candidate)},
+                metadata={"normalized_answer": keys[index]},
             )
-            for candidate in candidates
+            for index, candidate in enumerate(candidates)
         ),
         spend=Spend(calls=len(candidates)),
         stop_reason=stop_reason,

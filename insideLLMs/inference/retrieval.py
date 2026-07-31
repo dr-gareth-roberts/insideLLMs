@@ -69,7 +69,9 @@ async def rerank_and_assemble(
         unique.setdefault(source_id, result.document)
 
     # Each (query, document) rerank call is independent: gather them so latency
-    # does not grow linearly with corpus size.
+    # does not grow linearly with corpus size. This only parallelizes an async
+    # rerank callback; a synchronous one still completes call-by-call as the
+    # generator is consumed.
     items = list(unique.items())
     scores = await asyncio.gather(*(resolve(rerank(query, document)) for _, document in items))
     scored = [(source_id, document, score) for (source_id, document), score in zip(items, scores)]

@@ -59,9 +59,11 @@ The canonical map and audited non-duplicates are documented in
 ## Phase 3 — matched-compute evidence suite
 
 Status: tracer bullet implemented. Variants declare a `ComputeProfile`; the runner
-enforces a shared executor, equal declared and observed model calls (including
-model-backed judge/verifier calls), equal output-token budgets, and matching model
-provenance. It runs AB/BA trials, flags unbalanced ordering, validates finite
+enforces a shared executor, observed model calls within the declared per-example
+ceiling (`Spend.calls`, which covers generations and judge calls but not verifier
+callbacks — those are declared by the caller and surfaced through
+`provenance["verifier_invocations"]`), equal output-token budgets, and matching
+model provenance. It runs AB/BA trials, flags unbalanced ordering, validates finite
 scores, separates comparable wall time from non-comparable provider latency,
 reports cost only when the provider actually supplies it, and ships an offline
 model-backed smoke example. Reproducible live-provider datasets and the deferred

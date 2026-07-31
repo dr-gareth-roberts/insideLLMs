@@ -193,6 +193,15 @@ class MatchedComputeCase:
 
     @property
     def calls_matched(self) -> bool:
+        """True when both variants actually spent the same number of calls.
+
+        This is an observation, not the compute-equivalence gate: a variant may
+        legitimately spend fewer calls than its declared ceiling (for example a
+        judge skipped when only one candidate survives hard verification), and
+        the run is still valid. The gate is ``_check_case``, which rejects only
+        observed calls ABOVE the declared ceiling.
+        """
+
         return self.baseline_spend.calls == self.strategy_spend.calls
 
     @property
@@ -244,6 +253,12 @@ class MatchedComputeReport:
 
     @property
     def calls_matched(self) -> bool:
+        """True when every case spent equal calls on both sides (see the case property).
+
+        Unused budget on one side makes this False without invalidating the
+        comparison; exceeding a declared ceiling raises during the run instead.
+        """
+
         return all(case.calls_matched for case in self.cases)
 
     @property
@@ -347,7 +362,9 @@ class MatchedComputeReport:
             },
             "regressions": {
                 "count": self.regression_count,
-                "by_subset": self.regressions_by_subset,
+                # Copy: callers routinely mutate the returned artifact, which
+                # must not write through to this frozen report.
+                "by_subset": dict(self.regressions_by_subset),
             },
             "compute": {
                 "calls": {

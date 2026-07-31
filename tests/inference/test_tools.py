@@ -92,20 +92,28 @@ async def test_typed_tool_execution_awaits_async_policy_before_authorization() -
     assert ran is False
 
 
-async def test_sync_tool_with_timeout_is_rejected_before_execution() -> None:
+@pytest.mark.parametrize("role", ["tool", "policy", "postcondition"])
+async def test_sync_callbacks_with_timeout_are_rejected_before_execution(role: str) -> None:
+    """Any sync callback under a timeout keeps running in its worker thread."""
     ran = False
 
-    def tool(arguments: dict[str, object]) -> object:
+    def sync_callback(*args: object) -> object:
         nonlocal ran
         ran = True
         return "late side effect"
 
-    with pytest.raises(ToolPolicyError, match="asynchronous"):
-        await execute_tool(
-            ToolAction("write", {}),
-            tools={"write": tool},
-            allowed_tools={"write"},
-            limits=ToolLimits(timeout_seconds=0.01),
-        )
+    async def async_tool(arguments: dict[str, object]) -> object:
+        return "ok"
+
+    kwargs: dict[str, object] = {
+        "tools": {"write": sync_callback if role == "tool" else async_tool},
+        "allowed_tools": {"write"},
+        "limits": ToolLimits(timeout_seconds=0.01),
+    }
+    if role != "tool":
+        kwargs[role] = sync_callback
+
+    with pytest.raises(ToolPolicyError, match=f"asynchronous {role}"):
+        await execute_tool(ToolAction("write", {}), **kwargs)
 
     assert ran is False

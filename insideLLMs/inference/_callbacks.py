@@ -27,7 +27,7 @@ async def resolve(value: T | Awaitable[T]) -> T:
 async def invoke(callback: Callable[..., T | Awaitable[T]], *args: object) -> T:
     """Call async callbacks directly and keep synchronous callbacks off the loop."""
 
-    if inspect.iscoroutinefunction(callback):
+    if is_async_callable(callback):
         async_callback = cast(Callable[..., Awaitable[T]], callback)
         return await async_callback(*args)
     return await resolve(await asyncio.to_thread(callback, *args))

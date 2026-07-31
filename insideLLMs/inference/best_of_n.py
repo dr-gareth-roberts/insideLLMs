@@ -149,8 +149,10 @@ async def select_best(
     vote_counts: Counter[str] = Counter()
     winner = ranked[0]
     if normalize is not None:
-        for candidate in top_candidates:
-            normalized = normalize(candidate)
+        # Normalize once per candidate: a costly or stateful callback must not
+        # be able to disagree with itself between counting and winner lookup.
+        normalized_by_index = [normalize(candidate) for candidate in top_candidates]
+        for normalized in normalized_by_index:
             if normalized is not None:
                 vote_counts[normalized] += 1
         if vote_counts:
@@ -158,16 +160,10 @@ async def select_best(
                 vote_counts,
                 key=lambda key: (
                     vote_counts[key],
-                    -next(
-                        index
-                        for index, candidate in enumerate(top_candidates)
-                        if normalize(candidate) == key
-                    ),
+                    -normalized_by_index.index(key),
                 ),
             )
-            winner = next(
-                candidate for candidate in top_candidates if normalize(candidate) == winning_key
-            )
+            winner = top_candidates[normalized_by_index.index(winning_key)]
     return InferenceResult(
         answer=winner.output,
         confidence=totals[winner.id],
@@ -186,9 +182,12 @@ async def select_best(
             ),
         ),
         spend=Spend(calls=n + (2 if judge is not None and len(eligible) > 1 else 0)),
-        stop_reason=StopReason.VERIFIED if passed_ids else StopReason.EXHAUSTED,
+        # Reaching here means at least one candidate passed hard verification;
+        # the empty case already raised NoVerifiedCandidateError.
+        stop_reason=StopReason.VERIFIED,
         provenance={
-            "pass_at_n": bool(passed_ids),
+            # A measured count, not the constant True a bool(passed_ids) would be.
+            "verified_candidates": len(eligible),
             # Only eligible candidates: a hard-failed candidate's total is a
             # partial sum over fewer verifiers and is not on a comparable scale.
             "oracle_best_score": max(totals[candidate.id] for candidate in eligible),

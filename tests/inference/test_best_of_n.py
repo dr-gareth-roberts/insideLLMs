@@ -52,7 +52,7 @@ async def test_best_of_n_applies_hard_verifiers_before_soft_scores() -> None:
 
     assert result.answer == "04"
     assert ("preference", "invalid") not in calls
-    assert result.provenance["pass_at_n"] is True
+    assert result.provenance["verified_candidates"] == 2
     assert result.provenance["oracle_best_score"] == 1.9
     assert result.provenance["top_k_ids"] == ("valid-high", "valid-low")
 

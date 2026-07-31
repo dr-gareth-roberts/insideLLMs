@@ -8,14 +8,14 @@ This directory contains benchmarks for measuring insideLLMs performance.
 Measures library import time and lazy loading effectiveness:
 
 ```bash
-python benchmarks/benchmark_import.py
+python3 benchmarks/benchmark_import.py
 ```
 
 ### Probe Execution Benchmark
 Measures probe instantiation and execution overhead:
 
 ```bash
-python benchmarks/benchmark_probes.py
+python3 benchmarks/benchmark_probes.py
 ```
 
 ### Inference Strategy Example
@@ -24,7 +24,7 @@ Runs deterministic, offline examples of shared inference accounting, safe early
 stopping, exact-prefix cache identity, and budgeted evolutionary prompt search:
 
 ```bash
-python benchmarks/inference_strategies.py
+python3 benchmarks/inference_strategies.py
 ```
 
 ## Interpreting Results

@@ -298,7 +298,9 @@ New (preferred):
 - **Contains**: Use when answer may be embedded in explanation
 - **Fuzzy Match**: Use when typos/variations are expected
 - **BLEU/ROUGE-L**: Use for generation tasks (summarization, translation)
-- **Semantic Similarity**: Use for paraphrase detection, semantic equivalence
+- **Semantic Similarity**: Use for lexical-overlap comparison; despite the
+  name it is a heuristic over shared words and cannot detect synonymy or
+  paraphrase
 - **LLM-as-a-Judge**: Use for open-ended evaluation, subjective quality
 
 **Threshold Guidelines**

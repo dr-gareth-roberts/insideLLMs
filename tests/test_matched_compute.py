@@ -79,6 +79,7 @@ def test_matched_compute_example_emits_auditable_json() -> None:
         check=True,
         capture_output=True,
         text=True,
+        timeout=120,
     )
 
     payload = json.loads(completed.stdout)

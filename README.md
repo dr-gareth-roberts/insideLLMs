@@ -302,7 +302,7 @@ See [`docs/INFERENCE_STRATEGIES.md`](docs/INFERENCE_STRATEGIES.md) and the
 offline executable example:
 
 ```bash
-python -m examples.inference_client
+python3 -m examples.inference_client
 ```
 
 For matched-compute strategy evaluation, see
@@ -310,7 +310,7 @@ For matched-compute strategy evaluation, see
 the offline artifact smoke test:
 
 ```bash
-python -m examples.matched_compute_evaluation > matched-compute.json
+python3 -m examples.matched_compute_evaluation > matched-compute.json
 ```
 
 ## CLI reference

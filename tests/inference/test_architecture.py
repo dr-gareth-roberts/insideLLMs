@@ -96,7 +96,10 @@ def test_huggingface_provider_sdks_are_forbidden() -> None:
 
 def test_inference_core_does_not_depend_on_contrib_or_provider_sdks() -> None:
     violations: list[str] = []
-    for path in _python_modules(INFERENCE_ROOT):
+    modules = list(_python_modules(INFERENCE_ROOT))
+    # Guard against a vacuous pass if the package is moved or renamed.
+    assert modules, f"no inference modules found under {INFERENCE_ROOT}"
+    for path in modules:
         for imported in sorted(_imports(path, inference_root=INFERENCE_ROOT)):
             if any(_matches_prefix(imported, prefix) for prefix in FORBIDDEN_PREFIXES):
                 module_path = path.relative_to(INFERENCE_ROOT).as_posix()

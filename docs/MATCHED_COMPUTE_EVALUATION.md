@@ -54,7 +54,7 @@ Two timing families are reported and they are **not** interchangeable:
 ## Quick smoke test
 
 ```bash
-python -m examples.matched_compute_evaluation > matched-compute.json
+python3 -m examples.matched_compute_evaluation > matched-compute.json
 ```
 
 This deterministic example uses `InferenceClient`, `ModelResponse` metadata, an

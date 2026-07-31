@@ -79,13 +79,31 @@ async def test_execute_dag_accepts_async_callable_object_with_time_budget() -> N
         async def __call__(self, node: PlanNode, dependencies: dict[str, object]) -> object:
             return node.id
 
+    async def reduce(observations: dict[str, object]) -> object:
+        return sorted(observations)
+
     result = await execute_dag(
         (PlanNode("a"), PlanNode("b")),
         execute=AsyncExecutor(),
-        reduce=lambda observations: sorted(observations),
+        reduce=reduce,
         budget=Budget(max_seconds=5.0),
     )
     assert result.answer == ["a", "b"]
+
+
+async def test_execute_dag_rejects_sync_reduce_under_time_budget() -> None:
+    """A sync reduce would keep running in its worker thread past the deadline."""
+
+    async def execute(node: PlanNode, dependencies: dict[str, object]) -> object:
+        return node.id
+
+    with pytest.raises(ValueError, match="asynchronous reduce"):
+        await execute_dag(
+            (PlanNode("a"),),
+            execute=execute,
+            reduce=lambda observations: observations,
+            budget=Budget(max_seconds=5.0),
+        )
 
 
 def test_rank_candidates_places_nan_scores_last() -> None:
@@ -222,3 +240,5 @@ def test_nan_confidence_never_selected_over_finite_scores() -> None:
     scores = {f"c{index}": value for index, value in enumerate(values)}
     ranked = rank_candidates(candidates, score=lambda candidate: scores[candidate.id])
     assert not math.isnan(ranked[0][1])
+    # NaN maps to -inf, so it must land last rather than anywhere in the middle.
+    assert [candidate.id for candidate, _ in ranked] == ["c1", "c2", "c0"]

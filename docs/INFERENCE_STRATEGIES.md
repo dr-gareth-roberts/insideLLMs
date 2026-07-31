@@ -60,7 +60,7 @@ selected = await client.best_of_n(
 
 `InferenceClient.from_model_config(...)` reuses the existing registry and
 middleware pipeline configuration; it does not introduce another provider or
-retry system. Run `python -m examples.inference_client` for an offline example.
+retry system. Run `python3 -m examples.inference_client` for an offline example.
 
 See [`EXECUTION_API_OWNERSHIP.md`](EXECUTION_API_OWNERSHIP.md) for the enforced
 boundary between provider models, runtime middleware, inference strategies,
@@ -93,7 +93,7 @@ set. Weak fitness functions invite reward hacking and benchmark overfitting.
 ## Offline example
 
 ```bash
-python benchmarks/inference_strategies.py
+python3 benchmarks/inference_strategies.py
 ```
 
 The example uses deterministic plain callbacks and reports calls, a safe early

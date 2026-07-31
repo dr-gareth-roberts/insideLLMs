@@ -8,7 +8,7 @@ metrics, data export, and visualization capabilities into a unified interface.
 
 Package Structure
 -----------------
-This package aggregates functionality from five specialized submodules:
+This package aggregates functionality from six specialized submodules:
 
 **comparison**
     Model comparison utilities including multi-dimensional performance
@@ -25,6 +25,11 @@ This package aggregates functionality from five specialized submodules:
     Data export and serialization utilities supporting JSON, JSONL, CSV,
     TSV, Markdown, YAML, Parquet, and Excel formats with streaming,
     compression, and schema validation. See :mod:`insideLLMs.analysis.export`.
+
+**matched_compute**
+    Paired baseline/strategy evaluation under an executable compute contract:
+    declared-versus-observed model calls, spend and wall-time reporting, and a
+    JSON evidence artifact. See :mod:`insideLLMs.analysis.matched_compute`.
 
 **statistics**
     Statistical analysis tools including descriptive statistics, confidence

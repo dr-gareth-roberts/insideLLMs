@@ -713,8 +713,8 @@ class TestBuiltinDatasetsAreSmokeLabelled:
 
         datasets = get_all_builtin_datasets()
         total = sum(len(list(ds)) for ds in datasets.values())
-        assert total <= 100, (
-            "builtin datasets are smoke fixtures; keep them tiny or ship real loaders"
+        assert total == 87, (
+            "update the smoke-fixture labels, CLI warnings, and docs when this count changes"
         )
 
     def test_comprehensive_suite_examples_stamped_smoke(self):

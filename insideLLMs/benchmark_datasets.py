@@ -1042,7 +1042,7 @@ class DatasetRegistry:
 
 # Built-in example datasets
 def create_reasoning_dataset() -> BenchmarkDataset:
-    """Create a sample reasoning benchmark dataset.
+    """Create a sample reasoning smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1091,7 +1091,7 @@ def create_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_factual_dataset() -> BenchmarkDataset:
-    """Create a sample factual knowledge dataset.
+    """Create a sample factual knowledge smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1140,7 +1140,7 @@ def create_factual_dataset() -> BenchmarkDataset:
 
 
 def create_math_dataset() -> BenchmarkDataset:
-    """Create a sample math dataset.
+    """Create a sample math smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1357,7 +1357,7 @@ def filter_dataset(
 
 
 def create_commonsense_dataset() -> BenchmarkDataset:
-    """Create a commonsense reasoning benchmark dataset.
+    """Create a commonsense reasoning smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1424,7 +1424,7 @@ def create_commonsense_dataset() -> BenchmarkDataset:
 
 
 def create_coding_dataset() -> BenchmarkDataset:
-    """Create a coding benchmark dataset.
+    """Create a coding smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1491,7 +1491,7 @@ def create_coding_dataset() -> BenchmarkDataset:
 
 
 def create_safety_dataset() -> BenchmarkDataset:
-    """Create a safety and harmlessness benchmark dataset.
+    """Create a safety and harmlessness smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1540,7 +1540,7 @@ def create_safety_dataset() -> BenchmarkDataset:
 
 
 def create_bias_evaluation_dataset() -> BenchmarkDataset:
-    """Create a bias evaluation benchmark dataset.
+    """Create a bias evaluation smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1589,7 +1589,7 @@ def create_bias_evaluation_dataset() -> BenchmarkDataset:
 
 
 def create_language_understanding_dataset() -> BenchmarkDataset:
-    """Create a language understanding benchmark dataset.
+    """Create a language understanding smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1656,7 +1656,7 @@ def create_language_understanding_dataset() -> BenchmarkDataset:
 
 
 def create_instruction_following_dataset() -> BenchmarkDataset:
-    """Create an instruction following benchmark dataset.
+    """Create an instruction following smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1723,7 +1723,7 @@ def create_instruction_following_dataset() -> BenchmarkDataset:
 
 
 def create_reading_comprehension_dataset() -> BenchmarkDataset:
-    """Create a reading comprehension benchmark dataset.
+    """Create a reading comprehension smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1788,7 +1788,7 @@ moved to France where she conducted most of her groundbreaking research."""
 
 
 def create_multi_step_reasoning_dataset() -> BenchmarkDataset:
-    """Create a multi-step reasoning benchmark dataset.
+    """Create a multi-step reasoning smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1843,7 +1843,7 @@ def create_multi_step_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_analogical_reasoning_dataset() -> BenchmarkDataset:
-    """Create an analogical reasoning benchmark dataset.
+    """Create an analogical reasoning smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -1910,7 +1910,7 @@ def create_analogical_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_world_knowledge_dataset() -> BenchmarkDataset:
-    """Create a world knowledge benchmark dataset.
+    """Create a world knowledge smoke-test dataset.
 
     Tiny handwritten smoke-test fixture — not a real benchmark; use for
     pipeline validation only.
@@ -2098,7 +2098,7 @@ def create_comprehensive_benchmark_suite(
                 expected_output=example.expected_output,
                 category=example.category,
                 difficulty=example.difficulty,
-                metadata={"source_dataset": name, "scale": "smoke", **example.metadata},
+                metadata={**example.metadata, "source_dataset": name, "scale": "smoke"},
             )
 
     return builder.build()

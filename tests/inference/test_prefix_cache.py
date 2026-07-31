@@ -41,6 +41,20 @@ def test_prefix_composition_is_canonical_and_tenant_isolated() -> None:
 def test_prefix_cache_key_uses_unambiguous_tenant_encoding() -> None:
     first = compose_cached_prompt(PromptParts(stable=("\0b",)), tenant_id="a")
     assert first.cache_key
+    # Field boundaries must not collapse: moving characters between the tenant
+    # and the stable prefix has to change the key.
+    shifted = compose_cached_prompt(PromptParts(stable=("b",)), tenant_id="a")
+    assert first.cache_key != shifted.cache_key
+    # model_id participates in cache identity, so two models cannot collide.
+    scoped = compose_cached_prompt(
+        PromptParts(stable=("b",)), tenant_id="a", model_id="gpt-4o-mini:temp=0"
+    )
+    other_model = compose_cached_prompt(
+        PromptParts(stable=("b",)), tenant_id="a", model_id="other:temp=1"
+    )
+    assert scoped.cache_key != shifted.cache_key
+    assert scoped.cache_key != other_model.cache_key
+    assert scoped.metadata["model_id"] == "gpt-4o-mini:temp=0"
 
     with pytest.raises(ValueError, match="tenant_id"):
         compose_cached_prompt(PromptParts(stable=("system",)), tenant_id="")

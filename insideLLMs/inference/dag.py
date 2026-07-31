@@ -50,8 +50,12 @@ async def execute_dag(
         raise ValueError(f"unknown checkpoint node ids: {sorted(unknown_checkpoint_keys)}")
     if max_concurrency is not None and max_concurrency < 1:
         raise ValueError("max_concurrency must be positive")
-    if budget.max_seconds is not None and not is_async_callable(execute):
-        raise ValueError("DAG time budgets require an asynchronous execute callback")
+    if budget.max_seconds is not None:
+        # Both callbacks run under the same deadline; a timed-out sync callback
+        # keeps running in its worker thread, so neither may be synchronous.
+        for role, callback in (("execute", execute), ("reduce", reduce)):
+            if not is_async_callable(callback):
+                raise ValueError(f"DAG time budgets require an asynchronous {role} callback")
 
     # Validate the complete plan independently of checkpoint state. A cached
     # observation must never be able to hide a cycle in the submitted plan.

@@ -150,3 +150,29 @@ async def test_timed_evolution_rejects_sync_callbacks_before_evaluation() -> Non
         )
 
     assert evaluated is False
+
+
+async def test_timed_evolution_runs_with_async_callbacks_and_default_selector() -> None:
+    """The default parent selector must not trip the async-callback guard."""
+
+    async def evaluate(artifact: str) -> float:
+        return float(artifact.count("!"))
+
+    async def mutate(parent: object, rng: object) -> str:
+        return parent.artifact_text + "!"
+
+    result = await evolve_artifacts(
+        ["seed"],
+        evaluate=evaluate,
+        mutate=mutate,
+        config=EvolutionConfig(
+            population_size=2,
+            max_generations=2,
+            max_evaluations=4,
+            max_seconds=30.0,
+            seed=3,
+        ),
+    )
+
+    assert result.best.artifact_text.startswith("seed")
+    assert result.evaluations >= 1

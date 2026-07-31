@@ -34,7 +34,7 @@ Rank combines: empirical strength, benefit breadth, compatibility with insideLLM
 
 ## Shared architecture
 
-All ten strategies operate on a common trace DAG:
+All eleven strategies operate on a common trace DAG:
 
 ```text
 InferenceRequest
@@ -81,6 +81,9 @@ class BudgetPolicy: def decide(trace, uncertainty, budget) -> Decision: ...
 
 ## Research artifacts
 
-- `/Users/k/Code/inference_time_reasoning_research.md`
-- `/Users/k/Code/insideLLMs-context-research/report.md`
-- Generated handbook: `/Users/k/Code/harness-handbook/handbook_generate_large/work/insidellms/handbook/html/overview.html`
+The source research notes and generated handbook for this document live outside
+the repository and are not reproducible from a clone. The tracked, runnable
+artifacts are:
+
+- [`docs/INFERENCE_STRATEGIES.md`](../INFERENCE_STRATEGIES.md) — the implemented strategy reference
+- [`benchmarks/inference_strategies.py`](../../benchmarks/inference_strategies.py) — the deterministic offline benchmark

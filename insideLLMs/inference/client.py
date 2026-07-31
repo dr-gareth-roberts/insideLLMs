@@ -44,9 +44,7 @@ class InferenceClient:
     async def generate(self, request: str | InferenceRequest) -> InferenceResult:
         """Run one model call and return the shared auditable result envelope."""
 
-        normalized_request = (
-            request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
-        )
+        normalized_request = _as_request(request)
         candidate = (await self.proposer.sample(normalized_request, 1))[0]
         return _one_shot_result(candidate)
 
@@ -58,9 +56,7 @@ class InferenceClient:
     ) -> tuple[InferenceResult, ...]:
         """Generate *n* independent one-shot results through the same proposer path."""
 
-        normalized_request = (
-            request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
-        )
+        normalized_request = _as_request(request)
         candidates = await self.proposer.sample(normalized_request, n)
         return tuple(_one_shot_result(candidate) for candidate in candidates)
 
@@ -73,9 +69,7 @@ class InferenceClient:
     ) -> InferenceResult:
         """Sample sequentially until the normalized modal answer is uncatchable."""
 
-        normalized_request = (
-            request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
-        )
+        normalized_request = _as_request(request)
         normalizer = normalize or _default_vote_normalizer
         started = perf_counter()
         result = await sample_consistent(
@@ -103,9 +97,7 @@ class InferenceClient:
     ) -> InferenceResult:
         """Generate candidates and select only after ordered verification."""
 
-        normalized_request = (
-            request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
-        )
+        normalized_request = _as_request(request)
         started = perf_counter()
         result = await select_best(
             normalized_request,
@@ -122,6 +114,10 @@ class InferenceClient:
             observed_elapsed=perf_counter() - started,
             strategy="best-of-n",
         )
+
+
+def _as_request(request: str | InferenceRequest) -> InferenceRequest:
+    return request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
 
 
 def _default_vote_normalizer(candidate: Candidate) -> str | None:

@@ -48,10 +48,10 @@ async def generate_validated(
 
     candidate_verifications = [await verify_candidate(candidates[0])]
     verifications = list(candidate_verifications[0])
-    calls = 1
+    repairs = 0
 
     while (
-        not candidate_verifications[-1][-1].passed and repair is not None and calls <= max_repairs
+        not candidate_verifications[-1][-1].passed and repair is not None and repairs < max_repairs
     ):
         revised = await resolve(repair(candidates[-1], candidate_verifications[-1][-1]))
         candidate = Candidate(
@@ -63,7 +63,7 @@ async def generate_validated(
         current_verifications = await verify_candidate(candidate)
         candidate_verifications.append(current_verifications)
         verifications.extend(current_verifications)
-        calls += 1
+        repairs += 1
 
     final = candidates[-1]
     trace = tuple(
@@ -85,7 +85,7 @@ async def generate_validated(
         candidates=tuple(candidates),
         verifications=tuple(verifications),
         trace=trace,
-        spend=Spend(calls=calls),
+        spend=Spend(calls=1 + repairs),
         stop_reason=(
             StopReason.VERIFIED if candidate_verifications[-1][-1].passed else StopReason.EXHAUSTED
         ),
