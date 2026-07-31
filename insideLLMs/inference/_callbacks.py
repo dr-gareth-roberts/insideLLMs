@@ -31,4 +31,11 @@ async def invoke_with_timeout(
     timeout: float | None,
 ) -> T:
     pending = invoke(callback, *args)
-    return await asyncio.wait_for(pending, timeout) if timeout is not None else await pending
+    if timeout is None:
+        return await pending
+    try:
+        return await asyncio.wait_for(pending, timeout)
+    except asyncio.TimeoutError as error:
+        # On Python < 3.11 asyncio.TimeoutError is not the builtin TimeoutError;
+        # normalize so callers can catch TimeoutError on every supported version.
+        raise TimeoutError(str(error)) from error
