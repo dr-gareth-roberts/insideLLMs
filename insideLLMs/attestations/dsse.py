@@ -1,8 +1,16 @@
 """DSSE (Dead Simple Signing Envelope) for attestations.
 
 Build and parse DSSE envelopes: payloadType, payload (base64), signatures.
-Used as the outer wrapper for in-toto Statements. Signatures are optional
-at build time; verification is done by the signing layer.
+Used as the outer wrapper for in-toto Statements.
+
+An envelope built without signatures is a DRAFT: it carries no integrity or
+authenticity guarantee on its own. In this codebase signing is detached —
+``insidellms sign`` produces sigstore bundles under ``signing/`` via cosign
+(see ``insideLLMs.signing.cosign``) rather than embedding signatures into the
+envelope, and ``insidellms verify-signatures`` fails when a bundle is missing
+for any attestation (or when there are no attestations at all). Nothing in
+this module verifies signatures; treat ``signatures: []`` envelopes as
+unsigned drafts, never as verified artifacts.
 """
 
 from __future__ import annotations

@@ -254,7 +254,7 @@ export NO_COLOR=1
 
 - `data/` directory in the repo
 - `benchmarks/` for standard benchmarks
-- `insideLLMs.benchmark_datasets` for built-in datasets
+- `insideLLMs.benchmark_datasets` for built-in smoke-test datasets (87 tiny handwritten examples — not real benchmarks)
 - HuggingFace datasets via config
 
 ---

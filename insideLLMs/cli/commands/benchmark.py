@@ -59,6 +59,10 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             suite_examples = list(suite.sample(args.max_examples * 5, seed=42))
 
         print_info(f"Loaded {len(suite_examples)} benchmark examples")
+        print_warning(
+            "Builtin datasets are tiny handwritten smoke fixtures; results on "
+            "them validate the pipeline, not model quality."
+        )
 
         results_all: list[dict[str, Any]] = []
 

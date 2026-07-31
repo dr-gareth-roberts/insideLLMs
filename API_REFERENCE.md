@@ -2838,7 +2838,8 @@ print(result.final_output)
 
 ##### `ParallelStep`
 
-Run multiple steps in parallel.
+Run multiple steps over the same input and aggregate their results. Steps
+execute sequentially — this is fan-out topology, not concurrency.
 
 ```python
 from insideLLMs.contrib.chains import ChainState, ParallelStep, TransformStep

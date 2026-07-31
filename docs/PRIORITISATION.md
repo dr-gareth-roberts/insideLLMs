@@ -318,12 +318,21 @@ Keep together:
 
 ### Now (blockers / honesty)
 
-- [ ] P0.1 Fix or disable TUF mock-as-verified
-- [ ] P0.2 Downgrade SCITT verify claims / implement crypto
-- [ ] P0.3 Fail closed on unsigned DSSE in verify CLI
-- [ ] P0.4 Relabel heuristic "semantic/attention/safety" APIs
+- [x] P0.1 Fix or disable TUF mock-as-verified — `fetch_dataset` now refuses
+      without `allow_mock=True` and always labels proofs `status="mock"` /
+      `verified=False`
+- [x] P0.2 Downgrade SCITT verify claims / implement crypto — renamed to
+      `receipt_looks_well_formed` (deprecated `verify_receipt` alias);
+      docstrings/policy language now say structural check only
+- [x] P0.3 Fail closed on unsigned DSSE in verify CLI — `verify-signatures`
+      errors on zero attestations; dsse.py documents unsigned envelopes as
+      draft-only (signing is detached via cosign bundles)
+- [x] P0.4 Relabel heuristic "semantic/attention/safety" APIs — heuristic
+      labels on SemanticSimilarityEvaluator, analyze_attention, safety.py
+      detectors, ParallelStep; `HuggingFaceModel.supports_streaming=False`
 - [ ] P0.5 Mark builtin 87-example datasets as smoke-only; start one real
-      dataset loader
+      dataset loader — smoke-only labelling done (descriptions, docstrings,
+      CLI warnings, `scale="smoke"` metadata); real dataset loader still to do
 
 ### Next (product spine)
 

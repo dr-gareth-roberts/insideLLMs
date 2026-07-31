@@ -694,3 +694,32 @@ class TestEdgeCases:
         """Test merging no datasets raises error."""
         with pytest.raises(ValueError):
             merge_datasets()
+
+
+class TestBuiltinDatasetsAreSmokeLabelled:
+    """Builtin datasets must self-identify as smoke fixtures, never benchmarks."""
+
+    def test_list_builtin_datasets_carries_smoke_scale(self):
+        from insideLLMs.benchmark_datasets import list_builtin_datasets
+
+        entries = list_builtin_datasets()
+        assert len(entries) == 13
+        for entry in entries:
+            assert entry["scale"] == "smoke"
+            assert "smoke-test fixture" in entry["description"]
+
+    def test_builtin_datasets_are_tiny(self):
+        from insideLLMs.benchmark_datasets import get_all_builtin_datasets
+
+        datasets = get_all_builtin_datasets()
+        total = sum(len(list(ds)) for ds in datasets.values())
+        assert total <= 100, (
+            "builtin datasets are smoke fixtures; keep them tiny or ship real loaders"
+        )
+
+    def test_comprehensive_suite_examples_stamped_smoke(self):
+        from insideLLMs.benchmark_datasets import create_comprehensive_benchmark_suite
+
+        suite = create_comprehensive_benchmark_suite(max_examples_per_dataset=2, seed=42)
+        for example in suite:
+            assert example.metadata["scale"] == "smoke"

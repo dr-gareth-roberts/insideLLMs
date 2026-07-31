@@ -58,7 +58,7 @@ Key Components
 - :class:`ContainsEvaluator` : Substring containment evaluator
 - :class:`FuzzyMatchEvaluator` : Levenshtein similarity evaluator
 - :class:`TokenF1Evaluator` : Token-level F1 evaluator
-- :class:`SemanticSimilarityEvaluator` : Weighted multi-metric evaluator
+- :class:`SemanticSimilarityEvaluator` : Weighted lexical-overlap evaluator (heuristic; no embeddings)
 - :class:`NumericEvaluator` : Numeric answer evaluator with tolerance
 - :class:`MultipleChoiceEvaluator` : Multiple choice answer evaluator
 - :class:`CompositeEvaluator` : Combines multiple evaluators
@@ -257,9 +257,9 @@ Semantic similarity with custom weights:
     ...     "deep learning is effective"
     ... )
     >>> print(f"Score: {result.score:.2f}")
-    Score: 0.23
+    Score: 0.47
     >>> print(f"Component scores: {result.details['component_scores']}")
-    Component scores: {'jaccard': 0.14285714285714285, 'cosine': 0.25, 'token_f1': 0.25}
+    Component scores: {'jaccard': 0.3333333333333333, 'cosine': 0.5, 'token_f1': 0.5}
 
 Classification metrics for multi-class problems:
 

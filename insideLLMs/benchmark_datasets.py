@@ -13,7 +13,8 @@ Key Features
 - **Dataset Management**: Create, load, save, merge, and filter datasets
 - **Splitting & Sampling**: Train/validation/test splits with stratification
 - **Cross-Validation**: K-fold cross-validation support
-- **Built-in Benchmarks**: 13 pre-built evaluation datasets
+- **Built-in smoke datasets**: 13 tiny handwritten fixtures (87 examples total,
+  5-10 each) for pipeline smoke tests — not real benchmarks
 - **Registry System**: Global dataset registry for easy access
 - **Builder Pattern**: Fluent API for constructing custom datasets
 
@@ -115,6 +116,9 @@ Total examples: 10
 
 Notes
 -----
+- Builtin datasets are smoke-test fixtures: results on them validate that a
+  pipeline runs, not that a model is good. Use real public benchmarks for
+  quality evidence.
 - All datasets can be serialized to JSON for persistence
 - The module uses MD5 hashing for automatic ID generation
 - Stratified sampling requires examples to have category labels
@@ -1038,10 +1042,16 @@ class DatasetRegistry:
 
 # Built-in example datasets
 def create_reasoning_dataset() -> BenchmarkDataset:
-    """Create a sample reasoning benchmark dataset."""
+    """Create a sample reasoning benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("reasoning_benchmark")
     builder.with_category(DatasetCategory.REASONING)
-    builder.with_description("Sample reasoning problems for LLM evaluation")
+    builder.with_description(
+        "Sample reasoning problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1081,10 +1091,16 @@ def create_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_factual_dataset() -> BenchmarkDataset:
-    """Create a sample factual knowledge dataset."""
+    """Create a sample factual knowledge dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("factual_benchmark")
     builder.with_category(DatasetCategory.FACTUAL)
-    builder.with_description("Sample factual questions for LLM evaluation")
+    builder.with_description(
+        "Sample factual questions for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1124,10 +1140,16 @@ def create_factual_dataset() -> BenchmarkDataset:
 
 
 def create_math_dataset() -> BenchmarkDataset:
-    """Create a sample math dataset."""
+    """Create a sample math dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("math_benchmark")
     builder.with_category(DatasetCategory.MATH)
-    builder.with_description("Sample math problems for LLM evaluation")
+    builder.with_description(
+        "Sample math problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1335,10 +1357,16 @@ def filter_dataset(
 
 
 def create_commonsense_dataset() -> BenchmarkDataset:
-    """Create a commonsense reasoning benchmark dataset."""
+    """Create a commonsense reasoning benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("commonsense_benchmark")
     builder.with_category(DatasetCategory.COMMONSENSE)
-    builder.with_description("Commonsense reasoning problems for LLM evaluation")
+    builder.with_description(
+        "Commonsense reasoning problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1396,10 +1424,16 @@ def create_commonsense_dataset() -> BenchmarkDataset:
 
 
 def create_coding_dataset() -> BenchmarkDataset:
-    """Create a coding benchmark dataset."""
+    """Create a coding benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("coding_benchmark")
     builder.with_category(DatasetCategory.CODING)
-    builder.with_description("Programming and coding problems for LLM evaluation")
+    builder.with_description(
+        "Programming and coding problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1457,10 +1491,16 @@ def create_coding_dataset() -> BenchmarkDataset:
 
 
 def create_safety_dataset() -> BenchmarkDataset:
-    """Create a safety and harmlessness benchmark dataset."""
+    """Create a safety and harmlessness benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("safety_benchmark")
     builder.with_category(DatasetCategory.SAFETY)
-    builder.with_description("Safety and harmlessness evaluation for LLMs")
+    builder.with_description(
+        "Safety and harmlessness evaluation for LLMs (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1500,10 +1540,16 @@ def create_safety_dataset() -> BenchmarkDataset:
 
 
 def create_bias_evaluation_dataset() -> BenchmarkDataset:
-    """Create a bias evaluation benchmark dataset."""
+    """Create a bias evaluation benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("bias_evaluation_benchmark")
     builder.with_category(DatasetCategory.BIAS)
-    builder.with_description("Bias evaluation and fairness testing for LLMs")
+    builder.with_description(
+        "Bias evaluation and fairness testing for LLMs (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1543,10 +1589,16 @@ def create_bias_evaluation_dataset() -> BenchmarkDataset:
 
 
 def create_language_understanding_dataset() -> BenchmarkDataset:
-    """Create a language understanding benchmark dataset."""
+    """Create a language understanding benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("language_understanding_benchmark")
     builder.with_category(DatasetCategory.LANGUAGE)
-    builder.with_description("Natural language understanding evaluation for LLMs")
+    builder.with_description(
+        "Natural language understanding evaluation for LLMs (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1604,10 +1656,16 @@ def create_language_understanding_dataset() -> BenchmarkDataset:
 
 
 def create_instruction_following_dataset() -> BenchmarkDataset:
-    """Create an instruction following benchmark dataset."""
+    """Create an instruction following benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("instruction_following_benchmark")
     builder.with_category(DatasetCategory.INSTRUCTION)
-    builder.with_description("Instruction following evaluation for LLMs")
+    builder.with_description(
+        "Instruction following evaluation for LLMs (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1665,10 +1723,16 @@ def create_instruction_following_dataset() -> BenchmarkDataset:
 
 
 def create_reading_comprehension_dataset() -> BenchmarkDataset:
-    """Create a reading comprehension benchmark dataset."""
+    """Create a reading comprehension benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("reading_comprehension_benchmark")
     builder.with_category(DatasetCategory.LANGUAGE)
-    builder.with_description("Reading comprehension evaluation for LLMs")
+    builder.with_description(
+        "Reading comprehension evaluation for LLMs (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     passage1 = """The Amazon rainforest, often referred to as the 'lungs of the Earth,' produces about 20%
 of the world's oxygen. It spans across nine countries and covers approximately 5.5 million
@@ -1724,10 +1788,16 @@ moved to France where she conducted most of her groundbreaking research."""
 
 
 def create_multi_step_reasoning_dataset() -> BenchmarkDataset:
-    """Create a multi-step reasoning benchmark dataset."""
+    """Create a multi-step reasoning benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("multi_step_reasoning_benchmark")
     builder.with_category(DatasetCategory.REASONING)
-    builder.with_description("Multi-step reasoning problems for LLM evaluation")
+    builder.with_description(
+        "Multi-step reasoning problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1773,10 +1843,16 @@ def create_multi_step_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_analogical_reasoning_dataset() -> BenchmarkDataset:
-    """Create an analogical reasoning benchmark dataset."""
+    """Create an analogical reasoning benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("analogical_reasoning_benchmark")
     builder.with_category(DatasetCategory.REASONING)
-    builder.with_description("Analogical reasoning problems for LLM evaluation")
+    builder.with_description(
+        "Analogical reasoning problems for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         {
@@ -1834,10 +1910,16 @@ def create_analogical_reasoning_dataset() -> BenchmarkDataset:
 
 
 def create_world_knowledge_dataset() -> BenchmarkDataset:
-    """Create a world knowledge benchmark dataset."""
+    """Create a world knowledge benchmark dataset.
+
+    Tiny handwritten smoke-test fixture — not a real benchmark; use for
+    pipeline validation only.
+    """
     builder = DatasetBuilder("world_knowledge_benchmark")
     builder.with_category(DatasetCategory.FACTUAL)
-    builder.with_description("World knowledge questions for LLM evaluation")
+    builder.with_description(
+        "World knowledge questions for LLM evaluation (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     examples = [
         # Geography
@@ -1916,7 +1998,9 @@ def create_world_knowledge_dataset() -> BenchmarkDataset:
 
 
 def get_all_builtin_datasets() -> dict[str, BenchmarkDataset]:
-    """Get all built-in benchmark datasets.
+    """Get all built-in smoke-test datasets (87 tiny handwritten examples total).
+
+    These are pipeline-validation fixtures, not real benchmarks.
 
     Returns:
         Dictionary mapping dataset names to datasets
@@ -1939,7 +2023,10 @@ def get_all_builtin_datasets() -> dict[str, BenchmarkDataset]:
 
 
 def load_builtin_dataset(name: str) -> BenchmarkDataset:
-    """Load a built-in benchmark dataset by name.
+    """Load a built-in smoke-test dataset by name.
+
+    Builtin datasets are tiny handwritten fixtures (5-10 examples each) for
+    pipeline validation — not real benchmarks.
 
     Args:
         name: Dataset name (reasoning, factual, math, commonsense, coding,
@@ -1964,7 +2051,10 @@ def create_comprehensive_benchmark_suite(
     max_examples_per_dataset: Optional[int] = None,
     seed: Optional[int] = None,
 ) -> BenchmarkDataset:
-    """Create a comprehensive benchmark suite combining multiple datasets.
+    """Combine the builtin smoke-test datasets into one suite.
+
+    The result is still smoke-scale (87 handwritten examples across all
+    builtins) — suitable for pipeline validation, not benchmark evidence.
 
     Args:
         categories: List of categories to include (None for all)
@@ -1987,7 +2077,9 @@ def create_comprehensive_benchmark_suite(
     # Create combined dataset
     builder = DatasetBuilder("comprehensive_benchmark")
     builder.with_category(DatasetCategory.CUSTOM)
-    builder.with_description("Comprehensive LLM evaluation benchmark suite")
+    builder.with_description(
+        "Comprehensive LLM evaluation benchmark suite (smoke-test fixture of handwritten examples — not a real benchmark)"
+    )
 
     for name, dataset in filtered_datasets.items():
         examples = list(dataset)
@@ -2006,14 +2098,17 @@ def create_comprehensive_benchmark_suite(
                 expected_output=example.expected_output,
                 category=example.category,
                 difficulty=example.difficulty,
-                metadata={"source_dataset": name, **example.metadata},
+                metadata={"source_dataset": name, "scale": "smoke", **example.metadata},
             )
 
     return builder.build()
 
 
 def list_builtin_datasets() -> list[dict[str, Any]]:
-    """List all available built-in datasets with their metadata.
+    """List all available built-in smoke-test datasets with their metadata.
+
+    Every entry carries ``"scale": "smoke"``: builtin datasets are tiny
+    handwritten fixtures (5-10 examples each), not real benchmarks.
 
     Returns:
         List of dictionaries with dataset info
@@ -2030,6 +2125,7 @@ def list_builtin_datasets() -> list[dict[str, Any]]:
                 "num_examples": stats.total_examples,
                 "difficulties": stats.difficulties,
                 "categories": stats.categories,
+                "scale": "smoke",
             }
         )
     return result

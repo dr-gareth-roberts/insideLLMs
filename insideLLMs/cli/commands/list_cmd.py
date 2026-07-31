@@ -50,7 +50,7 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(f"\n  {colorize(f'Total: {len(probes)} probes', Colors.DIM)}")
 
     if args.type in ("datasets", "all"):
-        print_subheader("Built-in Benchmark Datasets")
+        print_subheader("Built-in Benchmark Datasets (smoke-test fixtures)")
         try:
             from insideLLMs.benchmark_datasets import list_builtin_datasets
 
@@ -74,6 +74,10 @@ def cmd_list(args: argparse.Namespace) -> int:
                     )
 
             print(f"\n  {colorize(f'Total: {len(datasets)} datasets', Colors.DIM)}")
+            print_warning(
+                "Builtin datasets are tiny handwritten smoke fixtures (87 examples "
+                "total); results on them are not benchmark evidence."
+            )
         except ImportError:
             print_warning("Benchmark datasets module not available")
 

@@ -22,7 +22,7 @@ Key Features
 - **Bias Detection**: Measure propensity for demographic and cultural biases
 - **Attack Vulnerabilities**: Test susceptibility to prompt injection and jailbreaks
 - **Factual Accuracy**: Evaluate correctness of factual knowledge
-- **Safety Analysis**: Detect PII, toxicity, and harmful content
+- **Safety Analysis**: Regex/keyword heuristics for PII, toxicity, and harmful content
 - **Model Comparison**: Side-by-side benchmarking across models
 - **LLM-as-a-Judge**: Use LLMs to evaluate other LLM outputs
 - **Structured Output**: Parse responses into Pydantic models

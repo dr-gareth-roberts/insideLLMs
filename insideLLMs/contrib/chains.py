@@ -1021,7 +1021,7 @@ class ChainStep(ABC):
     ConditionalStep : Step for conditional branching
     RouterStep : Step for content-based routing
     LoopStep : Step for iterative execution
-    ParallelStep : Step for parallel execution
+    ParallelStep : Fan-out step (steps executed sequentially)
     SubchainStep : Step for nested chains
     """
 
@@ -2357,7 +2357,11 @@ class LoopStep(ChainStep):
 
 
 class ParallelStep(ChainStep):
-    """Step that executes multiple steps in parallel (simulated)."""
+    """Step that runs multiple steps over the same input and aggregates results.
+
+    Execution is SEQUENTIAL (a plain for loop) — "parallel" refers to the
+    fan-out topology, not concurrency. There is no threading or async here.
+    """
 
     def __init__(
         self,
@@ -2485,7 +2489,7 @@ class Chain:
         steps: list[ChainStep],
         aggregator: Optional[Callable[[list[Any]], Any]] = None,
     ) -> "Chain":
-        """Add parallel execution step."""
+        """Add a fan-out step (steps run sequentially, results aggregated)."""
         step = ParallelStep(name, steps, aggregator)
         return self.add_step(step)
 
@@ -2706,7 +2710,7 @@ class ChainBuilder:
         steps: list[ChainStep],
         aggregator: Optional[Callable[[list[Any]], Any]] = None,
     ) -> "ChainBuilder":
-        """Add parallel step."""
+        """Add a fan-out step (steps run sequentially, results aggregated)."""
         self.chain.add_parallel(name, steps, aggregator)
         return self
 

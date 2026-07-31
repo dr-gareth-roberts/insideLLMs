@@ -762,7 +762,7 @@ def create_parser() -> argparse.ArgumentParser:
     # =========================================================================
     benchmark_parser = subparsers.add_parser(
         "benchmark",
-        help="Run comprehensive benchmarks across models and probes",
+        help="Run smoke-scale benchmarks across models and probes (builtin datasets are tiny fixtures)",
         formatter_class=CustomFormatter,
         parents=[common_parser],
     )
@@ -784,7 +784,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--datasets",
         "-d",
         type=str,
-        help="Comma-separated list of benchmark datasets (e.g., reasoning,math,coding)",
+        help="Comma-separated list of benchmark datasets (e.g., reasoning,math,coding) — smoke-scale, 5-10 handwritten examples each",
     )
     benchmark_parser.add_argument(
         "--max-examples",

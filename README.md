@@ -321,7 +321,7 @@ insidellms harness         Cross-model probe harness
 insidellms diff            Compare two run directories
 insidellms report          Rebuild summary/report from records
 insidellms compare         Compare multiple models on same inputs
-insidellms benchmark       Comprehensive benchmarks across models
+insidellms benchmark       Smoke-scale benchmarks across models (builtin datasets are tiny fixtures)
 insidellms generate-suite  Generate a synthetic evaluation suite
 insidellms optimize-prompt Optimize a prompt against a probe
 insidellms doctor          Diagnose environment and dependencies

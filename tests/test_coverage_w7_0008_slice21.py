@@ -18,26 +18,22 @@ import pytest
 def test_tuf_import_error_and_success_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     from insideLLMs.datasets import tuf_client
 
-    real_import = builtins.__import__
-
-    def _block_tuf(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "tuf" or name.startswith("tuf."):
-            raise ImportError("blocked")
-        return real_import(name, globals, locals, fromlist, level)
-
-    monkeypatch.setattr(builtins, "__import__", _block_tuf)
-    with pytest.raises(RuntimeError, match="tuf module not available"):
+    # allow_mock=False always refuses: real TUF verification is not implemented.
+    with pytest.raises(RuntimeError, match="refusing mock verification"):
         tuf_client.fetch_dataset("x", "1", allow_mock=False)
     path, proof = tuf_client.fetch_dataset("x", "1", allow_mock=True)
-    assert path.exists() and proof["status"] == "mock-verified"
-    monkeypatch.undo()
+    assert path.exists() and proof["status"] == "mock"
+    assert proof["verified"] is False
 
+    # An importable tuf package must not change the refusal or the labelling.
     fake_ng = types.ModuleType("tuf.ngclient")
     fake_ng.Updater = object
     monkeypatch.setitem(sys.modules, "tuf", types.ModuleType("tuf"))
     monkeypatch.setitem(sys.modules, "tuf.ngclient", fake_ng)
-    path2, proof2 = tuf_client.fetch_dataset("y", "2", allow_mock=False)
-    assert proof2["status"] == "verified"
+    with pytest.raises(RuntimeError, match="refusing mock verification"):
+        tuf_client.fetch_dataset("y", "2", allow_mock=False)
+    path2, proof2 = tuf_client.fetch_dataset("y", "2", allow_mock=True)
+    assert proof2["status"] == "mock"
     assert path2.exists()
 
 

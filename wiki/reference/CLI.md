@@ -588,7 +588,9 @@ insidellms info dataset reasoning
 
 ## benchmark
 
-Run comprehensive benchmark suites.
+Run smoke-scale benchmark suites. The builtin datasets are tiny handwritten
+fixtures (5-10 examples each, 87 total) — results on them validate the
+pipeline, not model quality.
 
 ```bash
 insidellms benchmark [options]

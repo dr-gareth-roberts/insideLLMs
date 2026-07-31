@@ -2382,7 +2382,12 @@ def estimate_token_importance(text: str, context: Optional[str] = None) -> list[
 
 def analyze_attention(prompt: str, response: str) -> list[AttentionHead]:
     """
-    Analyze attention patterns for a prompt-response pair (convenience function).
+    Simulate attention patterns for a prompt-response pair (convenience function).
+
+    HEURISTIC: this does NOT read real model attention weights. It fabricates
+    a fixed 4-layer x 2-head architecture and classifies pattern types from
+    token overlap between prompt and response. Results are approximations for
+    API models where true attention is unavailable.
 
     Creates an AttentionAnalyzer and analyzes attention patterns between
     the prompt and response. This is a shorthand for:

@@ -64,7 +64,7 @@ Evaluation Module
 - ``ContainsEvaluator`` : Substring containment evaluation
 - ``FuzzyMatchEvaluator`` : Levenshtein similarity evaluation
 - ``TokenF1Evaluator`` : Token-level F1 score evaluation
-- ``SemanticSimilarityEvaluator`` : Multi-metric semantic similarity
+- ``SemanticSimilarityEvaluator`` : Weighted lexical-overlap similarity (heuristic; no embeddings)
 - ``NumericEvaluator`` : Numeric answer evaluation with tolerance
 - ``MultipleChoiceEvaluator`` : Multiple choice answer evaluation
 - ``CompositeEvaluator`` : Combine multiple evaluators with weights

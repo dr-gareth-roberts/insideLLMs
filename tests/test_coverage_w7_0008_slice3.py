@@ -259,37 +259,28 @@ def test_optimize_prompt_cli_branches(tmp_path: Path, capsys, monkeypatch) -> No
 
 
 def test_tuf_client_mock_and_require_tuf() -> None:
-    # Force ImportError path even when real `tuf` is installed.
-    real_import = __import__
+    # Real TUF verification is not implemented: allow_mock=False always refuses.
+    with pytest.raises(RuntimeError, match="refusing mock verification"):
+        fetch_dataset("ds", "1.0", allow_mock=False)
 
-    def _block_tuf(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "tuf" or name.startswith("tuf."):
-            raise ImportError("blocked for coverage")
-        return real_import(name, globals, locals, fromlist, level)
+    path, proof = fetch_dataset("ds", "1.0", allow_mock=True, base_url="https://example.com")
+    assert path.exists()
+    assert proof["status"] == "mock"
+    assert proof["verified"] is False
+    assert proof["base_url"] == "https://example.com"
 
-    import builtins
-
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(builtins, "__import__", _block_tuf)
-        with pytest.raises(RuntimeError, match="tuf module not available"):
-            fetch_dataset("ds", "1.0", allow_mock=False)
-
-        path, proof = fetch_dataset("ds", "1.0", allow_mock=True, base_url="https://example.com")
-        assert path.exists()
-        assert proof["status"] == "mock-verified"
-        assert proof["base_url"] == "https://example.com"
-
-    # pretend tuf is available
+    # A merely-importable tuf package must NOT unlock a "verified" path.
     fake_tuf = types.ModuleType("tuf")
     fake_ng = types.ModuleType("tuf.ngclient")
     fake_ng.Updater = object
     sys.modules["tuf"] = fake_tuf
     sys.modules["tuf.ngclient"] = fake_ng
     try:
-        path2, proof2 = fetch_dataset("ds", "2.0", allow_mock=False)
-        assert proof2["status"] == "verified"
-        assert proof2["method"] == "tuf.ngclient"
-        assert path2.exists()
+        with pytest.raises(RuntimeError, match="refusing mock verification"):
+            fetch_dataset("ds", "2.0", allow_mock=False)
+        _, proof2 = fetch_dataset("ds", "2.0", allow_mock=True)
+        assert proof2["status"] == "mock"
+        assert proof2["method"] == "mock"
     finally:
         # Restore real modules if they were installed; otherwise clear fakes.
         sys.modules.pop("tuf", None)
