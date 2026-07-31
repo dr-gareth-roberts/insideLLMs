@@ -499,6 +499,16 @@ __all__ = [
     "InsideLLMsError",
     "ModelError",
     "ProbeError",
+    # Inference-time harness
+    "Budget",
+    "Candidate",
+    "EvolutionConfig",
+    "InferenceRequest",
+    "InferenceResult",
+    "InferenceClient",
+    "ModelProposer",
+    "Verification",
+    "evolve_artifacts",
     # Registry
     "Registry",
     "ensure_builtins_registered",
@@ -634,6 +644,16 @@ def __getattr__(name: str):
         "RateLimitMiddleware": "insideLLMs.pipeline",
         "RetryMiddleware": "insideLLMs.pipeline",
         "CostTrackingMiddleware": "insideLLMs.pipeline",
+        # Inference-time harness strategies
+        "Budget": "insideLLMs.inference",
+        "Candidate": "insideLLMs.inference",
+        "EvolutionConfig": "insideLLMs.inference",
+        "InferenceRequest": "insideLLMs.inference",
+        "InferenceResult": "insideLLMs.inference",
+        "InferenceClient": "insideLLMs.inference",
+        "ModelProposer": "insideLLMs.inference",
+        "Verification": "insideLLMs.inference",
+        "evolve_artifacts": "insideLLMs.inference",
         # Evaluation
         "Evaluator": "insideLLMs.evaluation",
         "ExactMatchEvaluator": "insideLLMs.evaluation",

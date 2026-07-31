@@ -18,6 +18,15 @@ Measures probe instantiation and execution overhead:
 python benchmarks/benchmark_probes.py
 ```
 
+### Inference Strategy Example
+
+Runs deterministic, offline examples of shared inference accounting, safe early
+stopping, exact-prefix cache identity, and budgeted evolutionary prompt search:
+
+```bash
+python benchmarks/inference_strategies.py
+```
+
 ## Interpreting Results
 
 **Note:** Thresholds are environment-dependent. CPU, disk, and installed packages vary across machines. Use results for relative comparison (e.g. before/after changes) rather than absolute pass/fail. For CI trend tracking, establish baselines on your own runners.

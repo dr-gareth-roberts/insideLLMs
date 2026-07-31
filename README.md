@@ -164,6 +164,47 @@ from insideLLMs.runtime.runner import run_experiment_from_config
 results = run_experiment_from_config("config.yaml")
 ```
 
+### Reliable inference
+
+`InferenceClient` is the recommended model-backed entry point for one-shot,
+self-consistent, and verifier-selected generation. Every call returns the same
+auditable result envelope: candidates, trace, token/call spend, stop reason, and
+provenance.
+
+```python
+import asyncio
+from insideLLMs import InferenceClient, OpenAIModel
+
+async def main():
+    client = InferenceClient(OpenAIModel(model_name="gpt-4o-mini"))
+    result = await client.generate("What is 2+2?")
+    print(result.answer, result.spend, result.provenance)
+
+asyncio.run(main())
+```
+
+It also uses the existing model registry and middleware configuration path:
+
+```python
+client = InferenceClient.from_model_config({
+    "type": "openai",
+    "args": {"model_name": "gpt-4o-mini"},
+    "pipeline": {
+        "middlewares": [
+            {"type": "retry", "args": {"max_retries": 2}},
+            {"type": "cost_tracking"},
+        ]
+    },
+})
+```
+
+See [`docs/INFERENCE_STRATEGIES.md`](docs/INFERENCE_STRATEGIES.md) and the
+offline executable example:
+
+```bash
+python -m examples.inference_client
+```
+
 ## CLI reference
 
 ```
