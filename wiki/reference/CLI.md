@@ -32,7 +32,7 @@ insidellms <command> [options]
 | [`init`](#init) | Generate a sample configuration file |
 | [`list`](#list) | List available models, probes, or datasets |
 | [`info`](#info) | Show detailed information about a resource |
-| [`benchmark`](#benchmark) | Run comprehensive benchmark suites |
+| [`benchmark`](#benchmark) | Run smoke-scale benchmark suites (builtin datasets are tiny fixtures) |
 | [`compare`](#compare) | Compare multiple models on same inputs |
 | [`export`](#export) | Export results to various formats |
 | [`trend`](#trend) | Show metric trends across run history |

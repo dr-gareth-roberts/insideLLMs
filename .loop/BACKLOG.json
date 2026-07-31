@@ -194,10 +194,10 @@
       "found_by": "workflow reader (wave-7 seed, unverified lead)",
       "description": "When the `tuf` package is importable, `fetch_dataset` reports `status: \"verified\"` and `method: \"tuf.ngclient\"` in its proof even though it never constructs a `tuf.ngclient.Updater` or performs any verification; it always runs the mock write path, so the `allow_mock=False` guard gives false assurance of real cryptographic verification.",
       "evidence": "Reading the code: line 44 imports `Updater` only to set `tuf_available=True` (F401), then lines 60-65 unconditionally write a fabricated JSON file, and lines 67-72 set status='verified'/method='tuf.ngclient' whenever `tuf_available`. No Updater instance is ever created or used. Thus a caller with tuf installed (the 'production path' the raise on allow_mock=False is meant to protect) still gets an unverified mock dataset labelled 'verified'. `fetch_dataset` is importable via insideLLMs.datasets.tuf_client.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
+      "fix_commit": "3602b9a",
+      "verification": "fetch_dataset now refuses without allow_mock=True regardless of tuf importability (RuntimeError 'refusing mock verification in production path'), and the mock proof is always status='mock'/method='mock'/verified=False — no code path returns 'verified'. Tests updated so import-success is never treated as proof (test_tuf_client.py, slice3, slice21 assert refusal + mock labels even with fake tuf modules). Full suite 7077 passed.",
       "notes": "proposed_fix: When `tuf_available` is True, either perform real verification via `tuf.ngclient.Updater` before returning, or (until implemented) do not mislabel the result: raise NotImplementedError / return status='mock-verified' regardless of import success so the proof never claims verification that did not occur. | reader_confidence=medium"
     },
     {

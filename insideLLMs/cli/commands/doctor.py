@@ -344,7 +344,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     add_check(
         name="ultimate:tuf",
         ok=_has_module("tuf"),
-        hint='pip install "tuf>=3.0.0"',
+        hint='pip install "tuf>=3.0.0" (note: real TUF dataset verification is '
+        "not implemented yet; fetch_dataset refuses production use regardless)",
     )
     add_check(
         name="ultimate:cosign",
