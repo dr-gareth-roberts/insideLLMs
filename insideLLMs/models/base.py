@@ -1822,6 +1822,22 @@ class ModelWrapper:
         return f"ModelWrapper({self._model!r}, max_retries={self._max_retries})"
 
 
+def _overrides(model: object, attribute: str, base_implementation: object) -> bool:
+    """True when ``attribute`` is a real implementation, not the raising base stub.
+
+    ``Model.stream`` and ``AsyncModel.astream`` exist on the base classes but
+    only raise NotImplementedError, so a plain attribute-presence check reports
+    a capability the model does not have. Comparing the resolved function
+    against the base implementation keeps genuine subclass overrides (and any
+    non-Model object that simply defines the method) while rejecting the stub.
+    """
+    method = getattr(model, attribute, None)
+    if not callable(method):
+        return False
+    underlying = getattr(method, "__func__", method)
+    return underlying is not base_implementation
+
+
 def can_stream(model: object) -> bool:
     """Whether ``model.stream()`` may be called, natively or simulated.
 
@@ -1839,11 +1855,18 @@ def can_stream(model: object) -> bool:
             wrappers that are not :class:`Model` subclasses.
 
     Returns:
-        True when a callable ``stream`` attribute is present.
+        True when ``stream`` is implemented — the inherited ``Model.stream``
+        stub, which only raises NotImplementedError, does not count.
     """
-    return callable(getattr(model, "stream", None))
+    return _overrides(model, "stream", Model.stream)
 
 
 def can_stream_async(model: object) -> bool:
-    """Whether ``model.astream()`` may be called; the async peer of can_stream."""
-    return callable(getattr(model, "astream", None))
+    """Whether ``model.astream()`` may be called; the async peer of can_stream.
+
+    An ``AsyncModel`` subclass that never overrode ``astream`` inherits a stub
+    that only raises NotImplementedError. Reporting it as async-streamable sends
+    callers (notably ``ModelPipeline.astream``) down the native branch instead
+    of the synchronous ``stream()`` fallback, so the stub is rejected here.
+    """
+    return _overrides(model, "astream", AsyncModel.astream)

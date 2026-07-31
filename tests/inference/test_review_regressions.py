@@ -311,3 +311,62 @@ async def test_inference_timeout_delegates_to_shared_shim() -> None:
 
     with pytest.raises(TimeoutError):
         await invoke_with_timeout(slow, "x", timeout=0.01)
+
+
+def test_capability_predicates_reject_inherited_raising_stubs() -> None:
+    """Model.stream and AsyncModel.astream are stubs that only raise.
+
+    Reporting them as capabilities sends callers down a branch that cannot
+    work; only genuine overrides count.
+    """
+    from insideLLMs.models.base import AsyncModel, Model, can_stream, can_stream_async
+
+    class NoStreamAtAll(Model):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+    class SyncStreamOnly(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        def stream(self, prompt: str, **kwargs: object):
+            yield "chunk"
+
+    class RealAsyncStream(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def astream(self, prompt: str, **kwargs: object):
+            yield "async-chunk"
+
+    # Inheriting the raising stub is not a capability.
+    assert can_stream(NoStreamAtAll(name="none")) is False
+    assert can_stream_async(SyncStreamOnly(name="sync")) is False
+    # Genuine overrides still register.
+    assert can_stream(SyncStreamOnly(name="sync")) is True
+    assert can_stream_async(RealAsyncStream(name="real")) is True
+
+
+async def test_pipeline_astream_falls_back_to_sync_stream() -> None:
+    """An AsyncModel with only stream() must not hit the raising astream stub."""
+    from insideLLMs.models.base import AsyncModel
+    from insideLLMs.runtime.pipeline import ModelPipeline
+
+    class SyncStreamOnly(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        def stream(self, prompt: str, **kwargs: object):
+            yield "chunk"
+
+    pipeline = ModelPipeline(SyncStreamOnly(name="sync"))
+    assert [chunk async for chunk in pipeline.astream("hi")] == ["chunk"]
