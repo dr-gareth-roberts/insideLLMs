@@ -34,6 +34,10 @@ Acceptance gate:
 
 ## Phase 2 — consolidate overlapping execution surfaces
 
+Status: ownership boundaries and dependency guards implemented. Legacy
+ensemble Best-of-N delegates its behavior-equivalent ranking kernel to
+inference; other adapters remain deferred until equivalence is proven.
+
 1. Inventory retry, exact/semantic cache, routing, ensemble, and orchestration APIs.
 2. Name one canonical implementation for each concern.
 3. Adapt compatible old APIs to the canonical implementation.
@@ -45,8 +49,12 @@ Acceptance gate:
 Acceptance gate:
 
 - One ownership table names the canonical module for every execution concern.
-- Duplicate APIs either delegate or carry a dated deprecation path.
+- Every apparent overlap either delegates, carries a dated deprecation path, or
+  has a documented contract distinction.
 - Existing public behavior remains regression-tested.
+
+The canonical map and audited non-duplicates are documented in
+[`EXECUTION_API_OWNERSHIP.md`](EXECUTION_API_OWNERSHIP.md).
 
 ## Phase 3 — matched-compute evidence suite
 

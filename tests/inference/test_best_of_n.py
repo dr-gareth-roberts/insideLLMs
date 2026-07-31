@@ -4,8 +4,22 @@ from insideLLMs.inference import Candidate, InferenceRequest, Verification
 from insideLLMs.inference.best_of_n import (
     NoVerifiedCandidateError,
     VerifierSpec,
+    rank_candidates,
     select_best,
 )
+
+
+def test_rank_candidates_scores_once_and_breaks_ties_by_candidate_id() -> None:
+    candidates = [Candidate("z", "first"), Candidate("a", "second")]
+    calls: list[str] = []
+
+    ranked = rank_candidates(
+        candidates,
+        score=lambda candidate: calls.append(candidate.id) or 1.0,
+    )
+
+    assert tuple(candidate.id for candidate, _ in ranked) == ("a", "z")
+    assert calls == ["z", "a"]
 
 
 async def test_best_of_n_applies_hard_verifiers_before_soft_scores() -> None:

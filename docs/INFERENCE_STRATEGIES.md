@@ -62,6 +62,10 @@ selected = await client.best_of_n(
 middleware pipeline configuration; it does not introduce another provider or
 retry system. Run `python -m examples.inference_client` for an offline example.
 
+See [`EXECUTION_API_OWNERSHIP.md`](EXECUTION_API_OWNERSHIP.md) for the enforced
+boundary between provider models, runtime middleware, inference strategies,
+cache infrastructure, and intentionally distinct `contrib` analysis APIs.
+
 All callbacks may be plain functions or async functions. Use the async APIs in
 applications. `insideLLMs.inference.run_sync` is safe for scripts and deliberately
 rejects use inside an already-running event loop.

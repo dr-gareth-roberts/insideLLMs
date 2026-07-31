@@ -95,6 +95,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
+from insideLLMs.inference.best_of_n import rank_candidates
+from insideLLMs.inference.schemas import Candidate
+
 
 class AggregationMethod(Enum):
     """Methods for aggregating model outputs into a single response.
@@ -1529,11 +1532,17 @@ class ResponseAggregator:
         if not outputs:
             return "", ""
 
-        if scorer is None:
-            # Default to longest response
-            selected = max(outputs, key=lambda x: len(x.response))
-        else:
-            selected = max(outputs, key=lambda x: scorer(x.response))
+        score_response = len if scorer is None else scorer
+        candidates = [
+            Candidate(id=f"legacy-ensemble-{index:020d}", output=output.response)
+            for index, output in enumerate(outputs)
+        ]
+        selected_candidate, _ = rank_candidates(
+            candidates,
+            score=lambda candidate: score_response(candidate.output),
+            tie_break="input_order",
+        )[0]
+        selected = outputs[int(selected_candidate.id.rsplit("-", 1)[1])]
 
         return selected.response, selected.model_id
 

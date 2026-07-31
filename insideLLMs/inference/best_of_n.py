@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Awaitable
+from typing import Awaitable, Literal
 
 from ._callbacks import resolve
 from .schemas import (
@@ -33,6 +33,31 @@ class VerifierSpec:
     id: str
     verify: VerifierCallback
     hard: bool = False
+
+
+def rank_candidates(
+    candidates: Sequence[Candidate],
+    *,
+    score: Callable[[Candidate], float],
+    tie_break: Literal["candidate_id", "input_order"] = "candidate_id",
+) -> tuple[tuple[Candidate, float], ...]:
+    """Score once, then rank by ID or legacy input-order ``max`` semantics."""
+
+    if tie_break not in {"candidate_id", "input_order"}:
+        raise ValueError(f"unknown tie-break policy: {tie_break}")
+    candidate_ids = [candidate.id for candidate in candidates]
+    if len(set(candidate_ids)) != len(candidate_ids):
+        raise ValueError("candidate ids must be unique")
+    scored = tuple((candidate, score(candidate)) for candidate in candidates)
+    if tie_break == "candidate_id":
+        return tuple(sorted(scored, key=lambda item: (-item[1], item[0].id)))
+
+    remaining = list(scored)
+    ranked: list[tuple[Candidate, float]] = []
+    while remaining:
+        winner_index = max(range(len(remaining)), key=lambda index: remaining[index][1])
+        ranked.append(remaining.pop(winner_index))
+    return tuple(ranked)
 
 
 async def select_best(
@@ -93,7 +118,13 @@ async def select_best(
         for item, score in zip(eligible, forward):
             totals[item.id] += (score + reverse_by_id[item.id]) / 2
 
-    ranked = sorted(eligible, key=lambda item: (-totals[item.id], item.id))
+    ranked = [
+        candidate
+        for candidate, _ in rank_candidates(
+            eligible,
+            score=lambda candidate: totals[candidate.id],
+        )
+    ]
     top_candidates = ranked[:top_k]
     vote_counts: Counter[str] = Counter()
     winner = ranked[0]

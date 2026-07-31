@@ -4,11 +4,30 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Awaitable
-
-from insideLLMs.contrib.retrieval import RetrievalResult
+from typing import Awaitable, Protocol, TypeVar
 
 from ._callbacks import resolve
+
+
+class EvidenceDocument(Protocol):
+    """Minimal document shape required by inference-time reranking."""
+
+    @property
+    def id(self) -> object: ...
+
+    @property
+    def content(self) -> str: ...
+
+
+DocumentT_co = TypeVar("DocumentT_co", bound=EvidenceDocument, covariant=True)
+DocumentT = TypeVar("DocumentT", bound=EvidenceDocument)
+
+
+class RetrievalItem(Protocol[DocumentT_co]):
+    """Structural retrieval result accepted from any retrieval system."""
+
+    @property
+    def document(self) -> DocumentT_co: ...
 
 
 @dataclass(frozen=True)
@@ -21,14 +40,14 @@ class AssembledEvidence:
 
 async def rerank_and_assemble(
     query: str,
-    broad_results: Sequence[RetrievalResult],
+    broad_results: Sequence[RetrievalItem[DocumentT]],
     *,
-    rerank: Callable[[str, Any], float | Awaitable[float]],
+    rerank: Callable[[str, DocumentT], float | Awaitable[float]],
     top_k: int,
     max_characters: int | None = None,
     max_tokens: int | None = None,
     token_count: Callable[[str], int] = lambda text: len(text.split()),
-    diversity_key: Callable[[Any], str] | None = None,
+    diversity_key: Callable[[DocumentT], str] | None = None,
     max_per_diversity_group: int | None = None,
 ) -> AssembledEvidence:
     """Dedupe, rerank, budget, then move the runner-up to the far boundary."""
@@ -43,7 +62,7 @@ async def rerank_and_assemble(
         raise ValueError("max_tokens must be positive")
     if max_per_diversity_group is not None and max_per_diversity_group < 1:
         raise ValueError("max_per_diversity_group must be positive")
-    unique: dict[str, Any] = {}
+    unique: dict[str, DocumentT] = {}
     for result in broad_results:
         source_id = str(result.document.id)
         unique.setdefault(source_id, result.document)
@@ -54,7 +73,7 @@ async def rerank_and_assemble(
     ]
     scored.sort(key=lambda item: (-item[2], item[0]))
 
-    selected: list[tuple[str, Any, float]] = []
+    selected: list[tuple[str, DocumentT, float]] = []
     used_characters = 0
     used_tokens = 0
     group_counts: dict[str, int] = {}
