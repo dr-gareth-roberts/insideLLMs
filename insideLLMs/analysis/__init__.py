@@ -544,5 +544,6 @@ insideLLMs.schemas : Schema definitions and validation
 from insideLLMs.analysis.comparison import *  # noqa: F401,F403
 from insideLLMs.analysis.evaluation import *  # noqa: F401,F403
 from insideLLMs.analysis.export import *  # noqa: F401,F403
+from insideLLMs.analysis.matched_compute import *  # noqa: F401,F403
 from insideLLMs.analysis.statistics import *  # noqa: F401,F403
 from insideLLMs.analysis.visualization import *  # noqa: F401,F403

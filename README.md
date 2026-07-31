@@ -205,6 +205,14 @@ offline executable example:
 python -m examples.inference_client
 ```
 
+For matched-compute strategy evaluation, see
+[`docs/MATCHED_COMPUTE_EVALUATION.md`](docs/MATCHED_COMPUTE_EVALUATION.md) and run
+the offline artifact smoke test:
+
+```bash
+python -m examples.matched_compute_evaluation > matched-compute.json
+```
+
 ## CLI reference
 
 ```

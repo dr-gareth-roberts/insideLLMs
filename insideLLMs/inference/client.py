@@ -48,34 +48,21 @@ class InferenceClient:
             request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
         )
         candidate = (await self.proposer.sample(normalized_request, 1))[0]
-        input_tokens = int(candidate.metadata.get("prompt_tokens", 0))
-        output_tokens = int(candidate.metadata.get("output_tokens", 0))
-        latency_seconds = float(candidate.metadata.get("latency_ms", 0.0)) / 1000
-        model_name = str(candidate.metadata["model"])
-        return InferenceResult(
-            answer=candidate.output,
-            confidence=1.0,
-            candidates=(candidate,),
-            trace=(
-                TraceEvent(
-                    id=candidate.id,
-                    kind="model-generation",
-                    calls=1,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    latency_seconds=latency_seconds,
-                    metadata={"model": model_name},
-                ),
-            ),
-            spend=Spend(
-                calls=1,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                elapsed_seconds=latency_seconds,
-            ),
-            stop_reason=StopReason.COMPLETED,
-            provenance={"strategy": "one-shot", "model": model_name},
+        return _one_shot_result(candidate)
+
+    async def generate_many(
+        self,
+        request: str | InferenceRequest,
+        *,
+        n: int,
+    ) -> tuple[InferenceResult, ...]:
+        """Generate *n* independent one-shot results through the same proposer path."""
+
+        normalized_request = (
+            request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
         )
+        candidates = await self.proposer.sample(normalized_request, n)
+        return tuple(_one_shot_result(candidate) for candidate in candidates)
 
     async def self_consistency(
         self,
@@ -137,6 +124,37 @@ class InferenceClient:
             observed_elapsed=perf_counter() - started,
             strategy="best-of-n",
         )
+
+
+def _one_shot_result(candidate: Candidate) -> InferenceResult:
+    input_tokens = int(candidate.metadata.get("prompt_tokens", 0))
+    output_tokens = int(candidate.metadata.get("output_tokens", 0))
+    latency_seconds = float(candidate.metadata.get("latency_ms", 0.0)) / 1000
+    model_name = str(candidate.metadata["model"])
+    return InferenceResult(
+        answer=candidate.output,
+        confidence=1.0,
+        candidates=(candidate,),
+        trace=(
+            TraceEvent(
+                id=candidate.id,
+                kind="model-generation",
+                calls=1,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                latency_seconds=latency_seconds,
+                metadata={"model": model_name},
+            ),
+        ),
+        spend=Spend(
+            calls=1,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            elapsed_seconds=latency_seconds,
+        ),
+        stop_reason=StopReason.COMPLETED,
+        provenance={"strategy": "one-shot", "model": model_name},
+    )
 
 
 def _with_model_spend(

@@ -49,6 +49,16 @@ async def test_inference_client_accepts_a_prompt_string() -> None:
     assert result.answer == "answer:hello"
 
 
+async def test_inference_client_generates_independent_matched_baseline_samples() -> None:
+    results = await InferenceClient(MetadataModel()).generate_many("hello", n=3)
+
+    assert [result.answer for result in results] == ["answer:hello"] * 3
+    assert [result.spend.calls for result in results] == [1, 1, 1]
+    assert [result.spend.input_tokens for result in results] == [4, 4, 4]
+    assert [result.candidates[0].metadata["sample_index"] for result in results] == [0, 1, 2]
+    assert len({result.candidates[0].id for result in results}) == 3
+
+
 class SequenceModel:
     name = "sequence-model"
 

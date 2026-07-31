@@ -58,6 +58,18 @@ The canonical map and audited non-duplicates are documented in
 
 ## Phase 3 — matched-compute evidence suite
 
+Status: tracer bullet implemented. Variants declare a `ComputeProfile`; the runner
+enforces a shared executor, equal declared and observed model calls (including
+model-backed judge/verifier calls), equal output-token budgets, and matching model
+provenance. It runs AB/BA trials, flags unbalanced ordering, validates finite
+scores, separates comparable wall time from non-comparable provider latency,
+reports cost only when the provider actually supplies it, and ships an offline
+model-backed smoke example. Reproducible live-provider datasets and the deferred
+telemetry below are not yet complete.
+
+See [`MATCHED_COMPUTE_EVALUATION.md`](MATCHED_COMPUTE_EVALUATION.md) for the
+comparison contract, live-model wiring, artifact schema, and limitations.
+
 Build task datasets and compare one-shot against each optional strategy with the
 same model and normalized calls/tokens. Record:
 
