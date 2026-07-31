@@ -79,13 +79,15 @@ def parse_dsse_envelope(envelope: dict[str, Any]) -> tuple[dict[str, Any], str]:
 def pae(payload_type: str, payload_bytes: bytes) -> bytes:
     """Pre-Authentication Encoding for DSSE (used by signers).
 
-    PAE = "DSSEV1" + SP + len(payload_type) + SP + payload_type + SP + len(payload) + SP + payload
-    (SP = space, lengths as decimal ASCII).
+    PAE = "DSSEv1" + SP + len(payload_type) + SP + payload_type + SP + len(payload) + SP + payload
+    (SP = space, lengths as decimal ASCII). The version tag is lowercase-v
+    ``DSSEv1`` per the DSSE spec, so signatures over this PAE interoperate with
+    spec-compliant verifiers (cosign, in-toto).
     """
     pt = payload_type.encode("utf-8")
     pb = payload_bytes
     return (
-        b"DSSEV1 "
+        b"DSSEv1 "
         + str(len(pt)).encode("ascii")
         + b" "
         + pt

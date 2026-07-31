@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
     max_reanalysis: int = 2
     log_level: str = "INFO"
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104  # server default; override via env var
     port: int = 8000
 
 

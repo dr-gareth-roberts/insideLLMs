@@ -489,10 +489,9 @@ class CodeGenerationProbe(ScoredProbe[str]):
             if is_code_line:
                 in_code = True
                 code_lines.append(line)
-            elif code_lines and not stripped:
-                code_lines.append(line)  # Keep blank lines in code
-            elif code_lines:
-                break
+            # NOTE: blank-line retention / early-stop elifs are unreachable while
+            # `in_code` is part of is_code_line (once code starts, every later
+            # line is treated as code). Kept intentionally for historical output.
 
         return "\n".join(code_lines).strip() if code_lines else response
 

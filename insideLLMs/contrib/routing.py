@@ -1560,7 +1560,7 @@ class SemanticRouter:
                 return selected
 
         elif strategy == RoutingStrategy.RANDOM:
-            return random.choice(matches)
+            return random.choice(matches)  # noqa: S311
 
         elif strategy == RoutingStrategy.LOAD_BALANCED:
             # Select route with lowest current load
@@ -1752,7 +1752,7 @@ class SemanticRouter:
             >>> cached = router._get_cached_route("some query")
             >>> print(cached)  # None (nothing cached yet)
         """
-        key = hashlib.md5(query.encode()).hexdigest()
+        key = hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()
         if key in self._route_cache:
             route_name, cached_at = self._route_cache[key]
             if datetime.now() - cached_at < timedelta(seconds=self.config.cache_ttl_seconds):
@@ -1776,7 +1776,7 @@ class SemanticRouter:
             >>> cached = router._get_cached_route("my query")
             >>> print(cached)  # "code_route"
         """
-        key = hashlib.md5(query.encode()).hexdigest()
+        key = hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()
         self._route_cache[key] = (route_name, datetime.now())
 
     def get_stats(self) -> dict[str, RouteStats]:
@@ -1937,7 +1937,7 @@ class ModelPool:
                 self._index += 1
 
             elif self.strategy == RoutingStrategy.RANDOM:
-                idx = random.randint(0, len(self.models) - 1)
+                idx = random.randint(0, len(self.models) - 1)  # noqa: S311
 
             elif self.strategy == RoutingStrategy.LOAD_BALANCED:
                 idx = min(

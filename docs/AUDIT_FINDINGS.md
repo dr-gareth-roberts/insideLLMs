@@ -19,7 +19,7 @@ Every issue identified below has been resolved. See `AUDIT_FIX_PLAN.md` for the 
 |----------|----------|-------|--------|
 | 🔴 HIGH | Failing test (real bug) | 1 | ✅ Fixed |
 | 🟠 MEDIUM | Missing optional dependency declarations | 1 | ✅ Fixed |
-| 🟠 MEDIUM | Deprecated modules without sunset plan | 7 | ⚠️ Noted (no code change — needs product decision) |
+| 🟠 MEDIUM | Deprecated modules without sunset plan | 7 | ✅ Fixed |
 | 🟡 LOW | Pydantic v2 warnings (protected namespaces) | 8+ fields | ✅ Fixed |
 | 🟡 LOW | Deprecated API usage (Matplotlib boxplot) | 2 callsites | ✅ Fixed |
 | 🟡 LOW | Stale/incorrect docstring | 1 | ✅ Fixed |
@@ -45,29 +45,15 @@ The test asserted `e["type"] == "Software"` (capital S), but the implementation 
 
 ---
 
-## 🟠 MEDIUM — Deprecated Modules Without Sunset Plan (NOTED)
+## 🟠 MEDIUM — Deprecated Modules Without Sunset Plan (FIXED)
 
-Seven modules are officially deprecated but carry no version milestone for removal.
+The deprecated modules were removed in v0.2.0 and their consumers were migrated to
+canonical import paths.
 
-| Module | Deprecated in favour of | Runtime warning? |
-|--------|--------------------------|-----------------|
-| `insideLLMs/cache.py` | `insideLLMs.caching_unified` | ✅ Yes (module-level) |
-| `insideLLMs/caching.py` | `insideLLMs.caching_unified` | ✅ Yes (module-level) |
-| `insideLLMs/runner.py` | `insideLLMs.runtime.runner` | ✅ Yes (module-level) |
-| `insideLLMs/comparison.py` | internal shim | ✅ Yes |
-| `insideLLMs/statistics.py` | direct stats imports | ✅ Yes |
-| `insideLLMs/trace_config.py` | `TraceRedactConfig` deprecated | docstring only |
-| `insideLLMs/prompt_testing.py` | backward-compat alias present | comment only |
-
-**Outstanding issues (no code change applied — requires product decision)**:
-- No target removal version documented anywhere (e.g. `"Will be removed in v0.3.0"`)
-- `test_cache.py` and `test_caching.py` still import from deprecated modules, generating `DeprecationWarning` in every test run
-- The three-file caching setup (`cache.py`, `caching.py`, `caching_unified.py`) is confusing — the canonical module (`caching_unified.py`) has a worse name than the deprecated wrappers
-
-**Recommendations for future work**:
-1. Add target removal version to all deprecation docstrings/warnings
-2. Migrate `test_cache.py` and `test_caching.py` to import from `caching_unified` (or delete them and fold coverage into `test_caching_unified.py`)
-3. Consider renaming `caching_unified.py` to `caching_core.py` before removing the shims
+Caching now has one implementation, `insideLLMs.caching`. The former
+`insideLLMs.cache` shim was removed and `insideLLMs.caching_unified` was renamed;
+tests, internal consumers, package-root exports, and documentation use the canonical
+module.
 
 ---
 

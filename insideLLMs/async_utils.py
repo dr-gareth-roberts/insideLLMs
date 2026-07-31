@@ -2201,10 +2201,23 @@ async def async_timeout(seconds: float) -> AsyncGenerator[None, None]:
         return
 
     loop = asyncio.get_event_loop()
-    handle = loop.call_later(seconds, task.cancel)
+    timed_out = False
+
+    def _on_timeout() -> None:
+        nonlocal timed_out
+        timed_out = True
+        task.cancel()
+
+    handle = loop.call_later(seconds, _on_timeout)
 
     try:
         yield
+    except asyncio.CancelledError:
+        # Translate our own cancellation into the documented TimeoutError.
+        # External cancellations (timed_out is False) are re-raised unchanged.
+        if timed_out:
+            raise asyncio.TimeoutError(f"async_timeout: operation exceeded {seconds}s") from None
+        raise
     finally:
         handle.cancel()
 

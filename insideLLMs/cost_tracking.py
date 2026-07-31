@@ -1628,7 +1628,7 @@ def quick_cost_estimate(
     num_requests: int,
     avg_input_tokens: int = 500,
     avg_output_tokens: int = 200,
-) -> dict[str, float]:
+) -> dict[str, str | float]:
     """Quick estimate for a batch of requests."""
     single_cost = calculate_cost(model_name, avg_input_tokens, avg_output_tokens)
     total_cost = single_cost * num_requests

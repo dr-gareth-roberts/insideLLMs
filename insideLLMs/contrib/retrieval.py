@@ -297,7 +297,7 @@ class Document:
         """
         if self.id is None:
             # Generate ID from content hash
-            self.id = hashlib.md5(self.content.encode()).hexdigest()[:16]
+            self.id = hashlib.md5(self.content.encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 @dataclass

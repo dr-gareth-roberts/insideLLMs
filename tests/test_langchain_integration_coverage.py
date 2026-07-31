@@ -284,6 +284,45 @@ def test_as_langchain_chat_model_stream_falls_back_to_generate_on_stream_error(m
     assert chunks[0].message.content == "fallback-chat"
 
 
+def test_as_langchain_chat_model_stream_ignores_run_manager_token_errors(monkeypatch):
+    _install_fake_langchain(monkeypatch)
+
+    class _RunManager:
+        def on_llm_new_token(self, token):
+            raise RuntimeError(f"notify failed for {token}")
+
+    class _Model:
+        def stream(self, _prompt, **_kwargs):
+            return ["x"]
+
+        def chat(self, _messages, **_kwargs):
+            return "unused"
+
+    wrapped = langchain_integration.as_langchain_chat_model(_Model())
+    chunks = list(
+        wrapped._stream(
+            [SimpleNamespace(type="human", content="hello")],
+            run_manager=_RunManager(),
+        )
+    )
+    assert [c.message.content for c in chunks] == ["x"]
+
+
+def test_as_langchain_chat_model_stream_without_run_manager(monkeypatch):
+    _install_fake_langchain(monkeypatch)
+
+    class _Model:
+        def stream(self, _prompt, **_kwargs):
+            return ["z"]
+
+        def chat(self, _messages, **_kwargs):
+            return "unused"
+
+    wrapped = langchain_integration.as_langchain_chat_model(_Model())
+    chunks = list(wrapped._stream([SimpleNamespace(type="human", content="hello")]))
+    assert [c.message.content for c in chunks] == ["z"]
+
+
 def test_as_langchain_runnable_supports_str_messages_and_other_inputs(monkeypatch):
     _install_fake_langchain(monkeypatch)
 

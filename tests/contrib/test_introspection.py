@@ -470,3 +470,10 @@ class TestEdgeCases:
         assert len(result) > 0
         # Frequent words should get penalized
         assert result[0].importance_score < 0.5
+
+
+def test_token_importance_capitalized_boost():
+    """Cover capitalized-token score boost in _calculate_importance."""
+    estimator = TokenImportanceEstimator()
+    imp = estimator._calculate_importance("Python", 0, ["Python", "rocks"], set())
+    assert imp.importance_score > 0.5

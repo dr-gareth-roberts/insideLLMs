@@ -170,9 +170,10 @@ True
 
 **Deprecation Timeline:**
 
-This shim is provided for backward compatibility and is not deprecated.
-Both import paths will continue to work indefinitely. However, documentation
-and new examples will use the canonical path at ``insideLLMs.analysis.visualization``.
+This shim is deprecated. Importing it issues a ``DeprecationWarning``.
+Use ``insideLLMs.analysis.visualization`` in new code.
+The compatibility layer will be removed in v2.0.0 (see ``CHANGELOG.md``).
+Both import paths remain supported until then.
 
 See Also
 --------
@@ -191,8 +192,18 @@ References
 """
 
 import sys
+import warnings
 
 from insideLLMs.analysis import visualization as _visualization
+
+# Warn before sys.modules replacement so filters on
+# module="insideLLMs.visualization" (docs/MIGRATION.md) still match.
+warnings.warn(
+    "insideLLMs.visualization is deprecated and will be removed in v2.0.0; "
+    "use insideLLMs.analysis.visualization instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 # Replace this module in sys.modules with the actual visualization module.
 # This makes `import insideLLMs.visualization` equivalent to

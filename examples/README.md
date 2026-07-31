@@ -25,6 +25,7 @@ This directory contains runnable examples for common insideLLMs workflows. Each 
 | Example | Offline? | API keys required | Duration |
 |---------|----------|-------------------|----------|
 | `example_quickstart.py` | Yes | None | ~30 seconds |
+| `diff/README.md` | Yes | None | ~1 minute |
 | `example_cli_golden_path.py` | Yes | None | ~1 minute |
 | `demo_diff_pipeline.py` | Yes | None | ~2 minutes |
 | `example_harness_programmatic.py` | Yes | None | ~30 seconds |
@@ -44,6 +45,19 @@ This directory contains runnable examples for common insideLLMs workflows. Each 
 | `ci/harness.yaml` | Yes | None (DummyModel only) | N/A |
 
 ## Core Examples (Start Here)
+
+### `diff/README.md` - Behavioural Diff Walkthrough
+
+**What it demonstrates:**
+- Creating comparable baseline and candidate runs
+- Reading the human-friendly diff report
+- Gating CI with diff exit codes
+- Saving machine-readable JSON output
+
+**Follow it:** Open [`diff/README.md`](diff/README.md) and run its commands from
+the repository root.
+
+---
 
 ### `example_quickstart.py` - 5-Minute Introduction
 

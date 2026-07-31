@@ -2479,7 +2479,7 @@ class ABTest:
             raise ValueError(f"Cannot select variant for test in {self.status.value} status")
 
         if self.strategy == AllocationStrategy.RANDOM:
-            return random.choice(self.variants)
+            return random.choice(self.variants)  # noqa: S311
 
         elif self.strategy == AllocationStrategy.ROUND_ROBIN:
             variant = self.variants[self._round_robin_index % len(self.variants)]
@@ -2488,7 +2488,7 @@ class ABTest:
 
         elif self.strategy == AllocationStrategy.WEIGHTED:
             weights = [v.weight for v in self.variants]
-            return random.choices(self.variants, weights=weights)[0]
+            return random.choices(self.variants, weights=weights)[0]  # noqa: S311
 
         elif self.strategy == AllocationStrategy.MULTI_ARMED_BANDIT:
             # Thompson Sampling
@@ -2499,7 +2499,7 @@ class ABTest:
             best_idx = samples.index(max(samples))
             return self.variants[best_idx]
 
-        return random.choice(self.variants)
+        return random.choice(self.variants)  # noqa: S311
 
     def record_result(
         self,

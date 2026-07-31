@@ -123,16 +123,7 @@ from insideLLMs.schemas.registry import _require_pydantic
 
 _require_pydantic()
 
-from pydantic import BaseModel, Field  # noqa: E402
-
-try:  # Pydantic v2
-    from pydantic import ConfigDict  # type: ignore[attr-defined]  # ConfigDict only in Pydantic v2
-
-    _PYDANTIC_V2 = True
-except Exception:  # pragma: no cover
-    ConfigDict = None  # type: ignore[assignment]  # None fallback for Pydantic v1
-    _PYDANTIC_V2 = False
-
+from pydantic import BaseModel, ConfigDict, Field  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 """The version string for this schema module."""
@@ -146,8 +137,7 @@ class _BaseSchema(BaseModel):
     silent schema drift and ensures that data conforms exactly to the
     expected structure.
 
-    The class automatically configures Pydantic (v1 or v2) to forbid extra
-    fields, providing consistent behavior across Pydantic versions.
+    Requires pydantic>=2.0.0 (see project dependencies).
 
     Examples:
         Extra fields cause validation errors:
@@ -168,12 +158,7 @@ class _BaseSchema(BaseModel):
         (ProbeResult, ResultRecord, etc.) for your data models.
     """
 
-    if _PYDANTIC_V2:
-        model_config = ConfigDict(extra="forbid", protected_namespaces=())
-    else:  # Pydantic v1
-
-        class Config:
-            extra = "forbid"
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
 
 
 class SchemaProbeResult(_BaseSchema):

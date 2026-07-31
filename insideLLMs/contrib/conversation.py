@@ -2193,12 +2193,9 @@ class TopicTracker:
         if curr_topic in self._topic_history[:-1]:
             return TopicTransition.RETURN_TO_PREVIOUS
 
-        # Simple heuristic for transition type
-        # In practice, this would use more sophisticated NLP
-        if prev_topic.split()[0] == curr_topic.split()[0] if " " in prev_topic else False:
-            return TopicTransition.NATURAL_SHIFT
-
-        return TopicTransition.NATURAL_SHIFT  # Default to natural shift
+        # Simple heuristic for transition type; in practice this would use more
+        # sophisticated NLP. For now every remaining case is a natural shift.
+        return TopicTransition.NATURAL_SHIFT
 
     def analyze(self) -> TopicAnalysis:
         """Generate a comprehensive topic analysis report.

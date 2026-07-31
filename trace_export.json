@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace_1781974131529610000",
+  "start_time": 1781974131.52961,
+  "end_time": 1781974131.529611,
+  "duration_ms": 0.0011920928955078125,
+  "event_count": 0,
+  "events": [],
+  "metadata": {
+    "workflow": "qa_chain"
+  },
+  "final_result": null,
+  "error": null
+}

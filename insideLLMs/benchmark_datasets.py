@@ -887,7 +887,7 @@ class BenchmarkDataset:
 
     def _generate_id(self, text: str) -> str:
         """Generate unique ID from text."""
-        hash_obj = hashlib.md5(text.encode())
+        hash_obj = hashlib.md5(text.encode(), usedforsecurity=False)
         return hash_obj.hexdigest()[:12]
 
 
@@ -1998,10 +1998,8 @@ def create_comprehensive_benchmark_suite(
                 random.seed(seed)
             examples = random.sample(examples, max_examples_per_dataset)
 
-        # Add source info
-        for example in examples:
-            example.source = name
-
+        # Source is recorded per-example via metadata["source_dataset"] below;
+        # avoid mutating the shared dataset objects' .source attribute.
         for example in examples:
             builder.add_example(
                 input_text=example.input_text,

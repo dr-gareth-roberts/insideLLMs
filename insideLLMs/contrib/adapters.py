@@ -3065,7 +3065,7 @@ class AdapterPool:
         elif self.strategy == "random":
             import random
 
-            return random.choice(self.adapters)
+            return random.choice(self.adapters)  # noqa: S311
 
         return self.adapters[0]
 

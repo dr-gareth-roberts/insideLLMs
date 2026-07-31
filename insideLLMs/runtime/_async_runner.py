@@ -176,7 +176,7 @@ class AsyncProbeRunner(_RunnerBase):
         schema_version : Optional[str], default None
             Schema version for validation.
         validation_mode : Optional[str], default None
-            Validation mode: "strict" or "lenient".
+            Validation mode: "strict", "lenient", or the "warn" alias.
         emit_run_artifacts : Optional[bool], default None
             If True, write records.jsonl and manifest.json.
         run_dir : Optional[Union[str, Path]], default None
@@ -207,6 +207,11 @@ class AsyncProbeRunner(_RunnerBase):
             If True, return ExperimentResult.
         **probe_kwargs : Any
             Additional kwargs passed to the probe.
+
+        Raises
+        ------
+        ValueError
+            If ``validation_mode`` is unsupported.
 
         Returns
         -------
@@ -713,14 +718,10 @@ class AsyncProbeRunner(_RunnerBase):
             )
 
             if run_mode == "ultimate":
+                import insideLLMs as _pkg
                 from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
 
-                try:
-                    import insideLLMs as _pkg
-
-                    _ver = getattr(_pkg, "__version__", None)
-                except ImportError:
-                    _ver = None
+                _ver = getattr(_pkg, "__version__", None)
                 run_ultimate_post_artifact(
                     resolved_run_dir,
                     dataset_spec=dataset_spec,

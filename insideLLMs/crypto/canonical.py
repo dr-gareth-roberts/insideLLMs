@@ -43,7 +43,7 @@ def canonical_json_bytes(
     ----------
     obj : Any
         JSON-serializable object to canonicalize.
-    canon_version : str, default "canon_v1"
+    canon_version : str, default "canon_v2"
         Version tag for the canonicalization scheme.
     strict : bool, default False
         If True, raise on non-JSON-serializable values.
@@ -87,9 +87,8 @@ def digest_bytes(data: bytes, algo: str = DEFAULT_ALGO) -> str:
     """
     if algo not in SUPPORTED_ALGOS:
         raise ValueError(f"Unsupported digest algo: {algo!r}. Supported: {SUPPORTED_ALGOS}")
-    if algo == "sha256":
-        return hashlib.sha256(data).hexdigest()
-    raise ValueError(f"Unsupported digest algo: {algo!r}")
+    # SUPPORTED_ALGOS currently only includes sha256; guard above is the extension point.
+    return hashlib.sha256(data).hexdigest()
 
 
 def digest_obj(
@@ -112,7 +111,7 @@ def digest_obj(
         Object to canonicalize and hash.
     algo : str, default "sha256"
         Hash algorithm.
-    canon_version : str, default "canon_v1"
+    canon_version : str, default "canon_v2"
         Canonicalization version.
     purpose : str, default "record"
         Purpose tag (e.g. record, receipt, dataset_example, attestation).

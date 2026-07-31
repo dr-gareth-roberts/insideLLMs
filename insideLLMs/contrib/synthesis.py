@@ -1103,7 +1103,7 @@ class SyntheticDataset:
         """
         # Use a local RNG so sampling reproducibility does not mutate the
         # process-global `random` state that every other consumer shares.
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         sampled = rng.sample(self.items, min(n, len(self.items)))
         return SyntheticDataset(
             items=sampled,
@@ -1470,7 +1470,7 @@ class PromptVariator:
 
         # Use a per-instance RNG rather than seeding the process-global `random`
         # module, which would corrupt randomness for every other consumer.
-        self._rng = random.Random(self.config.seed)
+        self._rng = random.Random(self.config.seed)  # noqa: S311
 
     def generate(
         self,
@@ -2525,7 +2525,7 @@ class DataAugmenter:
             # Generate more if needed
             needed = target_count - len(cat_examples)
             if needed > 0 and cat_examples:
-                seed_example = random.choice(cat_examples)
+                seed_example = random.choice(cat_examples)  # noqa: S311
                 prompt = AUGMENTATION_PROMPTS["balance"].format(
                     text=seed_example,
                     target_category=category,

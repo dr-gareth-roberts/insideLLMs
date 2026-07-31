@@ -72,3 +72,33 @@ def test_detect_drift():
     assert result2["drift_detected"] is True
     assert len(result2["differences"]) == 1
     assert result2["differences"][0]["prompt"] == "B"
+
+    # Prompt only in A (no pair) → skipped
+    result3 = detect_drift(report_a, {"fingerprints": [{"prompt": "A", "response_hash": "hash1"}]})
+    assert result3["drift_detected"] is False
+
+
+def test_fingerprint_edges():
+    class Bare:
+        pass
+
+    ident = collect_declared_identity(Bare())
+    assert "model_id" not in ident
+    assert "provider" not in ident
+
+    class NoGenerate:
+        model_name = "m"
+        provider = "p"
+
+    report = run_fingerprint_suite(NoGenerate())
+    assert all("response_hash" in fp for fp in report["fingerprints"])
+
+    class Boom:
+        model_name = "m"
+        provider = "p"
+
+        def generate(self, prompt, **kwargs):
+            raise RuntimeError("fail")
+
+    report2 = run_fingerprint_suite(Boom())
+    assert all("error" in fp for fp in report2["fingerprints"])

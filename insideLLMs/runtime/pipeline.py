@@ -2600,7 +2600,7 @@ class RetryMiddleware(Middleware):
 
         delay = min(self.initial_delay * (self.exponential_base**attempt), self.max_delay)
         # Add jitter
-        jitter = random.uniform(0, delay * 0.1)
+        jitter = random.uniform(0, delay * 0.1)  # noqa: S311
         return delay + jitter
 
     def process_generate(self, prompt: str, **kwargs: Any) -> str:

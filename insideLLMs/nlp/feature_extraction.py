@@ -117,7 +117,7 @@ def create_bow(
     ensure_sklearn()
     from sklearn.feature_extraction.text import CountVectorizer
 
-    vectorizer = CountVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
+    vectorizer = CountVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")  # noqa: S106
     X = vectorizer.fit_transform(texts)
     return X.toarray().tolist(), vectorizer.get_feature_names_out().tolist()
 
@@ -208,7 +208,7 @@ def create_tfidf(
     ensure_sklearn()
     from sklearn.feature_extraction.text import TfidfVectorizer
 
-    vectorizer = TfidfVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")
+    vectorizer = TfidfVectorizer(max_features=max_features, token_pattern=r"(?u)\b\w+\b")  # noqa: S106
     X = vectorizer.fit_transform(texts)
     return X.toarray().tolist(), vectorizer.get_feature_names_out().tolist()
 

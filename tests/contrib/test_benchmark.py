@@ -367,3 +367,44 @@ class TestBenchmarkIntegration:
             path = Path(tmpdir) / "results.json"
             benchmark.save_results(str(path))
             assert path.exists()
+
+
+def test_to_serializable_and_empty_latency_metrics(monkeypatch):
+    """Cover _to_serializable non-dataclass path and mean_latency=0 branch."""
+    from dataclasses import dataclass
+    from unittest.mock import patch
+
+    from insideLLMs.contrib.benchmark import ModelBenchmark, _to_serializable
+    from insideLLMs.models import DummyModel
+    from insideLLMs.probes import LogicProbe
+
+    assert _to_serializable("plain") == "plain"
+    assert _to_serializable(42) == 42
+
+    @dataclass
+    class Box:
+        x: int
+
+    assert _to_serializable(Box(1))["x"] == 1
+
+    models = [DummyModel()]
+    probe = LogicProbe()
+    # Hit latencies.append path (numeric latency_ms)
+    bench = ModelBenchmark(models, probe, name="latency-edge")
+    with patch(
+        "insideLLMs.contrib.benchmark.run_probe",
+        return_value=[
+            {"status": "success", "latency_ms": 10},
+            {"status": "success", "latency_ms": 20.5},
+        ],
+    ):
+        out = bench.run(["p1", "p2"])
+    assert out["models"][0]["metrics"]["mean_latency_ms"] == 15.25
+
+    # Empty latencies → mean_latency_ms == 0.0
+    with patch(
+        "insideLLMs.contrib.benchmark.run_probe",
+        return_value=[{"status": "success"}, {"status": "error"}],
+    ):
+        out = bench.run(["p1", "p2"])
+    assert out["models"][0]["metrics"]["mean_latency_ms"] == 0.0

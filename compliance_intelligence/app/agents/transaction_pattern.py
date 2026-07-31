@@ -87,7 +87,7 @@ def _simulate_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
         txn.source_entity.country_code == txn.destination_entity.country_code
         and amount_usd > 100_000
     ):
-        if random.random() > 0.6:
+        if random.random() > 0.6:  # noqa: S311
             round_trip = True
             evidence.append(
                 "Potential round-tripping: high-value same-jurisdiction transfer with complex structure"
@@ -147,7 +147,7 @@ def _simulate_pattern(txn, state: PipelineState) -> TransactionPatternFinding:
         unusual_timing=unusual_timing,
         velocity_anomaly=velocity,
         historical_deviation_score=round(deviation, 3),
-        similar_suspicious_cases=random.randint(0, 12)
+        similar_suspicious_cases=random.randint(0, 12)  # noqa: S311
         if any([structuring, rapid, round_trip, layering])
         else 0,
         evidence=evidence,

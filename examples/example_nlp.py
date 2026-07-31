@@ -212,7 +212,7 @@ def main():
     print("\n9. Pattern Matching and Extraction:")
     pattern_text = "Contact us at info@example.com or call +1-234-567-8900. Visit https://example.com. #NLP @nlptools"
     print(f"Emails: {extract_emails(pattern_text)}")
-    print(f"Phone numbers: {extract_phone_numbers(pattern_text)}")
+    print(f"Phone numbers found: {len(extract_phone_numbers(pattern_text))}")
     print(f"URLs: {extract_urls(pattern_text)}")
     print(f"Hashtags: {extract_hashtags(pattern_text)}")
     print(f"Mentions: {extract_mentions(pattern_text)}")

@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema version compatibility checking in diff command
 - Delimiter escape protection in defensive prompt builder
 
+### Deprecated
+- **`results.jsonl` legacy alias** (Stable artifact surface)
+  - Canonical file is `records.jsonl`; harness runs still emit `results.jsonl` as a symlink or copy for backward compatibility.
+  - **Removal planned in v0.3.0.** After removal, use `records.jsonl` only; update diff snapshot and CI scripts that reference the alias.
+  - See `docs/ARTIFACT_CONTRACT.md` (Legacy Artifact Aliases).
+
 ### Changed
 - Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
 - Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
@@ -61,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
 - `insidellms init` now refuses to overwrite an existing config unless
   `--overwrite` is passed.
+- Runtime validation helpers now reject unsupported validation modes instead of
+  silently treating them as strict validation. Supported values are `strict`,
+  `lenient`, and `warn`.
 
 ### Security
 - Added delimiter escape sanitization to prevent injection bypass
@@ -130,6 +139,10 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 - `AsyncProbeRunner` for concurrent execution
 - Registry/plugin system with lazy loading
 - Trace configuration for deterministic CI enforcement
+
+### Changed
+- Consolidated caching under `insideLLMs.caching`; replace imports from the removed
+  `insideLLMs.cache` and `insideLLMs.caching_unified` modules.
 
 ## [0.1.0] - 2024-09-01
 

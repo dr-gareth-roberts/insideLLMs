@@ -199,9 +199,9 @@ class LatencyMetric(Enum):
     LatencyProfiler : Profiler that uses these metrics.
     """
 
-    TIME_TO_FIRST_TOKEN = "time_to_first_token"
+    TIME_TO_FIRST_TOKEN = "time_to_first_token"  # noqa: S105
     TOTAL_RESPONSE_TIME = "total_response_time"
-    INTER_TOKEN_LATENCY = "inter_token_latency"
+    INTER_TOKEN_LATENCY = "inter_token_latency"  # noqa: S105
     PROCESSING_TIME = "processing_time"
     NETWORK_LATENCY = "network_latency"
 

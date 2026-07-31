@@ -125,11 +125,22 @@ def _is_false_positive(line: str, pattern_name: str, *, strict: bool) -> bool:
     return False
 
 
+def _redact(line: str, pattern: str) -> str:
+    """Mask the matched secret so it is never echoed to the console or CI logs."""
+
+    def _mask(match: re.Match[str]) -> str:
+        value = match.group(0)
+        keep = min(4, len(value))
+        return value[:keep] + "***REDACTED***"
+
+    return re.sub(pattern, _mask, line, flags=re.IGNORECASE)
+
+
 def check_file(filepath: Path, *, strict: bool) -> list[tuple[int, str, str]]:
     """Check a file for potential secrets.
 
     Returns:
-        List of (line_number, pattern_name, matched_text) tuples
+        List of (line_number, pattern_name, redacted_line) tuples
     """
     if not filepath.is_file():
         return []
@@ -145,7 +156,7 @@ def check_file(filepath: Path, *, strict: bool) -> list[tuple[int, str, str]]:
             if re.search(pattern, line, re.IGNORECASE):
                 if _is_false_positive(line, name, strict=strict):
                     continue
-                findings.append((line_num, name, line.strip()))
+                findings.append((line_num, name, _redact(line, pattern).strip()))
 
     return findings
 

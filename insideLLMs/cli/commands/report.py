@@ -40,7 +40,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         print_error("No experiments could be reconstructed from records")
         return 1
 
-    run_ids = {record.get("run_id") for record in records if record.get("run_id")}
+    run_ids = {record["run_id"] for record in records if record.get("run_id")}
     run_id = sorted(run_ids)[0] if run_ids else None
     if run_id and len(run_ids) > 1:
         print_warning(f"Multiple run_ids found; using {run_id}")

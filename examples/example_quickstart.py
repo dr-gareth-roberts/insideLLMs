@@ -7,6 +7,9 @@ This example demonstrates the most common usage patterns:
 4. Saving and loading results
 """
 
+import tempfile
+from pathlib import Path
+
 from insideLLMs import (
     BiasProbe,
     DummyModel,
@@ -110,14 +113,15 @@ def saving_and_loading_results():
     }
 
     # Save results
-    output_path = "/tmp/insidellms_results.json"
-    save_results_json(results, output_path)
-    print(f"Results saved to: {output_path}")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_path = str(Path(tmp_dir) / "insidellms_results.json")
+        save_results_json(results, output_path)
+        print(f"Results saved to: {output_path}")
 
-    # Load results
-    loaded = load_results_json(output_path)
-    print(f"Loaded results: {loaded['model']} - {loaded['probe']}")
-    print(f"Accuracy: {loaded['metrics']['accuracy']}")
+        # Load results
+        loaded = load_results_json(output_path)
+        print(f"Loaded results: {loaded['model']} - {loaded['probe']}")
+        print(f"Accuracy: {loaded['metrics']['accuracy']}")
 
 
 def main():

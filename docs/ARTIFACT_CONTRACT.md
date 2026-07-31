@@ -52,7 +52,7 @@ Every run directory is expected to include:
 
 | Alias | Canonical | Status | Deprecation |
 |-------|-----------|--------|-------------|
-| `results.jsonl` | `records.jsonl` | Deprecated | Emitted for backward compatibility (symlink/copy). Prefer `records.jsonl`. Removal planned for 0.3.x; timeline will be announced in changelog. |
+| `results.jsonl` | `records.jsonl` | Deprecated | Emitted for backward compatibility (symlink/copy). Prefer `records.jsonl`. **Removal planned in v0.3.0** — announced in `CHANGELOG.md` [Unreleased] (Deprecated). |
 
 ### Compatibility Policy
 

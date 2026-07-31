@@ -1036,11 +1036,9 @@ class LogicProbe(ScoredProbe[str]):
             if match:
                 return match.group(1).strip()
 
-        # If no pattern matches, return last sentence
+        # If no pattern matches, return last sentence (split always yields ≥1 part)
         sentences = response.split(".")
-        if sentences:
-            return sentences[-1].strip() or (sentences[-2].strip() if len(sentences) > 1 else "")
-        return response[:100]
+        return sentences[-1].strip() or (sentences[-2].strip() if len(sentences) > 1 else "")
 
     def _has_reasoning(self, response: str) -> bool:
         """Check if the response contains step-by-step reasoning indicators.

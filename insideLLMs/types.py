@@ -993,7 +993,7 @@ class ProbeScore:
     mean_latency_ms: Optional[float] = None
     total_tokens: Optional[int] = None
     error_rate: float = 0.0
-    custom_metrics: dict[str, float] = field(default_factory=dict)
+    custom_metrics: dict[str, float | str] = field(default_factory=dict)
 
 
 @dataclass

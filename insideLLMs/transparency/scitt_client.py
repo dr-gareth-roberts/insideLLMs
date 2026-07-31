@@ -62,13 +62,13 @@ def submit_statement(
 
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(
+            req = urllib.request.Request(  # noqa: S310
                 url,
                 data=body,
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=timeout) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:  # noqa: S310
                 response_data = json.loads(response.read().decode("utf-8"))
             return {
                 "status": "success",
