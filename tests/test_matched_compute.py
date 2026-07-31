@@ -367,3 +367,25 @@ async def test_matched_compute_runs_canonical_model_backed_variants() -> None:
     assert report.mean_strategy_score == 1.0
     assert report.baseline_spend.calls == report.strategy_spend.calls == 2
     assert report.output_tokens_matched
+
+
+async def test_matched_compute_allows_observed_calls_under_declared_ceiling() -> None:
+    """A judge skipped on some inputs may observe fewer calls than declared."""
+    example = DatasetExample(id="q1", input_text="answer", expected_output="answer")
+
+    async def baseline(_request):
+        return (_result("answer", calls=4, tokens=1, elapsed=0.1),)
+
+    async def strategy(_request):
+        # Declared ceiling 4 (n=2 + 2 judge calls) but the judge was skipped.
+        return (_result("answer", calls=2, tokens=1, elapsed=0.1),)
+
+    report = await run_matched_compute(
+        [example],
+        baseline=_variant("one-shot", baseline, calls=4),
+        strategy=_variant("strategy", strategy, calls=4),
+        evaluator=ExactMatchEvaluator(),
+        trials=1,
+    )
+    assert report.cases[0].strategy_spend.calls == 2
+    assert not report.calls_matched

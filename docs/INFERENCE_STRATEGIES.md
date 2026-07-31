@@ -93,7 +93,7 @@ set. Weak fitness functions invite reward hacking and benchmark overfitting.
 ## Offline example
 
 ```bash
-/Users/k/.local/share/mise/installs/python/3.12.12/bin/python benchmarks/inference_strategies.py
+python benchmarks/inference_strategies.py
 ```
 
 The example uses deterministic plain callbacks and reports calls, a safe early

@@ -10,6 +10,14 @@ from typing import TypeVar, cast
 T = TypeVar("T")
 
 
+def is_async_callable(callback: object) -> bool:
+    """True for coroutine functions and objects with an ``async def __call__``."""
+
+    return inspect.iscoroutinefunction(callback) or inspect.iscoroutinefunction(
+        getattr(callback, "__call__", None)
+    )
+
+
 async def resolve(value: T | Awaitable[T]) -> T:
     if inspect.isawaitable(value):
         return await cast(Awaitable[T], value)

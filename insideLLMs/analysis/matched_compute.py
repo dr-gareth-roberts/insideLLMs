@@ -13,6 +13,7 @@ from insideLLMs.inference.client import InferenceClient
 from insideLLMs.inference.schemas import InferenceRequest, InferenceResult, Spend
 
 from .evaluation import Evaluator
+from .statistics import calculate_mean, calculate_percentile
 
 __all__ = [
     "ComputeMismatchError",
@@ -48,11 +49,18 @@ class ComputeMismatchError(ValueError):
 class ComputeProfile:
     """Declared generation context used to establish compute equivalence.
 
-    ``executor_id`` identifies the model-backed executor (normally ``id(client)``)
-    so two variants cannot silently run different models. ``generated_calls`` is
-    the number of expensive model calls the variant is allowed to make, including
-    any model-backed judge or verifier calls. ``cost_available`` records whether
-    the provider actually reports cost, so a zero total is never mistaken for a
+    ``executor`` retains the model-backed executor (normally the client) so two
+    variants cannot silently run different models; identity is compared through
+    the executor's underlying ``model`` when it exposes one, so two clients
+    wrapping the same model still match. ``executor_id`` remains as a fallback
+    for callers that construct profiles directly — note that a bare ``id()``
+    can alias after garbage collection, so prefer passing ``executor``.
+    ``generated_calls`` is the per-example CEILING of expensive model calls the
+    variant may make, including any model-backed judge or verifier calls;
+    observing more than declared fails, observing fewer (e.g. a judge skipped
+    when only one candidate survives hard verification) is allowed and visible
+    in the per-case observed calls. ``cost_available`` records whether the
+    provider actually reports cost, so a zero total is never mistaken for a
     genuine zero.
     """
 
@@ -60,6 +68,7 @@ class ComputeProfile:
     generated_calls: int
     max_output_tokens_per_call: int
     cost_available: bool = False
+    executor: object | None = field(default=None, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.generated_calls < 1:
@@ -104,6 +113,7 @@ def one_shot_baseline(
             generated_calls=samples,
             max_output_tokens_per_call=max_output_tokens_per_call,
             cost_available=cost_available,
+            executor=client,
         ),
     )
 
@@ -130,6 +140,7 @@ def single_result_variant(
             generated_calls=generated_calls,
             max_output_tokens_per_call=max_output_tokens_per_call,
             cost_available=cost_available,
+            executor=client,
         ),
     )
 
@@ -243,37 +254,45 @@ class MatchedComputeReport:
     def output_tokens_matched(self) -> bool:
         return self.baseline_compute.max_output_tokens == self.strategy_compute.max_output_tokens
 
+    def _wall_values(self, side: str) -> tuple[float, ...]:
+        return tuple(getattr(case, f"{side}_wall_seconds") for case in self.cases)
+
+    def _throughput(self, side: str) -> float | None:
+        wall = sum(self._wall_values(side))
+        spend: Spend = getattr(self, f"{side}_spend")
+        return spend.calls / wall if wall else None
+
     @property
     def baseline_wall_seconds(self) -> float:
-        return sum(case.baseline_wall_seconds for case in self.cases)
+        return sum(self._wall_values("baseline"))
 
     @property
     def strategy_wall_seconds(self) -> float:
-        return sum(case.strategy_wall_seconds for case in self.cases)
+        return sum(self._wall_values("strategy"))
 
     @property
     def baseline_wall_p50_seconds(self) -> float:
-        return _percentile(tuple(case.baseline_wall_seconds for case in self.cases), 0.5)
+        return _percentile(self._wall_values("baseline"), 0.5)
 
     @property
     def baseline_wall_p95_seconds(self) -> float:
-        return _percentile(tuple(case.baseline_wall_seconds for case in self.cases), 0.95)
+        return _percentile(self._wall_values("baseline"), 0.95)
 
     @property
     def strategy_wall_p50_seconds(self) -> float:
-        return _percentile(tuple(case.strategy_wall_seconds for case in self.cases), 0.5)
+        return _percentile(self._wall_values("strategy"), 0.5)
 
     @property
     def strategy_wall_p95_seconds(self) -> float:
-        return _percentile(tuple(case.strategy_wall_seconds for case in self.cases), 0.95)
+        return _percentile(self._wall_values("strategy"), 0.95)
 
     @property
-    def baseline_throughput_calls_per_second(self) -> float:
-        return self.baseline_spend.calls / self.baseline_wall_seconds
+    def baseline_throughput_calls_per_second(self) -> float | None:
+        return self._throughput("baseline")
 
     @property
-    def strategy_throughput_calls_per_second(self) -> float:
-        return self.strategy_spend.calls / self.strategy_wall_seconds
+    def strategy_throughput_calls_per_second(self) -> float | None:
+        return self._throughput("strategy")
 
     @property
     def baseline_provider_seconds(self) -> float:
@@ -498,8 +517,24 @@ async def run_matched_compute(
     )
 
 
+def _executor_identity(profile: ComputeProfile) -> object | None:
+    if profile.executor is None:
+        return None
+    # Compare through the underlying model when the executor exposes one, so
+    # two clients wrapping the same model count as the same executor.
+    return getattr(profile.executor, "model", profile.executor)
+
+
 def _check_compute_profiles(baseline: ComputeProfile, strategy: ComputeProfile) -> None:
-    if baseline.executor_id != strategy.executor_id:
+    baseline_executor = _executor_identity(baseline)
+    strategy_executor = _executor_identity(strategy)
+    if baseline_executor is not None and strategy_executor is not None:
+        if baseline_executor is not strategy_executor:
+            raise ComputeMismatchError(
+                "variants must share one model executor: "
+                f"{baseline_executor!r} is not {strategy_executor!r}"
+            )
+    elif baseline.executor_id != strategy.executor_id:
         raise ComputeMismatchError(
             "variants must share one model executor: "
             f"{baseline.executor_id} != {strategy.executor_id}"
@@ -525,17 +560,12 @@ def _check_case(
         (baseline, case.baseline_spend.calls),
         (strategy, case.strategy_spend.calls),
     ):
-        if observed != variant.compute.generated_calls:
+        if observed > variant.compute.generated_calls:
             raise ComputeMismatchError(
                 f"variant {variant.name!r} made {observed} model calls for {where} but declared "
-                f"{variant.compute.generated_calls}; declare every model-backed judge or "
-                "verifier call in its ComputeProfile"
+                f"at most {variant.compute.generated_calls}; declare every model-backed judge "
+                "or verifier call in its ComputeProfile"
             )
-    if not case.calls_matched:
-        raise ComputeMismatchError(
-            f"model calls differ for {where}: "
-            f"{case.baseline_spend.calls} != {case.strategy_spend.calls}"
-        )
     if not case.baseline_models or not case.strategy_models:
         raise ComputeMismatchError(f"model provenance is missing for {where}")
     if not case.models_matched:
@@ -606,18 +636,13 @@ def _models(results: Sequence[InferenceResult]) -> tuple[str, ...]:
 
 
 def _mean(values: tuple[float, ...]) -> float:
-    return sum(values) / len(values) if values else 0.0
+    return calculate_mean(list(values)) if values else 0.0
 
 
 def _percentile(values: tuple[float, ...], probability: float) -> float:
-    ordered = tuple(sorted(values))
-    if not ordered:
+    if not values:
         return 0.0
-    position = (len(ordered) - 1) * probability
-    lower = int(position)
-    upper = min(lower + 1, len(ordered) - 1)
-    fraction = position - lower
-    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+    return calculate_percentile(list(values), probability * 100)
 
 
 def _ratio(numerator: int, denominator: int) -> float | None:

@@ -25,7 +25,6 @@ from .retrieval import AssembledEvidence, rerank_and_assemble
 from .schemas import (
     Budget,
     Candidate,
-    Decision,
     InferenceRequest,
     InferenceResult,
     PromptParts,
@@ -45,7 +44,6 @@ __all__ = [
     "AssembledEvidence",
     "CachedPrompt",
     "Candidate",
-    "Decision",
     "DagBudgetExceeded",
     "EscalationStep",
     "EvolutionCandidate",

@@ -76,9 +76,7 @@ class InferenceClient:
         normalized_request = (
             request if isinstance(request, InferenceRequest) else InferenceRequest(prompt=request)
         )
-        normalizer = normalize or (
-            lambda candidate: (candidate.normalized_answer or candidate.output).strip().casefold()
-        )
+        normalizer = normalize or _default_vote_normalizer
         started = perf_counter()
         result = await sample_consistent(
             normalized_request,
@@ -124,6 +122,19 @@ class InferenceClient:
             observed_elapsed=perf_counter() - started,
             strategy="best-of-n",
         )
+
+
+def _default_vote_normalizer(candidate: Candidate) -> str | None:
+    """Group votes with the same normalization every evaluator uses.
+
+    Delegates to :func:`insideLLMs.analysis.evaluation.normalize_text` (lazily,
+    to avoid an import cycle through the analysis package) so vote grouping and
+    evaluation scoring agree on which answers are equal.
+    """
+
+    from insideLLMs.analysis.evaluation import normalize_text
+
+    return normalize_text(candidate.normalized_answer or candidate.output)
 
 
 def _one_shot_result(candidate: Candidate) -> InferenceResult:

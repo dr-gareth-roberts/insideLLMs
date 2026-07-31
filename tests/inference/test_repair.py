@@ -25,7 +25,9 @@ async def test_grounded_repair_retains_original_and_accepts_only_improvement() -
     assert result.provenance["original_output"] == "wrong"
     assert result.provenance["accepted_revision_ids"] == ("repair-1",)
     assert result.provenance["wrong_to_right"] == 1
-    assert result.provenance["right_to_wrong"] == 0
+    # right_to_wrong is structurally impossible under monotonic acceptance and
+    # is no longer reported as if it were a measured metric.
+    assert "right_to_wrong" not in result.provenance
     assert result.spend.calls == 2
 
 

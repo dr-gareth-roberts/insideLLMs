@@ -77,7 +77,10 @@ async def test_inference_client_self_consistency_uses_safe_early_stop() -> None:
 
     result = await client.self_consistency("2 + 2", max_samples=3)
 
-    assert result.answer == "four"
+    # The answer is a real sample output (the winning group's first sample),
+    # never the casefolded normalization key.
+    assert result.answer == "  FOUR "
+    assert result.provenance["winning_key"] == "four"
     assert result.confidence == 1.0
     assert result.stop_reason is StopReason.AGREEMENT
     assert result.spend.calls == 2

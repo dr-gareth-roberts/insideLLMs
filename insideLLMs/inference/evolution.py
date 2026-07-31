@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import hashlib
-import inspect
 import random
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout
+from ._callbacks import invoke_with_timeout, is_async_callable
 
 
 class EvolutionBudgetExceeded(RuntimeError):
@@ -134,8 +133,7 @@ async def evolve_artifacts(
     selector = select_parent or _default_select
     timed_callbacks = (evaluate, mutate, selector, validation_evaluate, final_validation)
     if config.max_seconds is not None and any(
-        callback is not None and not inspect.iscoroutinefunction(callback)
-        for callback in timed_callbacks
+        callback is not None and not is_async_callable(callback) for callback in timed_callbacks
     ):
         raise ValueError("evolution time budgets require asynchronous callbacks")
     seen_texts: set[str] = set()
@@ -156,6 +154,9 @@ async def evolve_artifacts(
         try:
             return await invoke_with_timeout(callback, *args, timeout=remaining)
         except TimeoutError as error:
+            if remaining is None:
+                # No time budget was armed: this is the callback's own error.
+                raise
             raise EvolutionBudgetExceeded("evolution time budget exhausted") from error
 
     async def score(text: str) -> Fitness:

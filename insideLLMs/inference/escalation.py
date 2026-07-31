@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import inspect
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout
+from ._callbacks import invoke_with_timeout, is_async_callable
 from .schemas import (
     Budget,
     Candidate,
@@ -45,12 +44,11 @@ async def escalate_adaptively(
         raise ValueError("escalation budget must permit at least one call")
     if budget.max_seconds is not None and budget.max_seconds <= 0:
         raise ValueError("escalation budget must permit positive time")
-    if budget.max_seconds is not None and any(
-        not inspect.iscoroutinefunction(step.run) for step in steps
-    ):
+    if budget.max_seconds is not None and any(not is_async_callable(step.run) for step in steps):
         raise ValueError("escalation time budgets require asynchronous step callbacks")
     started = time.monotonic()
     candidates: list[Candidate] = []
+    scores: list[float] = []
     trace: list[TraceEvent] = []
     actions: list[str] = []
     total_cost = 0.0
@@ -70,13 +68,22 @@ async def escalate_adaptively(
                 raise TimeoutError("escalation time budget exhausted before first step")
             stop_reason = StopReason.BUDGET
             break
-        candidate = await invoke_with_timeout(
-            step.run,
-            request,
-            candidates[-1] if candidates else None,
-            timeout=remaining,
-        )
+        try:
+            candidate = await invoke_with_timeout(
+                step.run,
+                request,
+                candidates[-1] if candidates else None,
+                timeout=remaining,
+            )
+        except TimeoutError:
+            if remaining is None or not candidates:
+                # Either the callback's own error (no timeout armed) or there is
+                # no completed work to return; mirror the pre-step behavior.
+                raise
+            stop_reason = StopReason.BUDGET
+            break
         score = confidence(candidate)
+        scores.append(score)
         candidates.append(candidate)
         actions.append(step.id)
         total_cost += step.cost
@@ -99,7 +106,9 @@ async def escalate_adaptively(
             break
 
     selected = candidates[-1]
-    selected_confidence = confidence(selected)
+    # Reuse the loop's score: re-invoking a stateful/model-backed confidence
+    # callback could contradict the stop decision and hide an extra call.
+    selected_confidence = scores[-1]
     return InferenceResult(
         answer=selected.output,
         confidence=selected_confidence,

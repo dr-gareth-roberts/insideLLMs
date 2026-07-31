@@ -16,7 +16,15 @@ def run_sync(awaitable: Awaitable[T]) -> T:
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(awaitable)
+        if inspect.iscoroutine(awaitable):
+            return asyncio.run(awaitable)
+
+        # asyncio.run only accepts coroutines; wrap Tasks/Futures/custom
+        # __await__ objects so the declared Awaitable contract holds.
+        async def _await() -> T:
+            return await awaitable
+
+        return asyncio.run(_await())
     if inspect.iscoroutine(awaitable):
         awaitable.close()
     raise RuntimeError("run_sync cannot run inside an event loop; await the async API instead")

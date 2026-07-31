@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import inspect
+import asyncio
 from collections.abc import Callable, Mapping, Set
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout
+from ._callbacks import invoke_with_timeout, is_async_callable
 
 ToolCallback = Callable[[dict[str, object]], object | Awaitable[object]]
 PolicyCallback = Callable[["ToolAction"], bool | Awaitable[bool]]
@@ -56,8 +56,16 @@ async def execute_tool(
         raise ToolPolicyError(f"tool {action.tool!r} is not allowlisted")
     if action.tool not in tools:
         raise ToolPolicyError(f"tool {action.tool!r} is not registered")
-    if limits.timeout_seconds is not None and not inspect.iscoroutinefunction(tools[action.tool]):
-        raise ToolPolicyError("timeouts require an asynchronous tool callback")
+    if limits.timeout_seconds is not None:
+        # A timed-out sync callback keeps running in its worker thread, so every
+        # callback under the timeout must be async, not just the tool itself.
+        for role, callback in (
+            ("tool", tools[action.tool]),
+            ("policy", policy),
+            ("postcondition", postcondition),
+        ):
+            if callback is not None and not is_async_callable(callback):
+                raise ToolPolicyError(f"timeouts require an asynchronous {role} callback")
     if policy is not None and not await invoke_with_timeout(
         policy, action, timeout=limits.timeout_seconds
     ):
@@ -77,6 +85,9 @@ async def execute_tool(
         except (ConnectionError, OSError, TimeoutError):
             if attempts == max_attempts:
                 raise
+            # Deterministic exponential backoff so retries never hammer a
+            # flaky endpoint back-to-back.
+            await asyncio.sleep(min(0.1 * 2 ** (attempts - 1), 2.0))
 
     if limits.max_output_characters is not None and len(str(output)) > limits.max_output_characters:
         raise ToolPolicyError("tool output exceeded max_output_characters")

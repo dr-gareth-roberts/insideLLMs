@@ -13,6 +13,18 @@ from insideLLMs.types import ModelResponse
 
 from .schemas import Candidate, InferenceRequest
 
+# Accounting keys the proposer owns; caller-supplied request metadata must not
+# be able to forge (or crash) spend accounting through them.
+_RESERVED_METADATA_KEYS = frozenset(
+    {"model", "sample_index", "latency_ms", "prompt_tokens", "output_tokens", "total_tokens"}
+)
+
+
+def _stable_json_default(value: object) -> str:
+    # repr() of arbitrary objects embeds memory addresses, which would make
+    # candidate IDs differ across runs; a type-based token stays deterministic.
+    return f"<unserializable:{type(value).__module__}.{type(value).__qualname__}>"
+
 
 class ModelProposer:
     """Expose a canonical model-like object as an inference candidate proposer."""
@@ -88,7 +100,11 @@ class ModelProposer:
     ) -> Candidate:
         model_name = _model_name(self.model, response)
         metadata: dict[str, Any] = {
-            **request.metadata,
+            **{
+                key: value
+                for key, value in request.metadata.items()
+                if key not in _RESERVED_METADATA_KEYS
+            },
             "model": model_name,
             "sample_index": sample_index,
         }
@@ -109,7 +125,7 @@ class ModelProposer:
             [request.prompt, model_name, self.generation_kwargs, sample_index, output],
             sort_keys=True,
             separators=(",", ":"),
-            default=repr,
+            default=_stable_json_default,
         ).encode()
         candidate_id = hashlib.sha256(identity).hexdigest()[:16]
         return Candidate(id=candidate_id, output=output, metadata=metadata)

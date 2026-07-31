@@ -11,15 +11,20 @@ Every variant declares a `ComputeProfile`. A comparison is accepted only when:
 - both variants share one model executor (`executor_id`, normally `id(client)`);
 - both declare the same number of expensive model calls per example;
 - both declare the same per-call output-token cap;
-- every variant's *observed* `Spend.calls` equals its declared budget on every
-  example and trial;
+- every variant's *observed* `Spend.calls` stays within its declared ceiling on
+  every example and trial (a judge legitimately skipped on some inputs may
+  observe fewer calls than declared; observing more always fails);
 - both variants report model provenance, and the provenance matches.
 
-The observed-versus-declared check is what stops a strategy from hiding
-model-backed judge or verifier calls: if a Best-of-N run makes two generations
-plus two judge calls, it must declare four, and the baseline must then also run
-four. A mismatch raises `ComputeMismatchError`; nothing is silently labeled
-matched.
+The observed-versus-declared check stops a strategy from hiding model-backed
+judge calls counted in `Spend.calls`: if a Best-of-N run makes two generations
+plus two judge calls, it must declare at least four. Exceeding the declared
+ceiling raises `ComputeMismatchError`; nothing is silently labeled matched.
+Caveat: verifier callback invocations are NOT part of `Spend.calls` (the
+harness cannot know which verifiers are model-backed), so model-backed
+verifiers must be declared in `generated_calls` by the caller and are surfaced
+for audit via the strategy's `provenance["verifier_invocations"]` count rather
+than enforced by this check.
 
 Realized token counts are recorded rather than forced equal, because stochastic
 outputs differ in length. Fairness comes from the declared cap; the realized

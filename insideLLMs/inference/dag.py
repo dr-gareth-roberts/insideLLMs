@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout
+from ._callbacks import invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, TraceEvent
 
 
@@ -51,7 +50,7 @@ async def execute_dag(
         raise ValueError(f"unknown checkpoint node ids: {sorted(unknown_checkpoint_keys)}")
     if max_concurrency is not None and max_concurrency < 1:
         raise ValueError("max_concurrency must be positive")
-    if budget.max_seconds is not None and not inspect.iscoroutinefunction(execute):
+    if budget.max_seconds is not None and not is_async_callable(execute):
         raise ValueError("DAG time budgets require an asynchronous execute callback")
 
     # Validate the complete plan independently of checkpoint state. A cached
@@ -97,6 +96,9 @@ async def execute_dag(
             try:
                 value = await invoke_with_timeout(execute, node, dependencies, timeout=remaining)
             except TimeoutError as error:
+                if remaining is None:
+                    # No time budget was armed: this is the callback's own error.
+                    raise
                 raise DagBudgetExceeded("DAG time budget exhausted") from error
         return node.id, value
 
@@ -114,7 +116,7 @@ async def execute_dag(
             raise DagBudgetExceeded("DAG call budget would be exceeded")
         if budget.max_nodes is not None and len(trace) + len(ready) > budget.max_nodes:
             raise DagBudgetExceeded("DAG node budget would be exceeded")
-        if inspect.iscoroutinefunction(execute):
+        if is_async_callable(execute):
             tasks = [asyncio.create_task(run_node(by_id[node_id])) for node_id in ready]
             try:
                 completed = await asyncio.gather(*tasks)
@@ -151,6 +153,9 @@ async def execute_dag(
     try:
         answer = await invoke_with_timeout(reduce, dict(observations), timeout=remaining)
     except TimeoutError as error:
+        if remaining is None:
+            # No time budget was armed: this is the reduce callback's own error.
+            raise
         raise DagBudgetExceeded("DAG time budget exhausted during reduction") from error
     return InferenceResult(
         answer=answer,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable, Protocol, TypeVar
@@ -67,10 +68,11 @@ async def rerank_and_assemble(
         source_id = str(result.document.id)
         unique.setdefault(source_id, result.document)
 
-    scored = [
-        (source_id, document, await resolve(rerank(query, document)))
-        for source_id, document in unique.items()
-    ]
+    # Each (query, document) rerank call is independent: gather them so latency
+    # does not grow linearly with corpus size.
+    items = list(unique.items())
+    scores = await asyncio.gather(*(resolve(rerank(query, document)) for _, document in items))
+    scored = [(source_id, document, score) for (source_id, document), score in zip(items, scores)]
     scored.sort(key=lambda item: (-item[2], item[0]))
 
     selected: list[tuple[str, DocumentT, float]] = []

@@ -35,7 +35,6 @@ async def repair_with_evidence(
     selected_verification = verifications[0]
     accepted: list[str] = []
     wrong_to_right = 0
-    right_to_wrong = 0
     repair_calls = 0
 
     for round_index in range(max_rounds):
@@ -57,8 +56,6 @@ async def repair_with_evidence(
         ):
             if not selected_verification.passed and revision_verification.passed:
                 wrong_to_right += 1
-            if selected_verification.passed and not revision_verification.passed:
-                right_to_wrong += 1
             selected = revision
             selected_verification = revision_verification
             accepted.append(revision.id)
@@ -87,6 +84,9 @@ async def repair_with_evidence(
             "original_output": original.output,
             "accepted_revision_ids": tuple(accepted),
             "wrong_to_right": wrong_to_right,
-            "right_to_wrong": right_to_wrong,
+            # right_to_wrong is structurally impossible here: acceptance is
+            # monotonic ((passed, score) must strictly improve) and the loop
+            # stops once the selected answer passes, so no provenance field
+            # pretends to measure it.
         },
     )

@@ -30,6 +30,7 @@ async def sample_consistent(
         raise ValueError("max_samples must be positive")
     candidates: list[Candidate] = []
     counts: Counter[str] = Counter()
+    first_output_by_key: dict[str, str] = {}
     stop_reason = StopReason.EXHAUSTED
 
     for index in range(max_samples):
@@ -38,6 +39,7 @@ async def sample_consistent(
         candidates.append(candidate)
         if key is not None:
             counts[key] += 1
+            first_output_by_key.setdefault(key, candidate.output)
         ordered = counts.most_common(2)
         leader_count = ordered[0][1] if ordered else 0
         runner_count = ordered[1][1] if len(ordered) > 1 else 0
@@ -46,7 +48,14 @@ async def sample_consistent(
             stop_reason = StopReason.AGREEMENT
             break
 
-    answer, votes = counts.most_common(1)[0] if counts else (candidates[0].output, 0)
+    if counts:
+        winning_key, votes = counts.most_common(1)[0]
+        # Return a real sample output, not the normalization key: the default
+        # normalizer casefolds, and the key must never masquerade as an answer.
+        answer = first_output_by_key[winning_key]
+    else:
+        winning_key, votes = None, 0
+        answer = candidates[0].output
     return InferenceResult(
         answer=answer,
         confidence=votes / len(candidates),
@@ -62,5 +71,9 @@ async def sample_consistent(
         ),
         spend=Spend(calls=len(candidates)),
         stop_reason=stop_reason,
-        provenance={"vote_counts": dict(counts), "max_samples": max_samples},
+        provenance={
+            "vote_counts": dict(counts),
+            "winning_key": winning_key,
+            "max_samples": max_samples,
+        },
     )

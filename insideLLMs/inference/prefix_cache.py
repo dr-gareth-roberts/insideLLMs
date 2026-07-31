@@ -37,8 +37,15 @@ def compose_cached_prompt(
     tools: dict[str, Any] | None = None,
     schemas: dict[str, Any] | None = None,
     tenant_id: str,
+    model_id: str = "",
 ) -> CachedPrompt:
-    """Put immutable sections first and scope exact-cache identity by tenant."""
+    """Put immutable sections first and scope exact-cache identity by tenant.
+
+    Pass ``model_id`` (model name plus any generation parameters that change
+    outputs, e.g. ``"gpt-4o-mini:temp=0"``) whenever the cache_key feeds a
+    shared KV/response cache: without it, different models with the same stable
+    prefix collide on one key.
+    """
 
     if not tenant_id.strip() or "\0" in tenant_id:
         raise ValueError("tenant_id must be non-empty and contain no NUL characters")
@@ -48,16 +55,29 @@ def compose_cached_prompt(
     if tools:
         stable_sections.append(f"Tools: {_canonical(tools)}")
     stable_prefix = "\n\n".join(stable_sections)
-    text = "\n\n".join((stable_prefix, *parts.dynamic, *parts.evidence))
+    # Skip an empty stable prefix so the composed text matches
+    # PromptParts.compose() for the same parts (no spurious leading separator).
+    sections = (
+        (stable_prefix, *parts.dynamic, *parts.evidence)
+        if stable_prefix
+        else (
+            *parts.dynamic,
+            *parts.evidence,
+        )
+    )
+    text = "\n\n".join(sections)
     cache_identity = json.dumps(
-        [tenant_id, stable_prefix], separators=(",", ":"), ensure_ascii=False
+        [tenant_id, model_id, stable_prefix], separators=(",", ":"), ensure_ascii=False
     ).encode()
     digest = hashlib.sha256(cache_identity).hexdigest()
+    metadata = {"cache_control": "exact-prefix", "tenant_id": tenant_id}
+    if model_id:
+        metadata["model_id"] = model_id
     return CachedPrompt(
         text=text,
         stable_prefix=stable_prefix,
         cache_key=digest,
-        metadata={"cache_control": "exact-prefix", "tenant_id": tenant_id},
+        metadata=metadata,
     )
 
 

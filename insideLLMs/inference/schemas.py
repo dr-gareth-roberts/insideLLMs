@@ -99,14 +99,6 @@ class StopReason(str, Enum):
 
 
 @dataclass(frozen=True)
-class Decision:
-    """A budget policy's next action or final stop reason."""
-
-    action: str | None = None
-    stop_reason: StopReason | None = None
-
-
-@dataclass(frozen=True)
 class InferenceResult:
     """Common result envelope returned by inference strategies."""
 

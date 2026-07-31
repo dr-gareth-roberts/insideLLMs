@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import math
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -50,14 +52,20 @@ def rank_candidates(
         raise ValueError("candidate ids must be unique")
     scored = tuple((candidate, score(candidate)) for candidate in candidates)
     if tie_break == "candidate_id":
-        return tuple(sorted(scored, key=lambda item: (-item[1], item[0].id)))
+        return tuple(sorted(scored, key=lambda item: (-_orderable(item[1]), item[0].id)))
 
     remaining = list(scored)
     ranked: list[tuple[Candidate, float]] = []
     while remaining:
-        winner_index = max(range(len(remaining)), key=lambda index: remaining[index][1])
+        winner_index = max(range(len(remaining)), key=lambda index: _orderable(remaining[index][1]))
         ranked.append(remaining.pop(winner_index))
     return tuple(ranked)
+
+
+def _orderable(score: float) -> float:
+    """Rank NaN scores last: NaN comparisons would make the sort order arbitrary."""
+
+    return float("-inf") if math.isnan(score) else score
 
 
 async def select_best(
@@ -88,19 +96,27 @@ async def select_best(
     if len(set(candidate_ids)) != len(candidate_ids):
         raise ValueError("candidate ids must be unique")
 
-    all_verifications: list[Verification] = []
-    totals: dict[str, float] = {}
-    passed_ids: set[str] = set()
-    for candidate in candidates:
+    async def _verify(candidate: Candidate) -> tuple[list[Verification], float, bool]:
+        verifications: list[Verification] = []
         total = 0.0
         passed = True
         for spec in ordered_verifiers:
             verification = await resolve(spec.verify(candidate))
-            all_verifications.append(verification)
+            verifications.append(verification)
             total += verification.score
             if spec.hard and not verification.passed:
                 passed = False
                 break
+        return verifications, total, passed
+
+    # Candidates verify concurrently; the hard-verifier short-circuit only
+    # requires ordering within a single candidate's verifier chain.
+    verified = await asyncio.gather(*(_verify(candidate) for candidate in candidates))
+    all_verifications: list[Verification] = []
+    totals: dict[str, float] = {}
+    passed_ids: set[str] = set()
+    for candidate, (verifications, total, passed) in zip(candidates, verified):
+        all_verifications.extend(verifications)
         totals[candidate.id] = total
         if passed:
             passed_ids.add(candidate.id)
@@ -109,9 +125,13 @@ async def select_best(
     if not eligible:
         raise NoVerifiedCandidateError("no candidate passed hard verification")
     if judge is not None and len(eligible) > 1:
-        forward = list(await resolve(judge(request, tuple(item.output for item in eligible))))
         reverse_items = list(reversed(eligible))
-        reverse = list(await resolve(judge(request, tuple(item.output for item in reverse_items))))
+        forward_raw, reverse_raw = await asyncio.gather(
+            resolve(judge(request, tuple(item.output for item in eligible))),
+            resolve(judge(request, tuple(item.output for item in reverse_items))),
+        )
+        forward = list(forward_raw)
+        reverse = list(reverse_raw)
         if len(forward) != len(eligible) or len(reverse) != len(eligible):
             raise ValueError("judge must return exactly one score per candidate")
         reverse_by_id = {item.id: score for item, score in zip(reverse_items, reverse)}
@@ -169,10 +189,13 @@ async def select_best(
         stop_reason=StopReason.VERIFIED if passed_ids else StopReason.EXHAUSTED,
         provenance={
             "pass_at_n": bool(passed_ids),
-            "oracle_best_score": max(totals.values()),
+            # Only eligible candidates: a hard-failed candidate's total is a
+            # partial sum over fewer verifiers and is not on a comparable scale.
+            "oracle_best_score": max(totals[candidate.id] for candidate in eligible),
             "top_k_ids": tuple(item.id for item in top_candidates),
             "top_k_vote_counts": dict(vote_counts),
             "verifier_order": tuple(spec.id for spec in ordered_verifiers),
+            "verifier_invocations": len(all_verifications),
             "judge_order_debiased": judge is not None,
         },
     )
