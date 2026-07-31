@@ -251,6 +251,8 @@ from insideLLMs.models.base import (
     ChatMessage,
     Model,
     ModelProtocol,
+    can_stream,
+    can_stream_async,
 )
 
 if TYPE_CHECKING:
@@ -635,7 +637,7 @@ class Middleware(ABC):
         # Default implementation delegates to next middleware or model
         if self.next_middleware:
             yield from self.next_middleware.process_stream(prompt, **kwargs)
-        elif self.model and hasattr(self.model, "stream"):
+        elif self.model and can_stream(self.model):
             yield from self.model.stream(prompt, **kwargs)
         else:
             raise ModelError("No streaming implementation available")
@@ -823,10 +825,10 @@ class Middleware(ABC):
             async for chunk in self.next_middleware.aprocess_stream(prompt, **kwargs):
                 yield chunk
         elif self.model:
-            if hasattr(self.model, "astream"):
+            if can_stream_async(self.model):
                 async for chunk in self.model.astream(prompt, **kwargs):
                     yield chunk
-            elif hasattr(self.model, "stream"):
+            elif can_stream(self.model):
                 loop = asyncio.get_running_loop()
                 sync_iter = await loop.run_in_executor(
                     None, lambda: list(self.model.stream(prompt, **kwargs))
@@ -1679,7 +1681,7 @@ class TraceMiddleware(PassthroughMiddleware):
             # Delegate to next middleware or model
             if self.next_middleware:
                 stream = self.next_middleware.process_stream(prompt, **clean_kwargs)
-            elif self.model and hasattr(self.model, "stream"):
+            elif self.model and can_stream(self.model):
                 stream = self.model.stream(prompt, **clean_kwargs)
             else:
                 raise ModelError("No streaming implementation available")
@@ -1759,13 +1761,13 @@ class TraceMiddleware(PassthroughMiddleware):
                     chunk_index += 1
                     yield chunk
             elif self.model:
-                if hasattr(self.model, "astream"):
+                if can_stream_async(self.model):
                     async for chunk in self.model.astream(prompt, **clean_kwargs):
                         self._recorder.record_stream_chunk(chunk, chunk_index)
                         accumulated.append(chunk)
                         chunk_index += 1
                         yield chunk
-                elif hasattr(self.model, "stream"):
+                elif can_stream(self.model):
                     loop = asyncio.get_running_loop()
                     sync_chunks = await loop.run_in_executor(
                         None, lambda: list(self.model.stream(prompt, **clean_kwargs))
@@ -2853,7 +2855,7 @@ class ModelPipeline(Model):
         """Stream through the middleware pipeline."""
         if self.middlewares:
             yield from self.middlewares[0].process_stream(prompt, **kwargs)
-        elif hasattr(self.base_model, "stream"):
+        elif can_stream(self.base_model):
             yield from self.base_model.stream(prompt, **kwargs)
         else:
             raise ModelError("Base model does not support streaming")
@@ -2888,10 +2890,10 @@ class ModelPipeline(Model):
         if self.middlewares:
             async for chunk in self.middlewares[0].aprocess_stream(prompt, **kwargs):
                 yield chunk
-        elif hasattr(self.base_model, "astream"):
+        elif can_stream_async(self.base_model):
             async for chunk in self.base_model.astream(prompt, **kwargs):
                 yield chunk
-        elif hasattr(self.base_model, "stream"):
+        elif can_stream(self.base_model):
             loop = asyncio.get_running_loop()
             chunks = await loop.run_in_executor(
                 None, lambda: list(self.base_model.stream(prompt, **kwargs))

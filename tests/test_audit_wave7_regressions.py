@@ -175,7 +175,10 @@ def test_async_timeout_raises_TimeoutError_not_CancelledError():
         try:
             async with async_timeout(0.05):
                 await asyncio.sleep(5)
-        except asyncio.TimeoutError:
+        # The builtin, not asyncio.TimeoutError: before Python 3.11 those are
+        # distinct classes, and async_timeout normalizes to the builtin so every
+        # layer (including RetryConfig.retryable_exceptions) sees one type.
+        except TimeoutError:
             return "TimeoutError"
         except asyncio.CancelledError:
             return "CancelledError"

@@ -242,3 +242,72 @@ def test_nan_confidence_never_selected_over_finite_scores() -> None:
     assert not math.isnan(ranked[0][1])
     # NaN maps to -inf, so it must land last rather than anywhere in the middle.
     assert [candidate.id for candidate, _ in ranked] == ["c1", "c2", "c0"]
+
+
+def test_streaming_dispatch_idioms_agree_on_simulated_streaming() -> None:
+    """can_stream() and supports_streaming answer distinct, non-contradictory questions."""
+    from insideLLMs.models.base import can_stream, can_stream_async
+
+    class SimulatedStreamModel:
+        """Stands in for HuggingFaceModel: stream() works but is not native."""
+
+        _supports_streaming = False
+
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "whole response"
+
+        def stream(self, prompt: str, **kwargs: object):
+            yield self.generate(prompt)
+
+    model = SimulatedStreamModel()
+    # The capability flag stays honest: no native, incremental streaming...
+    assert model._supports_streaming is False
+    # ...while the predicate that actually gates a stream() call says yes, so a
+    # capability-gated caller and a presence-gated caller no longer contradict.
+    assert can_stream(model) is True
+    assert can_stream_async(model) is False
+    assert list(model.stream("q")) == ["whole response"]
+
+
+def test_huggingface_reports_simulated_streaming_consistently() -> None:
+    pytest.importorskip("transformers")
+    from insideLLMs.models.base import can_stream
+    from insideLLMs.models.huggingface import HuggingFaceModel
+
+    assert HuggingFaceModel._supports_streaming is False
+    # stream() is still present and callable, so the pipeline path keeps working.
+    assert can_stream(HuggingFaceModel)
+
+
+async def test_shared_timeout_shim_raises_builtin_timeout_error() -> None:
+    """The pre-3.11 asyncio.TimeoutError split is normalized in the shared layer."""
+    from insideLLMs.async_utils import wait_for
+
+    async def slow() -> None:
+        await asyncio.sleep(10)
+
+    with pytest.raises(TimeoutError):
+        await wait_for(slow(), 0.01)
+
+    # The normalized type is what RetryConfig.retryable_exceptions lists.
+    from insideLLMs.retry import RetryConfig
+
+    assert TimeoutError in RetryConfig.retryable_exceptions
+
+
+async def test_async_timeout_context_manager_raises_builtin_timeout_error() -> None:
+    from insideLLMs.async_utils import async_timeout
+
+    with pytest.raises(TimeoutError):
+        async with async_timeout(0.01):
+            await asyncio.sleep(10)
+
+
+async def test_inference_timeout_delegates_to_shared_shim() -> None:
+    from insideLLMs.inference._callbacks import invoke_with_timeout
+
+    async def slow(_arg: object) -> None:
+        await asyncio.sleep(10)
+
+    with pytest.raises(TimeoutError):
+        await invoke_with_timeout(slow, "x", timeout=0.01)
