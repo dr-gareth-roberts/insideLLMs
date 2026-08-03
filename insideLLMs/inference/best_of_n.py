@@ -201,6 +201,23 @@ async def select_best(
                 )
                 for candidate in candidates
             ),
+            # The judge's calls are charged to Spend, so the trace has to show
+            # them too or the same sum-of-calls consumer under-counts by exactly
+            # judge_model_calls. Emitted only when the judge actually ran: with
+            # one eligible candidate it is never invoked and costs nothing.
+            *(
+                (
+                    TraceEvent(
+                        id="best-of-n-judge",
+                        kind="judge-order-debias",
+                        parent_ids=tuple(f"best-of-n-{item.id}" for item in eligible),
+                        calls=judge_model_calls,
+                        metadata={"eligible": len(eligible), "orders": 2},
+                    ),
+                )
+                if judge_ran
+                else ()
+            ),
         ),
         # Count the candidates the generator actually produced, not the n that
         # was requested: a generator that over-samples (or internally retries)

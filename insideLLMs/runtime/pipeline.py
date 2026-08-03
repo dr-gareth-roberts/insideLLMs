@@ -560,7 +560,7 @@ class Middleware(ABC):
             ...         response = self.next_middleware.process_chat(
             ...             messages, **kwargs
             ...         )
-            ...     elif self.model and hasattr(self.model, "chat"):
+            ...     elif self.model and can_chat(self.model):
             ...         response = self.model.chat(messages, **kwargs)
             ...     else:
             ...         raise ModelError("No chat implementation available")
@@ -571,7 +571,10 @@ class Middleware(ABC):
         # Default implementation delegates to next middleware or model
         if self.next_middleware:
             return self.next_middleware.process_chat(messages, **kwargs)
-        if self.model and hasattr(self.model, "chat"):
+        # can_chat, not hasattr: Model.chat is a concrete raising stub, so
+        # presence-gating made the ModelError below unreachable and surfaced a
+        # bare NotImplementedError that callers catching ModelError never see.
+        if self.model and can_chat(self.model):
             return self.model.chat(messages, **kwargs)
         raise ModelError("No chat implementation available")
 
@@ -627,7 +630,7 @@ class Middleware(ABC):
             ...
             ...     if self.next_middleware:
             ...         stream = self.next_middleware.process_stream(prompt, **kwargs)
-            ...     elif self.model and hasattr(self.model, "stream"):
+            ...     elif self.model and can_stream(self.model):
             ...         stream = self.model.stream(prompt, **kwargs)
             ...     else:
             ...         raise ModelError("No streaming implementation")
@@ -1541,7 +1544,7 @@ class TraceMiddleware(PassthroughMiddleware):
             # Delegate
             if self.next_middleware:
                 response = self.next_middleware.process_chat(messages, **clean_kwargs)
-            elif self.model and hasattr(self.model, "chat"):
+            elif self.model and can_chat(self.model):
                 response = self.model.chat(messages, **clean_kwargs)
             else:
                 raise ModelError("No chat implementation available")
@@ -2851,7 +2854,7 @@ class ModelPipeline(Model):
         """Chat through the middleware pipeline."""
         if self.middlewares:
             return self.middlewares[0].process_chat(messages, **kwargs)
-        if hasattr(self.base_model, "chat"):
+        if can_chat(self.base_model):
             return self.base_model.chat(messages, **kwargs)
         raise ModelError("Base model does not support chat")
 

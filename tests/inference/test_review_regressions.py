@@ -941,3 +941,284 @@ async def test_pipeline_sampling_stays_concurrent_and_keeps_metadata() -> None:
     assert elapsed < 0.2, f"sampling was sequential: {elapsed:.2f}s"
     # And the metadata that motivated the preference is still recorded.
     assert results[0].spend.elapsed_seconds > 0
+
+
+def test_sync_chat_dispatch_reports_missing_capability_as_model_error() -> None:
+    """The sync chat paths share the stub-blindness fixed on their async peers.
+
+    ``Model.chat`` is a concrete raising stub (only ``generate`` is abstract), so
+    ``hasattr(model, "chat")`` was True for every model and the
+    ``ModelError("No chat implementation available")`` guard in
+    ``Middleware.process_chat``, ``TraceMiddleware.process_chat`` and
+    ``ModelPipeline.chat`` was unreachable. Callers wrapping the pipeline in
+    ``except ModelError`` received a bare NotImplementedError instead.
+    """
+    from insideLLMs.exceptions import ModelError
+    from insideLLMs.models.base import Model, ModelInfo, can_chat
+    from insideLLMs.runtime.pipeline import Middleware, ModelPipeline, TraceMiddleware
+
+    class GenerateOnly(Model):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return f"gen:{prompt}"
+
+        def info(self) -> ModelInfo:
+            return ModelInfo(name=self.name, provider="test")
+
+    class Passthrough(Middleware):
+        def process_generate(self, prompt: str, **kwargs: object) -> str:
+            return self.model.generate(prompt, **kwargs)
+
+    model = GenerateOnly(name="gen-only")
+    # The stub is present but is not an implementation.
+    assert hasattr(model, "chat") is True
+    assert can_chat(model) is False
+
+    messages = [{"role": "user", "content": "hi"}]
+
+    for middleware in (Passthrough(), TraceMiddleware()):
+        middleware.model = model
+        with pytest.raises(ModelError):
+            middleware.process_chat(messages)
+
+    with pytest.raises(ModelError):
+        ModelPipeline(model).chat(messages)
+
+
+def test_sync_chat_dispatch_still_reaches_a_real_chat() -> None:
+    """The capability gate must not block models that genuinely implement chat."""
+    from insideLLMs.models.base import Model, ModelInfo
+    from insideLLMs.runtime.pipeline import Middleware, ModelPipeline, TraceMiddleware
+
+    class RealChat(Model):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return f"gen:{prompt}"
+
+        def chat(self, messages: list, **kwargs: object) -> str:
+            return "real-chat"
+
+        def info(self) -> ModelInfo:
+            return ModelInfo(name=self.name, provider="test")
+
+    model = RealChat(name="real-chat")
+    messages = [{"role": "user", "content": "hi"}]
+
+    for middleware in (
+        type("P", (Middleware,), {"process_generate": lambda self, p, **k: p})(),
+        TraceMiddleware(),
+    ):
+        middleware.model = model
+        assert middleware.process_chat(messages) == "real-chat"
+
+    assert ModelPipeline(model).chat(messages) == "real-chat"
+
+
+async def test_escalation_time_budget_bounds_the_confidence_callback() -> None:
+    """``max_seconds`` must cover scoring, not just the step callbacks.
+
+    The earlier fix routed ``confidence`` through ``invoke`` so an async scorer
+    was awaited, but left it outside the deadline. ``confidence`` is documented
+    as usually cheap yet explicitly allowed to be model-backed, so one hanging
+    scorer could overrun the budget without bound (measured: 0.40s against a
+    0.05s budget).
+    """
+    import time
+
+    from insideLLMs.inference.escalation import EscalationStep, escalate_adaptively
+    from insideLLMs.inference.schemas import Budget, Candidate, InferenceRequest, StopReason
+
+    async def step(request: object, previous: object) -> Candidate:
+        return Candidate(id="c0", output="answer")
+
+    async def hanging_confidence(candidate: Candidate) -> float:
+        await asyncio.sleep(1.0)
+        return 0.1
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        await escalate_adaptively(
+            InferenceRequest(prompt="q"),
+            steps=[EscalationStep(id="s0", run=step, minimum_confidence=0.9)],
+            confidence=hanging_confidence,
+            budget=Budget(max_seconds=0.05),
+        )
+    elapsed = time.monotonic() - started
+    assert elapsed < 0.5, f"confidence ran outside the budget: {elapsed:.2f}s"
+
+    # A scorer raising its own TimeoutError well inside the budget is a real
+    # fault, not exhaustion, so it must propagate rather than become BUDGET.
+    async def scorer_own_timeout(candidate: Candidate) -> float:
+        raise TimeoutError("scoring provider unreachable")
+
+    with pytest.raises(TimeoutError, match="scoring provider unreachable"):
+        await escalate_adaptively(
+            InferenceRequest(prompt="q"),
+            steps=[EscalationStep(id="s0", run=step, minimum_confidence=0.9)],
+            confidence=scorer_own_timeout,
+            budget=Budget(max_seconds=30.0),
+        )
+
+    # A synchronous confidence stays supported under a time budget: ``invoke``
+    # runs it off the loop, so the deadline applies without banning the form.
+    def sync_confidence(candidate: Candidate) -> float:
+        return 0.95
+
+    result = await escalate_adaptively(
+        InferenceRequest(prompt="q"),
+        steps=[EscalationStep(id="s0", run=step, minimum_confidence=0.9)],
+        confidence=sync_confidence,
+        budget=Budget(max_seconds=30.0),
+    )
+    assert result.stop_reason is StopReason.VERIFIED
+    assert result.confidence == 0.95
+
+
+async def test_escalation_keeps_scored_work_when_a_later_scorer_times_out() -> None:
+    """Exhaustion during scoring returns the already-scored answer, not an error."""
+    from insideLLMs.inference.escalation import EscalationStep, escalate_adaptively
+    from insideLLMs.inference.schemas import Budget, Candidate, InferenceRequest, StopReason
+
+    async def cheap(request: object, previous: object) -> Candidate:
+        return Candidate(id="cheap", output="cheap-answer")
+
+    async def expensive(request: object, previous: object) -> Candidate:
+        return Candidate(id="expensive", output="expensive-answer")
+
+    calls = {"n": 0}
+
+    async def confidence(candidate: Candidate) -> float:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return 0.1  # not confident: keep escalating
+        await asyncio.sleep(1.0)  # second scorer hangs past the deadline
+        return 0.99
+
+    result = await escalate_adaptively(
+        InferenceRequest(prompt="q"),
+        steps=[
+            EscalationStep(id="cheap", run=cheap, minimum_confidence=0.9),
+            EscalationStep(id="expensive", run=expensive, minimum_confidence=0.9),
+        ],
+        confidence=confidence,
+        budget=Budget(max_seconds=0.3),
+    )
+    # The unscored expensive candidate is dropped rather than admitted with a
+    # fabricated score; the scored cheap answer is returned with BUDGET.
+    assert result.answer == "cheap-answer"
+    assert result.confidence == 0.1
+    assert result.stop_reason is StopReason.BUDGET
+    assert len(result.candidates) == 1
+
+
+async def test_tool_transport_timeout_is_retried_even_when_the_loop_stalls() -> None:
+    """Timeout provenance must be recorded at the raise site, not inferred.
+
+    ``execute_tool`` decided whether a ``TimeoutError`` was its own deadline or
+    the tool's transport timeout by measuring elapsed time in the handler. If
+    the tool stalls the event loop — a blocking segment, a GC pause — our
+    deadline callback cannot fire, yet the elapsed measurement reads at-or-over
+    the limit, so a genuine retryable transport fault was denied its retry.
+    """
+    import time
+
+    from insideLLMs.inference.tools import ToolAction, ToolLimits, execute_tool
+
+    calls = {"n": 0}
+
+    async def flaky(arguments: dict) -> str:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            time.sleep(0.06)  # blocks the loop past the 0.05s limit
+            raise TimeoutError("upstream read timeout")
+        return "ok"
+
+    observation = await execute_tool(
+        ToolAction(tool="t", arguments={}, idempotent=True),
+        tools={"t": flaky},
+        allowed_tools={"t"},
+        limits=ToolLimits(timeout_seconds=0.05, max_transport_attempts=3),
+    )
+    assert observation.output == "ok"
+    assert observation.transport_attempts == 2
+
+
+async def test_tool_own_deadline_is_still_never_retried() -> None:
+    """The retry ban on our own deadline survives the provenance change.
+
+    Retrying it would silently multiply the timeout the caller declared, so the
+    wall clock must stay at one deadline rather than ``max_transport_attempts``.
+    """
+    import time
+
+    from insideLLMs.inference.tools import ToolAction, ToolLimits, execute_tool
+
+    calls = {"n": 0}
+
+    async def hangs(arguments: dict) -> str:
+        calls["n"] += 1
+        await asyncio.sleep(5)
+        return "too late"
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        await execute_tool(
+            ToolAction(tool="t", arguments={}, idempotent=True),
+            tools={"t": hangs},
+            allowed_tools={"t"},
+            limits=ToolLimits(timeout_seconds=0.05, max_transport_attempts=3),
+        )
+    elapsed = time.monotonic() - started
+    assert calls["n"] == 1
+    assert elapsed < 0.3, f"the declared timeout was multiplied by retries: {elapsed:.2f}s"
+
+
+async def test_judge_calls_appear_in_the_trace_as_well_as_spend() -> None:
+    """``Spend.calls`` and ``sum(TraceEvent.calls)`` must agree in every case.
+
+    ``judge_model_calls`` was added to ``Spend.calls`` without a matching trace
+    event, so a consumer summing ``TraceEvent.calls`` under-counted model calls
+    by exactly that amount whenever a model-backed judge ran (measured: spend 5
+    against a trace total of 3).
+    """
+    from insideLLMs.inference.best_of_n import VerifierSpec, select_best
+    from insideLLMs.inference.schemas import Candidate, InferenceRequest, Verification
+
+    async def verify(candidate: Candidate) -> Verification:
+        return Verification(verifier_id="v", score=1.0, passed=True)
+
+    async def judge(request: InferenceRequest, outputs: tuple) -> tuple:
+        return tuple(float(len(output)) for output in outputs)
+
+    async def run(n: int, judge_callback: object, judge_model_calls: int) -> object:
+        async def generate(request: InferenceRequest, count: int) -> tuple:
+            return tuple(Candidate(id=f"c{i}", output=f"answer-{i}") for i in range(count))
+
+        return await select_best(
+            InferenceRequest(prompt="q"),
+            generate=generate,
+            n=n,
+            verifiers=[VerifierSpec(id="v", verify=verify, hard=False)],
+            judge=judge_callback,
+            judge_model_calls=judge_model_calls,
+        )
+
+    # A model-backed judge over several candidates: the case that diverged.
+    result = await run(3, judge, 2)
+    assert result.provenance["judge_order_debiased"] is True
+    assert sum(event.calls for event in result.trace) == result.spend.calls == 5
+    judge_events = [event for event in result.trace if event.kind == "judge-order-debias"]
+    assert len(judge_events) == 1
+    assert judge_events[0].calls == 2
+
+    # A local judge charges nothing, so no phantom calls may appear either.
+    local = await run(3, judge, 0)
+    assert sum(event.calls for event in local.trace) == local.spend.calls == 3
+
+    # With one eligible candidate the judge is never invoked: no event, no cost.
+    single = await run(1, judge, 2)
+    assert single.provenance["judge_order_debiased"] is False
+    assert not [event for event in single.trace if event.kind == "judge-order-debias"]
+    assert sum(event.calls for event in single.trace) == single.spend.calls == 1
+
+    # And no judge at all stays consistent.
+    none = await run(3, None, 2)
+    assert sum(event.calls for event in none.trace) == none.spend.calls == 3

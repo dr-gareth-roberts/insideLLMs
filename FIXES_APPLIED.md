@@ -13,8 +13,12 @@ source change, confirm the new regression test fails, restore, confirm it
 passes. Where that was impractical the reason is stated inline. Baseline for
 comparison is merged `main` at `1eac507`: 7106 tests passing, mypy clean.
 
-**Final state:** 7169 passed, 0 failed, 331 skipped · `ruff check` clean ·
+**Final state:** 7177 passed, 0 failed, 331 skipped · `ruff check` clean ·
 `ruff format` clean · `mypy` clean (235 files).
+
+Fixes 18–22 were found in review *of this branch* — including one regression this
+branch introduced (18) and three places where an earlier fix here was incomplete
+(19, 20, 22). They are recorded in the same detail as the rest.
 
 ---
 
@@ -293,6 +297,90 @@ lifetime. **Tests:** `tests/test_matched_compute.py` (+1).
 
 ---
 
+## 18. This PR cost the main production path its concurrency
+
+`ModelPipeline` inherits a synchronous `Model.generate_with_metadata` and defined
+a metadata-less `agenerate`, so fix 3's metadata-preferring dispatch selected the
+sync method and `ModelProposer._has_async_generation()` became `False`. Every
+client from `InferenceClient.from_model_config` then sampled **sequentially**:
+five 50 ms samples took 0.25 s instead of 0.05 s. Fixing the zeroed-`Spend`
+defect had quietly traded away concurrency on the main path.
+
+Added `ModelPipeline.agenerate_with_metadata` so one method carries both
+properties rather than forcing a choice. *Verified:* selection returns
+`agenerate_with_metadata`, `_has_async_generation()` is `True`, the same five
+samples complete in 0.05 s, and `spend.elapsed_seconds > 0`.
+
+## 19. Sync chat dispatch had the same stub-blindness as its async peer
+
+Fix 2 converted the `achat` paths but left their synchronous counterparts on
+`hasattr(model, "chat")`. Only `generate` is abstract on `Model`; `chat` is a
+concrete raising stub, so the check was **always** `True` and the
+`ModelError("No chat implementation available")` guard in
+`Middleware.process_chat`, `TraceMiddleware.process_chat` and
+`ModelPipeline.chat` was dead code. A caller wrapping the pipeline in
+`except ModelError` received a bare `NotImplementedError` it never caught.
+
+All three now gate on `can_chat`; the two middleware docstring templates that
+taught the `hasattr` pattern were corrected too. *Verified causally:* reverting
+the source makes the new test fail with the raising stub.
+
+## 20. `max_seconds` did not bound the confidence callback
+
+Fix 10 routed escalation's `confidence` through `invoke` so an async scorer was
+awaited, but left it *outside* the deadline. `confidence` is documented as
+usually cheap yet is explicitly allowed to be model-backed — the code after the
+loop reasons about exactly that case — so one hanging scorer could overrun the
+budget without bound. **Measured: 0.40 s against a 0.05 s budget.**
+
+Scoring now runs under the recomputed remaining budget. Three properties held
+deliberately:
+
+- **Sync callbacks stay supported.** `invoke_with_timeout` runs them via
+  `asyncio.to_thread`, so the deadline fires without banning the form. An earlier
+  attempt at this fix *rejected* sync confidence under a budget; that broke
+  supported callers and was reverted, and is not reintroduced here.
+- **A scorer's own `TimeoutError` still propagates** rather than being relabelled
+  `StopReason.BUDGET` — the same `budget_elapsed` discrimination as fix 4.
+- **An unscored candidate is dropped, not admitted with a fabricated score.**
+  Exhaustion during scoring returns the previously scored answer with
+  `StopReason.BUDGET`; it does not invent a confidence.
+
+*Verified causally,* including the "earlier work survives" path (returns
+`cheap-answer` at confidence 0.1, one candidate, `BUDGET`).
+
+## 21. Tool timeout provenance was inferred, not recorded
+
+`execute_tool` decided whether a `TimeoutError` was its own per-attempt deadline
+or the tool's transport timeout by measuring elapsed time *in the handler*. That
+is not exact: if the tool stalls the event loop — a blocking segment, a GC pause
+— our deadline callback cannot fire, yet the elapsed measurement reads at-or-over
+the limit, so a genuine retryable fault is denied its retry. Reproduced
+deterministically: a tool that blocks 0.06 s against a 0.05 s limit and then
+raises `TimeoutError("upstream read timeout")` was **not retried**, despite the
+message proving it was the tool's own error.
+
+The provenance is now recorded at the raise site by a per-attempt flag, so no
+timing inference remains. *Verified:* the transport timeout is retried
+(`attempts=2`), our own deadline is still never retried and the declared 0.05 s
+timeout is not multiplied by `max_transport_attempts`, and `ConnectionError`
+retry is unchanged.
+
+## 22. Judge calls were charged to `Spend` but missing from the trace
+
+Fix 7 added `judge_model_calls` to `Spend.calls` and left a comment stating that
+"a consumer summing `TraceEvent.calls` must not derive a different total from
+spend" — while emitting no judge event, so that consumer under-counted by exactly
+`judge_model_calls`. **Measured: `spend.calls=5` against a trace total of 3.**
+
+Adds a `judge-order-debias` event, parented on the eligible candidates'
+verification events and emitted only when the judge actually ran. *Verified*
+across all four cases: model judge (5/5), local judge with `judge_model_calls=0`
+(3/3), single eligible candidate so the judge is never invoked (1/1), and no
+judge (3/3).
+
+---
+
 ## Deliberately not changed
 
 Recorded rather than silently skipped.
@@ -307,6 +395,7 @@ Recorded rather than silently skipped.
 | `client.from_model_config` imports a private runtime helper | **Kept, documented.** Avoids duplicating registry/middleware assembly. The coupling is fenced by `tests/inference/test_architecture.py`, which permits a runtime import in that module and nowhere else. Comment says to promote the loader before adding a second consumer. |
 | Evolution re-sorts the parent pool per attempt (efficiency) | **Not addressed.** The correctness fix (deduplication) landed; the O(P² log P) re-sort is negligible for realistic population sizes and restructuring the loop risks correctness for little gain. |
 | `rank_candidates(tie_break="input_order")` now has no caller | **Kept.** Public, exported and tested API shipped in #106; removing it is a breaking change with no safety benefit. |
+| Remaining `isinstance(model, AsyncModelProtocol)` sites in `pipeline.py` | **Kept — verified not a defect.** Flagged as sharing fix 2's stub-blindness; it does not. `AsyncModel.agenerate` is `@abstractmethod` (`AsyncModel.__abstractmethods__ == {'agenerate', 'generate'}`), so no concrete subclass can carry the stub, and plain `Model` has no `agenerate` at all — checked directly, `isinstance(DummyModel(), AsyncModelProtocol)` is `False` and `ModelWrapper` delegation does not fabricate one. The executor fallback is reachable, so switching the seven sites would be churn with no behavioural change. `Model.chat` *is* a concrete stub, which is why fix 19 is real and this is not. |
 
 ---
 
@@ -318,18 +407,18 @@ Recorded rather than silently skipped.
 |---|---|
 | `insideLLMs/policy/engine.py` | SCITT receipt asymmetries fail closed |
 | `insideLLMs/models/base.py` | `can_chat`, `can_chat_async`, `can_generate_async` |
-| `insideLLMs/runtime/pipeline.py` | chat/agenerate dispatch via capability predicates |
+| `insideLLMs/runtime/pipeline.py` | sync + async chat and `agenerate` dispatch via capability predicates; `ModelPipeline.agenerate_with_metadata` |
 | `insideLLMs/inference/adapters.py` | metadata-preferring dispatch; awaitable resolution; shared `resolve` |
 | `insideLLMs/inference/_callbacks.py` | `budget_elapsed`, `gather_cancelling` |
 | `insideLLMs/inference/dag.py` | deadline discrimination; shared token estimator; dead cycle check → assertion |
 | `insideLLMs/inference/search.py` | deadline discrimination; budget `break`; shared token estimator |
 | `insideLLMs/inference/evolution.py` | deadline discrimination; elite deduplication |
-| `insideLLMs/inference/escalation.py` | deadline discrimination; async confidence via `invoke` |
+| `insideLLMs/inference/escalation.py` | deadline discrimination; async confidence via `invoke`; confidence bounded by the remaining budget |
 | `insideLLMs/inference/prefix_cache.py` | `model_id` required and validated |
 | `insideLLMs/inference/client.py` | vote normalizer; `_usage` helper; documented runtime coupling |
-| `insideLLMs/inference/best_of_n.py` | actual call counting; `judge_model_calls`; `judge_ran` provenance; cancelling gather |
+| `insideLLMs/inference/best_of_n.py` | actual call counting; `judge_model_calls`; `judge_ran` provenance; cancelling gather; judge trace event |
 | `insideLLMs/inference/retrieval.py` | cancelling gather; shared token estimator |
-| `insideLLMs/inference/tools.py` | narrowed retry scope; `ToolOutputTooLarge`; `_backoff_seconds` |
+| `insideLLMs/inference/tools.py` | narrowed retry scope; `ToolOutputTooLarge`; `_backoff_seconds`; timeout provenance recorded at the raise site |
 | `insideLLMs/inference/sync.py` | documented divergence from `run_async` |
 | `insideLLMs/inference/__init__.py` | export `ToolOutputTooLarge` |
 | `insideLLMs/analysis/matched_compute.py` | wrapper-aware identity; executor dropped from reports |
@@ -338,7 +427,7 @@ Recorded rather than silently skipped.
 | `CHANGELOG.md` | Fixed + Changed (breaking); corrected the #106 timeout claim |
 | `FIXES_APPLIED.md` | This document |
 
-**Tests** — `tests/test_policy_engine.py` (+5), `tests/inference/test_review_regressions.py` (+19),
+**Tests** — `tests/test_policy_engine.py` (+5), `tests/inference/test_review_regressions.py` (+27),
 `tests/inference/test_prefix_cache.py` (+1), `tests/test_matched_compute.py` (+1),
 `tests/contrib/test_ensemble.py` (+1 new, 1 rewritten).
 
@@ -352,3 +441,5 @@ Recorded rather than silently skipped.
 | `95dbcfb` | Fix elite double-weighting, async confidence, budget overrun, orphaned tasks |
 | `8e47ab2` | Unify token counting, restore scorer support, fix executor identity |
 | `c563ef3` | Remove dead code, derive strategy list, document declined findings |
+| `a417277` | Restore pipeline sampling concurrency and address review findings |
+| _this_ | Bound the confidence deadline, record timeout provenance, complete chat dispatch |

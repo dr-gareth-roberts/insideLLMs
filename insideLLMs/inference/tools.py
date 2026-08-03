@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from collections.abc import Callable, Mapping, Set
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from insideLLMs.async_utils import wait_for
+
+from ._callbacks import invoke, invoke_with_timeout, is_async_callable
 
 
 def _backoff_seconds(attempt: int) -> float:
@@ -104,24 +105,31 @@ async def execute_tool(
     attempts = 0
     max_attempts = limits.max_transport_attempts if action.idempotent else 1
     for attempts in range(1, max_attempts + 1):
-        attempt_started = time.monotonic()
+        # Record which side produced a TimeoutError at the raise site. Inferring
+        # it afterwards from elapsed time is not exact: if the tool stalls the
+        # loop (a blocking segment, GC) our deadline callback cannot fire, and
+        # the tool's own read timeout then measures as at-or-over the limit and
+        # is denied the retry it was entitled to.
+        tool_raised_timeout = False
+
+        async def run_tool() -> object:
+            nonlocal tool_raised_timeout
+            try:
+                return await invoke(tools[action.tool], dict(action.arguments))
+            except TimeoutError:
+                tool_raised_timeout = True
+                raise
+
         try:
-            output = await invoke_with_timeout(
-                tools[action.tool],
-                dict(action.arguments),
-                timeout=limits.timeout_seconds,
-            )
+            output = await wait_for(run_tool(), limits.timeout_seconds)
             break
         except TimeoutError:
-            # Distinguish our own per-attempt deadline from a transport read
-            # timeout raised by the tool. Retrying our deadline would silently
-            # multiply the timeout the caller declared (3 attempts at 5s is a
-            # 15s wall clock), so it is never retried.
-            if (
-                limits.timeout_seconds is not None
-                and time.monotonic() - attempt_started >= limits.timeout_seconds
-            ):
+            if not tool_raised_timeout:
+                # Our own per-attempt deadline. Retrying it would silently
+                # multiply the timeout the caller declared (3 attempts at 5s is
+                # a 15s wall clock), so it is never retried.
                 raise
+            # The tool's own transport timeout: retryable like ConnectionError.
             if attempts == max_attempts:
                 raise
             await asyncio.sleep(_backoff_seconds(attempts))

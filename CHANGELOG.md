@@ -21,13 +21,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   but left attestation-without-receipt unhandled: no `scitt_*` check was
   recorded and the verdict stayed `passed=true`, so a run with an incomplete
   transparency record read as compliant. Every asymmetry now fails closed.
-- **Async chat dispatch honours raising stubs.** `Model.chat` and
-  `AsyncModel.achat` are concrete stubs that raise `NotImplementedError`, so
-  `hasattr()` reported a capability the model lacked and made the documented
-  run-in-executor fallback unreachable in `ModelPipeline.achat`,
-  `Middleware.aprocess_chat` and `TraceMiddleware.aprocess_chat`. Adds
+- **Chat dispatch honours raising stubs, on both the sync and async paths.**
+  `Model.chat` and `AsyncModel.achat` are concrete stubs that raise
+  `NotImplementedError`, so `hasattr()` reported a capability the model lacked.
+  On the async side this made the documented run-in-executor fallback
+  unreachable in `ModelPipeline.achat`, `Middleware.aprocess_chat` and
+  `TraceMiddleware.aprocess_chat`. On the sync side it made the
+  `ModelError("No chat implementation available")` guard in
+  `Middleware.process_chat`, `TraceMiddleware.process_chat` and
+  `ModelPipeline.chat` dead code, so callers wrapping the pipeline in
+  `except ModelError` received an uncaught `NotImplementedError`. Adds
   `can_chat`, `can_chat_async` and `can_generate_async` to complete the
   `can_stream`/`can_stream_async` family.
+- **Escalation time budgets now bound the `confidence` callback.** Scoring ran
+  outside the deadline, so a model-backed confidence callback could overrun
+  `max_seconds` without limit (measured: 0.40s against a 0.05s budget).
+  Synchronous confidence callbacks remain supported; a scorer raising its own
+  `TimeoutError` still propagates instead of being relabelled as exhaustion; and
+  a candidate the budget left unscored is dropped rather than admitted with a
+  fabricated confidence.
+- **Tool timeout provenance is recorded rather than inferred.** `execute_tool`
+  told its own per-attempt deadline apart from a tool's transport timeout by
+  measuring elapsed time in the handler. A tool that stalls the event loop
+  prevents the deadline callback from firing while pushing that measurement past
+  the limit, so a genuine retryable transport fault was denied its retry. Our
+  deadline is still never retried, so a declared timeout is never multiplied by
+  `max_transport_attempts`.
+- **`best_of_n` judge calls appear in the trace as well as in `Spend`.**
+  `judge_model_calls` was added to `Spend.calls` with no corresponding trace
+  event, so a consumer summing `TraceEvent.calls` under-counted model calls by
+  exactly that amount whenever a model-backed judge ran.
 - **Provider timeouts are no longer relabelled as budget exhaustion.** The
   earlier fix only distinguished "no budget armed"; with a budget armed, a
   callback raising its own `TimeoutError` was still reported as exhaustion even
