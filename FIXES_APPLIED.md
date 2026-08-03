@@ -466,3 +466,9 @@ Recorded rather than silently skipped.
 | `18b7c8d` | Bound the confidence deadline, record timeout provenance, complete chat dispatch |
 | `9f3ea1d` | Restore generate-only support in structured output, RAG, and receipts |
 | `a6e1ba0` | Assert the attempt count in the tool deadline test |
+| `e4af2a9` | Harden the confidence-budget test and complete the fix record |
+
+The last row is necessarily the newest commit that existed *before* this table
+was last written — a commit cannot contain its own SHA, so the table always
+trails the branch by at least the commit that updates it. `git log` is
+authoritative.
