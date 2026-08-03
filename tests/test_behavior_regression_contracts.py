@@ -1,4 +1,4 @@
-"""Regression tests for production-quality audit wave 7 fixes."""
+"""Regression contracts for previously incorrect user-visible behavior."""
 
 from __future__ import annotations
 
@@ -6,6 +6,228 @@ import importlib
 import sys
 import warnings
 from pathlib import Path
+
+import pytest
+
+
+# generate_cache_key: dict/list-valued kwargs must hash by content.
+def test_cache_key_deterministic_for_dict_kwargs():
+    from insideLLMs.caching import generate_cache_key
+
+    k1 = generate_cache_key("p", meta={"b": 2, "a": 1})
+    k2 = generate_cache_key("p", meta={"a": 1, "b": 2})
+    assert k1 == k2
+
+
+# CachedModel must not crash on a StrategyCache cache hit.
+def test_cached_model_strategy_cache_hit_does_not_crash():
+    from insideLLMs.caching import CachedModel, ModelResponse, StrategyCache
+
+    class _Model:
+        model_id = "stub"
+
+        def generate(self, prompt, **kwargs):
+            return ModelResponse(content="hi", model="stub")
+
+    cached = CachedModel(_Model(), cache=StrategyCache())
+    first = cached.generate("hello", temperature=0)
+    second = cached.generate("hello", temperature=0)  # cache hit path (previously crashed)
+    assert second.content == first.content == "hi"
+
+
+# retry attempts count reflects real calls, not max_retries+1.
+def test_retry_attempts_count_on_non_retryable_error():
+    from insideLLMs.rate_limiting import RateLimitRetryConfig, RetryHandler
+
+    handler = RetryHandler(
+        RateLimitRetryConfig(max_retries=5, base_delay=0, retryable_errors=[KeyError])
+    )
+
+    calls = {"n": 0}
+
+    def fn():
+        calls["n"] += 1
+        raise ValueError("not retryable")
+
+    result = handler.execute(fn)
+    assert result.success is False
+    assert calls["n"] == 1
+    assert result.attempts == 1
+
+
+# acquiring more tokens than capacity fails loudly.
+def test_token_bucket_rejects_impossible_request():
+    from insideLLMs.rate_limiting import TokenBucketRateLimiter
+
+    limiter = TokenBucketRateLimiter(rate=1000.0, capacity=5)
+    with pytest.raises(ValueError):
+        limiter.acquire(tokens=10, block=True)
+
+
+# _serialize_for_json must canonicalize sets to sorted lists.
+def test_serialize_for_json_sorts_sets():
+    from insideLLMs.results import _serialize_for_json
+
+    assert _serialize_for_json({"tags": {"b", "a", "c"}}) == {"tags": ["a", "b", "c"]}
+
+
+# code-block extraction handles languages with regex metachars.
+def test_code_extraction_handles_cpp_language():
+    from insideLLMs.probes.code import CodeGenerationProbe
+
+    probe = CodeGenerationProbe(language="c++")
+    code = probe.extract_code("Here is code:\n```c++\nint main(){return 0;}\n```")
+    assert code == "int main(){return 0;}"
+
+
+# two addresses in one string redact to two tokens, preserving between text.
+def test_mask_pii_handles_multiple_addresses():
+    from insideLLMs.safety import mask_pii
+
+    masked = mask_pii("visit 456 oak ave then 789 elm road")
+    assert masked.count("[ADDRESS]") == 2
+    assert "then" in masked
+
+
+# a long legitimate refusal is not flagged as a successful attack.
+def test_attack_probe_long_refusal_not_flagged():
+    from insideLLMs.probes.attack import AttackProbe
+
+    probe = AttackProbe()
+    refusal = (
+        "I will not help with that. It would be wrong and unsafe. "
+        "Please consider a safer alternative instead. "
+    ) * 6
+    analysis = probe._analyze_response(refusal, "do something bad")
+    assert analysis["attack_succeeded"] is False
+
+
+# trace_fingerprint is order-independent across recorders sharing seq.
+def test_trace_fingerprint_order_independent():
+    from insideLLMs.trace.tracing import TraceRecorder, trace_fingerprint
+
+    r1 = TraceRecorder()
+    r1.record("a", {"v": 1})
+    r2 = TraceRecorder()
+    r2.record("b", {"v": 2})
+    events = r1.events + r2.events
+    assert trace_fingerprint(events) == trace_fingerprint(list(reversed(events)))
+
+
+# instruction probes report a meaningful (non-zero) accuracy.
+def test_instruction_probe_accuracy_is_meaningful():
+    from insideLLMs.probes.instruction import ConstraintComplianceProbe
+
+    probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=3)
+    compliant = probe.evaluate_single("two words", None)
+    violation = probe.evaluate_single("this is five words here", None)
+    assert compliant.metadata["is_correct"] is True
+    assert violation.metadata["is_correct"] is False
+    score = probe.score([compliant, violation])
+    assert score.accuracy == pytest.approx(0.5)
+
+
+# redact_pii must scrub string keys and leave non-string keys/values intact.
+def test_redact_pii_scrubs_string_keys_keeps_numeric():
+    from insideLLMs.privacy.redaction import redact_pii
+
+    out = redact_pii({"email user@example.com": "note", 42: "kept"})
+    assert not any("user@example.com" in str(k) for k in out)
+    assert 42 in out  # numeric key preserved, not stringified
+
+
+# ModelWrapper transparently delegates chat/stream to the wrapped model.
+def test_model_wrapper_delegates_chat_and_stream():
+    from insideLLMs.models import DummyModel
+    from insideLLMs.models.base import ModelWrapper
+
+    wrapper = ModelWrapper(DummyModel())
+    assert callable(wrapper.chat)
+    result = wrapper.chat([{"role": "user", "content": "hi"}])
+    assert isinstance(result, str)
+
+
+# bootstrap CI must not mutate the process-global RNG.
+def test_bootstrap_does_not_mutate_global_random():
+    import random
+
+    from insideLLMs.analysis.statistics import bootstrap_confidence_interval
+
+    random.seed(123)
+    before = random.random()
+    random.seed(123)
+    bootstrap_confidence_interval(
+        [1.0, 2.0, 3.0, 4.0, 5.0], lambda xs: sum(xs) / len(xs), n_bootstrap=50, seed=7
+    )
+    after = random.random()
+    # Global stream is unaffected by the seeded local bootstrap RNG.
+    assert before == after
+
+
+# email PII pattern matches real addresses (no stray pipe in the TLD class).
+def test_email_pii_detection_matches_real_address():
+    from insideLLMs.safety import mask_pii
+
+    masked = mask_pii("reach me at jane.doe@example.co")
+    assert "jane.doe@example.co" not in masked
+
+
+# logic metrics use a consistent denominator (a SUCCESS result with empty
+# output must not skew reasoning_rate / avg_response_length).
+def test_logic_metrics_consistent_denominator_with_empty_output():
+    from insideLLMs.probes.logic import LogicProbe
+    from insideLLMs.types import ProbeResult, ResultStatus
+
+    results = [
+        ProbeResult(
+            input="q1",
+            output="Because 2 plus 2 equals 4, therefore the answer is 4",
+            status=ResultStatus.SUCCESS,
+        ),
+        ProbeResult(input="q2", output=None, status=ResultStatus.SUCCESS),  # SUCCESS, no output
+    ]
+    score = LogicProbe().score(results)
+    # The output=None result is excluded from BOTH numerator and denominator, so
+    # the rate is 1/1 = 1.0, not the old skewed 1/2 (None inflated the denominator).
+    assert score.custom_metrics["reasoning_rate"] == 1.0
+
+
+# PromptVariator must not seed the process-global random module.
+def test_prompt_variator_does_not_mutate_global_random():
+    import random
+
+    from insideLLMs.contrib.synthesis import PromptVariator, SynthesisConfig
+
+    random.seed(999)
+    before = random.random()
+    random.seed(999)
+    PromptVariator(model=None, config=SynthesisConfig(seed=12345))
+    after = random.random()
+    assert before == after
+
+
+# L13/L14 — public __all__ no longer leaks imported stdlib/typing symbols.
+def test_public_all_excludes_leaked_imports():
+    import insideLLMs.dataset_utils as du
+    import insideLLMs.registry as reg
+    import insideLLMs.types as ty
+
+    for mod, leaked in [
+        (reg, {"os", "warnings", "Any", "Optional", "TypeVar"}),
+        (ty, {"Any", "Optional", "dataclass", "datetime", "Enum"}),
+        (du, {"csv", "json", "importlib", "Any", "load_dataset"}),
+    ]:
+        assert leaked.isdisjoint(set(mod.__all__)), (mod.__name__, leaked & set(mod.__all__))
+    # Genuine public symbols remain exported.
+    assert "ConfigDict" in ty.__all__
+    assert "model_registry" in reg.__all__
+
+
+# a bare ExportMetadata() no longer embeds a wall-clock timestamp.
+def test_export_metadata_default_has_no_walltime():
+    from insideLLMs.analysis.export import ExportMetadata
+
+    assert ExportMetadata().export_time is None
 
 
 # W7-0001 — the SafetyHallucinationIndicatorDetector percentage pattern must
