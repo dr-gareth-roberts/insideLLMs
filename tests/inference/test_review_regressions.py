@@ -689,7 +689,11 @@ async def test_execute_tool_does_not_retry_its_own_deadline() -> None:
     backoff before failing.
     """
 
+    attempts = 0
+
     async def hang(arguments: dict[str, object]) -> str:
+        nonlocal attempts
+        attempts += 1
         await asyncio.sleep(30)
         return "never"
 
@@ -702,6 +706,10 @@ async def test_execute_tool_does_not_retry_its_own_deadline() -> None:
             limits=ToolLimits(timeout_seconds=0.3, max_transport_attempts=3),
         )
     elapsed = asyncio.get_running_loop().time() - started
+    # The invocation count is the direct statement of the regression ("the
+    # deadline was retried"); the elapsed bound only corroborates it and would
+    # breach on an oversubscribed runner even with the code correct.
+    assert attempts == 1, f"deadline was retried: {attempts} attempts"
     assert elapsed < 0.9, f"deadline was retried: {elapsed:.2f}s for a 0.3s timeout"
 
 
