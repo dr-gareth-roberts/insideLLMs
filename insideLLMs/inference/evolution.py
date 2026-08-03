@@ -227,7 +227,16 @@ async def evolve_artifacts(
                 budget_hit = "time_budget"
                 break
             attempts += 1
-            parent_pool = tuple(_rank((*population, *next_population)))
+            # next_population is seeded with elites copied out of population, so
+            # concatenating the two listed every elite twice: it doubled their
+            # draw probability in the default rng.sample tournament (an elite
+            # could even occupy two of the three contender slots) and handed
+            # custom select_parent callbacks a population with duplicate ids.
+            # Deduplicate by id, keeping the canonical population entry.
+            unique_by_id: dict[str, EvolutionCandidate] = {}
+            for candidate in (*population, *next_population):
+                unique_by_id.setdefault(candidate.id, candidate)
+            parent_pool = tuple(_rank(tuple(unique_by_id.values())))
             canonical_by_id = {candidate.id: candidate for candidate in parent_pool}
             selection_view = tuple(
                 replace(candidate, validation_fitness=None) for candidate in parent_pool

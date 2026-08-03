@@ -771,3 +771,132 @@ async def test_output_too_large_signals_the_tool_already_ran() -> None:
     assert ran == 1
     # Still a ToolPolicyError, so existing handlers keep working.
     assert issubclass(ToolOutputTooLarge, ToolPolicyError)
+
+
+async def test_evolution_parent_pool_has_no_duplicate_elites() -> None:
+    """Elites must not appear twice in the selection view.
+
+    Regression: parent_pool concatenated population with next_population, which
+    is seeded from population's elites, so every elite was listed twice —
+    doubling its draw probability in the default tournament and handing custom
+    selectors a population containing duplicate candidate ids.
+    """
+    from insideLLMs.inference.evolution import EvolutionConfig, evolve_artifacts
+
+    observed: list[tuple[int, int]] = []
+
+    def selector(population: tuple, rng: object) -> object:
+        ids = [candidate.id for candidate in population]
+        observed.append((len(ids), len(set(ids))))
+        return population[0]
+
+    await evolve_artifacts(
+        ["a", "b", "c"],
+        evaluate=lambda text: float(len(text)),
+        mutate=lambda candidate, rng: candidate.artifact_text + "x",
+        select_parent=selector,
+        config=EvolutionConfig(population_size=3, elite_count=2, max_generations=2, seed=0),
+    )
+    assert observed, "selector was never invoked"
+    assert all(total == unique for total, unique in observed), observed
+
+
+async def test_escalation_accepts_async_confidence_callback() -> None:
+    """An async confidence must be awaited, not returned as a coroutine.
+
+    Regression: confidence() was called bare, so an async callback produced a
+    coroutine that crashed at ``1.0 - score`` after the step's model call had
+    already been paid for.
+    """
+
+    async def cheap(request: InferenceRequest, previous: Candidate | None) -> Candidate:
+        return Candidate(id="c", output="ans")
+
+    async def async_confidence(candidate: Candidate) -> float:
+        return 0.95
+
+    result = await escalate_adaptively(
+        InferenceRequest(prompt="q"),
+        steps=(EscalationStep(id="c", run=cheap, minimum_confidence=0.9),),
+        confidence=async_confidence,
+    )
+    assert result.answer == "ans"
+    assert result.confidence == 0.95
+    assert result.stop_reason is StopReason.VERIFIED
+
+    # A synchronous confidence remains supported, including under a time budget:
+    # it is typically a cheap local heuristic, and invoke() accepts either form.
+    sync_result = await escalate_adaptively(
+        InferenceRequest(prompt="q"),
+        steps=(EscalationStep(id="c", run=cheap, minimum_confidence=0.9),),
+        confidence=lambda candidate: 0.95,
+        budget=Budget(max_seconds=5.0),
+    )
+    assert sync_result.confidence == 0.95
+
+
+async def test_beam_search_stops_transitioning_once_budget_is_hit() -> None:
+    """Budget exhaustion must break the action loop, not continue through it.
+
+    Regression: the budget branch used ``continue``, so every remaining action of
+    the current state still invoked the (potentially model-backed) transition
+    callback even though the monotonic counters guaranteed no further child
+    could be admitted.
+    """
+    transitions = 0
+
+    async def propose(state: object) -> tuple[int, ...]:
+        return tuple(range(20))
+
+    async def transition(state: object, action: int) -> object:
+        nonlocal transitions
+        transitions += 1
+        return (state[0] + 1, action)
+
+    async def value(state: object) -> float:
+        return 0.5
+
+    result = await beam_search(
+        (0, 0),
+        propose=propose,
+        transition=transition,
+        value=value,
+        key=str,
+        is_terminal=lambda state: False,
+        beam_width=1,
+        budget=Budget(max_evaluations=3),
+    )
+    assert result.stop_reason is StopReason.BUDGET
+    # Previously 40 for this shape: 20 actions per state across two generations.
+    assert transitions <= 8, f"budget overrun: {transitions} transition calls"
+
+
+async def test_select_best_cancels_sibling_verifications_on_failure() -> None:
+    """A failed verifier must not leave sibling model calls running unobserved.
+
+    Regression: bare asyncio.gather propagated the first exception immediately
+    while the other verification chains kept executing, so provider calls
+    continued after the caller had already raised and any second failure
+    surfaced only as a "Task exception was never retrieved" warning at GC.
+    """
+    completed_after_raise: list[str] = []
+
+    async def verify(candidate: Candidate) -> Verification:
+        if candidate.id == "c1":
+            raise ConnectionError("verifier boom")
+        await asyncio.sleep(0.2)
+        completed_after_raise.append(candidate.id)
+        return Verification(verifier_id="v", passed=True, score=1.0)
+
+    def generate(request: InferenceRequest, n: int) -> tuple[Candidate, ...]:
+        return tuple(Candidate(id=f"c{i}", output=f"o{i}") for i in range(6))
+
+    with pytest.raises(ConnectionError, match="verifier boom"):
+        await select_best(
+            InferenceRequest(prompt="q"),
+            generate=generate,
+            n=6,
+            verifiers=(VerifierSpec(id="v", verify=verify),),
+        )
+    await asyncio.sleep(0.4)
+    assert completed_after_raise == [], f"orphaned verifications: {completed_after_raise}"

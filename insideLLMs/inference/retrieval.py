@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable, Protocol, TypeVar
 
-from ._callbacks import resolve
+from ._callbacks import gather_cancelling, resolve
 
 
 class EvidenceDocument(Protocol):
@@ -73,7 +72,7 @@ async def rerank_and_assemble(
     # rerank callback; a synchronous one still completes call-by-call as the
     # generator is consumed.
     items = list(unique.items())
-    scores = await asyncio.gather(*(resolve(rerank(query, document)) for _, document in items))
+    scores = await gather_cancelling(*(resolve(rerank(query, document)) for _, document in items))
     scored = [(source_id, document, score) for (source_id, document), score in zip(items, scores)]
     scored.sort(key=lambda item: (-item[2], item[0]))
 

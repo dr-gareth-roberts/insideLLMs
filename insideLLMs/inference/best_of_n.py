@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable, Literal
 
-from ._callbacks import resolve
+from ._callbacks import gather_cancelling, resolve
 from .schemas import (
     Candidate,
     InferenceRequest,
@@ -123,7 +122,7 @@ async def select_best(
 
     # Candidates verify concurrently; the hard-verifier short-circuit only
     # requires ordering within a single candidate's verifier chain.
-    verified = await asyncio.gather(*(_verify(candidate) for candidate in candidates))
+    verified = await gather_cancelling(*(_verify(candidate) for candidate in candidates))
     all_verifications: list[Verification] = []
     totals: dict[str, float] = {}
     passed_ids: set[str] = set()
@@ -140,7 +139,7 @@ async def select_best(
     if judge_ran:
         assert judge is not None  # narrowed by judge_ran
         reverse_items = list(reversed(eligible))
-        forward_raw, reverse_raw = await asyncio.gather(
+        forward_raw, reverse_raw = await gather_cancelling(
             resolve(judge(request, tuple(item.output for item in eligible))),
             resolve(judge(request, tuple(item.output for item in reverse_items))),
         )

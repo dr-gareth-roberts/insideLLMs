@@ -132,8 +132,13 @@ async def beam_search(
                         and time.monotonic() - started >= budget.max_seconds
                     )
                 ):
+                    # Break rather than continue: these counters are monotonic,
+                    # so once a limit is hit no later child in this state can be
+                    # admitted, and continuing still pays for every remaining
+                    # action's (potentially model-backed) transition call inside
+                    # the generation the budget was meant to stop.
                     budget_hit = True
-                    continue
+                    break
                 try:
                     score = await call(value, child)
                 except SearchBudgetExceeded:

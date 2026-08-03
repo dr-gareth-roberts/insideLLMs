@@ -40,6 +40,27 @@ def is_async_callable(callback: object) -> bool:
     )
 
 
+async def gather_cancelling(*awaitables: Awaitable[T]) -> list[T]:
+    """``asyncio.gather`` that cancels and drains siblings when one child fails.
+
+    Bare ``gather`` propagates the first exception immediately while every other
+    child keeps running. For model-backed callbacks that means a failed
+    verification or rerank leaves the remaining provider calls executing
+    unobserved after the caller has already raised, and a second failure
+    surfaces only as a "Task exception was never retrieved" warning at garbage
+    collection.
+    """
+    tasks = [asyncio.ensure_future(awaitable) for awaitable in awaitables]
+    try:
+        return list(await asyncio.gather(*tasks))
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
+
 async def resolve(value: T | Awaitable[T]) -> T:
     if inspect.isawaitable(value):
         return await cast(Awaitable[T], value)

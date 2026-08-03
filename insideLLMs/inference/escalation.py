@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke, invoke_with_timeout, is_async_callable
 from .schemas import (
     Budget,
     Candidate,
@@ -33,7 +33,7 @@ async def escalate_adaptively(
     request: InferenceRequest,
     *,
     steps: Sequence[EscalationStep],
-    confidence: Callable[[Candidate], float],
+    confidence: Callable[[Candidate], float | Awaitable[float]],
     budget: Budget = Budget(),
 ) -> InferenceResult:
     """Start cheaply and run stronger actions only while uncertainty remains."""
@@ -46,6 +46,9 @@ async def escalate_adaptively(
         raise ValueError("escalation budget must permit positive time")
     if budget.max_seconds is not None and any(not is_async_callable(step.run) for step in steps):
         raise ValueError("escalation time budgets require asynchronous step callbacks")
+    # confidence is deliberately not policed for async-ness the way step.run is:
+    # it is usually a cheap local heuristic, and ``invoke`` accepts either form.
+    # Requiring async here would break supported sync callers for no benefit.
     started = time.monotonic()
     candidates: list[Candidate] = []
     scores: list[float] = []
@@ -84,7 +87,11 @@ async def escalate_adaptively(
                 raise
             stop_reason = StopReason.BUDGET
             break
-        score = confidence(candidate)
+        # Every other callback in the package accepts an awaitable; calling this
+        # one bare left an async confidence returning a coroutine, which then
+        # blew up at ``1.0 - score`` after the model call had already been paid
+        # for, with a "coroutine was never awaited" warning instead of an error.
+        score = float(await invoke(confidence, candidate))
         scores.append(score)
         candidates.append(candidate)
         actions.append(step.id)
