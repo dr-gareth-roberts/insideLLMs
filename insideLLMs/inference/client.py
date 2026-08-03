@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from time import perf_counter
+from typing import Any
 
 from .adapters import ModelProposer
 from .best_of_n import JudgeCallback, VerifierSpec, select_best
@@ -30,7 +31,17 @@ class InferenceClient:
         *,
         generation_kwargs: Mapping[str, object] | None = None,
     ) -> InferenceClient:
-        """Build through the canonical model registry and middleware config path."""
+        """Build through the canonical model registry and middleware config path.
+
+        Reaches into ``runtime._config_loader`` for the loader rather than
+        duplicating registry and middleware assembly, so the CLI/runner path and
+        this one cannot drift. The helper is private, which means a refactor
+        there can break this public entry point with no deprecation surface;
+        that coupling is deliberate and is fenced by
+        ``tests/inference/test_architecture.py``, which permits a runtime import
+        in this module and nowhere else in the package. Promote the loader to
+        public API before adding a second consumer.
+        """
 
         from insideLLMs.runtime._config_loader import _create_model_from_config
 
@@ -147,7 +158,7 @@ def _default_vote_normalizer(candidate: Candidate) -> str | None:
     return normalize_text(source) or None
 
 
-def _usage(metadata: Mapping[str, object]) -> tuple[int, int, float]:
+def _usage(metadata: Mapping[str, Any]) -> tuple[int, int, float]:
     """Read (input_tokens, output_tokens, latency_seconds) from candidate metadata.
 
     Single source of truth for the accounting keys the proposer writes. This was

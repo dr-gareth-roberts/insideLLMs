@@ -14,21 +14,34 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-# The strategy modules this benchmark reports on. Derived rather than hardcoded
-# so adding or removing a strategy cannot leave the reported count stale.
-STRATEGY_MODULES = (
-    "best_of_n",
-    "dag",
-    "escalation",
-    "evolution",
-    "prefix_cache",
-    "repair",
-    "retrieval",
-    "search",
-    "self_consistency",
-    "structured",
-    "tools",
+# Infrastructure modules that are not user-facing strategies.
+_NON_STRATEGY_MODULES = frozenset(
+    {"adapters", "client", "protocols", "schemas", "sync"},
 )
+
+
+def _discover_strategy_modules() -> tuple[str, ...]:
+    """Enumerate the strategy modules this benchmark reports on.
+
+    Genuinely derived from the package. The comment here previously claimed the
+    list was "derived rather than hardcoded so adding or removing a strategy
+    cannot leave the reported count stale" while being a hardcoded literal —
+    exactly the drift it promised to prevent.
+    """
+    import pkgutil
+
+    import insideLLMs.inference as inference_package
+
+    return tuple(
+        sorted(
+            module.name
+            for module in pkgutil.iter_modules(inference_package.__path__)
+            if not module.name.startswith("_") and module.name not in _NON_STRATEGY_MODULES
+        )
+    )
+
+
+STRATEGY_MODULES = _discover_strategy_modules()
 
 
 async def _benchmark() -> dict[str, object]:

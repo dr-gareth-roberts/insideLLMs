@@ -116,8 +116,12 @@ async def execute_dag(
                 if all(dependency in observations for dependency in by_id[node_id].dependencies)
             )
         )
-        if not ready:
-            raise ValueError("plan contains a dependency cycle")
+        # Not a second cycle detector: the Kahn validation above rejects every
+        # cyclic plan independently of checkpoint state, and all dependencies
+        # are known to exist, so a non-empty ``pending`` over an acyclic graph
+        # always yields a non-empty ``ready``. Asserting the invariant keeps one
+        # authority for cycles rather than two that can be maintained apart.
+        assert ready, "pending nodes with no ready set implies a cycle the upfront check missed"
         if budget.max_calls is not None and len(trace) + len(ready) + 1 > budget.max_calls:
             raise DagBudgetExceeded("DAG call budget would be exceeded")
         if budget.max_nodes is not None and len(trace) + len(ready) > budget.max_nodes:
