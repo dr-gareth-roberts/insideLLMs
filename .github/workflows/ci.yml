@@ -70,9 +70,7 @@ jobs:
         run: make typecheck-strict
 
       - name: Check type coverage
-        run: |
-          mypy insideLLMs --any-exprs-report ./mypy-coverage
-          python scripts/check_type_coverage.py ./mypy-coverage
+        run: make typecheck-coverage
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -106,6 +104,84 @@ jobs:
           --cov-report=term-missing
           --cov-fail-under=88
           -m "not slow and not integration and not performance"
+
+  optional-extras:
+    name: Optional extra (${{ matrix.extra }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extra:
+          - openai
+          - anthropic
+          - huggingface
+          - signing
+          - crypto
+          - nlp
+          - visualization
+          - langchain
+          - serving
+          - providers
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-extra-${{ matrix.extra }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-extra-${{ matrix.extra }}-
+
+      - name: Install optional extra
+        run: pip install -e ".[${{ matrix.extra }}]"
+
+      - name: Smoke-test imports
+        run: python scripts/check_optional_imports.py "${{ matrix.extra }}"
+
+  all-features:
+    name: Constrained all-features test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-all-features-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-all-features-
+
+      - name: Install all features
+        run: pip install -e ".[all]"
+
+      - name: Smoke-test all optional imports
+        run: python scripts/check_optional_imports.py all
+
+      - name: Run constrained feature tests
+        run: >
+          python -m pytest
+          tests/test_models_openai.py
+          tests/test_models_anthropic.py
+          tests/test_models_huggingface.py
+          tests/test_nlp_dependencies.py
+          tests/test_visualization.py
+          tests/test_langchain_integration.py
+          tests/test_shadow_fastapi.py
+          tests/test_tuf_client.py
+          tests/test_oras.py
+          tests/test_encryption.py
+          -m "not slow and not integration"
+          -k "not test_fetch_dataset_refuses_implicit_mock"
 
   determinism:
     name: Determinism (golden-path)
