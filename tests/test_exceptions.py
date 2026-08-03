@@ -1,5 +1,8 @@
 """Tests for custom exceptions."""
 
+import pickle
+
+import insideLLMs.exceptions as exceptions_module
 from insideLLMs.exceptions import (
     AlreadyRegisteredError,
     APIError,
@@ -32,6 +35,13 @@ from insideLLMs.exceptions import (
     is_retryable,
     wrap_exception,
 )
+
+
+def test_public_symbols_preserve_facade_identity_and_pickle_path():
+    for name in exceptions_module.__all__:
+        symbol = getattr(exceptions_module, name)
+        assert symbol.__module__ == "insideLLMs.exceptions"
+        assert pickle.loads(pickle.dumps(symbol)) is symbol
 
 
 class TestInsideLLMsError:
