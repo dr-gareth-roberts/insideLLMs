@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `except ModelError` received an uncaught `NotImplementedError`. Adds
   `can_chat`, `can_chat_async` and `can_generate_async` to complete the
   `can_stream`/`can_stream_async` family.
+- **Generate-only models work again in structured output, RAG and receipts.**
+  The same presence check disabled documented fallbacks in three more callers:
+  `StructuredOutputGenerator.generate` (which documents *"chat() or generate()"*
+  support and repeated the raise once per retry attempt), `RAGChain.query_with_chat`
+  (which documents accepting a model implementing only `generate`), and
+  `ReceiptMiddleware.aprocess_chat` (whose run-in-executor fallback was
+  unreachable). In each case the dead branch was a working alternative path, not
+  merely a different error.
 - **Escalation time budgets now bound the `confidence` callback.** Scoring ran
   outside the deadline, so a model-backed confidence callback could overrun
   `max_seconds` without limit (measured: 0.40s against a 0.05s budget).

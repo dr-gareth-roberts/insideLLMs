@@ -165,6 +165,7 @@ from typing import (
     runtime_checkable,
 )
 
+from insideLLMs.models.base import can_chat
 from insideLLMs.nlp.tokenization import word_tokenize_regex
 
 if TYPE_CHECKING:
@@ -2876,8 +2877,10 @@ class RAGChain:
         )
         messages.append({"role": "user", "content": user_content})
 
-        # Generate answer
-        if hasattr(self.model, "chat"):
+        # Generate answer. can_chat, not hasattr: Model.chat is a concrete
+        # raising stub, so presence-gating made the fallback below unreachable
+        # and broke the generate-only models this class documents supporting.
+        if can_chat(self.model):
             answer = self.model.chat(messages, **model_kwargs)
         else:
             # Fall back to generate if chat not supported

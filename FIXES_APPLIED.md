@@ -13,7 +13,7 @@ source change, confirm the new regression test fails, restore, confirm it
 passes. Where that was impractical the reason is stated inline. Baseline for
 comparison is merged `main` at `1eac507`: 7106 tests passing, mypy clean.
 
-**Final state:** 7177 passed, 0 failed, 331 skipped · `ruff check` clean ·
+**Final state:** 7181 passed, 0 failed, 331 skipped · `ruff check` clean ·
 `ruff format` clean · `mypy` clean (235 files).
 
 Fixes 18–22 were found in review *of this branch* — including one regression this
@@ -325,6 +325,23 @@ All three now gate on `can_chat`; the two middleware docstring templates that
 taught the `hasattr` pattern were corrected too. *Verified causally:* reverting
 the source makes the new test fail with the raising stub.
 
+**The same defect existed in three more modules,** found by widening the search
+beyond `pipeline.py` — and these are worse, because the dead branch was a
+*working alternative path* rather than a different error type:
+
+| Site | Dead branch | Consequence |
+|---|---|---|
+| `structured.py` (`StructuredOutputGenerator.generate`) | inline the system prompt and call `generate()` | Class documents *"chat() or generate()"* support; a generate-only model raised instead — once per retry attempt, since the dispatch sits inside the retry loop |
+| `contrib/retrieval.py` (`RAGChain.query_with_chat`) | join messages and call `generate()` | Class documents accepting a model that implements only `generate`; RAG answering raised for exactly those models |
+| `runtime/receipt.py` (`ReceiptMiddleware.aprocess_chat`) | `run_in_executor(model.chat)` | Same shape as the `aprocess_chat` fix above, on `achat` |
+
+All three verified causally. The receipt test needed a second pass: the first
+version subclassed `Model`, which has no `achat` attribute at all, so it reached
+the fallback either way and passed *without* the fix. It now subclasses
+`AsyncModel`, where `achat` is the concrete stub that makes `hasattr` wrong, and
+asserts `hasattr(model, "achat") is True` alongside `can_chat_async(...) is
+False` so the premise cannot silently drift.
+
 ## 20. `max_seconds` did not bound the confidence callback
 
 Fix 10 routed escalation's `confidence` through `invoke` so an async scorer was
@@ -419,6 +436,9 @@ Recorded rather than silently skipped.
 | `insideLLMs/inference/best_of_n.py` | actual call counting; `judge_model_calls`; `judge_ran` provenance; cancelling gather; judge trace event |
 | `insideLLMs/inference/retrieval.py` | cancelling gather; shared token estimator |
 | `insideLLMs/inference/tools.py` | narrowed retry scope; `ToolOutputTooLarge`; `_backoff_seconds`; timeout provenance recorded at the raise site |
+| `insideLLMs/structured.py` | `can_chat` restores the documented `generate()` fallback |
+| `insideLLMs/contrib/retrieval.py` | `can_chat` restores `RAGChain.query_with_chat`'s `generate()` fallback |
+| `insideLLMs/runtime/receipt.py` | `can_chat_async` restores the run-in-executor fallback |
 | `insideLLMs/inference/sync.py` | documented divergence from `run_async` |
 | `insideLLMs/inference/__init__.py` | export `ToolOutputTooLarge` |
 | `insideLLMs/analysis/matched_compute.py` | wrapper-aware identity; executor dropped from reports |
@@ -429,7 +449,8 @@ Recorded rather than silently skipped.
 
 **Tests** — `tests/test_policy_engine.py` (+5), `tests/inference/test_review_regressions.py` (+27),
 `tests/inference/test_prefix_cache.py` (+1), `tests/test_matched_compute.py` (+1),
-`tests/contrib/test_ensemble.py` (+1 new, 1 rewritten).
+`tests/contrib/test_ensemble.py` (+1 new, 1 rewritten),
+`tests/test_chat_capability_dispatch.py` (new file, 4).
 
 ## Commits
 
