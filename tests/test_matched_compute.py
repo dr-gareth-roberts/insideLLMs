@@ -390,3 +390,58 @@ async def test_matched_compute_allows_observed_calls_under_declared_ceiling() ->
     )
     assert report.cases[0].strategy_spend.calls == 2
     assert not report.calls_matched
+
+
+def test_executor_identity_unwraps_only_the_client_wrapper() -> None:
+    """Identity must resolve consistently however the model is reached.
+
+    Regression: _executor_identity unwrapped one ``.model`` level from any
+    executor, so a model reached directly resolved to its own inner attribute
+    (HuggingFaceModel.model is the underlying transformers module) while the
+    same model reached through an InferenceClient resolved to the model itself.
+    Identical setups therefore raised ComputeMismatchError, and — worse — two
+    genuinely different wrappers sharing one inner module matched falsely.
+    """
+    from insideLLMs.analysis.matched_compute import (
+        ComputeMismatchError,
+        ComputeProfile,
+        _check_compute_profiles,
+        _executor_identity,
+    )
+    from insideLLMs.inference import InferenceClient
+
+    class InnerModule:
+        pass
+
+    class ModelWithInnerModule:
+        name = "hf-like"
+
+        def __init__(self) -> None:
+            self.model = InnerModule()
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "x"
+
+    model = ModelWithInnerModule()
+    client = InferenceClient(model)
+
+    def profile(executor: object) -> ComputeProfile:
+        return ComputeProfile(
+            executor_id=id(executor),
+            generated_calls=1,
+            max_output_tokens_per_call=8,
+            executor=executor,
+        )
+
+    assert _executor_identity(profile(client)) is model
+    assert _executor_identity(profile(model)) is model
+    # Same model reached two ways is one executor.
+    _check_compute_profiles(profile(client), profile(model))
+
+    # Distinct wrappers that merely share an inner module are NOT one executor.
+    first, second = ModelWithInnerModule(), ModelWithInnerModule()
+    shared = InnerModule()
+    first.model = shared
+    second.model = shared
+    with pytest.raises(ComputeMismatchError):
+        _check_compute_profiles(profile(first), profile(second))

@@ -8,6 +8,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
+from insideLLMs.tokens import estimate_tokens
+
 from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, TraceEvent
 
@@ -32,7 +34,7 @@ async def execute_dag(
     max_concurrency: int | None = None,
     budget: Budget = Budget(),
     compact_observation: Callable[[object], object] = lambda value: value,
-    observation_tokens: Callable[[object], int] = lambda value: len(str(value).split()),
+    observation_tokens: Callable[[object], int] = lambda value: estimate_tokens(str(value)),
 ) -> InferenceResult:
     """Execute topological levels concurrently and reduce stable keyed observations."""
 

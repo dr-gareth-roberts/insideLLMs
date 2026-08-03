@@ -6,6 +6,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable, Protocol, TypeVar
 
+from insideLLMs.tokens import estimate_tokens
+
 from ._callbacks import gather_cancelling, resolve
 
 
@@ -46,7 +48,7 @@ async def rerank_and_assemble(
     top_k: int,
     max_characters: int | None = None,
     max_tokens: int | None = None,
-    token_count: Callable[[str], int] = lambda text: len(text.split()),
+    token_count: Callable[[str], int] = lambda text: estimate_tokens(text),
     diversity_key: Callable[[DocumentT], str] | None = None,
     max_per_diversity_group: int | None = None,
 ) -> AssembledEvidence:

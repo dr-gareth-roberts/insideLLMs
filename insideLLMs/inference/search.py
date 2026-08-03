@@ -6,6 +6,8 @@ import time
 from collections.abc import Callable, Sequence
 from typing import Awaitable, TypeVar
 
+from insideLLMs.tokens import estimate_tokens
+
 from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, StopReason, TraceEvent
 
@@ -30,7 +32,7 @@ async def beam_search(
     is_terminal: Callable[[StateT], bool],
     beam_width: int,
     budget: Budget,
-    token_cost: Callable[[StateT], int] = lambda state: len(str(state)),
+    token_cost: Callable[[StateT], int] = lambda state: estimate_tokens(str(state)),
 ) -> InferenceResult:
     """Run deterministic beam search; an objective value callback is mandatory."""
 

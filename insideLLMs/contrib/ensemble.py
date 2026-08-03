@@ -89,14 +89,12 @@ See Also
 
 from __future__ import annotations
 
+import math
 import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
-
-from insideLLMs.inference.best_of_n import rank_candidates
-from insideLLMs.inference.schemas import Candidate
 
 
 class AggregationMethod(Enum):
@@ -1533,16 +1531,24 @@ class ResponseAggregator:
             return "", ""
 
         score_response = len if scorer is None else scorer
-        candidates = [
-            Candidate(id=f"legacy-ensemble-{index:020d}", output=output.response)
-            for index, output in enumerate(outputs)
-        ]
-        selected_candidate, _ = rank_candidates(
-            candidates,
-            score=lambda candidate: score_response(candidate.output),
-            tie_break="input_order",
-        )[0]
-        selected = outputs[int(selected_candidate.id.rsplit("-", 1)[1])]
+        # A plain max() over (output, score) pairs. Routing this through
+        # rank_candidates required fabricating a Candidate per output and
+        # encoding the list index into its id ("legacy-ensemble-%020d") only to
+        # parse it back out, ran an O(n^2) selection sort to obtain an argmax,
+        # and — because rank_candidates calls math.isnan on every score — broke
+        # scorers returning non-float orderables (str, tuple) that worked before.
+        scored = [(output, score_response(output.response)) for output in outputs]
+
+        def _is_nan(value: object) -> bool:
+            # Only floats can be NaN; anything else is left alone so arbitrary
+            # orderable scores keep comparing exactly as they did with max().
+            return isinstance(value, float) and math.isnan(value)
+
+        # NaN scores rank last rather than winning by accident of comparison
+        # order, but if every score is NaN there is nothing to prefer and the
+        # first output wins, matching max()'s behaviour.
+        comparable = [item for item in scored if not _is_nan(item[1])]
+        selected, _ = max(comparable or scored, key=lambda item: item[1])
 
         return selected.response, selected.model_id
 

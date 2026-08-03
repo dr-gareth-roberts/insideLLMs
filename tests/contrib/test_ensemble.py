@@ -368,21 +368,67 @@ class TestResponseAggregator:
         assert result.selected_model == "z-first"
         assert calls == ["first", "second"]
 
-    def test_best_of_n_preserves_legacy_max_semantics_for_nan_scores(self):
-        outputs = [
-            ModelOutput(model_id="negative", response="negative"),
-            ModelOutput(model_id="nan", response="nan"),
-            ModelOutput(model_id="positive", response="positive"),
-        ]
-        scores = {"negative": -1.0, "nan": nan, "positive": 0.0}
+    def test_best_of_n_ranks_nan_scores_last(self):
+        """NaN scores never win unless every score is NaN.
 
-        result = ResponseAggregator().aggregate(
-            outputs,
-            AggregationMethod.BEST_OF_N,
-            lambda response: scores[response],
+        This deliberately diverges from the legacy ``max(outputs, key=scorer)``
+        for one arrangement: because NaN comparisons are always False, plain max
+        kept a NaN sitting in the FIRST position, so that output won. Ranking
+        NaN last is the intended behaviour; the previous test name claimed to
+        preserve legacy semantics while only covering NaN in a middle position,
+        where both behave identically.
+        """
+
+        def select(order, scores):
+            outputs = [ModelOutput(model_id=m, response=m) for m in order]
+            return (
+                ResponseAggregator()
+                .aggregate(outputs, AggregationMethod.BEST_OF_N, lambda response: scores[response])
+                .selected_model
+            )
+
+        # NaN in a middle position: unchanged from legacy.
+        assert (
+            select(
+                ["negative", "nan", "positive"],
+                {"negative": -1.0, "nan": nan, "positive": 0.0},
+            )
+            == "positive"
         )
 
-        assert result.selected_model == "positive"
+        # NaN first: legacy returned "nan"; it must now lose to a real score.
+        assert select(["nan", "positive"], {"nan": nan, "positive": 0.0}) == "positive"
+
+        # Every score NaN: nothing to prefer, so the first output wins.
+        assert select(["a", "b"], {"a": nan, "b": nan}) == "a"
+
+    def test_best_of_n_supports_non_float_orderable_scores(self):
+        """Scorers returning str/tuple worked with max() and must keep working.
+
+        Regression: routing selection through rank_candidates called
+        math.isnan() on every score, raising
+        TypeError: must be real number, not str.
+        """
+        outputs = [
+            ModelOutput(model_id="m1", response="apple"),
+            ModelOutput(model_id="m2", response="pear"),
+        ]
+        # Lexicographic string scores.
+        assert (
+            ResponseAggregator()
+            .aggregate(outputs, AggregationMethod.BEST_OF_N, lambda response: response)
+            .selected_model
+            == "m2"
+        )
+        # Tuple scores for multi-key ordering.
+        assert (
+            ResponseAggregator()
+            .aggregate(
+                outputs, AggregationMethod.BEST_OF_N, lambda response: (len(response), response)
+            )
+            .selected_model
+            == "m1"
+        )
 
     def test_best_of_n_invokes_falsey_callable_scorers(self):
         class FalseyScorer:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Protocol
 
@@ -521,11 +521,15 @@ async def run_matched_compute(
             cases.append(case)
 
     regressions = Counter(case.subset for case in cases if case.regression)
+    # The executor is only needed for the identity gate above, and to_dict()
+    # never reads it. Keeping the live reference would let a retained report
+    # (or a list of them) pin an entire loaded model — gigabytes of weights for
+    # a local HuggingFace model — alive for the process lifetime.
     return MatchedComputeReport(
         baseline_name=baseline.name,
         strategy_name=strategy.name,
-        baseline_compute=baseline.compute,
-        strategy_compute=strategy.compute,
+        baseline_compute=replace(baseline.compute, executor=None),
+        strategy_compute=replace(strategy.compute, executor=None),
         cases=tuple(cases),
         baseline_spend=_sum_spend(case.baseline_spend for case in cases),
         strategy_spend=_sum_spend(case.strategy_spend for case in cases),
@@ -537,9 +541,16 @@ async def run_matched_compute(
 def _executor_identity(profile: ComputeProfile) -> object | None:
     if profile.executor is None:
         return None
-    # Compare through the underlying model when the executor exposes one, so
-    # two clients wrapping the same model count as the same executor.
-    return getattr(profile.executor, "model", profile.executor)
+    # Unwrap only the known client wrapper, so two InferenceClients around one
+    # model count as the same executor. Unwrapping *any* object exposing
+    # ``.model`` resolved to inconsistent depths: a model reached directly
+    # yielded its own inner attribute (HuggingFaceModel.model is the underlying
+    # transformers module) while the same model reached through a client yielded
+    # the model itself, so identical setups raised ComputeMismatchError — and
+    # two genuinely different wrappers sharing an inner module matched falsely.
+    if isinstance(profile.executor, InferenceClient):
+        return profile.executor.model
+    return profile.executor
 
 
 def _check_compute_profiles(baseline: ComputeProfile, strategy: ComputeProfile) -> None:
