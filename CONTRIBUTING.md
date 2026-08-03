@@ -95,6 +95,18 @@ pytest tests/test_models.py
 pytest -m "not slow and not integration"
 ```
 
+Name test modules and suites after the capability or behavior they verify.
+Avoid campaign-oriented names such as coverage waves, slices, or audit rounds;
+behavior-oriented names make failures actionable after the campaign ends.
+
+### Architectural Boundaries
+
+Public compatibility modules such as `insideLLMs.exceptions`,
+`insideLLMs.models.base`, and `insideLLMs.runtime.pipeline` are stable facades.
+Place responsibility-focused implementations in their existing internal
+packages and keep imports from the public facade working. Do not expose
+internal modules as alternate public APIs.
+
 ### Documentation
 
 User-facing guides live on the Docs Site (GitHub Pages), with Markdown source in `wiki/`. If you

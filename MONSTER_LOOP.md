@@ -12,7 +12,7 @@ Every fix in this loop serves one outcome: someone who has never read this codeb
 
 - `AGENTS.md` is authoritative for environment and commands. Read it first, every time. If anything here conflicts with it, `AGENTS.md` wins.
 - This file is authoritative for *process*: how to find work, how much to do per turn, how to prove a fix, when to stop and ask instead of guessing.
-- This is not the first audit pass on this repo. `docs/AUDIT_FINDINGS.md`, `docs/AUDIT_FIX_PLAN.md`, and `docs/plans/2026-02-26-audit-remaining-cleanup*.md` are prior waves. `tests/test_audit_wave{2,3,6}_regressions.py` are their landed proof. Before starting, run `ls tests/test_audit_wave*.py` and use the next free integer as this wave's number. Don't renumber or touch the old ones.
+- This is not the first audit pass on this repo. `docs/AUDIT_FINDINGS.md`, `docs/AUDIT_FIX_PLAN.md`, and `docs/plans/2026-02-26-audit-remaining-cleanup*.md` record prior work. Add regression coverage to the behavior-oriented suite for the affected capability; do not create audit-wave or coverage-slice test modules.
 - Treat every "✅ Done" claim in those prior docs as a *lead to re-verify*, not ground truth. They go stale. See the worked example in §9.
 
 ## 1. Non-negotiables

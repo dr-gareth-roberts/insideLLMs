@@ -24,7 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
 - Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
-- Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes
+- Large exception, model, pipeline, agent, and reasoning modules split by responsibility behind compatibility-preserving public facades
+- Mypy config tightened for public model, probe, registry, type, and result contracts; type coverage is enforced at a 92% non-regressing floor
+- Optional-feature CI now smoke-tests every dependency extra and runs a constrained all-feature suite
+- Coverage-campaign test files consolidated into behavior-oriented suites
 - **DEPRECATION**: `insideLLMs.visualization` module is deprecated
   - Use `insideLLMs.analysis.visualization` instead
   - Compatibility layer will be removed in v2.0.0

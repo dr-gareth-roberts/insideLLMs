@@ -74,15 +74,15 @@ Notes:
 - Registry and dataset loaders power config-driven and programmatic creation.
 - Infra utilities exist as standalone modules and are not currently enforced by the runner.
 
-## Target Architecture (Proposed)
+## Composable Model Pipeline
 
-This is a proposed architecture that makes infra capabilities first-class and
-standardizes result types across runners and benchmarks.
+The runtime includes a composable model pipeline that makes infrastructure
+capabilities first-class while preserving the standard model interface.
 
-Key deltas from current:
-- Introduce a model pipeline with composable middleware (retry, rate limiting, caching, cost, streaming).
-- Standardize all execution to return `ModelResponse` and `ExperimentResult`.
-- Make batch and async execution explicit in the runner contract.
+Key properties:
+- Middleware composes retry, rate limiting, caching, cost tracking, and tracing.
+- `ModelPipeline` and `AsyncModelPipeline` retain the model contract used by probes.
+- Batch and async execution are explicit in the runner contract.
 
 ```mermaid
 graph TD
@@ -137,7 +137,7 @@ graph TD
   Result --> Export
 ```
 
-## Proposed Model Pipeline Flow
+## Model Pipeline Flow
 
 ```mermaid
 sequenceDiagram
@@ -163,13 +163,13 @@ sequenceDiagram
   MP-->>P: ModelResponse
 ```
 
-## Model Pipeline API Sketch (Proposed)
+## Model Pipeline API
 
 This sketch illustrates the intended API shape for composable model middleware.
 
 ```python
 from insideLLMs.models import OpenAIModel
-from insideLLMs.pipeline import (
+from insideLLMs.runtime.pipeline import (
     ModelPipeline,
     CacheMiddleware,
     RateLimitMiddleware,
@@ -193,7 +193,7 @@ response = pipeline.generate("Explain transformers in one paragraph.")
 print(response.content)
 ```
 
-## Proposed Streaming Flow
+## Streaming Flow
 
 ```mermaid
 sequenceDiagram
@@ -214,7 +214,7 @@ sequenceDiagram
   MP->>SM: finalize()
 ```
 
-## Proposed Cost Tracking Flow
+## Cost Tracking Flow
 
 ```mermaid
 sequenceDiagram
@@ -298,8 +298,28 @@ sequenceDiagram
 
 - **Registry** (`insideLLMs/registry.py`): Central registration system for models, probes, and dataset loaders.
 - **Results & Export** (`insideLLMs/results.py`, `insideLLMs/types.py`): Structured experiment results and export helpers.
-- **Infra Utilities** (`insideLLMs/caching.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`, `insideLLMs/streaming.py`): Optional utilities that can be wired into model wrappers.
+- **Model Pipeline** (`insideLLMs/runtime/pipeline.py`): Stable facade for composable middleware implemented under `insideLLMs/runtime/_pipeline/`.
+- **Infra Utilities** (`insideLLMs/caching.py`, `insideLLMs/rate_limiting.py`, `insideLLMs/cost_tracking.py`, `insideLLMs/streaming.py`): Optional utilities that can be wired into model wrappers and pipeline middleware.
 - **Prompt Tooling** (`insideLLMs/contrib/templates.py`, `insideLLMs/contrib/prompt_utils.py`, `insideLLMs/contrib/template_versioning.py`): Templates and versioning for prompt engineering workflows.
+
+## Module Boundaries and Compatibility Facades
+
+Large public modules use the same facade pattern as `insideLLMs.runtime.runner`:
+the established module owns the public import surface while focused internal
+modules own implementations.
+
+| Public facade | Internal responsibilities |
+|---|---|
+| `insideLLMs.exceptions` | Domain exception hierarchies and utilities in `insideLLMs._exceptions` |
+| `insideLLMs.models.base` | Protocols, provider-error translation, and model wrapping in `insideLLMs.models._*`; base model classes remain in the facade |
+| `insideLLMs.runtime.pipeline` | Middleware and orchestration in `insideLLMs.runtime._pipeline` |
+| `insideLLMs.contrib.agents` | Agent models, tools, memory, implementations, execution, and factories in `insideLLMs.contrib._agents` |
+| `insideLLMs.contrib.reasoning` | Reasoning models, extraction, analysis, evaluation, prompting, and convenience APIs in `insideLLMs.contrib._reasoning` |
+
+Consumers should import from the public facades. Internal modules may change
+without notice and must not become alternate public entry points. Facades keep
+existing exports and class module identities stable for introspection and
+serialized references.
 
 ## Extension Points
 
