@@ -1,5 +1,8 @@
 """Tests for reasoning chain analysis and CoT evaluation utilities."""
 
+import pickle
+
+import insideLLMs.contrib.reasoning as reasoning_module
 from insideLLMs.contrib.reasoning import (
     ChainAnalysis,
     CoTEvaluation,
@@ -19,6 +22,13 @@ from insideLLMs.contrib.reasoning import (
     extract_reasoning,
     generate_cot_prompt,
 )
+
+
+def test_public_symbols_preserve_facade_identity_and_pickle_path():
+    for name in reasoning_module.__all__:
+        symbol = getattr(reasoning_module, name)
+        assert symbol.__module__ == "insideLLMs.contrib.reasoning"
+        assert pickle.loads(pickle.dumps(symbol)) is symbol
 
 
 class TestReasoningType:

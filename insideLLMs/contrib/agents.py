@@ -54,6 +54,6 @@ __all__ = [
 
 for _name in __all__:
     _value = globals()[_name]
-    if isinstance(_value, type):
+    if callable(_value):
         _value.__module__ = __name__
 del _name, _value

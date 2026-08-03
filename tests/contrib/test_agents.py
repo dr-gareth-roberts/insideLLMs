@@ -1,10 +1,12 @@
 """Tests for Autonomous Agents module."""
 
 import json
+import pickle
 from unittest.mock import MagicMock
 
 import pytest
 
+import insideLLMs.contrib.agents as agents_module
 from insideLLMs.contrib.agents import (
     AgentConfig,
     AgentExecutor,
@@ -28,6 +30,14 @@ from insideLLMs.contrib.agents import (
     tool,
 )
 from insideLLMs.models import DummyModel
+
+
+def test_public_symbols_preserve_facade_identity_and_pickle_path():
+    for name in agents_module.__all__:
+        symbol = getattr(agents_module, name)
+        assert symbol.__module__ == "insideLLMs.contrib.agents"
+        assert pickle.loads(pickle.dumps(symbol)) is symbol
+
 
 # =============================================================================
 # Test Configuration
