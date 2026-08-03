@@ -38,7 +38,7 @@ silently.
 
 **Files:** `insideLLMs/models/base.py`, `insideLLMs/runtime/pipeline.py`
 
-#106 converted streaming dispatch to `can_stream`/`can_stream_async` *because*
+PR #106 converted streaming dispatch to `can_stream`/`can_stream_async` *because*
 `hasattr()` sees inherited raising stubs — then left the peer chat paths on
 `hasattr(model, "achat")`. `Model.chat` and `AsyncModel.achat` are both concrete
 raising stubs, so `ModelPipeline.achat`, `Middleware.aprocess_chat` and
@@ -71,6 +71,19 @@ performs, so the two can no longer disagree. Dropped the duplicated local
 `_resolve` in favour of `_callbacks.resolve`.
 
 **Verified causally.** **Tests:** +3.
+
+> **Follow-up: this fix initially caused a concurrency regression**, caught in
+> review of this PR. `ModelPipeline` inherits a *synchronous*
+> `Model.generate_with_metadata` and defines a metadata-less `agenerate`, so
+> preferring metadata selected the sync path and `_has_async_generation()`
+> became `False` — every `InferenceClient.from_model_config` client sampled
+> **sequentially**. Measured: 5 samples × 50 ms took 0.25 s instead of 0.05 s.
+>
+> Resolved by adding `ModelPipeline.agenerate_with_metadata` (an async peer of
+> `Model.generate_with_metadata`) so one method carries both properties, rather
+> than choosing between accounting and concurrency. Verified: selection returns
+> `agenerate_with_metadata`, `_has_async_generation()` is `True`, the same 5
+> samples take 0.05 s, and latency metadata is still recorded.
 
 ## 4. Provider timeouts reported as budget exhaustion
 
@@ -323,6 +336,7 @@ Recorded rather than silently skipped.
 | `insideLLMs/contrib/ensemble.py` | `max()` restored; NaN-last kept |
 | `benchmarks/inference_strategies.py` | derived `STRATEGY_MODULES`; `model_id` supplied |
 | `CHANGELOG.md` | Fixed + Changed (breaking); corrected the #106 timeout claim |
+| `FIXES_APPLIED.md` | This document |
 
 **Tests** — `tests/test_policy_engine.py` (+5), `tests/inference/test_review_regressions.py` (+19),
 `tests/inference/test_prefix_cache.py` (+1), `tests/test_matched_compute.py` (+1),
@@ -337,3 +351,4 @@ Recorded rather than silently skipped.
 | `0cf9c34` | Fix self-consistency vote clustering, call accounting, and tool retry scope |
 | `95dbcfb` | Fix elite double-weighting, async confidence, budget overrun, orphaned tasks |
 | `8e47ab2` | Unify token counting, restore scorer support, fix executor identity |
+| `c563ef3` | Remove dead code, derive strategy list, document declined findings |

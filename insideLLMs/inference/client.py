@@ -104,9 +104,14 @@ class InferenceClient:
         verifiers: Sequence[VerifierSpec],
         top_k: int = 1,
         judge: JudgeCallback | None = None,
+        judge_model_calls: int = 2,
         normalize: Callable[[Candidate], str | None] | None = None,
     ) -> InferenceResult:
-        """Generate candidates and select only after ordered verification."""
+        """Generate candidates and select only after ordered verification.
+
+        ``judge_model_calls`` is forwarded to :func:`select_best`; pass ``0`` for
+        a purely local judge so its cost is not charged as model calls.
+        """
 
         normalized_request = _as_request(request)
         started = perf_counter()
@@ -117,6 +122,7 @@ class InferenceClient:
             verifiers=verifiers,
             top_k=top_k,
             judge=judge,
+            judge_model_calls=judge_model_calls,
             normalize=normalize,
         )
         return _with_model_spend(

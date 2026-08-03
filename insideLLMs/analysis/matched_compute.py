@@ -50,9 +50,13 @@ class ComputeProfile:
     """Declared generation context used to establish compute equivalence.
 
     ``executor`` retains the model-backed executor (normally the client) so two
-    variants cannot silently run different models; identity is compared through
-    the executor's underlying ``model`` when it exposes one, so two clients
-    wrapping the same model still match. ``executor_id`` remains as a fallback
+    variants cannot silently run different models. Identity unwraps *only* an
+    ``InferenceClient``, comparing its underlying ``model``, so two clients
+    wrapping one model match; every other executor is compared by object
+    identity. Unwrapping anything exposing ``.model`` resolved to inconsistent
+    depths (``HuggingFaceModel.model`` is the inner transformers module), which
+    both rejected identical setups and matched distinct wrappers that happened
+    to share an inner module. ``executor_id`` remains as a fallback
     for callers that construct profiles directly — note that a bare ``id()``
     can alias after garbage collection, so prefer passing ``executor``.
     ``generated_calls`` is the per-example CEILING of expensive model calls the

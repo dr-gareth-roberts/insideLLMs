@@ -183,7 +183,15 @@ async def select_best(
         candidates=tuple(candidates),
         verifications=tuple(all_verifications),
         trace=(
-            TraceEvent(id="best-of-n-generate", kind="candidate-generation", calls=n),
+            # Report what the generator produced, matching Spend.calls; a
+            # consumer summing TraceEvent.calls must not derive a different
+            # total from spend. The request stays visible as metadata.
+            TraceEvent(
+                id="best-of-n-generate",
+                kind="candidate-generation",
+                calls=len(candidates),
+                metadata={"requested_n": n},
+            ),
             *(
                 TraceEvent(
                     id=f"best-of-n-{candidate.id}",

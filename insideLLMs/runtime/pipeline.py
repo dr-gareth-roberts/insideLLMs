@@ -257,6 +257,7 @@ from insideLLMs.models.base import (
     can_stream,
     can_stream_async,
 )
+from insideLLMs.types import ModelResponse
 
 if TYPE_CHECKING:
     from insideLLMs.tracing import TraceRecorder
@@ -2874,6 +2875,29 @@ class ModelPipeline(Model):
         # Fall back to executor for sync model
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, lambda: self.base_model.generate(prompt, **kwargs))
+
+    async def agenerate_with_metadata(self, prompt: str, **kwargs: Any) -> ModelResponse:
+        """Async peer of :meth:`Model.generate_with_metadata`.
+
+        Without this, a pipeline offered only a *synchronous* metadata-bearing
+        path (inherited ``generate_with_metadata``) alongside a metadata-less
+        ``agenerate``. Consumers that need both — notably
+        ``inference.ModelProposer``, which prefers metadata so ``Spend`` is not
+        zeroed — had to give up one: selecting the sync path silently dropped
+        concurrent sampling for every client built by
+        ``InferenceClient.from_model_config``. Providing both properties on one
+        method removes the trade-off rather than picking a side.
+        """
+        self._validate_prompt(prompt)
+        start = time.perf_counter()
+        content = await self.agenerate(prompt, **kwargs)
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        return ModelResponse(
+            content=content,
+            model=self.model_id,
+            latency_ms=latency_ms,
+        )
 
     async def achat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Asynchronously chat through the middleware pipeline."""

@@ -1219,7 +1219,7 @@ class ResponseAggregator:
         self,
         outputs: list[ModelOutput],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> AggregatedOutput:
         """Aggregate model outputs using the specified method.
 
@@ -1235,7 +1235,9 @@ class ResponseAggregator:
         method : AggregationMethod, optional
             The aggregation strategy to use (default: MAJORITY_VOTE).
             See :class:`AggregationMethod` for available options.
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
+            Returns any orderable score (float, str, tuple, ...). NaN floats
+            rank last; all other values are compared directly.
             Custom scoring function for BEST_OF_N method (default: None).
             If None and BEST_OF_N is used, defaults to selecting longest response.
             The function should take a response string and return a score.
@@ -1506,7 +1508,7 @@ class ResponseAggregator:
     @staticmethod
     def _best_of_n(
         outputs: list[ModelOutput],
-        scorer: Optional[Callable[[str], float]],
+        scorer: Optional[Callable[[str], Any]],
     ) -> tuple[str, str]:
         """Select the best response according to a scoring function.
 
@@ -1517,7 +1519,7 @@ class ResponseAggregator:
         ----
         outputs : list[ModelOutput]
             List of model outputs to score.
-        scorer : Optional[Callable[[str], float]]
+        scorer : Optional[Callable[[str], Any]]
             Function that takes a response string and returns a score.
             Higher scores are better. If None, uses response length.
 
@@ -1971,7 +1973,7 @@ class EnsembleEvaluator:
         self,
         prompt_outputs: list[list[ModelOutput]],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> EnsembleReport:
         """Evaluate ensemble performance across multiple prompts.
 
@@ -1986,7 +1988,7 @@ class EnsembleEvaluator:
             outputs from different models for the same prompt.
         method : AggregationMethod, optional
             Aggregation method to use (default: MAJORITY_VOTE).
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns
@@ -2328,7 +2330,7 @@ class ModelEnsemble:
         self,
         prompt: str,
         method: Optional[AggregationMethod] = None,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> AggregatedOutput:
         """Query all models and aggregate their responses.
 
@@ -2342,7 +2344,7 @@ class ModelEnsemble:
             The prompt to send to all models.
         method : Optional[AggregationMethod], optional
             Aggregation method to use (default: None uses default_method).
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns

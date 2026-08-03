@@ -900,3 +900,44 @@ async def test_select_best_cancels_sibling_verifications_on_failure() -> None:
         )
     await asyncio.sleep(0.4)
     assert completed_after_raise == [], f"orphaned verifications: {completed_after_raise}"
+
+
+async def test_pipeline_sampling_stays_concurrent_and_keeps_metadata() -> None:
+    """A pipeline must offer async *and* metadata-bearing generation.
+
+    Regression introduced while fixing the zeroed-Spend defect: ModelPipeline
+    inherits a synchronous Model.generate_with_metadata and defines a
+    metadata-less agenerate, so preferring metadata selected the sync path and
+    _has_async_generation() became False — every from_model_config client
+    sampled sequentially. ModelPipeline.agenerate_with_metadata carries both
+    properties so neither has to be traded away.
+    """
+    import time
+
+    from insideLLMs.runtime.pipeline import ModelPipeline
+
+    class SlowAsync:
+        name = "slow"
+
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "sync"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            await asyncio.sleep(0.05)
+            return "async"
+
+    pipeline = ModelPipeline(SlowAsync())
+    proposer = ModelProposer(pipeline)
+    assert proposer._select_generator().__name__ == "agenerate_with_metadata"
+    assert proposer._has_async_generation() is True
+
+    started = time.monotonic()
+    results = await InferenceClient(ModelPipeline(SlowAsync())).generate_many(
+        InferenceRequest(prompt="q"), n=5
+    )
+    elapsed = time.monotonic() - started
+
+    # Sequential would be ~0.25s for five 50ms samples.
+    assert elapsed < 0.2, f"sampling was sequential: {elapsed:.2f}s"
+    # And the metadata that motivated the preference is still recorded.
+    assert results[0].spend.elapsed_seconds > 0
