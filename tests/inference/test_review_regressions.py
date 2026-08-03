@@ -598,3 +598,176 @@ async def test_beam_search_propagates_callback_timeout_with_budget_remaining() -
             beam_width=1,
             budget=Budget(max_seconds=300),
         )
+
+
+async def test_self_consistency_junk_outputs_do_not_form_a_voting_bloc() -> None:
+    """Empty normalizations must abstain, not cluster into one winning key.
+
+    Regression: normalize_text strips punctuation and articles, so "!!!", "..."
+    and "?!" all normalized to "". Returning that as a vote key made three
+    unrelated junk answers a single bloc that outvoted the genuine modal answer.
+    """
+
+    class JunkModel:
+        name = "junk"
+
+        def __init__(self) -> None:
+            self._outputs = iter(["4", "!!!", "...", "4", "?!"])
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return next(self._outputs)
+
+    result = await InferenceClient(JunkModel()).self_consistency("q", max_samples=5)
+    assert result.answer == "4"
+    assert "" not in result.provenance["vote_counts"]
+
+
+def test_default_vote_normalizer_distinguishes_empty_from_unset() -> None:
+    """An explicit empty normalized_answer must not fall back to raw output."""
+    from insideLLMs.inference.client import _default_vote_normalizer
+
+    # Explicitly normalized to empty -> abstain rather than reusing the output.
+    assert _default_vote_normalizer(Candidate(id="a", output="junk", normalized_answer="")) is None
+    # Unset -> derive from the output as before.
+    assert _default_vote_normalizer(Candidate(id="b", output="Four")) == "four"
+
+
+async def test_select_best_counts_actual_generations_and_real_judge_runs() -> None:
+    """Spend.calls reflects produced candidates; a local judge can declare zero.
+
+    Regression: calls came from the requested ``n`` (so an over-sampling
+    generator slipped past the matched-compute ceiling) and always charged 2 for
+    a judge, raising a spurious ComputeMismatchError for purely local judges.
+    """
+
+    def verify(candidate: Candidate) -> Verification:
+        return Verification(verifier_id="v", passed=True, score=1.0)
+
+    def over_sampling(request: InferenceRequest, n: int) -> tuple[Candidate, ...]:
+        return tuple(Candidate(id=f"c{i}", output=f"o{i}") for i in range(n + 3))
+
+    result = await select_best(
+        InferenceRequest(prompt="q"),
+        generate=over_sampling,
+        n=2,
+        verifiers=(VerifierSpec(id="v", verify=verify),),
+    )
+    assert len(result.candidates) == 5
+    assert result.spend.calls == 5
+
+    def local_judge(request: InferenceRequest, outputs: tuple[str, ...]) -> tuple[float, ...]:
+        return tuple(float(len(output)) for output in outputs)
+
+    local = await select_best(
+        InferenceRequest(prompt="q"),
+        generate=lambda r, n: tuple(Candidate(id=f"c{i}", output="x" * (i + 1)) for i in range(n)),
+        n=2,
+        verifiers=(VerifierSpec(id="v", verify=verify),),
+        judge=local_judge,
+        judge_model_calls=0,
+    )
+    assert local.spend.calls == 2
+    assert local.provenance["judge_order_debiased"] is True
+
+    # A judge that never runs must not be reported as having debiased anything.
+    single = await select_best(
+        InferenceRequest(prompt="q"),
+        generate=lambda r, n: (Candidate(id="only", output="x"),),
+        n=1,
+        verifiers=(VerifierSpec(id="v", verify=verify),),
+        judge=local_judge,
+    )
+    assert single.spend.calls == 1
+    assert single.provenance["judge_order_debiased"] is False
+
+
+async def test_execute_tool_does_not_retry_its_own_deadline() -> None:
+    """The declared timeout must bound the wall clock, not be multiplied by retries.
+
+    Regression: the retry clause caught TimeoutError, so an idempotent action
+    with timeout_seconds=T and max_transport_attempts=N took roughly N*T plus
+    backoff before failing.
+    """
+
+    async def hang(arguments: dict[str, object]) -> str:
+        await asyncio.sleep(30)
+        return "never"
+
+    started = asyncio.get_running_loop().time()
+    with pytest.raises(TimeoutError):
+        await execute_tool(
+            ToolAction(tool="t", arguments={}, idempotent=True),
+            tools={"t": hang},
+            allowed_tools={"t"},
+            limits=ToolLimits(timeout_seconds=0.3, max_transport_attempts=3),
+        )
+    elapsed = asyncio.get_running_loop().time() - started
+    assert elapsed < 0.9, f"deadline was retried: {elapsed:.2f}s for a 0.3s timeout"
+
+
+async def test_execute_tool_does_not_retry_deterministic_os_errors() -> None:
+    """FileNotFoundError and friends can never succeed on retry."""
+    calls = 0
+
+    async def missing(arguments: dict[str, object]) -> str:
+        nonlocal calls
+        calls += 1
+        raise FileNotFoundError("no such file")
+
+    with pytest.raises(FileNotFoundError):
+        await execute_tool(
+            ToolAction(tool="t", arguments={}, idempotent=True),
+            tools={"t": missing},
+            allowed_tools={"t"},
+            limits=ToolLimits(max_transport_attempts=3),
+        )
+    assert calls == 1
+
+
+async def test_execute_tool_still_retries_connection_errors() -> None:
+    """Genuine transport faults remain retryable."""
+    calls = 0
+
+    async def flaky(arguments: dict[str, object]) -> str:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise ConnectionError("connection reset")
+        return "ok"
+
+    observation = await execute_tool(
+        ToolAction(tool="t", arguments={}, idempotent=True),
+        tools={"t": flaky},
+        allowed_tools={"t"},
+        limits=ToolLimits(max_transport_attempts=3),
+    )
+    assert observation.output == "ok"
+    assert observation.transport_attempts == 3
+
+
+async def test_output_too_large_signals_the_tool_already_ran() -> None:
+    """A post-execution violation must be distinguishable from a pre-flight one.
+
+    Regression: exceeding max_output_characters raised bare ToolPolicyError,
+    whose docstring promises the action was rejected *before* execution — so a
+    caller could retry a non-idempotent action and duplicate its side effect.
+    """
+    from insideLLMs.inference import ToolOutputTooLarge
+
+    ran = 0
+
+    async def tool(arguments: dict[str, object]) -> str:
+        nonlocal ran
+        ran += 1
+        return "x" * 100
+
+    with pytest.raises(ToolOutputTooLarge):
+        await execute_tool(
+            ToolAction(tool="t", arguments={}),
+            tools={"t": tool},
+            allowed_tools={"t"},
+            limits=ToolLimits(max_output_characters=10),
+        )
+    assert ran == 1
+    # Still a ToolPolicyError, so existing handlers keep working.
+    assert issubclass(ToolOutputTooLarge, ToolPolicyError)

@@ -126,17 +126,44 @@ def _default_vote_normalizer(candidate: Candidate) -> str | None:
     Delegates to :func:`insideLLMs.analysis.evaluation.normalize_text` (lazily,
     to avoid an import cycle through the analysis package) so vote grouping and
     evaluation scoring agree on which answers are equal.
+
+    Two details matter for correctness:
+
+    * ``normalized_answer`` is checked against ``None`` rather than for
+      truthiness, so an upstream extractor that deliberately produced ``""``
+      is not silently replaced by the raw output.
+    * A normalization that collapses to empty returns ``None`` (abstain) rather
+      than ``""``. ``normalize_text`` strips punctuation and articles, so
+      unrelated junk answers ("!!!", "...", "?!") all normalize to the empty
+      string; returning it as a key made them a single voting bloc that could
+      outvote the genuine modal answer.
     """
 
     from insideLLMs.analysis.evaluation import normalize_text
 
-    return normalize_text(candidate.normalized_answer or candidate.output)
+    source = (
+        candidate.normalized_answer if candidate.normalized_answer is not None else candidate.output
+    )
+    return normalize_text(source) or None
+
+
+def _usage(metadata: Mapping[str, object]) -> tuple[int, int, float]:
+    """Read (input_tokens, output_tokens, latency_seconds) from candidate metadata.
+
+    Single source of truth for the accounting keys the proposer writes. This was
+    previously copy-pasted at three call sites, so a key rename, default change
+    or unit fix applied to one could silently desynchronize Spend totals from
+    the per-event trace numbers.
+    """
+    return (
+        int(metadata.get("prompt_tokens", 0)),
+        int(metadata.get("output_tokens", 0)),
+        float(metadata.get("latency_ms", 0.0)) / 1000,
+    )
 
 
 def _one_shot_result(candidate: Candidate) -> InferenceResult:
-    input_tokens = int(candidate.metadata.get("prompt_tokens", 0))
-    output_tokens = int(candidate.metadata.get("output_tokens", 0))
-    latency_seconds = float(candidate.metadata.get("latency_ms", 0.0)) / 1000
+    input_tokens, output_tokens, latency_seconds = _usage(candidate.metadata)
     model_name = str(candidate.metadata["model"])
     return InferenceResult(
         answer=candidate.output,
@@ -171,9 +198,10 @@ def _with_model_spend(
     observed_elapsed: float,
     strategy: str,
 ) -> InferenceResult:
-    input_tokens = sum(int(item.metadata.get("prompt_tokens", 0)) for item in result.candidates)
-    output_tokens = sum(int(item.metadata.get("output_tokens", 0)) for item in result.candidates)
-    latencies = [float(item.metadata.get("latency_ms", 0.0)) / 1000 for item in result.candidates]
+    per_candidate = [_usage(item.metadata) for item in result.candidates]
+    input_tokens = sum(usage[0] for usage in per_candidate)
+    output_tokens = sum(usage[1] for usage in per_candidate)
+    latencies = [usage[2] for usage in per_candidate]
     generation_elapsed = (max(latencies) if concurrent else sum(latencies)) if latencies else 0.0
     elapsed_seconds = max(generation_elapsed, observed_elapsed)
     candidate_metadata = {item.id: item.metadata for item in result.candidates}
@@ -193,12 +221,13 @@ def _with_model_spend(
         if metadata is None:
             trace.append(event)
             continue
+        event_input, event_output, event_latency = _usage(metadata)
         trace.append(
             replace(
                 event,
-                input_tokens=int(metadata.get("prompt_tokens", 0)),
-                output_tokens=int(metadata.get("output_tokens", 0)),
-                latency_seconds=float(metadata.get("latency_ms", 0.0)) / 1000,
+                input_tokens=event_input,
+                output_tokens=event_output,
+                latency_seconds=event_latency,
             )
         )
     return replace(

@@ -78,12 +78,24 @@ async def select_best(
     verifiers: Sequence[VerifierSpec],
     top_k: int = 1,
     judge: JudgeCallback | None = None,
+    judge_model_calls: int = 2,
     normalize: Callable[[Candidate], str | None] | None = None,
 ) -> InferenceResult:
-    """Select by ordered verifiers, using an optional two-order blinded judge last."""
+    """Select by ordered verifiers, using an optional two-order blinded judge last.
+
+    ``judge_model_calls`` declares how many model calls one order-debiasing pass
+    costs. The judge is invoked twice (forward and reversed), so a model-backed
+    judge costs 2 — the default. Pass ``0`` for a purely local judge (a length
+    heuristic, say): ``Spend.calls`` is read by ``run_matched_compute`` as
+    *observed model calls*, and charging a local judge there raises a spurious
+    ComputeMismatchError, which callers could only satisfy by inflating the
+    declared baseline and breaking the fairness the module exists to provide.
+    """
 
     if n < 1 or top_k < 1:
         raise ValueError("n and top_k must be positive")
+    if judge_model_calls < 0:
+        raise ValueError("judge_model_calls must be non-negative")
     if not verifiers:
         raise ValueError("at least one verifier is required")
     ordered_verifiers = tuple(spec for spec in verifiers if spec.hard) + tuple(
@@ -124,7 +136,9 @@ async def select_best(
     eligible = [candidate for candidate in candidates if candidate.id in passed_ids]
     if not eligible:
         raise NoVerifiedCandidateError("no candidate passed hard verification")
-    if judge is not None and len(eligible) > 1:
+    judge_ran = judge is not None and len(eligible) > 1
+    if judge_ran:
+        assert judge is not None  # narrowed by judge_ran
         reverse_items = list(reversed(eligible))
         forward_raw, reverse_raw = await asyncio.gather(
             resolve(judge(request, tuple(item.output for item in eligible))),
@@ -181,7 +195,11 @@ async def select_best(
                 for candidate in candidates
             ),
         ),
-        spend=Spend(calls=n + (2 if judge is not None and len(eligible) > 1 else 0)),
+        # Count the candidates the generator actually produced, not the n that
+        # was requested: a generator that over-samples (or internally retries)
+        # would otherwise under-report real model calls and slip past the
+        # matched-compute ceiling, and a deduplicating one would over-report.
+        spend=Spend(calls=len(candidates) + (judge_model_calls if judge_ran else 0)),
         # Reaching here means at least one candidate passed hard verification;
         # the empty case already raised NoVerifiedCandidateError.
         stop_reason=StopReason.VERIFIED,
@@ -195,6 +213,8 @@ async def select_best(
             "top_k_vote_counts": dict(vote_counts),
             "verifier_order": tuple(spec.id for spec in ordered_verifiers),
             "verifier_invocations": len(all_verifications),
-            "judge_order_debiased": judge is not None,
+            # Whether debiasing actually happened, not merely whether a judge was
+            # supplied: with one eligible candidate the judge is never invoked.
+            "judge_order_debiased": judge_ran,
         },
     )

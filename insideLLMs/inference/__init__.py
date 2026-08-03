@@ -37,7 +37,14 @@ from .search import SearchBudgetExceeded, beam_search
 from .self_consistency import sample_consistent
 from .structured import generate_validated
 from .sync import run_sync
-from .tools import Observation, ToolAction, ToolLimits, ToolPolicyError, execute_tool
+from .tools import (
+    Observation,
+    ToolAction,
+    ToolLimits,
+    ToolOutputTooLarge,
+    ToolPolicyError,
+    execute_tool,
+)
 
 __all__ = [
     "Budget",
@@ -66,6 +73,7 @@ __all__ = [
     "StopReason",
     "ToolAction",
     "ToolLimits",
+    "ToolOutputTooLarge",
     "ToolPolicyError",
     "TraceEvent",
     "VerifierSpec",
