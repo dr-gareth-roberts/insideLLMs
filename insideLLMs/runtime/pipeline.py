@@ -251,9 +251,13 @@ from insideLLMs.models.base import (
     ChatMessage,
     Model,
     ModelProtocol,
+    can_chat,
+    can_chat_async,
+    can_generate_async,
     can_stream,
     can_stream_async,
 )
+from insideLLMs.types import ModelResponse
 
 if TYPE_CHECKING:
     from insideLLMs.tracing import TraceRecorder
@@ -556,7 +560,7 @@ class Middleware(ABC):
             ...         response = self.next_middleware.process_chat(
             ...             messages, **kwargs
             ...         )
-            ...     elif self.model and hasattr(self.model, "chat"):
+            ...     elif self.model and can_chat(self.model):
             ...         response = self.model.chat(messages, **kwargs)
             ...     else:
             ...         raise ModelError("No chat implementation available")
@@ -567,7 +571,10 @@ class Middleware(ABC):
         # Default implementation delegates to next middleware or model
         if self.next_middleware:
             return self.next_middleware.process_chat(messages, **kwargs)
-        if self.model and hasattr(self.model, "chat"):
+        # can_chat, not hasattr: Model.chat is a concrete raising stub, so
+        # presence-gating made the ModelError below unreachable and surfaced a
+        # bare NotImplementedError that callers catching ModelError never see.
+        if self.model and can_chat(self.model):
             return self.model.chat(messages, **kwargs)
         raise ModelError("No chat implementation available")
 
@@ -623,7 +630,7 @@ class Middleware(ABC):
             ...
             ...     if self.next_middleware:
             ...         stream = self.next_middleware.process_stream(prompt, **kwargs)
-            ...     elif self.model and hasattr(self.model, "stream"):
+            ...     elif self.model and can_stream(self.model):
             ...         stream = self.model.stream(prompt, **kwargs)
             ...     else:
             ...         raise ModelError("No streaming implementation")
@@ -763,9 +770,9 @@ class Middleware(ABC):
         if self.next_middleware:
             return await self.next_middleware.aprocess_chat(messages, **kwargs)
         if self.model:
-            if hasattr(self.model, "achat"):
+            if can_chat_async(self.model):
                 return await self.model.achat(messages, **kwargs)
-            if hasattr(self.model, "chat"):
+            if can_chat(self.model):
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, lambda: self.model.chat(messages, **kwargs))
         raise ModelError("No chat implementation available")
@@ -1537,7 +1544,7 @@ class TraceMiddleware(PassthroughMiddleware):
             # Delegate
             if self.next_middleware:
                 response = self.next_middleware.process_chat(messages, **clean_kwargs)
-            elif self.model and hasattr(self.model, "chat"):
+            elif self.model and can_chat(self.model):
                 response = self.model.chat(messages, **clean_kwargs)
             else:
                 raise ModelError("No chat implementation available")
@@ -1602,9 +1609,9 @@ class TraceMiddleware(PassthroughMiddleware):
             if self.next_middleware:
                 response = await self.next_middleware.aprocess_chat(messages, **clean_kwargs)
             elif self.model:
-                if hasattr(self.model, "achat"):
+                if can_chat_async(self.model):
                     response = await self.model.achat(messages, **clean_kwargs)
-                elif hasattr(self.model, "chat"):
+                elif can_chat(self.model):
                     loop = asyncio.get_running_loop()
                     response = await loop.run_in_executor(
                         None, lambda: self.model.chat(messages, **clean_kwargs)
@@ -2847,7 +2854,7 @@ class ModelPipeline(Model):
         """Chat through the middleware pipeline."""
         if self.middlewares:
             return self.middlewares[0].process_chat(messages, **kwargs)
-        if hasattr(self.base_model, "chat"):
+        if can_chat(self.base_model):
             return self.base_model.chat(messages, **kwargs)
         raise ModelError("Base model does not support chat")
 
@@ -2866,19 +2873,42 @@ class ModelPipeline(Model):
         """Asynchronously generate through the middleware pipeline."""
         if self.middlewares:
             return await self.middlewares[0].aprocess_generate(prompt, **kwargs)
-        if isinstance(self.base_model, AsyncModelProtocol):
+        if can_generate_async(self.base_model):
             return await self.base_model.agenerate(prompt, **kwargs)
         # Fall back to executor for sync model
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, lambda: self.base_model.generate(prompt, **kwargs))
 
+    async def agenerate_with_metadata(self, prompt: str, **kwargs: Any) -> ModelResponse:
+        """Async peer of :meth:`Model.generate_with_metadata`.
+
+        Without this, a pipeline offered only a *synchronous* metadata-bearing
+        path (inherited ``generate_with_metadata``) alongside a metadata-less
+        ``agenerate``. Consumers that need both — notably
+        ``inference.ModelProposer``, which prefers metadata so ``Spend`` is not
+        zeroed — had to give up one: selecting the sync path silently dropped
+        concurrent sampling for every client built by
+        ``InferenceClient.from_model_config``. Providing both properties on one
+        method removes the trade-off rather than picking a side.
+        """
+        self._validate_prompt(prompt)
+        start = time.perf_counter()
+        content = await self.agenerate(prompt, **kwargs)
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        return ModelResponse(
+            content=content,
+            model=self.model_id,
+            latency_ms=latency_ms,
+        )
+
     async def achat(self, messages: list[ChatMessage], **kwargs: Any) -> str:
         """Asynchronously chat through the middleware pipeline."""
         if self.middlewares:
             return await self.middlewares[0].aprocess_chat(messages, **kwargs)
-        if hasattr(self.base_model, "achat"):
+        if can_chat_async(self.base_model):
             return await self.base_model.achat(messages, **kwargs)
-        if hasattr(self.base_model, "chat"):
+        if can_chat(self.base_model):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(
                 None, lambda: self.base_model.chat(messages, **kwargs)

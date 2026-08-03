@@ -37,18 +37,23 @@ def compose_cached_prompt(
     tools: dict[str, Any] | None = None,
     schemas: dict[str, Any] | None = None,
     tenant_id: str,
-    model_id: str = "",
+    model_id: str,
 ) -> CachedPrompt:
     """Put immutable sections first and scope exact-cache identity by tenant.
 
-    Pass ``model_id`` (model name plus any generation parameters that change
-    outputs, e.g. ``"gpt-4o-mini:temp=0"``) whenever the cache_key feeds a
-    shared KV/response cache: without it, different models with the same stable
-    prefix collide on one key.
+    ``model_id`` is required and must identify the model *plus* any generation
+    parameters that change outputs (e.g. ``"gpt-4o-mini:temp=0"``). It was
+    previously optional, defaulting to ``""``, which meant two different models
+    sharing a stable prefix produced byte-identical cache keys — a shared
+    KV/response cache would then serve one model's completion for another
+    model's request. A required argument is the only default that cannot be
+    silently wrong, so the safe value is not guessable and must be supplied.
     """
 
     if not tenant_id.strip() or "\0" in tenant_id:
         raise ValueError("tenant_id must be non-empty and contain no NUL characters")
+    if not model_id.strip() or "\0" in model_id:
+        raise ValueError("model_id must be non-empty and contain no NUL characters")
     stable_sections = list(parts.stable)
     if schemas:
         stable_sections.append(f"Schemas: {_canonical(schemas)}")
@@ -70,9 +75,11 @@ def compose_cached_prompt(
         [tenant_id, model_id, stable_prefix], separators=(",", ":"), ensure_ascii=False
     ).encode()
     digest = hashlib.sha256(cache_identity).hexdigest()
-    metadata = {"cache_control": "exact-prefix", "tenant_id": tenant_id}
-    if model_id:
-        metadata["model_id"] = model_id
+    metadata = {
+        "cache_control": "exact-prefix",
+        "tenant_id": tenant_id,
+        "model_id": model_id,
+    }
     return CachedPrompt(
         text=text,
         stable_prefix=stable_prefix,

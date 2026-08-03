@@ -6,7 +6,9 @@ import time
 from collections.abc import Callable, Sequence
 from typing import Awaitable, TypeVar
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from insideLLMs.tokens import estimate_tokens
+
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, StopReason, TraceEvent
 
 StateT = TypeVar("StateT")
@@ -30,7 +32,7 @@ async def beam_search(
     is_terminal: Callable[[StateT], bool],
     beam_width: int,
     budget: Budget,
-    token_cost: Callable[[StateT], int] = lambda state: len(str(state)),
+    token_cost: Callable[[StateT], int] = lambda state: estimate_tokens(str(state)),
 ) -> InferenceResult:
     """Run deterministic beam search; an objective value callback is mandatory."""
 
@@ -67,8 +69,8 @@ async def beam_search(
         try:
             return await invoke_with_timeout(callback, *args, timeout=remaining)
         except TimeoutError as error:
-            if remaining is None:
-                # No time budget was armed: this is the callback's own error.
+            if not budget_elapsed(started, budget.max_seconds):
+                # The deadline did not fire: this is the callback's own error.
                 raise
             raise SearchBudgetExceeded("search time budget exhausted") from error
 
@@ -132,8 +134,13 @@ async def beam_search(
                         and time.monotonic() - started >= budget.max_seconds
                     )
                 ):
+                    # Break rather than continue: these counters are monotonic,
+                    # so once a limit is hit no later child in this state can be
+                    # admitted, and continuing still pays for every remaining
+                    # action's (potentially model-backed) transition call inside
+                    # the generation the budget was meant to stop.
                     budget_hit = True
-                    continue
+                    break
                 try:
                     score = await call(value, child)
                 except SearchBudgetExceeded:

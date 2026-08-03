@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from insideLLMs.crypto.canonical import canonical_json_bytes, digest_bytes
 from insideLLMs.exceptions import ModelError
-from insideLLMs.models.base import ChatMessage
+from insideLLMs.models.base import ChatMessage, can_chat_async
 from insideLLMs.runtime.pipeline import PassthroughMiddleware
 
 
@@ -161,7 +161,10 @@ class ReceiptMiddleware(PassthroughMiddleware):
         if self.next_middleware:
             response = await self.next_middleware.aprocess_chat(messages, **kwargs)
         elif self.model:
-            if hasattr(self.model, "achat"):
+            # can_chat_async, not hasattr: AsyncModel.achat is a concrete raising
+            # stub, so presence-gating made the executor fallback below dead code
+            # for every model that implements only synchronous chat.
+            if can_chat_async(self.model):
                 response = await self.model.achat(messages, **kwargs)
             else:
                 response = await asyncio.get_running_loop().run_in_executor(

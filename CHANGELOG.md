@@ -15,6 +15,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema version compatibility checking in diff command
 - Delimiter escape protection in defensive prompt builder
 
+### Fixed
+- **Policy verdicts no longer pass when a SCITT receipt is missing.**
+  `run_policy` handled receipt-with-attestation and receipt-without-attestation
+  but left attestation-without-receipt unhandled: no `scitt_*` check was
+  recorded and the verdict stayed `passed=true`, so a run with an incomplete
+  transparency record read as compliant. Every asymmetry now fails closed.
+- **Chat dispatch honours raising stubs, on both the sync and async paths.**
+  `Model.chat` and `AsyncModel.achat` are concrete stubs that raise
+  `NotImplementedError`, so `hasattr()` reported a capability the model lacked.
+  On the async side this made the documented run-in-executor fallback
+  unreachable in `ModelPipeline.achat`, `Middleware.aprocess_chat` and
+  `TraceMiddleware.aprocess_chat`. On the sync side it made the
+  `ModelError("No chat implementation available")` guard in
+  `Middleware.process_chat`, `TraceMiddleware.process_chat` and
+  `ModelPipeline.chat` dead code, so callers wrapping the pipeline in
+  `except ModelError` received an uncaught `NotImplementedError`. Adds
+  `can_chat`, `can_chat_async` and `can_generate_async` to complete the
+  `can_stream`/`can_stream_async` family.
+- **Generate-only models work again in structured output, RAG and receipts.**
+  The same presence check disabled documented fallbacks in three more callers:
+  `StructuredOutputGenerator.generate` (which documents *"chat() or generate()"*
+  support and repeated the raise once per retry attempt), `RAGChain.query_with_chat`
+  (which documents accepting a model implementing only `generate`), and
+  `ReceiptMiddleware.aprocess_chat` (whose run-in-executor fallback was
+  unreachable). In each case the dead branch was a working alternative path, not
+  merely a different error.
+- **Escalation time budgets now bound the `confidence` callback.** Scoring ran
+  outside the deadline, so a model-backed confidence callback could overrun
+  `max_seconds` without limit (measured: 0.40s against a 0.05s budget).
+  Synchronous confidence callbacks remain supported; a scorer raising its own
+  `TimeoutError` still propagates instead of being relabelled as exhaustion; and
+  a candidate the budget left unscored is dropped rather than admitted with a
+  fabricated confidence.
+- **Tool timeout provenance is recorded rather than inferred.** `execute_tool`
+  told its own per-attempt deadline apart from a tool's transport timeout by
+  measuring elapsed time in the handler. A tool that stalls the event loop
+  prevents the deadline callback from firing while pushing that measurement past
+  the limit, so a genuine retryable transport fault was denied its retry. Our
+  deadline is still never retried, so a declared timeout is never multiplied by
+  `max_transport_attempts`.
+- **`best_of_n` judge calls appear in the trace as well as in `Spend`.**
+  `judge_model_calls` was added to `Spend.calls` with no corresponding trace
+  event, so a consumer summing `TraceEvent.calls` under-counted model calls by
+  exactly that amount whenever a model-backed judge ran.
+- **Provider timeouts are no longer relabelled as budget exhaustion.** The
+  earlier fix only distinguished "no budget armed"; with a budget armed, a
+  callback raising its own `TimeoutError` was still reported as exhaustion even
+  when the whole budget remained. `escalation` additionally *swallowed* the
+  error, returning a cheaper earlier answer with `stop_reason=BUDGET`. All four
+  strategy modules now test whether the deadline genuinely elapsed.
+- **Generation dispatch preserves accounting and resolves awaitables.** A model
+  whose `generate()` is `async def` had the coroutine object returned as its
+  answer text; and `agenerate` was preferred over `generate_with_metadata`,
+  zeroing token/latency `Spend` for models offering both (notably
+  `InferenceClient.from_model_config` pipelines), which made matched-compute
+  reports compare zeros.
+
+### Changed (breaking)
+- **`compose_cached_prompt(model_id=...)` is now required** (was optional,
+  defaulting to `""`). Different models sharing a stable prefix and tenant
+  produced byte-identical `cache_key`s, so a shared KV/response cache could
+  serve one model's completion for another model's request. Pass the model name
+  plus any generation parameters that change outputs, e.g.
+  `"gpt-4o-mini:temp=0"`. Callers omitting it now raise `TypeError`.
+
 ### Deprecated
 - **`results.jsonl` legacy alias** (Stable artifact surface)
   - Canonical file is `records.jsonl`; harness runs still emit `results.jsonl` as a symlink or copy for backward compatibility.
@@ -23,8 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Inference-harness review fixes**: beam search terminates on cyclic state
-  graphs; callback timeouts are no longer mislabelled as budget exhaustion in
-  search/evolution/DAG/escalation; caller metadata can no longer forge spend
+  graphs; callback timeouts raised with no time budget armed are no longer
+  mislabelled as budget exhaustion in search/evolution/DAG/escalation (the
+  budget-armed case was only fixed later — see Fixed above); caller metadata can no longer forge spend
   accounting; self-consistency returns a real sample output (the normalization
   key moves to `provenance["winning_key"]`); NaN verifier scores rank last;
   matched-compute treats declared calls as a per-example ceiling, compares

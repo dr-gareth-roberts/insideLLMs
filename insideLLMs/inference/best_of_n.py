@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable, Literal
 
-from ._callbacks import resolve
+from ._callbacks import gather_cancelling, resolve
 from .schemas import (
     Candidate,
     InferenceRequest,
@@ -78,12 +77,24 @@ async def select_best(
     verifiers: Sequence[VerifierSpec],
     top_k: int = 1,
     judge: JudgeCallback | None = None,
+    judge_model_calls: int = 2,
     normalize: Callable[[Candidate], str | None] | None = None,
 ) -> InferenceResult:
-    """Select by ordered verifiers, using an optional two-order blinded judge last."""
+    """Select by ordered verifiers, using an optional two-order blinded judge last.
+
+    ``judge_model_calls`` declares how many model calls one order-debiasing pass
+    costs. The judge is invoked twice (forward and reversed), so a model-backed
+    judge costs 2 — the default. Pass ``0`` for a purely local judge (a length
+    heuristic, say): ``Spend.calls`` is read by ``run_matched_compute`` as
+    *observed model calls*, and charging a local judge there raises a spurious
+    ComputeMismatchError, which callers could only satisfy by inflating the
+    declared baseline and breaking the fairness the module exists to provide.
+    """
 
     if n < 1 or top_k < 1:
         raise ValueError("n and top_k must be positive")
+    if judge_model_calls < 0:
+        raise ValueError("judge_model_calls must be non-negative")
     if not verifiers:
         raise ValueError("at least one verifier is required")
     ordered_verifiers = tuple(spec for spec in verifiers if spec.hard) + tuple(
@@ -111,7 +122,7 @@ async def select_best(
 
     # Candidates verify concurrently; the hard-verifier short-circuit only
     # requires ordering within a single candidate's verifier chain.
-    verified = await asyncio.gather(*(_verify(candidate) for candidate in candidates))
+    verified = await gather_cancelling(*(_verify(candidate) for candidate in candidates))
     all_verifications: list[Verification] = []
     totals: dict[str, float] = {}
     passed_ids: set[str] = set()
@@ -124,9 +135,11 @@ async def select_best(
     eligible = [candidate for candidate in candidates if candidate.id in passed_ids]
     if not eligible:
         raise NoVerifiedCandidateError("no candidate passed hard verification")
-    if judge is not None and len(eligible) > 1:
+    judge_ran = judge is not None and len(eligible) > 1
+    if judge_ran:
+        assert judge is not None  # narrowed by judge_ran
         reverse_items = list(reversed(eligible))
-        forward_raw, reverse_raw = await asyncio.gather(
+        forward_raw, reverse_raw = await gather_cancelling(
             resolve(judge(request, tuple(item.output for item in eligible))),
             resolve(judge(request, tuple(item.output for item in reverse_items))),
         )
@@ -170,7 +183,15 @@ async def select_best(
         candidates=tuple(candidates),
         verifications=tuple(all_verifications),
         trace=(
-            TraceEvent(id="best-of-n-generate", kind="candidate-generation", calls=n),
+            # Report what the generator produced, matching Spend.calls; a
+            # consumer summing TraceEvent.calls must not derive a different
+            # total from spend. The request stays visible as metadata.
+            TraceEvent(
+                id="best-of-n-generate",
+                kind="candidate-generation",
+                calls=len(candidates),
+                metadata={"requested_n": n},
+            ),
             *(
                 TraceEvent(
                     id=f"best-of-n-{candidate.id}",
@@ -180,8 +201,29 @@ async def select_best(
                 )
                 for candidate in candidates
             ),
+            # The judge's calls are charged to Spend, so the trace has to show
+            # them too or the same sum-of-calls consumer under-counts by exactly
+            # judge_model_calls. Emitted only when the judge actually ran: with
+            # one eligible candidate it is never invoked and costs nothing.
+            *(
+                (
+                    TraceEvent(
+                        id="best-of-n-judge",
+                        kind="judge-order-debias",
+                        parent_ids=tuple(f"best-of-n-{item.id}" for item in eligible),
+                        calls=judge_model_calls,
+                        metadata={"eligible": len(eligible), "orders": 2},
+                    ),
+                )
+                if judge_ran
+                else ()
+            ),
         ),
-        spend=Spend(calls=n + (2 if judge is not None and len(eligible) > 1 else 0)),
+        # Count the candidates the generator actually produced, not the n that
+        # was requested: a generator that over-samples (or internally retries)
+        # would otherwise under-report real model calls and slip past the
+        # matched-compute ceiling, and a deduplicating one would over-report.
+        spend=Spend(calls=len(candidates) + (judge_model_calls if judge_ran else 0)),
         # Reaching here means at least one candidate passed hard verification;
         # the empty case already raised NoVerifiedCandidateError.
         stop_reason=StopReason.VERIFIED,
@@ -195,6 +237,8 @@ async def select_best(
             "top_k_vote_counts": dict(vote_counts),
             "verifier_order": tuple(spec.id for spec in ordered_verifiers),
             "verifier_invocations": len(all_verifications),
-            "judge_order_debiased": judge is not None,
+            # Whether debiasing actually happened, not merely whether a judge was
+            # supplied: with one eligible candidate the judge is never invoked.
+            "judge_order_debiased": judge_ran,
         },
     )

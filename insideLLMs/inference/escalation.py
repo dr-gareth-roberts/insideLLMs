@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import (
     Budget,
     Candidate,
@@ -33,7 +33,7 @@ async def escalate_adaptively(
     request: InferenceRequest,
     *,
     steps: Sequence[EscalationStep],
-    confidence: Callable[[Candidate], float],
+    confidence: Callable[[Candidate], float | Awaitable[float]],
     budget: Budget = Budget(),
 ) -> InferenceResult:
     """Start cheaply and run stronger actions only while uncertainty remains."""
@@ -46,6 +46,11 @@ async def escalate_adaptively(
         raise ValueError("escalation budget must permit positive time")
     if budget.max_seconds is not None and any(not is_async_callable(step.run) for step in steps):
         raise ValueError("escalation time budgets require asynchronous step callbacks")
+    # confidence is deliberately not policed for async-ness the way step.run is:
+    # it is usually a cheap local heuristic, and ``invoke_with_timeout`` accepts
+    # either form while still applying the deadline (a sync callback runs via
+    # ``asyncio.to_thread``). Requiring async here would break supported sync
+    # callers for no benefit.
     started = time.monotonic()
     candidates: list[Candidate] = []
     scores: list[float] = []
@@ -76,13 +81,45 @@ async def escalate_adaptively(
                 timeout=remaining,
             )
         except TimeoutError:
-            if remaining is None or not candidates:
-                # Either the callback's own error (no timeout armed) or there is
-                # no completed work to return; mirror the pre-step behavior.
+            if not budget_elapsed(started, budget.max_seconds) or not candidates:
+                # Either the step's own error (the deadline did not fire) or
+                # there is no completed work to return. Salvaging a cheaper
+                # answer here would silently swallow a real provider timeout and
+                # report it as StopReason.BUDGET.
                 raise
             stop_reason = StopReason.BUDGET
             break
-        score = confidence(candidate)
+        # Every other callback in the package accepts an awaitable; calling this
+        # one bare left an async confidence returning a coroutine, which then
+        # blew up at ``1.0 - score`` after the model call had already been paid
+        # for, with a "coroutine was never awaited" warning instead of an error.
+        #
+        # The deadline covers scoring as well as the step. ``confidence`` is
+        # usually a cheap local heuristic, but it is explicitly allowed to be
+        # model-backed (see the reuse note after the loop), and scoring outside
+        # the deadline let one hanging scorer overrun ``max_seconds`` without
+        # bound. Sync callbacks stay supported: ``invoke`` runs them via
+        # ``asyncio.to_thread``, so the deadline still fires.
+        remaining_to_score = (
+            None
+            if budget.max_seconds is None
+            else budget.max_seconds - (time.monotonic() - started)
+        )
+        try:
+            score = float(
+                await invoke_with_timeout(confidence, candidate, timeout=remaining_to_score)
+            )
+        except TimeoutError:
+            if not budget_elapsed(started, budget.max_seconds) or not candidates:
+                # The scorer's own timeout, or nothing already scored to fall
+                # back on — propagate rather than relabel it as exhaustion.
+                raise
+            # An unscored candidate cannot be ranked against the others or
+            # compared to ``minimum_confidence``; admitting it with a fabricated
+            # score would misreport why the run stopped. Drop it, exactly as a
+            # step whose own deadline fires is dropped.
+            stop_reason = StopReason.BUDGET
+            break
         scores.append(score)
         candidates.append(candidate)
         actions.append(step.id)

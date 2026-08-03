@@ -8,7 +8,9 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from insideLLMs.tokens import estimate_tokens
+
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, TraceEvent
 
 
@@ -32,7 +34,7 @@ async def execute_dag(
     max_concurrency: int | None = None,
     budget: Budget = Budget(),
     compact_observation: Callable[[object], object] = lambda value: value,
-    observation_tokens: Callable[[object], int] = lambda value: len(str(value).split()),
+    observation_tokens: Callable[[object], int] = lambda value: estimate_tokens(str(value)),
 ) -> InferenceResult:
     """Execute topological levels concurrently and reduce stable keyed observations."""
 
@@ -100,8 +102,8 @@ async def execute_dag(
             try:
                 value = await invoke_with_timeout(execute, node, dependencies, timeout=remaining)
             except TimeoutError as error:
-                if remaining is None:
-                    # No time budget was armed: this is the callback's own error.
+                if not budget_elapsed(started, budget.max_seconds):
+                    # The deadline did not fire: this is the callback's own error.
                     raise
                 raise DagBudgetExceeded("DAG time budget exhausted") from error
         return node.id, value
@@ -114,8 +116,12 @@ async def execute_dag(
                 if all(dependency in observations for dependency in by_id[node_id].dependencies)
             )
         )
-        if not ready:
-            raise ValueError("plan contains a dependency cycle")
+        # Not a second cycle detector: the Kahn validation above rejects every
+        # cyclic plan independently of checkpoint state, and all dependencies
+        # are known to exist, so a non-empty ``pending`` over an acyclic graph
+        # always yields a non-empty ``ready``. Asserting the invariant keeps one
+        # authority for cycles rather than two that can be maintained apart.
+        assert ready, "pending nodes with no ready set implies a cycle the upfront check missed"
         if budget.max_calls is not None and len(trace) + len(ready) + 1 > budget.max_calls:
             raise DagBudgetExceeded("DAG call budget would be exceeded")
         if budget.max_nodes is not None and len(trace) + len(ready) > budget.max_nodes:
@@ -157,8 +163,8 @@ async def execute_dag(
     try:
         answer = await invoke_with_timeout(reduce, dict(observations), timeout=remaining)
     except TimeoutError as error:
-        if remaining is None:
-            # No time budget was armed: this is the reduce callback's own error.
+        if not budget_elapsed(started, budget.max_seconds):
+            # The deadline did not fire: this is the reduce callback's own error.
             raise
         raise DagBudgetExceeded("DAG time budget exhausted during reduction") from error
     return InferenceResult(

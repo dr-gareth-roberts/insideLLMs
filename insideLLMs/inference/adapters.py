@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import inspect
 import json
 from collections.abc import Mapping
 from typing import Any
@@ -12,6 +11,7 @@ from typing import Any
 from insideLLMs.types import ModelResponse
 
 from ._callbacks import is_async_callable
+from ._callbacks import resolve as _resolve
 from .schemas import Candidate, InferenceRequest
 
 # Accounting keys the proposer owns; caller-supplied request metadata must not
@@ -60,14 +60,30 @@ class ModelProposer:
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
 
+    # Metadata-bearing sources come first: token/latency accounting is the point
+    # of the auditable result envelope, and preferring a metadata-less
+    # ``agenerate`` over ``generate_with_metadata`` silently zeroes Spend for
+    # every model that offers both (notably the pipelines built by
+    # ``InferenceClient.from_model_config``).
+    _GENERATOR_NAMES = (
+        "agenerate_with_metadata",
+        "generate_with_metadata",
+        "agenerate",
+        "generate",
+    )
+
+    def _select_generator(self) -> Any:
+        """Return the generation method ``_generate`` will actually call."""
+        for method_name in self._GENERATOR_NAMES:
+            method = getattr(self.model, method_name, None)
+            if callable(method):
+                return method
+        return None
+
     def _has_async_generation(self) -> bool:
-        # Mirror _generate's dispatch: callable objects with an async __call__
-        # are awaited directly there, so they must count as async here too or
-        # sampling silently drops to the sequential path.
-        return any(
-            is_async_callable(getattr(self.model, method_name, None))
-            for method_name in ("agenerate_with_metadata", "agenerate")
-        )
+        # Derived from the same selection ``_generate`` performs, so the two can
+        # never disagree about whether sampling may run concurrently.
+        return is_async_callable(self._select_generator())
 
     async def sample_one(self, request: InferenceRequest, sample_index: int) -> Candidate:
         """Generate one candidate with an explicit deterministic sample index."""
@@ -78,23 +94,17 @@ class ModelProposer:
         return self._candidate(request, response, sample_index)
 
     async def _generate(self, prompt: str) -> str | ModelResponse:
-        async_metadata = getattr(self.model, "agenerate_with_metadata", None)
-        if callable(async_metadata):
-            return await _resolve(async_metadata(prompt, **self.generation_kwargs))
+        method = self._select_generator()
+        if method is None:
+            raise TypeError("model must implement generate() or agenerate()")
 
-        async_generate = getattr(self.model, "agenerate", None)
-        if callable(async_generate):
-            return await _resolve(async_generate(prompt, **self.generation_kwargs))
+        if is_async_callable(method):
+            return await _resolve(method(prompt, **self.generation_kwargs))
 
-        sync_metadata = getattr(self.model, "generate_with_metadata", None)
-        if callable(sync_metadata):
-            return await asyncio.to_thread(sync_metadata, prompt, **self.generation_kwargs)
-
-        sync_generate = getattr(self.model, "generate", None)
-        if callable(sync_generate):
-            return await asyncio.to_thread(sync_generate, prompt, **self.generation_kwargs)
-
-        raise TypeError("model must implement generate() or agenerate()")
+        # A synchronously-named method may still be ``async def`` (or return an
+        # awaitable). Handing that to a worker thread yields the coroutine
+        # object itself as the answer text, so resolve whatever comes back.
+        return await _resolve(await asyncio.to_thread(method, prompt, **self.generation_kwargs))
 
     def _candidate(
         self,
@@ -133,12 +143,6 @@ class ModelProposer:
         ).encode()
         candidate_id = hashlib.sha256(identity).hexdigest()[:16]
         return Candidate(id=candidate_id, output=output, metadata=metadata)
-
-
-async def _resolve(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
 
 
 def _model_name(model: object, response: str | ModelResponse) -> str:

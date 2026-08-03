@@ -11,7 +11,16 @@ T = TypeVar("T")
 
 
 def run_sync(awaitable: Awaitable[T]) -> T:
-    """Run outside an event loop; async callers must await the underlying API."""
+    """Run outside an event loop; async callers must await the underlying API.
+
+    Deliberately *not* consolidated with :func:`insideLLMs.async_utils.run_async`,
+    which the two look like duplicates of. Called from inside a running loop,
+    ``run_async`` applies ``nest_asyncio`` to re-enter that loop; this function
+    refuses instead, because loop re-entrancy is a global monkey-patch with an
+    optional third-party dependency and inference must not require either. The
+    contracts differ on purpose: use ``run_async`` where nesting is acceptable,
+    and this where a clear failure is preferred over silently nesting.
+    """
 
     try:
         asyncio.get_running_loop()

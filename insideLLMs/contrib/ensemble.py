@@ -89,14 +89,12 @@ See Also
 
 from __future__ import annotations
 
+import math
 import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
-
-from insideLLMs.inference.best_of_n import rank_candidates
-from insideLLMs.inference.schemas import Candidate
 
 
 class AggregationMethod(Enum):
@@ -1221,7 +1219,7 @@ class ResponseAggregator:
         self,
         outputs: list[ModelOutput],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> AggregatedOutput:
         """Aggregate model outputs using the specified method.
 
@@ -1237,7 +1235,9 @@ class ResponseAggregator:
         method : AggregationMethod, optional
             The aggregation strategy to use (default: MAJORITY_VOTE).
             See :class:`AggregationMethod` for available options.
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
+            Returns any orderable score (float, str, tuple, ...). NaN floats
+            rank last; all other values are compared directly.
             Custom scoring function for BEST_OF_N method (default: None).
             If None and BEST_OF_N is used, defaults to selecting longest response.
             The function should take a response string and return a score.
@@ -1508,7 +1508,7 @@ class ResponseAggregator:
     @staticmethod
     def _best_of_n(
         outputs: list[ModelOutput],
-        scorer: Optional[Callable[[str], float]],
+        scorer: Optional[Callable[[str], Any]],
     ) -> tuple[str, str]:
         """Select the best response according to a scoring function.
 
@@ -1519,7 +1519,7 @@ class ResponseAggregator:
         ----
         outputs : list[ModelOutput]
             List of model outputs to score.
-        scorer : Optional[Callable[[str], float]]
+        scorer : Optional[Callable[[str], Any]]
             Function that takes a response string and returns a score.
             Higher scores are better. If None, uses response length.
 
@@ -1533,16 +1533,24 @@ class ResponseAggregator:
             return "", ""
 
         score_response = len if scorer is None else scorer
-        candidates = [
-            Candidate(id=f"legacy-ensemble-{index:020d}", output=output.response)
-            for index, output in enumerate(outputs)
-        ]
-        selected_candidate, _ = rank_candidates(
-            candidates,
-            score=lambda candidate: score_response(candidate.output),
-            tie_break="input_order",
-        )[0]
-        selected = outputs[int(selected_candidate.id.rsplit("-", 1)[1])]
+        # A plain max() over (output, score) pairs. Routing this through
+        # rank_candidates required fabricating a Candidate per output and
+        # encoding the list index into its id ("legacy-ensemble-%020d") only to
+        # parse it back out, ran an O(n^2) selection sort to obtain an argmax,
+        # and — because rank_candidates calls math.isnan on every score — broke
+        # scorers returning non-float orderables (str, tuple) that worked before.
+        scored = [(output, score_response(output.response)) for output in outputs]
+
+        def _is_nan(value: object) -> bool:
+            # Only floats can be NaN; anything else is left alone so arbitrary
+            # orderable scores keep comparing exactly as they did with max().
+            return isinstance(value, float) and math.isnan(value)
+
+        # NaN scores rank last rather than winning by accident of comparison
+        # order, but if every score is NaN there is nothing to prefer and the
+        # first output wins, matching max()'s behaviour.
+        comparable = [item for item in scored if not _is_nan(item[1])]
+        selected, _ = max(comparable or scored, key=lambda item: item[1])
 
         return selected.response, selected.model_id
 
@@ -1965,7 +1973,7 @@ class EnsembleEvaluator:
         self,
         prompt_outputs: list[list[ModelOutput]],
         method: AggregationMethod = AggregationMethod.MAJORITY_VOTE,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> EnsembleReport:
         """Evaluate ensemble performance across multiple prompts.
 
@@ -1980,7 +1988,7 @@ class EnsembleEvaluator:
             outputs from different models for the same prompt.
         method : AggregationMethod, optional
             Aggregation method to use (default: MAJORITY_VOTE).
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns
@@ -2322,7 +2330,7 @@ class ModelEnsemble:
         self,
         prompt: str,
         method: Optional[AggregationMethod] = None,
-        scorer: Optional[Callable[[str], float]] = None,
+        scorer: Optional[Callable[[str], Any]] = None,
     ) -> AggregatedOutput:
         """Query all models and aggregate their responses.
 
@@ -2336,7 +2344,7 @@ class ModelEnsemble:
             The prompt to send to all models.
         method : Optional[AggregationMethod], optional
             Aggregation method to use (default: None uses default_method).
-        scorer : Optional[Callable[[str], float]], optional
+        scorer : Optional[Callable[[str], Any]], optional
             Custom scoring function for BEST_OF_N method (default: None).
 
         Returns

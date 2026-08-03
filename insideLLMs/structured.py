@@ -180,6 +180,8 @@ from typing import (
     get_origin,
 )
 
+from insideLLMs.models.base import can_chat
+
 if TYPE_CHECKING:
     from insideLLMs.models.base import Model
 
@@ -1781,7 +1783,11 @@ class StructuredOutputGenerator(Generic[T]):
         for attempt in range(self.config.max_retries):
             try:
                 # Generate response
-                if hasattr(self.model, "chat"):
+                # can_chat, not hasattr: Model.chat is a concrete raising stub,
+                # so presence-gating made the generate() branch below unreachable
+                # and broke the "chat() or generate()" support this class
+                # documents — the raise then repeated for every retry attempt.
+                if can_chat(self.model):
                     messages = [
                         {"role": "system", "content": STRUCTURED_OUTPUT_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
