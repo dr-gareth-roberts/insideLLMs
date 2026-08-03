@@ -142,7 +142,17 @@ References
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypedDict
+
+
+class _ScoredExampleRequired(TypedDict):
+    example: dict[str, str]
+    relevance: float
+    quality: float
+
+
+class _ScoredExample(_ScoredExampleRequired, total=False):
+    diversity: float
 
 
 class OptimizationStrategy(Enum):
@@ -1680,7 +1690,7 @@ class FewShotSelector:
             )
 
         # Score each example
-        scored_examples = []
+        scored_examples: list[_ScoredExample] = []
         for example in examples:
             relevance = self._calculate_relevance(query, example.get(input_key, ""))
             quality = self._calculate_quality(
@@ -1700,8 +1710,8 @@ class FewShotSelector:
         scored_examples.sort(key=lambda x: float(x["relevance"]), reverse=True)
 
         # Select with diversity
-        selected = []
-        selected_scores = []
+        selected: list[_ScoredExample] = []
+        selected_scores: list[ExampleScore] = []
 
         for i in range(min(n, len(scored_examples))):
             if i == 0:
@@ -1710,7 +1720,7 @@ class FewShotSelector:
             else:
                 # Subsequent: balance relevance and diversity
                 best = None
-                best_score = -1
+                best_score = -1.0
 
                 # Hoist values derived from ``selected`` out of the per-candidate
                 # loop: they only change once per outer iteration, not per

@@ -5,8 +5,12 @@ import re
 import sys
 from pathlib import Path
 
+DEFAULT_TYPE_COVERAGE_THRESHOLD = 0.92
 
-def check_type_coverage(report_dir: str, threshold: float = 0.90) -> bool:
+
+def check_type_coverage(
+    report_dir: str, threshold: float = DEFAULT_TYPE_COVERAGE_THRESHOLD
+) -> bool:
     """Check type coverage from mypy report.
 
     Args:
@@ -60,7 +64,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     report_dir = sys.argv[1]
-    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else 0.90
+    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_TYPE_COVERAGE_THRESHOLD
 
     success = check_type_coverage(report_dir, threshold)
     sys.exit(0 if success else 1)

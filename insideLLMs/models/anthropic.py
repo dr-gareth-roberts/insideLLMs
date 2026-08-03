@@ -102,7 +102,7 @@ insideLLMs.exceptions : Exception classes for error handling
 
 import os
 from collections.abc import Iterator, Sequence
-from typing import Optional
+from typing import Any, Optional
 
 import anthropic
 from anthropic import APIError as AnthropicAPIError
@@ -120,6 +120,7 @@ from insideLLMs.exceptions import (
 from insideLLMs.exceptions import (
     ModelTimeoutError as InsideLLMsTimeoutError,
 )
+from insideLLMs.types import ModelInfo
 
 from .base import ChatMessage, Model
 
@@ -300,7 +301,7 @@ class AnthropicModel(Model):
             )
         self._timeout = timeout
 
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate a text response from a single prompt.
 
         Sends a prompt to the Anthropic API and returns the model's response.
@@ -439,7 +440,7 @@ class AnthropicModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Conduct a multi-turn chat conversation with the model.
 
         Sends a list of messages representing a conversation history to the
@@ -608,7 +609,7 @@ class AnthropicModel(Model):
                 original_error=e,
             )
 
-    def stream(self, prompt: str, **kwargs) -> Iterator[str]:
+    def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Stream a text response from the model token by token.
 
         Sends a prompt to the Anthropic API and yields response tokens as they
@@ -747,7 +748,7 @@ class AnthropicModel(Model):
                 original_error=e,
             )
 
-    def info(self):
+    def info(self) -> ModelInfo:
         """Retrieve metadata and configuration information about the model.
 
         Returns a ModelInfo object containing details about this model instance,

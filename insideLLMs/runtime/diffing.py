@@ -375,10 +375,11 @@ def _trajectory_summary(record: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _primary_score(record: dict[str, Any]) -> tuple[str | None, float | None]:
-    scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
+    raw_scores = record.get("scores")
+    scores: dict[str, Any] = raw_scores if isinstance(raw_scores, dict) else {}
     metric = record.get("primary_metric")
-    if metric and metric in scores and _is_numeric_score(scores[metric]):
-        return str(metric), float(scores[metric])
+    if isinstance(metric, str) and metric in scores and _is_numeric_score(scores[metric]):
+        return metric, float(scores[metric])
     if not metric and "score" in scores and _is_numeric_score(scores["score"]):
         return "score", float(scores["score"])
     return None, None

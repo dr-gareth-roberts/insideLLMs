@@ -182,14 +182,12 @@ disable_error_code = [
     "attr-defined",
     "arg-type",
     "assignment",
-    "operator",
     "index",
     "var-annotated",
     "no-any-return",
     "misc",
     "union-attr",
     "override",
-    "import-untyped",
 ]
 
 # Strict checking for core modules
@@ -205,10 +203,33 @@ module = [
 disallow_untyped_defs = true
 warn_return_any = true
 
-# Lenient checking for contrib (disconnected modules)
+# Public model, probe, registry, and result contracts reject new untyped APIs.
+[[tool.mypy.overrides]]
+module = [
+    "insideLLMs.models.*",
+    "insideLLMs.probes.*",
+    "insideLLMs.registry",
+    "insideLLMs.types",
+    "insideLLMs.results",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+
+# Legacy contrib implementations remain lenient while they are modularized.
 [[tool.mypy.overrides]]
 module = "insideLLMs.contrib.*"
 ignore_errors = true
+
+# Decomposed contrib facades participate in normal type checking.
+[[tool.mypy.overrides]]
+module = [
+    "insideLLMs.contrib.agents",
+    "insideLLMs.contrib.reasoning",
+]
+ignore_errors = false
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
 
 
 [tool.pytest.ini_options]

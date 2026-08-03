@@ -307,6 +307,8 @@ Notes
 - Use ``ProbeCategory`` to organize probes by evaluation type
 """
 
+from typing import Any
+
 from insideLLMs.probes.agent_probe import AgentProbe, AgentProbeResult, ToolDefinition
 from insideLLMs.probes.attack import AttackProbe, JailbreakProbe, PromptInjectionProbe
 from insideLLMs.probes.base import ComparativeProbe, Probe, ScoredProbe
@@ -455,7 +457,7 @@ class CustomProbe(Probe[str]):
         """
         super().__init__(name=name, category=ProbeCategory.CUSTOM)
 
-    def run(self, model, data, **kwargs):
+    def run(self, model: Any, data: Any, **kwargs: Any) -> str:
         """Execute the custom probe logic.
 
         This method must be implemented by subclasses to define the probe's

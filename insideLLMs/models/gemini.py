@@ -253,7 +253,7 @@ class GeminiModel(Model):
         self._client: Any = None
         self._model: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         """Lazily initialize and return the Google AI GenerativeModel client.
 
         This method implements lazy initialization pattern to defer the

@@ -1176,7 +1176,7 @@ dataset_registry: Registry[Any] = Registry("datasets")
 PLUGIN_ENTRYPOINT_GROUP = "insidellms.plugins"
 
 
-def _lazy_import_factory(module_path: str, class_name: str):
+def _lazy_import_factory(module_path: str, class_name: str) -> Callable[..., Any]:
     """Create a factory that lazily imports a class when called.
 
     This is an internal utility function that enables registration of
@@ -1238,7 +1238,7 @@ def _lazy_import_factory(module_path: str, class_name: str):
         register_builtins: Uses this for heavy dependencies.
     """
 
-    def factory(**kwargs):
+    def factory(**kwargs: Any) -> Any:
         import importlib
 
         module = importlib.import_module(module_path)

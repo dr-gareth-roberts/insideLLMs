@@ -2344,7 +2344,7 @@ def get_exporter(format: ExportFormat, config: Optional[ExportConfig] = None) ->
     Returns:
         Exporter instance.
     """
-    exporters = {
+    exporters: dict[ExportFormat, Callable[[Optional[ExportConfig]], Exporter]] = {
         ExportFormat.JSON: JSONExporter,
         ExportFormat.JSONL: JSONLExporter,
         ExportFormat.CSV: CSVExporter,

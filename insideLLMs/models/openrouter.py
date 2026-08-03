@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from insideLLMs.models.openai import OpenAIModel
+from insideLLMs.types import ModelInfo
 
 
 class OpenRouterModel(OpenAIModel):
@@ -29,8 +30,8 @@ class OpenRouterModel(OpenAIModel):
         http_referer: Optional[str] = None,
         app_title: Optional[str] = None,
         extra_headers: Optional[dict[str, str]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         self._openrouter_base_url = base_url
         default_headers: dict[str, str] = {}
         referer = (
@@ -54,7 +55,7 @@ class OpenRouterModel(OpenAIModel):
             **kwargs,
         )
 
-    def info(self):
+    def info(self) -> ModelInfo:
         base_info = super().info()
         base_info.provider = "openrouter"
         base_info.extra.update(

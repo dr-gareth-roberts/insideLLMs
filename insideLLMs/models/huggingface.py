@@ -118,6 +118,7 @@ See Also:
 """
 
 from collections.abc import Iterator, Sequence
+from typing import Any
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -125,6 +126,7 @@ from insideLLMs.exceptions import (
     ModelGenerationError,
     ModelInitializationError,
 )
+from insideLLMs.types import ModelInfo
 
 from .base import ChatMessage, Model
 
@@ -380,7 +382,7 @@ class HuggingFaceModel(Model):
                 reason=f"Failed to create pipeline: {e}",
             )
 
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate text completion for the given prompt.
 
         Sends the prompt through the HuggingFace text-generation pipeline
@@ -495,7 +497,7 @@ class HuggingFaceModel(Model):
                 original_error=e,
             )
 
-    def chat(self, messages: Sequence[ChatMessage], **kwargs) -> str:
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> str:
         """Engage in a multi-turn chat conversation.
 
         Converts a list of chat messages into a prompt by concatenating
@@ -611,7 +613,7 @@ class HuggingFaceModel(Model):
                 original_error=e,
             )
 
-    def stream(self, prompt: str, **kwargs) -> Iterator[str]:
+    def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Stream the response from the model (simulated).
 
         Provides a streaming-compatible interface for the HuggingFace model.
@@ -711,7 +713,7 @@ class HuggingFaceModel(Model):
                 original_error=e,
             )
 
-    def info(self):
+    def info(self) -> ModelInfo:
         """Return model metadata and configuration information.
 
         Extends the base Model.info() method with HuggingFace-specific

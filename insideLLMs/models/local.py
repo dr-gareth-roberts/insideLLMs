@@ -238,7 +238,7 @@ class LlamaCppModel(Model):
 
         self._model = None
 
-    def _get_model(self):
+    def _get_model(self) -> Any:
         """Lazily initialize the llama.cpp model.
 
         Creates and caches the Llama model instance on first call.
@@ -812,7 +812,7 @@ class OllamaModel(Model):
         self.headers = resolved_headers or None
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         """Lazily initialize the Ollama client.
 
         Creates and caches the Ollama client on first call.
@@ -1502,7 +1502,7 @@ class VLLMModel(Model):
         self.api_key = api_key
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         """Lazily initialize the OpenAI-compatible client.
 
         Creates and caches an OpenAI client configured to connect to the

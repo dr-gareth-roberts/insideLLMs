@@ -163,7 +163,7 @@ class FactualityProbe(Probe):
     Probe : Base class providing common probe functionality
     """
 
-    def __init__(self, name="FactualityProbe"):
+    def __init__(self, name: str = "FactualityProbe") -> None:
         """Initialize a new FactualityProbe instance.
 
         Creates a probe configured to test factual accuracy of language models.
@@ -216,7 +216,7 @@ class FactualityProbe(Probe):
         """
         super().__init__(name)
 
-    def run(self, model, factual_questions: Any, **kwargs):
+    def run(self, model: Any, factual_questions: Any, **kwargs: Any) -> list[dict[str, Any]]:
         """Execute the factuality probe on a model with the given questions.
 
         This method iterates through a list of factual questions, queries the
@@ -420,7 +420,7 @@ class FactualityProbe(Probe):
 
         return results
 
-    def _extract_direct_answer(self, response):
+    def _extract_direct_answer(self, response: str) -> str:
         """Extract a concise, direct answer from a verbose model response.
 
         This method attempts to identify and extract the core answer from

@@ -338,7 +338,7 @@ class CohereModel(Model):
 
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         """Lazily initialize and return the Cohere client.
 
         Creates a Cohere client instance on first call and caches it for

@@ -1,6 +1,7 @@
 .PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path
 
 PYTHON ?= python3
+TYPE_COVERAGE_THRESHOLD ?= 0.92
 
 help:
 	@echo "insideLLMs developer commands"
@@ -58,7 +59,7 @@ typecheck-module:
 # Type coverage report
 typecheck-coverage:
 	mypy insideLLMs --any-exprs-report ./mypy-coverage
-	@echo "Coverage report in ./mypy-coverage/"
+	$(PYTHON) scripts/check_type_coverage.py ./mypy-coverage $(TYPE_COVERAGE_THRESHOLD)
 
 test:
 	$(PYTHON) -m pytest

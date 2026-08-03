@@ -459,7 +459,7 @@ _LAZY_MODEL_IMPORTS = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy load model classes to avoid importing heavy dependencies upfront.
 
     This function implements PEP 562 module-level __getattr__ for lazy loading
