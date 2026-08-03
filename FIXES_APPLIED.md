@@ -17,8 +17,8 @@ comparison is merged `main` at `1eac507`: 7106 tests passing, mypy clean.
 `ruff format` clean · `mypy` clean (235 files).
 
 Fixes 18–22 were found in review *of this branch* — including one regression this
-branch introduced (18) and three places where an earlier fix here was incomplete
-(19, 20, 22). They are recorded in the same detail as the rest.
+branch introduced (18) and four places where an earlier fix here was incomplete
+(19, 20, 21, 22). They are recorded in the same detail as the rest.
 
 ---
 
@@ -463,4 +463,6 @@ Recorded rather than silently skipped.
 | `8e47ab2` | Unify token counting, restore scorer support, fix executor identity |
 | `c563ef3` | Remove dead code, derive strategy list, document declined findings |
 | `a417277` | Restore pipeline sampling concurrency and address review findings |
-| _this_ | Bound the confidence deadline, record timeout provenance, complete chat dispatch |
+| `18b7c8d` | Bound the confidence deadline, record timeout provenance, complete chat dispatch |
+| `9f3ea1d` | Restore generate-only support in structured output, RAG, and receipts |
+| `a6e1ba0` | Assert the attempt count in the tool deadline test |

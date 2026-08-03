@@ -1037,8 +1037,12 @@ async def test_escalation_time_budget_bounds_the_confidence_callback() -> None:
     async def step(request: object, previous: object) -> Candidate:
         return Candidate(id="c0", output="answer")
 
+    scorer = {"entered": 0, "completed": 0}
+
     async def hanging_confidence(candidate: Candidate) -> float:
+        scorer["entered"] += 1
         await asyncio.sleep(1.0)
+        scorer["completed"] += 1
         return 0.1
 
     started = time.monotonic()
@@ -1050,6 +1054,11 @@ async def test_escalation_time_budget_bounds_the_confidence_callback() -> None:
             budget=Budget(max_seconds=0.05),
         )
     elapsed = time.monotonic() - started
+    # The scorer was entered and then cut off by the deadline: it never reached
+    # its return. That states the property directly, where the elapsed bound
+    # alone could breach on an oversubscribed runner with the code correct.
+    assert scorer["entered"] == 1
+    assert scorer["completed"] == 0, "the scorer ran to completion past the deadline"
     assert elapsed < 0.5, f"confidence ran outside the budget: {elapsed:.2f}s"
 
     # A scorer raising its own TimeoutError well inside the budget is a real
