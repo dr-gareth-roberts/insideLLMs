@@ -80,7 +80,18 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
         for att_name in ("04.execution", "07.claims"):
             receipt_path = scitt_dir / f"{att_name}.receipt.json"
             att_path = attestations_dir / f"{att_name}.dsse.json"
-            if receipt_path.exists() and att_path.exists():
+            # Fail closed on every asymmetry: a transparency directory that is
+            # missing a receipt is an incomplete record, not a passing one. Each
+            # branch records a check so no combination can pass silently.
+            if not receipt_path.exists():
+                verdict["passed"] = False
+                verdict["reasons"].append(f"scitt receipt {att_name} missing")
+                verdict["checks"][f"scitt_{att_name}"] = False
+            elif not att_path.exists():
+                verdict["passed"] = False
+                verdict["reasons"].append(f"scitt receipt {att_name} has no attestation")
+                verdict["checks"][f"scitt_{att_name}"] = False
+            else:
                 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
                 stmt_digest = digest_obj(
                     json.loads(att_path.read_text(encoding="utf-8")),
@@ -92,9 +103,5 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
                     verdict["passed"] = False
                     verdict["reasons"].append(f"scitt receipt {att_name} malformed")
                     verdict["checks"][f"scitt_{att_name}"] = False
-            elif receipt_path.exists():
-                verdict["checks"][f"scitt_{att_name}"] = False
-                verdict["reasons"].append(f"scitt receipt {att_name} has no attestation")
-                verdict["passed"] = False
 
     return verdict

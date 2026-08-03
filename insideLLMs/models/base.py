@@ -1870,3 +1870,35 @@ def can_stream_async(model: object) -> bool:
     of the synchronous ``stream()`` fallback, so the stub is rejected here.
     """
     return _overrides(model, "astream", AsyncModel.astream)
+
+
+def can_chat(model: object) -> bool:
+    """Whether ``model.chat()`` may be called; the chat peer of can_stream.
+
+    ``Model.chat`` is a raising stub exactly like ``Model.stream``, so an
+    attribute-presence check reports a capability the model does not have and
+    hides the caller's own fallback path.
+    """
+    return _overrides(model, "chat", Model.chat)
+
+
+def can_chat_async(model: object) -> bool:
+    """Whether ``model.achat()`` may be called; the async peer of can_chat.
+
+    An ``AsyncModel`` subclass that implements only synchronous ``chat``
+    inherits the ``achat`` stub. Presence-gating on it routes callers (notably
+    ``ModelPipeline.achat`` and ``Middleware.aprocess_chat``) into the stub and
+    raises NotImplementedError instead of reaching the documented run-in-executor
+    fallback, so the stub is rejected here.
+    """
+    return _overrides(model, "achat", AsyncModel.achat)
+
+
+def can_generate_async(model: object) -> bool:
+    """Whether ``model.agenerate()`` may be called; the async peer of generate.
+
+    ``isinstance(model, AsyncModelProtocol)`` is not sufficient: the protocol is
+    ``@runtime_checkable``, so it matches on attribute presence and accepts an
+    ``AsyncModel`` subclass whose ``agenerate`` is the inherited raising stub.
+    """
+    return _overrides(model, "agenerate", AsyncModel.agenerate)

@@ -370,3 +370,139 @@ async def test_pipeline_astream_falls_back_to_sync_stream() -> None:
 
     pipeline = ModelPipeline(SyncStreamOnly(name="sync"))
     assert [chunk async for chunk in pipeline.astream("hi")] == ["chunk"]
+
+
+async def test_pipeline_achat_falls_back_to_sync_chat() -> None:
+    """An AsyncModel with only chat() must not hit the raising achat stub.
+
+    Peer of test_pipeline_astream_falls_back_to_sync_stream. The streaming
+    dispatch was converted to can_stream_async, but ModelPipeline.achat and the
+    middleware chat paths kept ``hasattr(model, "achat")``, which is True for
+    every AsyncModel because ``achat`` is a concrete raising stub — so the
+    documented run-in-executor fallback was unreachable.
+    """
+    from insideLLMs.models.base import AsyncModel, can_chat, can_chat_async
+    from insideLLMs.runtime.pipeline import ModelPipeline
+
+    class SyncChatOnly(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "async-out"
+
+        def chat(self, messages: list, **kwargs: object) -> str:
+            return "sync-chat"
+
+    class RealAsyncChat(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "async-out"
+
+        async def achat(self, messages: list, **kwargs: object) -> str:
+            return "async-chat"
+
+    sync_only = SyncChatOnly(name="sync")
+    # Inheriting the raising stub is not a capability.
+    assert can_chat_async(sync_only) is False
+    assert can_chat(sync_only) is True
+    assert can_chat_async(RealAsyncChat(name="real")) is True
+
+    messages = [{"role": "user", "content": "hi"}]
+    assert await ModelPipeline(sync_only).achat(messages) == "sync-chat"
+    assert await ModelPipeline(RealAsyncChat(name="real")).achat(messages) == "async-chat"
+
+
+async def test_middleware_aprocess_chat_falls_back_to_sync_chat() -> None:
+    """The middleware chat path shares the achat stub-blindness fix."""
+    from insideLLMs.models.base import AsyncModel
+    from insideLLMs.runtime.pipeline import Middleware, ModelPipeline
+
+    class SyncChatOnly(AsyncModel):
+        def generate(self, prompt: str, **kwargs: object) -> str:
+            return "out"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "async-out"
+
+        def chat(self, messages: list, **kwargs: object) -> str:
+            return "sync-chat"
+
+    class Passthrough(Middleware):
+        def process_generate(self, prompt: str, **kwargs: object) -> str:
+            return self.model.generate(prompt, **kwargs)
+
+    pipeline = ModelPipeline(SyncChatOnly(name="sync"), middlewares=[Passthrough()])
+    assert await pipeline.achat([{"role": "user", "content": "hi"}]) == "sync-chat"
+
+
+async def test_proposer_resolves_async_def_generate() -> None:
+    """A model whose ``generate`` is ``async def`` must not leak the coroutine.
+
+    Regression: sync-named methods were handed straight to ``asyncio.to_thread``
+    without resolving the result, so the coroutine object became the answer text
+    ('<coroutine object ...>') plus a never-awaited RuntimeWarning.
+    """
+    from insideLLMs.inference import InferenceClient
+
+    class AsyncDefGenerate:
+        name = "adg"
+
+        async def generate(self, prompt: str, **kwargs: object) -> str:
+            return "real-answer"
+
+    result = await InferenceClient(AsyncDefGenerate()).generate("q")
+    assert result.answer == "real-answer"
+
+
+async def test_proposer_prefers_metadata_over_metadataless_async() -> None:
+    """Metadata-bearing generation wins, so Spend is not silently zeroed.
+
+    Regression: ``agenerate`` was dispatched before ``generate_with_metadata``,
+    so any model offering both (notably ``from_model_config`` pipelines) lost
+    all token and latency accounting in the auditable envelope.
+    """
+    from insideLLMs.inference import InferenceClient
+    from insideLLMs.types import ModelResponse, TokenUsage
+
+    class BothPaths:
+        name = "both"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "async-no-metadata"
+
+        def generate_with_metadata(self, prompt: str, **kwargs: object) -> ModelResponse:
+            return ModelResponse(
+                content="with-metadata",
+                model="m1",
+                usage=TokenUsage(prompt_tokens=10, completion_tokens=3, total_tokens=13),
+                latency_ms=5.0,
+            )
+
+    result = await InferenceClient(BothPaths()).generate("q")
+    assert result.answer == "with-metadata"
+    assert result.spend.input_tokens == 10
+    assert result.spend.output_tokens == 3
+    assert result.spend.elapsed_seconds > 0
+
+
+def test_proposer_async_detection_mirrors_dispatch() -> None:
+    """``_has_async_generation`` must agree with the method ``_generate`` picks."""
+    from insideLLMs.inference.adapters import ModelProposer
+
+    class SyncMetadataPlusAsyncGenerate:
+        name = "mixed"
+
+        async def agenerate(self, prompt: str, **kwargs: object) -> str:
+            return "async"
+
+        def generate_with_metadata(self, prompt: str, **kwargs: object) -> str:
+            return "sync-metadata"
+
+    proposer = ModelProposer(SyncMetadataPlusAsyncGenerate())
+    selected = proposer._select_generator()
+    assert selected.__name__ == "generate_with_metadata"
+    # Selection is sync, so sampling must not claim the concurrent path.
+    assert proposer._has_async_generation() is False

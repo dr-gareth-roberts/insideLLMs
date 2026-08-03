@@ -251,6 +251,9 @@ from insideLLMs.models.base import (
     ChatMessage,
     Model,
     ModelProtocol,
+    can_chat,
+    can_chat_async,
+    can_generate_async,
     can_stream,
     can_stream_async,
 )
@@ -763,9 +766,9 @@ class Middleware(ABC):
         if self.next_middleware:
             return await self.next_middleware.aprocess_chat(messages, **kwargs)
         if self.model:
-            if hasattr(self.model, "achat"):
+            if can_chat_async(self.model):
                 return await self.model.achat(messages, **kwargs)
-            if hasattr(self.model, "chat"):
+            if can_chat(self.model):
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, lambda: self.model.chat(messages, **kwargs))
         raise ModelError("No chat implementation available")
@@ -1602,9 +1605,9 @@ class TraceMiddleware(PassthroughMiddleware):
             if self.next_middleware:
                 response = await self.next_middleware.aprocess_chat(messages, **clean_kwargs)
             elif self.model:
-                if hasattr(self.model, "achat"):
+                if can_chat_async(self.model):
                     response = await self.model.achat(messages, **clean_kwargs)
-                elif hasattr(self.model, "chat"):
+                elif can_chat(self.model):
                     loop = asyncio.get_running_loop()
                     response = await loop.run_in_executor(
                         None, lambda: self.model.chat(messages, **clean_kwargs)
@@ -2866,7 +2869,7 @@ class ModelPipeline(Model):
         """Asynchronously generate through the middleware pipeline."""
         if self.middlewares:
             return await self.middlewares[0].aprocess_generate(prompt, **kwargs)
-        if isinstance(self.base_model, AsyncModelProtocol):
+        if can_generate_async(self.base_model):
             return await self.base_model.agenerate(prompt, **kwargs)
         # Fall back to executor for sync model
         loop = asyncio.get_running_loop()
@@ -2876,9 +2879,9 @@ class ModelPipeline(Model):
         """Asynchronously chat through the middleware pipeline."""
         if self.middlewares:
             return await self.middlewares[0].aprocess_chat(messages, **kwargs)
-        if hasattr(self.base_model, "achat"):
+        if can_chat_async(self.base_model):
             return await self.base_model.achat(messages, **kwargs)
-        if hasattr(self.base_model, "chat"):
+        if can_chat(self.base_model):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(
                 None, lambda: self.base_model.chat(messages, **kwargs)
