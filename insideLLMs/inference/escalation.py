@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import (
     Budget,
     Candidate,
@@ -76,9 +76,11 @@ async def escalate_adaptively(
                 timeout=remaining,
             )
         except TimeoutError:
-            if remaining is None or not candidates:
-                # Either the callback's own error (no timeout armed) or there is
-                # no completed work to return; mirror the pre-step behavior.
+            if not budget_elapsed(started, budget.max_seconds) or not candidates:
+                # Either the step's own error (the deadline did not fire) or
+                # there is no completed work to return. Salvaging a cheaper
+                # answer here would silently swallow a real provider timeout and
+                # report it as StopReason.BUDGET.
                 raise
             stop_reason = StopReason.BUDGET
             break

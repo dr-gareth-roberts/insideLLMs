@@ -506,3 +506,95 @@ def test_proposer_async_detection_mirrors_dispatch() -> None:
     assert selected.__name__ == "generate_with_metadata"
     # Selection is sync, so sampling must not claim the concurrent path.
     assert proposer._has_async_generation() is False
+
+
+async def test_execute_dag_propagates_callback_timeout_with_budget_remaining() -> None:
+    """A provider timeout must not be relabelled while the budget is nearly full.
+
+    Regression: the guard only asked "was a time budget armed?" (``remaining is
+    None``), so with max_seconds=300 a callback raising its own TimeoutError at
+    t=0 surfaced as DagBudgetExceeded('DAG time budget exhausted'), hiding the
+    real fault behind a false budget verdict.
+    """
+    from insideLLMs.inference.dag import DagBudgetExceeded
+
+    async def execute(node: PlanNode, dependencies: dict[str, object]) -> object:
+        raise TimeoutError("provider-side HTTP timeout")
+
+    async def reduce(observations: dict[str, object]) -> object:
+        return observations
+
+    with pytest.raises(TimeoutError, match="provider-side HTTP timeout"):
+        await execute_dag(
+            (PlanNode("a"),),
+            execute=execute,
+            reduce=reduce,
+            budget=Budget(max_seconds=300),
+        )
+
+    # And a genuinely elapsed deadline still reports budget exhaustion.
+    async def slow(node: PlanNode, dependencies: dict[str, object]) -> object:
+        await asyncio.sleep(10)
+
+    with pytest.raises(DagBudgetExceeded):
+        await execute_dag(
+            (PlanNode("a"),),
+            execute=slow,
+            reduce=reduce,
+            budget=Budget(max_seconds=0.2),
+        )
+
+
+async def test_escalation_does_not_swallow_real_timeout() -> None:
+    """A step's own timeout must surface, not be salvaged as budget exhaustion.
+
+    Regression: escalate_adaptively returned the previous cheaper candidate with
+    stop_reason=BUDGET whenever any TimeoutError arrived and a budget was armed,
+    so a provider outage silently downgraded the answer and reported the wrong
+    reason with almost the entire budget unused.
+    """
+
+    async def cheap(request: InferenceRequest, previous: Candidate | None) -> Candidate:
+        return Candidate(id="cheap", output="cheap-answer")
+
+    async def pricey(request: InferenceRequest, previous: Candidate | None) -> Candidate:
+        raise TimeoutError("provider-side timeout on expensive model")
+
+    def confidence(candidate: Candidate) -> float:
+        return 0.1
+
+    with pytest.raises(TimeoutError, match="provider-side timeout"):
+        await escalate_adaptively(
+            InferenceRequest(prompt="q"),
+            steps=(
+                EscalationStep(id="c", run=cheap, minimum_confidence=0.9),
+                EscalationStep(id="p", run=pricey, minimum_confidence=0.9),
+            ),
+            confidence=confidence,
+            budget=Budget(max_seconds=300),
+        )
+
+
+async def test_beam_search_propagates_callback_timeout_with_budget_remaining() -> None:
+    """Peer of the DAG case for search.py."""
+
+    async def value(state: object) -> float:
+        raise TimeoutError("scorer provider timeout")
+
+    async def propose(state: object) -> tuple[str, ...]:
+        return ("go",)
+
+    async def transition(state: object, action: str) -> object:
+        return state
+
+    with pytest.raises(TimeoutError, match="scorer provider timeout"):
+        await beam_search(
+            0,
+            propose=propose,
+            transition=transition,
+            value=value,
+            key=str,
+            is_terminal=lambda state: False,
+            beam_width=1,
+            budget=Budget(max_seconds=300),
+        )

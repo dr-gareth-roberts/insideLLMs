@@ -38,8 +38,8 @@ async def _benchmark() -> dict[str, object]:
     from insideLLMs.inference.self_consistency import sample_consistent
 
     parts = PromptParts(stable=("system",), dynamic=("question",))
-    cached = compose_cached_prompt(parts, tenant_id="benchmark")
-    repeated = compose_cached_prompt(parts, tenant_id="benchmark")
+    cached = compose_cached_prompt(parts, tenant_id="benchmark", model_id="offline-smoke")
+    repeated = compose_cached_prompt(parts, tenant_id="benchmark", model_id="offline-smoke")
 
     async def sample(request: InferenceRequest, index: int) -> Candidate:
         return Candidate(f"sample-{index}", "4")

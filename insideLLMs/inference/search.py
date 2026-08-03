@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable, Sequence
 from typing import Awaitable, TypeVar
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, StopReason, TraceEvent
 
 StateT = TypeVar("StateT")
@@ -67,8 +67,8 @@ async def beam_search(
         try:
             return await invoke_with_timeout(callback, *args, timeout=remaining)
         except TimeoutError as error:
-            if remaining is None:
-                # No time budget was armed: this is the callback's own error.
+            if not budget_elapsed(started, budget.max_seconds):
+                # The deadline did not fire: this is the callback's own error.
                 raise
             raise SearchBudgetExceeded("search time budget exhausted") from error
 

@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 
 
 class EvolutionBudgetExceeded(RuntimeError):
@@ -157,8 +157,8 @@ async def evolve_artifacts(
         try:
             return await invoke_with_timeout(callback, *args, timeout=remaining)
         except TimeoutError as error:
-            if remaining is None:
-                # No time budget was armed: this is the callback's own error.
+            if not budget_elapsed(started, config.max_seconds):
+                # The deadline did not fire: this is the callback's own error.
                 raise
             raise EvolutionBudgetExceeded("evolution time budget exhausted") from error
 

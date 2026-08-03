@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Awaitable
 
-from ._callbacks import invoke_with_timeout, is_async_callable
+from ._callbacks import budget_elapsed, invoke_with_timeout, is_async_callable
 from .schemas import Budget, InferenceResult, Spend, TraceEvent
 
 
@@ -100,8 +100,8 @@ async def execute_dag(
             try:
                 value = await invoke_with_timeout(execute, node, dependencies, timeout=remaining)
             except TimeoutError as error:
-                if remaining is None:
-                    # No time budget was armed: this is the callback's own error.
+                if not budget_elapsed(started, budget.max_seconds):
+                    # The deadline did not fire: this is the callback's own error.
                     raise
                 raise DagBudgetExceeded("DAG time budget exhausted") from error
         return node.id, value
@@ -157,8 +157,8 @@ async def execute_dag(
     try:
         answer = await invoke_with_timeout(reduce, dict(observations), timeout=remaining)
     except TimeoutError as error:
-        if remaining is None:
-            # No time budget was armed: this is the reduce callback's own error.
+        if not budget_elapsed(started, budget.max_seconds):
+            # The deadline did not fire: this is the reduce callback's own error.
             raise
         raise DagBudgetExceeded("DAG time budget exhausted during reduction") from error
     return InferenceResult(
