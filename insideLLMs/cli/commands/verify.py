@@ -24,8 +24,12 @@ def cmd_verify_signatures(args: argparse.Namespace) -> int:
         return 1
     print_header("Verify attestation signatures")
     identity = getattr(args, "identity", None)
+    dsse_paths = sorted(attestations_dir.glob("*.dsse.json"))
+    if not dsse_paths:
+        print_error(f"No attestations found in {attestations_dir}; nothing to verify.")
+        return 1
     failed = 0
-    for dsse_path in sorted(attestations_dir.glob("*.dsse.json")):
+    for dsse_path in dsse_paths:
         bundle_path = signing_dir / f"{dsse_path.stem}.sigstore.bundle.json"
         if not bundle_path.exists():
             print_error(f"No bundle for {dsse_path.name}")

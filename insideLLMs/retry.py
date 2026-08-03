@@ -2315,9 +2315,13 @@ async def with_timeout_async(
     ModelTimeoutError : The exception raised on timeout.
     retry_async : Async retry decorator that can wrap timed operations.
     """
+    # Route through the shared shim so the pre-3.11 asyncio.TimeoutError split
+    # is normalized in exactly one place.
+    from insideLLMs.async_utils import wait_for
+
     try:
-        return await asyncio.wait_for(coro, timeout=timeout)
-    except asyncio.TimeoutError:
+        return await wait_for(coro, timeout)
+    except TimeoutError:
         raise ModelTimeoutError("coroutine", timeout)
 
 

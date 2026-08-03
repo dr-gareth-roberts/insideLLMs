@@ -753,6 +753,9 @@ class Model(ABC):
         - insideLLMs.registry: For discovering and instantiating models
     """
 
+    # NOTE: _supports_streaming asserts *native, incremental* streaming. A model
+    # may still expose a working stream() that yields the whole response as one
+    # chunk (see can_stream); the two questions are deliberately distinct.
     _supports_streaming: bool = False
     _supports_chat: bool = False
 
@@ -1072,8 +1075,13 @@ class Model(ABC):
                 varies by provider (typically 1-10 tokens per chunk).
 
         Raises:
-            NotImplementedError: If the model doesn't support streaming.
-                Check model.info().supports_streaming before calling.
+            NotImplementedError: If the model has no streaming implementation.
+                Use ``can_stream(model)`` to gate the call: it answers "is
+                stream() callable", which is what this method requires.
+                ``model.info().supports_streaming`` answers the narrower
+                question "does this model stream *natively*, token by token" —
+                a model can return False there and still stream a single chunk
+                here (``info().extra["streaming"] == "simulated"`` marks that).
 
         Example - Print Response in Real-Time:
             >>> model = OpenAIModel(model_name="gpt-4")
@@ -1199,7 +1207,9 @@ class Model(ABC):
                 - name (str): Human-readable model name
                 - provider (str): Provider name (e.g., "OpenAI", "Anthropic")
                 - model_id (str): API model identifier
-                - supports_streaming (bool): Whether streaming is available
+                - supports_streaming (bool): Whether *native*, incremental
+                  streaming is available. False does not imply stream() is
+                  missing — use can_stream() for that question.
                 - supports_chat (bool): Whether chat mode is available
                 - extra (dict): Additional provider-specific metadata
 
@@ -1810,3 +1820,53 @@ class ModelWrapper:
             ModelWrapper(OpenAIModel(name='gpt-4', model_id='gpt-4'), max_retries=5)
         """
         return f"ModelWrapper({self._model!r}, max_retries={self._max_retries})"
+
+
+def _overrides(model: object, attribute: str, base_implementation: object) -> bool:
+    """True when ``attribute`` is a real implementation, not the raising base stub.
+
+    ``Model.stream`` and ``AsyncModel.astream`` exist on the base classes but
+    only raise NotImplementedError, so a plain attribute-presence check reports
+    a capability the model does not have. Comparing the resolved function
+    against the base implementation keeps genuine subclass overrides (and any
+    non-Model object that simply defines the method) while rejecting the stub.
+    """
+    method = getattr(model, attribute, None)
+    if not callable(method):
+        return False
+    underlying = getattr(method, "__func__", method)
+    return underlying is not base_implementation
+
+
+def can_stream(model: object) -> bool:
+    """Whether ``model.stream()`` may be called, natively or simulated.
+
+    This is the predicate to gate a ``stream()`` call on. It deliberately
+    differs from ``model.info().supports_streaming``, which asserts the
+    narrower property that the model streams *natively*, token by token.
+    A provider whose ``stream()`` yields the whole response as a single chunk
+    (marked ``info().extra["streaming"] == "simulated"``) reports
+    ``supports_streaming=False`` but is still streamable through this
+    predicate, so presence-gated and capability-gated callers answer two
+    distinct questions rather than contradicting each other.
+
+    Args:
+        model: Any model-like object, including protocol implementations and
+            wrappers that are not :class:`Model` subclasses.
+
+    Returns:
+        True when ``stream`` is implemented — the inherited ``Model.stream``
+        stub, which only raises NotImplementedError, does not count.
+    """
+    return _overrides(model, "stream", Model.stream)
+
+
+def can_stream_async(model: object) -> bool:
+    """Whether ``model.astream()`` may be called; the async peer of can_stream.
+
+    An ``AsyncModel`` subclass that never overrode ``astream`` inherits a stub
+    that only raises NotImplementedError. Reporting it as async-streamable sends
+    callers (notably ``ModelPipeline.astream``) down the native branch instead
+    of the synchronous ``stream()`` fallback, so the stub is rejected here.
+    """
+    return _overrides(model, "astream", AsyncModel.astream)

@@ -2181,6 +2181,36 @@ async def retry_until_success(
     raise ValueError("No coroutines provided")
 
 
+async def wait_for(awaitable: Any, timeout: float | None) -> Any:
+    """``asyncio.wait_for`` that always raises the builtin ``TimeoutError``.
+
+    Before Python 3.11 ``asyncio.TimeoutError`` is a distinct class from the
+    builtin ``TimeoutError``, so a caller catching one silently misses the
+    other. Notably ``RetryConfig.retryable_exceptions`` lists the builtin, so
+    an un-normalized ``asyncio.TimeoutError`` is not retried on 3.10. This is
+    the single shared shim; layers that impose deadlines should route through
+    it rather than re-implementing the normalization.
+
+    Args:
+        awaitable: The awaitable to run under the deadline.
+        timeout: Seconds to wait, or None to await without a deadline.
+
+    Returns:
+        Whatever the awaitable returns.
+
+    Raises:
+        TimeoutError: The builtin, on every supported Python version.
+    """
+    if timeout is None:
+        return await awaitable
+    try:
+        return await asyncio.wait_for(awaitable, timeout)
+    except asyncio.TimeoutError as error:
+        if isinstance(error, TimeoutError):  # Python 3.11+: already the builtin.
+            raise
+        raise TimeoutError(str(error) or f"operation exceeded {timeout}s") from error
+
+
 @asynccontextmanager
 async def async_timeout(seconds: float) -> AsyncGenerator[None, None]:
     """Async context manager with timeout.
@@ -2189,7 +2219,10 @@ async def async_timeout(seconds: float) -> AsyncGenerator[None, None]:
         seconds: Timeout in seconds.
 
     Raises:
-        asyncio.TimeoutError: If timeout exceeded.
+        TimeoutError: If timeout exceeded. This is the builtin ``TimeoutError``
+            on every supported version; on Python 3.10 that deliberately differs
+            from ``asyncio.TimeoutError`` so callers (and
+            ``RetryConfig.retryable_exceptions``) see one consistent type.
 
     Example:
         async with async_timeout(5.0):
@@ -2216,7 +2249,7 @@ async def async_timeout(seconds: float) -> AsyncGenerator[None, None]:
         # Translate our own cancellation into the documented TimeoutError.
         # External cancellations (timed_out is False) are re-raised unchanged.
         if timed_out:
-            raise asyncio.TimeoutError(f"async_timeout: operation exceeded {seconds}s") from None
+            raise TimeoutError(f"async_timeout: operation exceeded {seconds}s") from None
         raise
     finally:
         handle.cancel()

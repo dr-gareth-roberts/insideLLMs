@@ -88,3 +88,13 @@ def test_cmd_verify_signatures_missing_bundle_fails(tmp_path: Path) -> None:
 
     rc = cmd_verify_signatures(_args(run_dir))
     assert rc == 1
+
+
+def test_cmd_verify_signatures_no_attestations_fails(tmp_path: Path) -> None:
+    """Zero attestation files must fail, not report success (fail closed)."""
+    run_dir = tmp_path / "run"
+    (run_dir / "attestations").mkdir(parents=True)
+    (run_dir / "signing").mkdir(parents=True)
+
+    rc = cmd_verify_signatures(_args(run_dir))
+    assert rc == 1

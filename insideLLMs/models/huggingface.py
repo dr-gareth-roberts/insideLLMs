@@ -101,7 +101,7 @@ Example - Model Information:
     >>> print(f"Provider: {info.provider}")  # "HuggingFace"
     >>> print(f"Model: {info.extra['model_name']}")  # "gpt2"
     >>> print(f"Device: {info.extra['device']}")  # -1 (CPU)
-    >>> print(f"Supports streaming: {info.supports_streaming}")  # True
+    >>> print(f"Supports streaming: {info.supports_streaming}")  # False (simulated only)
     >>> print(f"Supports chat: {info.supports_chat}")  # True
 
 Performance Considerations:
@@ -150,7 +150,9 @@ class HuggingFaceModel(Model):
         tokenizer: The loaded AutoTokenizer instance.
         model: The loaded AutoModelForCausalLM instance.
         generator: The text-generation pipeline instance.
-        _supports_streaming: Always True (simulated streaming support).
+        _supports_streaming: False — ``stream()`` exists but is simulated
+            (yields the full response as a single chunk), so the capability
+            flag honestly reports no true streaming.
         _supports_chat: Always True (chat mode via message concatenation).
 
     Example - Quick Start:
@@ -240,7 +242,7 @@ class HuggingFaceModel(Model):
         >>> print(f"Name: {info.name}")
         >>> print(f"Provider: {info.provider}")  # "HuggingFace"
         >>> print(f"Model ID: {info.model_id}")  # "gpt2-medium"
-        >>> print(f"Streaming: {info.supports_streaming}")  # True
+        >>> print(f"Streaming: {info.supports_streaming}")  # False (simulated only)
         >>> print(f"Chat: {info.supports_chat}")  # True
         >>> print(f"Device: {info.extra['device']}")  # 0
 
@@ -262,7 +264,7 @@ class HuggingFaceModel(Model):
         - HuggingFace Model Hub: https://huggingface.co/models
     """
 
-    _supports_streaming = True
+    _supports_streaming = False  # stream() is simulated (single chunk), not true streaming
     _supports_chat = True
 
     def __init__(
@@ -723,7 +725,8 @@ class HuggingFaceModel(Model):
                 - name (str): The instance name (e.g., "HuggingFaceModel")
                 - provider (str): Always "HuggingFace" for this class
                 - model_id (str): The HuggingFace model identifier
-                - supports_streaming (bool): True (simulated streaming)
+                - supports_streaming (bool): False (stream() yields one
+                  chunk; not true streaming)
                 - supports_chat (bool): True (via message concatenation)
                 - extra (dict): HuggingFace-specific metadata:
                     - model_name: The HuggingFace model identifier
@@ -743,8 +746,8 @@ class HuggingFaceModel(Model):
         Example - Checking Capabilities:
             >>> model = HuggingFaceModel(model_name="gpt2-medium")
             >>> info = model.info()
-            >>> if info.supports_streaming:
-            ...     print("Model supports streaming (simulated)")
+            >>> info.supports_streaming  # stream() is simulated, so False
+            False
             >>> if info.supports_chat:
             ...     print("Model supports chat mode")
 
@@ -798,6 +801,7 @@ class HuggingFaceModel(Model):
                 "model_name": self.model_name,
                 "device": self.device,
                 "description": "HuggingFace Transformers model via pipeline.",
+                "streaming": "simulated",
             }
         )
         return base_info

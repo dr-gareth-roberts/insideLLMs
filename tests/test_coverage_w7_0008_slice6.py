@@ -81,14 +81,14 @@ def test_policy_engine_scitt_and_missing(tmp_path: Path) -> None:
     (scitt / "07.claims.receipt.json").write_text("{}", encoding="utf-8")
     (att / "07.claims.dsse.json").unlink()
 
-    with patch("insideLLMs.policy.engine.verify_receipt", return_value=False):
+    with patch("insideLLMs.policy.engine.receipt_looks_well_formed", return_value=False):
         v2 = run_policy(tmp_path)
     assert v2["passed"] is False
     assert any("scitt" in r for r in v2["reasons"])
 
     # valid receipt path
     (att / "07.claims.dsse.json").write_text('{"payload":"e30="}', encoding="utf-8")
-    with patch("insideLLMs.policy.engine.verify_receipt", return_value=True):
+    with patch("insideLLMs.policy.engine.receipt_looks_well_formed", return_value=True):
         with patch(
             "insideLLMs.policy.engine.digest_obj",
             return_value={"digest": "d"},

@@ -1,7 +1,11 @@
 """SCITT client for transparency log receipts.
 
-Submit signed statements to a SCITT service and verify receipts.
-Policy can require execution + claims attestations to have valid receipts.
+Submit DSSE envelopes to a SCITT service and run structural checks on the
+stored submission results. This module does NOT perform cryptographic receipt
+verification: there is no COSE countersignature check, no Merkle
+inclusion-proof check, and no issuer/key validation. Policy can require
+execution + claims attestations to have well-formed receipts, but that is a
+structural completeness signal only.
 """
 
 from __future__ import annotations
@@ -10,6 +14,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+import warnings
 from typing import Any
 
 from insideLLMs.crypto.canonical import digest_obj
@@ -94,11 +99,14 @@ def submit_statement(
     }
 
 
-def verify_receipt(receipt: dict[str, Any], statement_digest: str) -> bool:
-    """Verify a receipt against a statement digest.
+def receipt_looks_well_formed(receipt: dict[str, Any], statement_digest: str) -> bool:
+    """Structurally check a stored submission result against a statement digest.
 
-    Checks: status=success, statement_digest present and matches, receipt payload
-    has expected structure (non-empty receipt from service).
+    This is NOT cryptographic receipt verification. It only checks fields that
+    :func:`submit_statement` itself wrote client-side: status=success, the
+    statement_digest matches, and the service returned a non-empty payload.
+    It proves nothing about transparency-log inclusion or the service's
+    countersignature.
     """
     if receipt.get("status") != "success":
         return False
@@ -109,3 +117,18 @@ def verify_receipt(receipt: dict[str, Any], statement_digest: str) -> bool:
     if not isinstance(inner, dict) or not inner:
         return False
     return True
+
+
+def verify_receipt(receipt: dict[str, Any], statement_digest: str) -> bool:
+    """Deprecated alias for :func:`receipt_looks_well_formed`.
+
+    Deprecated because the name overclaimed: no cryptographic verification is
+    performed. Use :func:`receipt_looks_well_formed` instead.
+    """
+    warnings.warn(
+        "verify_receipt is deprecated: it performs structural checks only, not "
+        "cryptographic receipt verification. Use receipt_looks_well_formed.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return receipt_looks_well_formed(receipt, statement_digest)

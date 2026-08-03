@@ -7,14 +7,16 @@ from pathlib import Path
 from typing import Any
 
 from insideLLMs.crypto import digest_obj
-from insideLLMs.transparency.scitt_client import verify_receipt
+from insideLLMs.transparency.scitt_client import receipt_looks_well_formed
 
 
 def run_policy(run_dir: Path | str) -> dict[str, Any]:
     """Run artifact-completeness checks on a run directory and return a verdict.
 
     Checks for required artifacts (manifest.json, records.jsonl), core
-    attestations (00-07), integrity roots, and SCITT receipts.
+    attestations (00-07), integrity roots, and SCITT receipt well-formedness.
+    Receipt checks are structural only — no cryptographic receipt
+    verification (countersignature/inclusion proof) is performed.
 
     Args:
         run_dir: Path to the run directory.
@@ -71,7 +73,8 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
     else:
         verdict["checks"]["integrity_records"] = False
 
-    # SCITT receipts: when receipts/scitt/ exists, verify 04 and 07 receipts
+    # SCITT receipts: when receipts/scitt/ exists, structurally check 04 and 07
+    # receipts (well-formedness only; not cryptographic verification)
     scitt_dir = run_dir / "receipts" / "scitt"
     if scitt_dir.exists():
         for att_name in ("04.execution", "07.claims"):
@@ -83,11 +86,11 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
                     json.loads(att_path.read_text(encoding="utf-8")),
                     purpose="scitt_submission",
                 )["digest"]
-                if verify_receipt(receipt, stmt_digest):
+                if receipt_looks_well_formed(receipt, stmt_digest):
                     verdict["checks"][f"scitt_{att_name}"] = True
                 else:
                     verdict["passed"] = False
-                    verdict["reasons"].append(f"scitt receipt {att_name} invalid")
+                    verdict["reasons"].append(f"scitt receipt {att_name} malformed")
                     verdict["checks"][f"scitt_{att_name}"] = False
             elif receipt_path.exists():
                 verdict["checks"][f"scitt_{att_name}"] = False

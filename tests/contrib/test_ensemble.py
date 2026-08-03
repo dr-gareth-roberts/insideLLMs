@@ -1,5 +1,7 @@
 """Tests for multi-model ensemble evaluation module."""
 
+from math import nan
+
 from insideLLMs.contrib.ensemble import (
     AggregatedOutput,
     # Enums
@@ -348,6 +350,64 @@ class TestResponseAggregator:
         result = aggregator.aggregate(outputs, AggregationMethod.BEST_OF_N, scorer)
 
         assert result.selected_model == "m3"
+
+    def test_best_of_n_scores_once_and_preserves_first_input_on_ties(self):
+        """Legacy tie behavior remains stable through canonical ranking."""
+        outputs = [
+            ModelOutput(model_id="z-first", response="first"),
+            ModelOutput(model_id="a-second", response="second"),
+        ]
+        calls: list[str] = []
+
+        result = ResponseAggregator().aggregate(
+            outputs,
+            AggregationMethod.BEST_OF_N,
+            lambda response: calls.append(response) or 1.0,
+        )
+
+        assert result.selected_model == "z-first"
+        assert calls == ["first", "second"]
+
+    def test_best_of_n_preserves_legacy_max_semantics_for_nan_scores(self):
+        outputs = [
+            ModelOutput(model_id="negative", response="negative"),
+            ModelOutput(model_id="nan", response="nan"),
+            ModelOutput(model_id="positive", response="positive"),
+        ]
+        scores = {"negative": -1.0, "nan": nan, "positive": 0.0}
+
+        result = ResponseAggregator().aggregate(
+            outputs,
+            AggregationMethod.BEST_OF_N,
+            lambda response: scores[response],
+        )
+
+        assert result.selected_model == "positive"
+
+    def test_best_of_n_invokes_falsey_callable_scorers(self):
+        class FalseyScorer:
+            def __init__(self):
+                self.calls: list[str] = []
+
+            def __bool__(self):
+                return False
+
+            def __call__(self, response: str) -> float:
+                self.calls.append(response)
+                return 1.0 if response == "short" else 0.0
+
+        scorer = FalseyScorer()
+        result = ResponseAggregator().aggregate(
+            [
+                ModelOutput(model_id="short", response="short"),
+                ModelOutput(model_id="long", response="a much longer response"),
+            ],
+            AggregationMethod.BEST_OF_N,
+            scorer,
+        )
+
+        assert result.selected_model == "short"
+        assert scorer.calls == ["short", "a much longer response"]
 
     def test_empty_outputs(self):
         """Test with empty outputs list."""

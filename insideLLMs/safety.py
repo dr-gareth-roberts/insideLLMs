@@ -1,16 +1,19 @@
 """
 Safety and content analysis utilities for LLM outputs.
 
-This module provides comprehensive tools for analyzing LLM-generated content
-for safety concerns, including personally identifiable information (PII),
-toxic content, potential hallucinations, and bias patterns.
+This module provides HEURISTIC tools for analyzing LLM-generated content for
+safety concerns, including personally identifiable information (PII), toxic
+content, potential hallucinations, and bias patterns. All detection is
+regex/keyword-list matching — there are no ML classifiers or embeddings, so
+expect both false positives and false negatives; treat results as a first-pass
+screen, not a safety verdict.
 
 Provides tools for:
-- Content safety classification
-- Toxicity detection
-- PII detection and masking
-- Hallucination indicators
-- Bias detection patterns
+- Content safety classification (keyword/regex heuristics)
+- Toxicity detection (regex patterns)
+- PII detection and masking (regex patterns)
+- Hallucination indicators (phrase lists)
+- Bias detection patterns (term lists and regexes)
 
 Examples:
     Basic safety check on text:
@@ -1275,7 +1278,10 @@ class ToxicityAnalyzer:
 
 
 class SafetyHallucinationIndicatorDetector:
-    """Detect potential hallucination indicators in LLM-generated outputs.
+    """Detect potential hallucination indicators via phrase lists and regexes.
+
+    HEURISTIC: matches surface phrases only — it does not check any claim
+    against evidence, so it cannot tell a hallucination from a true statement.
 
     This detector identifies patterns in text that may indicate hallucinated
     or fabricated content from LLMs, including:
@@ -1562,7 +1568,11 @@ class SafetyHallucinationIndicatorDetector:
 
 
 class BiasDetector:
-    """Detect potential bias patterns in text including gender imbalance and stereotypes.
+    """Detect potential bias patterns via term lists and stereotype regexes.
+
+    HEURISTIC: counts occurrences of fixed gender-term lists and matches
+    stereotype phrasing patterns. It has no semantic understanding of the
+    text and no coverage beyond the built-in English term lists.
 
     BiasDetector analyzes text for various forms of bias including:
     - Gender representation imbalance
@@ -1956,12 +1966,13 @@ class BiasDetector:
 
 
 class ContentSafetyAnalyzer:
-    """Comprehensive content safety analyzer combining multiple detection methods.
+    """Aggregate the module's regex/keyword safety heuristics into one report.
 
     ContentSafetyAnalyzer provides a unified interface for analyzing text
     against multiple safety criteria including PII exposure, toxicity,
-    hallucination indicators, and bias patterns. It aggregates results
-    from specialized detectors into a single SafetyReport.
+    hallucination indicators, and bias patterns. It aggregates results from
+    the specialized regex/keyword detectors above into a single SafetyReport;
+    it adds no detection capability beyond those heuristics.
 
     Attributes:
         pii_detector: PIIDetector instance for PII detection.

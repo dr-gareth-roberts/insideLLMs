@@ -1,9 +1,13 @@
-"""TUF client for verified dataset fetch.
+"""TUF client stub for dataset fetch.
 
-Fetches a dataset by name/version and verifies TUF metadata before a run.
-When the ``tuf`` package is available, uses ``tuf.ngclient.Updater`` for
-real verification. For offline tests, callers may explicitly opt into a mock
-implementation via ``allow_mock=True``.
+Real TUF verification is NOT implemented. :func:`fetch_dataset` refuses to
+run unless the caller explicitly opts into the offline mock implementation
+with ``allow_mock=True`` (intended for tests only), and the returned proof is
+always labelled ``status="mock"`` / ``verified=False`` — it must never be
+treated as supply-chain verification. Installing the ``tuf`` package does not
+change this: until a real ``tuf.ngclient.Updater`` fetch+verify flow is wired
+in, this module fails closed rather than reporting unverified data as
+verified.
 """
 
 from __future__ import annotations
@@ -24,49 +28,46 @@ def fetch_dataset(
     base_url: str = "",
     allow_mock: bool = False,
 ) -> tuple[Path, dict[str, Any]]:
-    """Fetch and verify a dataset; return local path and verification proof.
+    """Fetch a dataset via the explicit offline mock; refuse otherwise.
 
     Args:
         name: Dataset identifier.
         version: Dataset version to retrieve.
-        base_url: Optional remote base URL for real fetches.
-        allow_mock: If True, explicitly allow a mock offline implementation when
-            ``tuf`` is unavailable. This is intended for tests only.
+        base_url: Optional remote base URL, recorded in the proof for
+            provenance only (nothing is fetched from it).
+        allow_mock: Must be True to run. Explicitly opts into the offline
+            mock implementation. Intended for tests only.
 
     Returns:
-        Tuple of local path and verification proof metadata.
+        Tuple of local path and proof metadata. The proof always has
+        ``status="mock"``, ``method="mock"``, and ``verified=False`` — no
+        code path in this function performs TUF verification.
 
     Raises:
-        RuntimeError: If real TUF verification is unavailable and mock mode was
-            not explicitly enabled.
+        RuntimeError: If ``allow_mock`` is False. Real TUF verification is
+            not implemented, so there is no production-safe path through
+            this function yet.
     """
-    try:
-        from tuf.ngclient import Updater  # noqa: F401
+    if not allow_mock:
+        raise RuntimeError(
+            "Real TUF verification is not implemented; refusing mock verification "
+            "in production path. Pass allow_mock=True to use the offline mock "
+            "implementation in tests."
+        )
 
-        tuf_available = True
-    except ImportError:
-        tuf_available = False
-        if not allow_mock:
-            raise RuntimeError(
-                "tuf module not available; refusing mock verification in production path. "
-                "Install 'tuf' for real verification or pass allow_mock=True for tests."
-            )
-        logger.warning("tuf module not available, using explicit mock implementation")
-
-    # For now, the mock path is intentionally explicit and test-only.
-    # Real TUF verification should be implemented before using this surface
-    # in production workflows.
+    logger.warning(
+        "TUF verification not implemented; returning explicit mock dataset (allow_mock=True)"
+    )
 
     # Create a local temp file to simulate the fetched dataset
     cache_dir = Path(tempfile.mkdtemp(prefix="insidellms_tuf_"))
     target_path = cache_dir / f"{name}-{version}.json"
-
-    # Mock download/verification for tests and offline development only.
     target_path.write_text(json.dumps({"dataset": name, "version": version}))
 
     proof = {
-        "status": "verified" if tuf_available else "mock-verified",
-        "method": "tuf.ngclient" if tuf_available else "mock",
+        "status": "mock",
+        "method": "mock",
+        "verified": False,
         "name": name,
         "version": version,
         "base_url": base_url,

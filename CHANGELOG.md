@@ -22,6 +22,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - See `docs/ARTIFACT_CONTRACT.md` (Legacy Artifact Aliases).
 
 ### Changed
+- **Inference-harness review fixes**: beam search terminates on cyclic state
+  graphs; callback timeouts are no longer mislabelled as budget exhaustion in
+  search/evolution/DAG/escalation; caller metadata can no longer forge spend
+  accounting; self-consistency returns a real sample output (the normalization
+  key moves to `provenance["winning_key"]`); NaN verifier scores rank last;
+  matched-compute treats declared calls as a per-example ceiling, compares
+  executors by underlying model identity, and guards zero-wall-time
+  throughput; best-of-n verifies candidates and judge orders concurrently;
+  unused `inference.protocols` module and `Decision` schema removed
+- **Trust-surface honesty (P0)**: `datasets.tuf_client.fetch_dataset` now always
+  refuses without `allow_mock=True` and labels its proof `status="mock"` /
+  `verified=False` (it previously reported mock data as `status="verified"` when
+  the `tuf` package was merely importable); `transparency.scitt_client.verify_receipt`
+  is deprecated in favour of `receipt_looks_well_formed` (structural check only —
+  no cryptographic receipt verification); `insidellms verify-signatures` now fails
+  when a run directory contains no attestations instead of reporting success
+- `HuggingFaceModel` now reports `supports_streaming=False`: its `stream()` is
+  simulated (yields the full response as one chunk), so the capability flag no
+  longer overclaims; `info().extra` gains `"streaming": "simulated"`
+- Builtin benchmark datasets (13 helpers, 87 handwritten examples total) are now
+  labelled smoke-test fixtures in descriptions, docstrings, and CLI output —
+  results on them are not benchmark evidence
 - Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
 - Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
 - Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes

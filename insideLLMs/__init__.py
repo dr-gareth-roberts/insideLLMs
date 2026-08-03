@@ -22,7 +22,7 @@ Key Features
 - **Bias Detection**: Measure propensity for demographic and cultural biases
 - **Attack Vulnerabilities**: Test susceptibility to prompt injection and jailbreaks
 - **Factual Accuracy**: Evaluate correctness of factual knowledge
-- **Safety Analysis**: Detect PII, toxicity, and harmful content
+- **Safety Analysis**: Regex/keyword heuristics for PII, toxicity, and harmful content
 - **Model Comparison**: Side-by-side benchmarking across models
 - **LLM-as-a-Judge**: Use LLMs to evaluate other LLM outputs
 - **Structured Output**: Parse responses into Pydantic models
@@ -499,6 +499,16 @@ __all__ = [
     "InsideLLMsError",
     "ModelError",
     "ProbeError",
+    # Inference-time harness
+    "Budget",
+    "Candidate",
+    "EvolutionConfig",
+    "InferenceRequest",
+    "InferenceResult",
+    "InferenceClient",
+    "ModelProposer",
+    "Verification",
+    "evolve_artifacts",
     # Registry
     "Registry",
     "ensure_builtins_registered",
@@ -634,6 +644,16 @@ def __getattr__(name: str):
         "RateLimitMiddleware": "insideLLMs.pipeline",
         "RetryMiddleware": "insideLLMs.pipeline",
         "CostTrackingMiddleware": "insideLLMs.pipeline",
+        # Inference-time harness strategies
+        "Budget": "insideLLMs.inference",
+        "Candidate": "insideLLMs.inference",
+        "EvolutionConfig": "insideLLMs.inference",
+        "InferenceRequest": "insideLLMs.inference",
+        "InferenceResult": "insideLLMs.inference",
+        "InferenceClient": "insideLLMs.inference",
+        "ModelProposer": "insideLLMs.inference",
+        "Verification": "insideLLMs.inference",
+        "evolve_artifacts": "insideLLMs.inference",
         # Evaluation
         "Evaluator": "insideLLMs.evaluation",
         "ExactMatchEvaluator": "insideLLMs.evaluation",

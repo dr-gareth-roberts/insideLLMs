@@ -8,7 +8,7 @@ metrics, data export, and visualization capabilities into a unified interface.
 
 Package Structure
 -----------------
-This package aggregates functionality from five specialized submodules:
+This package aggregates functionality from six specialized submodules:
 
 **comparison**
     Model comparison utilities including multi-dimensional performance
@@ -25,6 +25,11 @@ This package aggregates functionality from five specialized submodules:
     Data export and serialization utilities supporting JSON, JSONL, CSV,
     TSV, Markdown, YAML, Parquet, and Excel formats with streaming,
     compression, and schema validation. See :mod:`insideLLMs.analysis.export`.
+
+**matched_compute**
+    Paired baseline/strategy evaluation under an executable compute contract:
+    declared-versus-observed model calls, spend and wall-time reporting, and a
+    JSON evidence artifact. See :mod:`insideLLMs.analysis.matched_compute`.
 
 **statistics**
     Statistical analysis tools including descriptive statistics, confidence
@@ -64,7 +69,7 @@ Evaluation Module
 - ``ContainsEvaluator`` : Substring containment evaluation
 - ``FuzzyMatchEvaluator`` : Levenshtein similarity evaluation
 - ``TokenF1Evaluator`` : Token-level F1 score evaluation
-- ``SemanticSimilarityEvaluator`` : Multi-metric semantic similarity
+- ``SemanticSimilarityEvaluator`` : Weighted lexical-overlap similarity (heuristic; no embeddings)
 - ``NumericEvaluator`` : Numeric answer evaluation with tolerance
 - ``MultipleChoiceEvaluator`` : Multiple choice answer evaluation
 - ``CompositeEvaluator`` : Combine multiple evaluators with weights
@@ -544,5 +549,6 @@ insideLLMs.schemas : Schema definitions and validation
 from insideLLMs.analysis.comparison import *  # noqa: F401,F403
 from insideLLMs.analysis.evaluation import *  # noqa: F401,F403
 from insideLLMs.analysis.export import *  # noqa: F401,F403
+from insideLLMs.analysis.matched_compute import *  # noqa: F401,F403
 from insideLLMs.analysis.statistics import *  # noqa: F401,F403
 from insideLLMs.analysis.visualization import *  # noqa: F401,F403

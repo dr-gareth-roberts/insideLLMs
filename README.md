@@ -264,6 +264,55 @@ claude = AnthropicModel(model_name="claude-sonnet-4-6")
 local = OllamaModel(model_name="llama3.2")   # also: LlamaCppModel, VLLMModel
 ```
 
+### Reliable inference
+
+`InferenceClient` is the recommended model-backed entry point for one-shot,
+self-consistent, and verifier-selected generation. Every call returns the same
+auditable result envelope: candidates, trace, token/call spend, stop reason, and
+provenance.
+
+```python
+import asyncio
+from insideLLMs import InferenceClient, OpenAIModel
+
+async def main():
+    client = InferenceClient(OpenAIModel(model_name="gpt-4o-mini"))
+    result = await client.generate("What is 2+2?")
+    print(result.answer, result.spend, result.provenance)
+
+asyncio.run(main())
+```
+
+It also uses the existing model registry and middleware configuration path:
+
+```python
+client = InferenceClient.from_model_config({
+    "type": "openai",
+    "args": {"model_name": "gpt-4o-mini"},
+    "pipeline": {
+        "middlewares": [
+            {"type": "retry", "args": {"max_retries": 2}},
+            {"type": "cost_tracking"},
+        ]
+    },
+})
+```
+
+See [`docs/INFERENCE_STRATEGIES.md`](docs/INFERENCE_STRATEGIES.md) and the
+offline executable example:
+
+```bash
+python3 -m examples.inference_client
+```
+
+For matched-compute strategy evaluation, see
+[`docs/MATCHED_COMPUTE_EVALUATION.md`](docs/MATCHED_COMPUTE_EVALUATION.md) and run
+the offline artifact smoke test:
+
+```bash
+python3 -m examples.matched_compute_evaluation > matched-compute.json
+```
+
 ## CLI reference
 
 ```
@@ -272,7 +321,7 @@ insidellms harness         Cross-model probe harness
 insidellms diff            Compare two run directories
 insidellms report          Rebuild summary/report from records
 insidellms compare         Compare multiple models on same inputs
-insidellms benchmark       Comprehensive benchmarks across models
+insidellms benchmark       Smoke-scale benchmarks across models (builtin datasets are tiny fixtures)
 insidellms generate-suite  Generate a synthetic evaluation suite
 insidellms optimize-prompt Optimize a prompt against a probe
 insidellms doctor          Diagnose environment and dependencies

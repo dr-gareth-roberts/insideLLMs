@@ -2068,11 +2068,13 @@ class TokenF1Evaluator(Evaluator):
 
 
 class SemanticSimilarityEvaluator(Evaluator):
-    """Evaluator combining multiple similarity metrics for robust comparison.
+    """Heuristic lexical-overlap evaluator combining multiple surface metrics.
 
-    Uses a weighted combination of Jaccard similarity, cosine similarity
-    (bag-of-words), and token F1 to provide a comprehensive semantic
-    similarity score. This approach is more robust than single metrics.
+    Uses a weighted combination of Jaccard word overlap, bag-of-words cosine
+    similarity, and token F1. This is a purely lexical heuristic: it does NOT
+    use embeddings or any model, so despite the name it cannot detect
+    synonymy or paraphrase ("car" vs "automobile" scores 0). It is more
+    robust than any single lexical metric, nothing more.
 
     Attributes:
         name: "semantic_similarity"
@@ -3178,8 +3180,8 @@ def evaluate_predictions(
     """Evaluate a batch of predictions using specified metrics.
 
     Convenience function for evaluating multiple predictions at once.
-    Uses SemanticSimilarityEvaluator by default, with optional additional
-    metrics computed on request.
+    Uses SemanticSimilarityEvaluator by default (a lexical-overlap heuristic —
+    no embeddings), with optional additional metrics computed on request.
 
     Args:
         predictions: List of model predictions.
@@ -3289,7 +3291,7 @@ def create_evaluator(
             - "contains": ContainsEvaluator
             - "fuzzy": FuzzyMatchEvaluator
             - "token_f1": TokenF1Evaluator
-            - "semantic": SemanticSimilarityEvaluator
+            - "semantic": SemanticSimilarityEvaluator (lexical-overlap heuristic)
             - "numeric": NumericEvaluator
             - "multiple_choice": MultipleChoiceEvaluator
             - "llm_judge": JudgeEvaluator (requires judge_model argument)

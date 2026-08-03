@@ -1,4 +1,4 @@
-"""Tests for SCITT client: submit, verify, timeout, retries."""
+"""Tests for SCITT client: submit, structural receipt checks, timeout, retries."""
 
 from unittest.mock import MagicMock, patch
 
@@ -7,6 +7,7 @@ import pytest
 from insideLLMs.transparency.scitt_client import (
     ScittSubmissionError,
     ScittTimeoutError,
+    receipt_looks_well_formed,
     submit_statement,
     verify_receipt,
 )
@@ -70,46 +71,57 @@ def test_submit_statement_timeout_returns_error(mock_urlopen: MagicMock) -> None
     assert "statement_digest" in result
 
 
-def test_verify_receipt_success() -> None:
+def test_receipt_looks_well_formed_success() -> None:
     """Verify passes when status=success, digest matches, receipt is non-empty dict."""
     receipt = {
         "status": "success",
         "statement_digest": "test_digest",
         "receipt": {"proof": "inclusion"},
     }
-    assert verify_receipt(receipt, "test_digest") is True
+    assert receipt_looks_well_formed(receipt, "test_digest") is True
 
 
-def test_verify_receipt_fails_on_mismatched_digest() -> None:
+def test_receipt_looks_well_formed_fails_on_mismatched_digest() -> None:
     """Verify fails when statement_digest does not match."""
     receipt = {
         "status": "success",
         "statement_digest": "test_digest",
         "receipt": {"proof": "inclusion"},
     }
-    assert verify_receipt(receipt, "wrong_digest") is False
+    assert receipt_looks_well_formed(receipt, "wrong_digest") is False
 
 
-def test_verify_receipt_fails_on_error_status() -> None:
+def test_receipt_looks_well_formed_fails_on_error_status() -> None:
     """Verify fails when status is not success."""
-    assert verify_receipt({"status": "error"}, "test_digest") is False
+    assert receipt_looks_well_formed({"status": "error"}, "test_digest") is False
 
 
-def test_verify_receipt_fails_when_receipt_not_dict() -> None:
+def test_receipt_looks_well_formed_fails_when_receipt_not_dict() -> None:
     """Verify fails when inner receipt is not a dict."""
     receipt = {
         "status": "success",
         "statement_digest": "test_digest",
         "receipt": "string_not_dict",
     }
-    assert verify_receipt(receipt, "test_digest") is False
+    assert receipt_looks_well_formed(receipt, "test_digest") is False
 
 
-def test_verify_receipt_fails_when_receipt_empty() -> None:
+def test_receipt_looks_well_formed_fails_when_receipt_empty() -> None:
     """Verify fails when inner receipt is empty dict."""
     receipt = {
         "status": "success",
         "statement_digest": "test_digest",
         "receipt": {},
     }
-    assert verify_receipt(receipt, "test_digest") is False
+    assert receipt_looks_well_formed(receipt, "test_digest") is False
+
+
+def test_verify_receipt_alias_warns_and_delegates() -> None:
+    """Deprecated verify_receipt alias warns and matches the structural check."""
+    receipt = {
+        "status": "success",
+        "statement_digest": "test_digest",
+        "receipt": {"proof": "inclusion"},
+    }
+    with pytest.warns(DeprecationWarning, match="structural checks only"):
+        assert verify_receipt(receipt, "test_digest") is True
