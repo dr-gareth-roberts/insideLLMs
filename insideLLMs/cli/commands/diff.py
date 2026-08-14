@@ -3,6 +3,8 @@
 import argparse
 import json
 import sys
+from collections.abc import Iterator
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +30,7 @@ from .._output import (
     print_subheader,
     print_warning,
 )
-from .._record_utils import _json_default, _read_jsonl_records
+from .._record_utils import _json_default, iter_jsonl_records
 
 
 def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
@@ -67,6 +69,16 @@ def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
         print(colorize(f"  ... and {len(verdicts) - limit} more", Colors.DIM))
 
 
+def _nonempty_records(path: Path) -> Iterator[dict[str, Any]] | None:
+    """Return a replayable-first iterator, or None when a JSONL file is empty."""
+    records = iter(iter_jsonl_records(path))
+    try:
+        first = next(records)
+    except StopIteration:
+        return None
+    return chain((first,), records)
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     """Compare two run directories and report behavioural regressions."""
     run_dir_a = Path(args.run_dir_a)
@@ -90,13 +102,13 @@ def cmd_diff(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        records_a = _read_jsonl_records(records_path_a)
-        records_b = _read_jsonl_records(records_path_b)
+        records_a = _nonempty_records(records_path_a)
+        records_b = _nonempty_records(records_path_b)
     except Exception as e:
         print_error(f"Could not read records.jsonl: {e}")
         return 1
 
-    if not records_a or not records_b:
+    if records_a is None or records_b is None:
         print_error("Both run directories must contain records to compare")
         return 1
 
