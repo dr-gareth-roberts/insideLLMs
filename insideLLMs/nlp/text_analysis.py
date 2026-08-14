@@ -838,11 +838,14 @@ class TextAnalyzer:
         sentence_count = len(sentences) or 1
         char_count = sum(len(w) for w in words)
 
-        # Count syllables
-        syllable_count = sum(self._count_syllables(w) for w in words)
+        # Count syllables once per word, then reuse for both the total and the
+        # complex-word tally. Computing syllables is the most expensive step in
+        # this function, so avoiding a second pass roughly halves that work.
+        syllables_per_word = [self._count_syllables(w) for w in words]
+        syllable_count = sum(syllables_per_word)
 
         # Count complex words (3+ syllables)
-        complex_words = sum(1 for w in words if self._count_syllables(w) >= 3)
+        complex_words = sum(1 for count in syllables_per_word if count >= 3)
 
         # Flesch Reading Ease
         fre = (
