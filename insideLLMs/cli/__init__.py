@@ -78,6 +78,7 @@ from ._record_utils import _trace_fingerprint as _trace_fingerprint
 from ._record_utils import _trace_violation_count as _trace_violation_count
 from ._record_utils import _trace_violations as _trace_violations
 from ._record_utils import _write_jsonl as _write_jsonl
+from ._record_utils import iter_jsonl_records as iter_jsonl_records
 from ._report_builder import _build_basic_harness_report as _build_basic_harness_report
 from ._report_builder import _build_experiments_from_records as _build_experiments_from_records
 from .commands.attest import cmd_attest as cmd_attest

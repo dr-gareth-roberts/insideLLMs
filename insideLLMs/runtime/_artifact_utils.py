@@ -11,7 +11,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 import yaml
 
@@ -324,6 +324,49 @@ def _truncate_incomplete_jsonl(path: Path) -> None:
     path.write_bytes(data + b"\n")
 
 
+def iter_jsonl_records(
+    path: Path, *, truncate_incomplete: bool = False
+) -> "Iterator[dict[str, Any]]":
+    """Yield dictionary records from a JSON Lines file without materializing it.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the JSONL file. If the file doesn't exist, no records are yielded.
+    truncate_incomplete : bool, default False
+        If True, truncate any incomplete final line before reading. This is useful
+        when resuming an interrupted run.
+
+    Yields
+    ------
+    dict[str, Any]
+        Parsed dictionary records. Empty lines and non-dictionary JSON values are
+        skipped.
+
+    Raises
+    ------
+    ValueError
+        If any non-empty line contains invalid JSON.
+    """
+    if not path.exists():
+        return
+    if truncate_incomplete:
+        _truncate_incomplete_jsonl(path)
+    with open(path, "r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                record = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Invalid JSONL record: Invalid JSON on line {line_no} in {path}: {exc}"
+                ) from exc
+            if isinstance(record, dict):
+                yield record
+
+
 def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> list[dict[str, Any]]:
     """Read all records from a JSONL file.
 
@@ -385,23 +428,7 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     _truncate_incomplete_jsonl : Truncate incomplete final line.
     _build_result_record : Build records for writing to JSONL.
     """
-    if not path.exists():
-        return []
-    if truncate_incomplete:
-        _truncate_incomplete_jsonl(path)
-    records: list[dict[str, Any]] = []
-    with open(path, "r", encoding="utf-8") as handle:
-        for line_no, line in enumerate(handle, start=1):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                record = json.loads(stripped)
-            except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSONL record on line {line_no} in {path}") from exc
-            if isinstance(record, dict):
-                records.append(record)
-    return records
+    return list(iter_jsonl_records(path, truncate_incomplete=truncate_incomplete))
 
 
 def _validate_resume_record(
@@ -601,6 +628,7 @@ __all__ = [
     "_atomic_write_yaml",
     "_ensure_run_sentinel",
     "_truncate_incomplete_jsonl",
+    "iter_jsonl_records",
     "_read_jsonl_records",
     "_validate_resume_record",
     "_prepare_run_dir",

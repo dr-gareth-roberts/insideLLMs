@@ -1,6 +1,5 @@
 """Record processing utilities for the insideLLMs CLI."""
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -15,6 +14,7 @@ from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,
 )
 from insideLLMs.runtime import diffing as _runtime_diffing
+from insideLLMs.runtime._artifact_utils import iter_jsonl_records
 from insideLLMs.types import (
     ProbeCategory,
     ResultStatus,
@@ -93,16 +93,4 @@ def _probe_category_from_value(value: Any) -> ProbeCategory:
 
 def _read_jsonl_records(path: Path) -> list[dict[str, Any]]:
     """Read records from a JSON Lines file."""
-    records: list[dict[str, Any]] = []
-    with open(path, encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON on line {line_no}: {e}") from e
-            if isinstance(obj, dict):
-                records.append(obj)
-    return records
+    return list(iter_jsonl_records(path))
