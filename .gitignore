@@ -215,3 +215,10 @@ copilot-debug-logs-*
 /.codex/
 /.poolside/
 /run_golden_test/
+
+# Doctest side-effect output. Several docstring examples in contrib/debugging.py,
+# contrib/fingerprinting.py and runtime/pipeline.py write files into the CWD
+# (the four root droppings above were committed by accident once already).
+/experiments/
+/results/
+examples/template.yaml
