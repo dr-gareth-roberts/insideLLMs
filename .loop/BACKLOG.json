@@ -26,11 +26,11 @@
       "found_by": "manual read (cross-check CHANGELOG vs module + IMPORT_PATHS.md)",
       "description": "CHANGELOG declares insideLLMs.visualization deprecated and removed in v2.0.0 with a v1.1.0->v1.2.0->v2.0.0 timeline claiming 'Deprecation warnings issued', but the module docstring and docs/IMPORT_PATHS.md both classify it 'Indefinite support / not deprecated', the shim emits zero warnings, and the project is at 0.2.0 (v1.x/v2.0 are fictional).",
       "evidence": "python3 import of insideLLMs.visualization emits 0 warnings; docs/IMPORT_PATHS.md:46 lists it under 'Compatibility Shims (Still Supported) - Indefinite support'; visualization.py:171-176 states 'not deprecated ... indefinitely'. CHANGELOG.md:22 says 'is deprecated', :24 'removed in v2.0.0', :102 'Deprecation warnings issued'.",
-      "status": "open",
+      "status": "verified",
       "escalation_reason": null,
-      "fix_commit": null,
-      "verification": null,
-      "notes": "Fix direction is unambiguous (align CHANGELOG to the already-recorded 'indefinite support' decision). Docs-only, no code/Stable-surface impact. [merge 2026-07-20] See also W7-0072: working tree currently has deprecate@v2.0.0, which conflicts with this item's proposed indefinite-support stance."
+      "fix_commit": "c9e6e35b98a26944c3aab87683e7496ef75051e3",
+      "verification": "Re-verified claim by claim 2026-08-20. THREE OF FOUR CLAIMS NO LONGER HOLD: (1) 'shim emits zero warnings' - it emits a DeprecationWarning naming v2.0.0; (2) 'docs/IMPORT_PATHS.md:46 lists it under Indefinite support' - it now reads 'Deprecated; removal in v2.0.0'; (3) 'visualization.py states not deprecated ... indefinitely' - the docstring now says the shim IS deprecated. Those three were fixed by e1a49d0 (#96) and are locked by tests/test_audit_wave7_regressions.py. THE FOURTH CLAIM WAS STILL LIVE: the Migration Guide named a release that has never existed - '### Visualization Module (v1.1.0 -> v2.0.0)' with 'v1.1.0 (current): Deprecation warnings issued' and 'v1.2.0: Continued deprecation warnings', while pyproject.toml:3 and insideLLMs/__init__.py:332 both say 0.2.0, the CHANGELOG's own released sections are [0.2.0] and [0.1.0], and the repo carries no version tags. Fixed: the timeline now reads 'v0.2.0 (current)' and replaces the fictional v1.2.0 step with 'Until v2.0.0: Deprecation warnings continue, both import paths keep working'; the removal target v2.0.0 is left untouched because W7-0072 settled it. Regression test added (::test_changelog_migration_timeline_uses_the_real_package_version), confirmed failing with CHANGELOG.md stashed. Remaining v1.x mentions in CHANGELOG are schema versions (1.0.0/1.0.1, real - insideLLMs/schemas/v1_0_1 exists), not package versions.",
+      "notes": "Fix direction is unambiguous (align CHANGELOG to the already-recorded 'indefinite support' decision). Docs-only, no code/Stable-surface impact. [merge 2026-07-20] See also W7-0072: working tree currently has deprecate@v2.0.0, which conflicts with this item's proposed indefinite-support stance. [CLOSED 2026-08-20: the 'align to indefinite support' direction in this note is SUPERSEDED - W7-0072 settled the policy as deprecate-and-remove-at-v2.0.0, so only the fictional-version-timeline half of this item was actionable. NEW OBSERVATION, not filed: the repo now states two different removal conventions - CHANGELOG.md:86 says the results.jsonl alias is 'Removal planned in v0.3.0' while the visualization shim targets v2.0.0, on a project at 0.2.0. Worth a product decision on whether v2.0.0 is the intended target or a leftover from the pre-0.x numbering.]"
     },
     {
       "id": "W7-0003",
@@ -1002,14 +1002,14 @@
       "id": "W7-0072",
       "category": "docs_drift",
       "severity": "\ud83d\udd34 HIGH",
-      "status": "open",
+      "status": "verified",
       "description": "CONFLICT: visualization shim policy \u2014 parallel branch landed DeprecationWarning + removal in v2.0.0; main W7-0002 proposes aligning docs to indefinite support / not deprecated.",
       "location": "insideLLMs/visualization.py; docs/IMPORT_PATHS.md; CHANGELOG.md",
       "evidence": "Working tree currently contains deprecate@v2.0.0 code/docs from branch cursor/cloud-agent-1784521140528-vn76b; main backlog W7-0002 still requests the opposite docs stance.",
-      "verification": "Product decision recorded; CHANGELOG, IMPORT_PATHS, visualization.py, and tests/test_audit_wave7_regressions.py agree on one policy.",
+      "verification": "Closing criterion met (all four artefacts agree on one policy, deprecate + remove at v2.0.0). Verified 2026-08-20: importing insideLLMs.visualization emits exactly one DeprecationWarning, 'insideLLMs.visualization is deprecated and will be removed in v2.0.0; use insideLLMs.analysis.visualization instead.', and the shim is still the canonical module object (v is insideLLMs.analysis.visualization -> True). visualization.py:173-175 'This shim is deprecated ... removed in v2.0.0'; docs/IMPORT_PATHS.md:46 'Deprecated; removal in v2.0.0'; CHANGELOG.md:116-119 'is deprecated ... removed in v2.0.0'. No trace of the competing 'indefinite support / not deprecated' wording remains in any of the three. tests/test_audit_wave7_regressions.py::test_visualization_shim_sunset_documented_consistently and ::test_visualization_shim_emits_deprecation_warning_on_import both pass. The resolving code landed in e1a49d0 (#96), before this item was reviewed; no further code change needed.",
       "found_by": "merge-conflict-review",
-      "fix_commit": null,
-      "escalation_reason": "Conflicting intents across parallel Wave-7 campaigns",
+      "fix_commit": "e1a49d0155046020a8c6e05bd372b949ba5c9e2c",
+      "escalation_reason": "Conflicting intents across parallel Wave-7 campaigns [RESOLVED 2026-08-20: the deprecate-at-v2.0.0 policy is the one that landed and is now stated identically by the shim docstring, the emitted warning, docs/IMPORT_PATHS.md and CHANGELOG.md. W7-0002's competing 'indefinite support' stance is withdrawn; its only surviving claim was the fictional version timeline, fixed separately under W7-0002.]",
       "notes": "Do not autoclose main W7-0002 or this item without an explicit product decision. Code currently matches deprecate@v2.0.0."
     },
     {
