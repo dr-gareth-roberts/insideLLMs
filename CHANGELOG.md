@@ -298,7 +298,7 @@ find . -name "*.py" -exec sed -i 's/from insideLLMs\.visualization import/from i
 find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/from insideLLMs.analysis.visualization import/g' {} +
 ```
 
-## [0.2.0] - 2025-01-15
+## [0.2.0] - 2026-02-26
 
 ### Added
 - Deterministic artifact pipeline with SHA-256 run IDs
@@ -318,7 +318,7 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 - Consolidated caching under `insideLLMs.caching`; replace imports from the removed
   `insideLLMs.cache` and `insideLLMs.caching_unified` modules.
 
-## [0.1.0] - 2024-09-01
+## [0.1.0] - 2024-11-10
 
 ### Added
 - Initial release
