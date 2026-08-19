@@ -610,3 +610,12 @@ gates: ruff clean; ruff format clean (560); mypy --python-version 3.12 clean (23
 commit: c9e6e35b98a26944c3aab87683e7496ef75051e3
 new finding (NOT filed): 10 of 13 recorded fix_commit hashes in BACKLOG.json do not resolve — dd0235f, abc1d4c, 02a4a0b, aaa9bf4, 381fc33, 58d2884, 3602b9a, 48519c2, b48cbe8, 52a5729. Squash-merging PRs (#85/#88/#96/#100/#106/#109) destroyed the per-fix commits. This is the same defect that failed coverage-recovery-91 iteration 1; every "verified" claim citing one of these is unauditable.
 next: open HIGHs now clear — remaining open set is 61 items, mostly docstring-example drift (W7-0019..W7-0052).
+
+## [2026-08-19T22:44Z] Independent review + W7-0081
+category: bug + structure | files: _async_runner.py, ci.yml, README.md, Makefile, examples/, tests/
+review verdict: 4 of 6 claims held (W7-0007 run_single fix, release unblock, mypy override, determinism). Two did not.
+W7-0081 (HIGH): use_probe_batch stop_on_error had the same divergence W7-0007 fixed for run_single -- sync ['success','error'] vs async 8 records. Fixed, byte-identical, regression test confirmed failing without the fix. fix_commit aeee5c8.
+coverage gate was wrong: --cov-fail-under=95 sat above the 94.72% measured in CI's matrix env and passed only because pytest-cov compares at precision 0 (round(94.72)==95; effective floor 94.5). Matrix job now gates 94; the full-extras [all] job gained --cov and gates 95 against a measured 96.03%. Previously NO job measured the number the config claimed.
+trajectory gate scope corrected: step fingerprints include arguments_fingerprint and result_fingerprint, so a tool-RESULT change with an identical route fires exit 5 ("steps 4 -> 4; tool calls 1 -> 1"). Docs now scope it to a deterministic replay harness rather than live traffic.
+docs: README said "Ten built-in probes" (registry has 13); codecov badge had no uploading workflow (removed); make typecheck/typecheck-strict hardcoded bare mypy, ignoring $(PYTHON).
+next: traceability -- only 4/14 recorded fix_commit hashes resolve; scripts/check_backlog_commits.py now reports it.
