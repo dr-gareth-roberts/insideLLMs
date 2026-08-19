@@ -232,9 +232,11 @@ def test_dsse_pae_uses_spec_version_tag():
 
 
 # ---------------------------------------------------------------------------
-# Parallel-branch Wave-7 coverage campaign: visualization shim sunset (v2.0.0)
-# NOTE: main backlog W7-0002 proposes indefinite support — product decision pending.
-# These tests document the policy currently landed in the working tree.
+# W7-0072 / W7-0002 — visualization shim sunset. The conflict between the
+# parallel branch's "deprecate, remove at v2.0.0" policy and W7-0002's
+# "indefinite support" stance is settled in favour of the former: the shim
+# emits a DeprecationWarning, and CHANGELOG, docs/IMPORT_PATHS.md and the shim
+# docstring all name v2.0.0 as the removal release.
 # ---------------------------------------------------------------------------
 def test_visualization_shim_sunset_documented_consistently():
     """IMPORT_PATHS, CHANGELOG, and shim docstring must agree on v2.0.0 removal."""
@@ -249,6 +251,20 @@ def test_visualization_shim_sunset_documented_consistently():
     assert "DeprecationWarning" in shim_doc
     assert "indefinitely" not in shim_doc.lower()
     assert "is not deprecated" not in shim_doc
+
+
+def test_changelog_migration_timeline_uses_the_real_package_version():
+    """W7-0002 - the timeline named a fictional v1.1.0 as the current release."""
+    from insideLLMs import __version__
+
+    repo_root = Path(__file__).resolve().parents[1]
+    changelog = (repo_root / "CHANGELOG.md").read_text(encoding="utf-8")
+    section = changelog.split("### Visualization Module")[1].split("\n## ")[0]
+
+    assert f"v{__version__} (current)" in section
+    # The project has never shipped a v1.x; the timeline must not imply otherwise.
+    assert "v1.1.0" not in section
+    assert "v1.2.0" not in section
 
 
 def test_visualization_shim_emits_deprecation_warning_on_import():

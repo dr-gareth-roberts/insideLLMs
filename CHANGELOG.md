@@ -269,7 +269,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guide
 
-### Visualization Module (v1.1.0 → v2.0.0)
+### Visualization Module (v0.2.0 → v2.0.0)
 
 **Old code (deprecated):**
 ```python
@@ -282,8 +282,8 @@ from insideLLMs.analysis.visualization import text_bar_chart
 ```
 
 **Timeline:**
-- v1.1.0 (current): Deprecation warnings issued, old imports still work
-- v1.2.0: Continued deprecation warnings
+- v0.2.0 (current): Deprecation warnings issued, old imports still work
+- Until v2.0.0: Deprecation warnings continue, both import paths keep working
 - v2.0.0: Old import path removed, must use new path
 
 **Automated migration:**
