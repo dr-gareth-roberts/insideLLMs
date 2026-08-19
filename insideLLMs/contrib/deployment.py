@@ -35,7 +35,7 @@ Quick deployment for development and testing:
     >>> from insideLLMs import DummyModel
     >>>
     >>> model = DummyModel()
-    >>> quick_deploy(model, host="127.0.0.1", port=8080)  # Blocking call
+    >>> quick_deploy(model, host="127.0.0.1", port=8080)  # doctest: +SKIP
 
 Custom configuration with authentication and rate limiting:
 
@@ -2999,7 +2999,7 @@ def quick_deploy(
         >>> from insideLLMs.contrib.deployment import quick_deploy
         >>>
         >>> model = DummyModel()
-        >>> quick_deploy(model, port=8080)  # Blocking call
+        >>> quick_deploy(model, port=8080)  # doctest: +SKIP
     """
     if not FASTAPI_AVAILABLE:
         raise ImportError("FastAPI required. Install with: pip install fastapi uvicorn")
