@@ -83,7 +83,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
 
@@ -107,49 +107,11 @@ jobs:
           python -m pytest
           --cov
           --cov-report=term-missing
-          --cov-fail-under=88
+          --cov-fail-under=95
           -m "not slow and not integration and not performance"
 
-  optional-extras:
-    name: Optional extra (${{ matrix.extra }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        extra:
-          - openai
-          - anthropic
-          - huggingface
-          - signing
-          - crypto
-          - nlp
-          - visualization
-          - langchain
-          - serving
-          - providers
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Cache pip
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pip
-          key: pip-extra-${{ matrix.extra }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-extra-${{ matrix.extra }}-
-
-      - name: Install optional extra
-        run: pip install -e ".[${{ matrix.extra }}]"
-
-      - name: Smoke-test imports
-        run: python scripts/check_optional_imports.py "${{ matrix.extra }}"
-
-  all-features:
-    name: Constrained all-features test
+  full-extras:
+    name: Full extras ([all])
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -163,29 +125,20 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: pip-all-features-${{ hashFiles('pyproject.toml') }}
-          restore-keys: pip-all-features-
+          key: pip-all-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-all-
 
-      - name: Install all features
+      # No other job installs [all], so the signing, crypto, visualization,
+      # langchain and serving surfaces -- including the tuf/oras/cryptography
+      # supply-chain code -- are otherwise never exercised in CI.
+      - name: Install dependencies
         run: pip install -e ".[all]"
 
-      - name: Smoke-test all optional imports
-        run: python scripts/check_optional_imports.py all
+      - name: Type check with the full extras present
+        run: make typecheck
 
-      - name: Run constrained feature tests
-        run: >
-          python -m pytest
-          tests/test_models_openai.py
-          tests/test_models_anthropic.py
-          tests/test_models_huggingface.py
-          tests/test_nlp_dependencies.py
-          tests/test_visualization.py
-          tests/test_langchain_integration.py
-          tests/test_shadow_fastapi.py
-          tests/test_tuf_client.py
-          tests/test_oras.py
-          tests/test_encryption.py
-          -m "not slow and not integration"
+      - name: Run tests
+        run: python -m pytest -m "not slow and not integration and not performance"
 
   determinism:
     name: Determinism (golden-path)

@@ -1,4 +1,4 @@
-.PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit architecture architecture-update check check-fast golden-path package-smoke clean-install-golden-path
+.PHONY: help doctest lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path package-smoke
 
 PYTHON ?= python3
 
@@ -16,8 +16,7 @@ help:
 	@echo "  make test-adapter  - \$$PYTHON -m pytest -m adapter"
 	@echo "  make test-performance - \$$PYTHON -m pytest -m performance"
 	@echo "  make docs-audit    - markdown/docs coverage + wiki link checks"
-	@echo "  make architecture  - check API/import evidence and architecture boundaries"
-	@echo "  make architecture-update - regenerate API/import evidence"
+	@echo "  make doctest       - run docstring examples (core only; see docs/DOCTESTS.md)"
 	@echo "  make check         - lint + format-check + typecheck + test"
 	@echo "  make check-fast    - lint + format-check + test-fast (quick pre-commit)"
 	@echo "  make golden-path   - offline harness + diff (DummyModel)"
@@ -81,6 +80,17 @@ test-adapter:
 
 test-performance:
 	$(PYTHON) -m pytest -m performance
+
+# Execute the docstring examples. Run from a temp directory because several
+# examples write files into the CWD (see docs/DOCTESTS.md). contrib/ is excluded:
+# its examples are the least maintained and some are long-running.
+# NOT yet part of `make check` -- 587 of 1266 core examples currently fail.
+doctest:
+	@tmp=$$(mktemp -d) && cd $$tmp && $(CURDIR)/$(PYTHON) -m pytest \
+		--doctest-modules -q --no-header --continue-on-collection-errors \
+		--ignore=$(CURDIR)/insideLLMs/contrib \
+		$(CURDIR)/insideLLMs; \
+		rc=$$?; rm -rf $$tmp; exit $$rc
 
 docs-audit:
 	$(PYTHON) scripts/audit_docs.py
