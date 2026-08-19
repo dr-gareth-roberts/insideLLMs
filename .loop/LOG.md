@@ -599,3 +599,14 @@ gates: ruff clean; ruff format clean (560); mypy --python-version 3.12 clean (23
 new finding: W7-0079 — `make typecheck`/`typecheck-strict` abort on numpy's PEP 695 stubs under [tool.mypy] python_version="3.10"; unrunnable in [all] envs, and CI's typecheck job installs [dev] only so it never sees numpy.
 new finding: W7-0080 — `pytest --cov` aborts in [all] envs (coverage + numpy C extension: "cannot load module more than once per process"; 1 collection error, 44 test errors), reproduced on an unmodified tree. Blocks A1's scan step and W7-0078's measurement; touched-module coverage for this increment was measured with --cov scoped to the runtime/harness/wave7 tests instead.
 next: W7-0072/W7-0002 look already-fixed (shim emits DeprecationWarning, docs agree, regression tests exist) — re-verify and close rather than re-fix.
+
+## [2026-08-19T19:25Z] W7-0072 + W7-0002 — visualization shim policy closed
+category: docs_drift | files: CHANGELOG.md, tests/test_audit_wave7_regressions.py
+W7-0072 (HIGH, conflict): closing criterion met with no new code. Import emits exactly one DeprecationWarning naming v2.0.0; shim is still the canonical module object; visualization.py:173-175, docs/IMPORT_PATHS.md:46 and CHANGELOG.md:116-119 all state deprecate + remove at v2.0.0; no "indefinite support" wording survives. Resolved by e1a49d0 (#96) before review. -> verified.
+W7-0002: re-verified claim by claim. Three of four claims dead (warning emitted, IMPORT_PATHS says Deprecated, docstring says deprecated). Fourth was LIVE: the Migration Guide named "v1.1.0 (current)" and a "v1.2.0" step for a project at 0.2.0 with no version tags and released sections [0.2.0]/[0.1.0]. Fixed to v0.2.0 (current) + "Until v2.0.0"; removal target left at v2.0.0 per W7-0072. -> verified.
+decision: W7-0002's original "align docs to indefinite support" direction is SUPERSEDED by W7-0072, not implemented.
+tests: 1 new (::test_changelog_migration_timeline_uses_the_real_package_version), confirmed failing with CHANGELOG.md stashed; stale "product decision pending" note above the shim tests updated to record the resolution.
+gates: ruff clean; ruff format clean (560); mypy --python-version 3.12 clean (235); pytest 7468 passed / 93 skipped / 0 failed; scripts/audit_docs.py "Documentation audit passed"; scripts/check_wiki_links.py clean.
+commit: c9e6e35b98a26944c3aab87683e7496ef75051e3
+new finding (NOT filed): 10 of 13 recorded fix_commit hashes in BACKLOG.json do not resolve — dd0235f, abc1d4c, 02a4a0b, aaa9bf4, 381fc33, 58d2884, 3602b9a, 48519c2, b48cbe8, 52a5729. Squash-merging PRs (#85/#88/#96/#100/#106/#109) destroyed the per-fix commits. This is the same defect that failed coverage-recovery-91 iteration 1; every "verified" claim citing one of these is unauditable.
+next: open HIGHs now clear — remaining open set is 61 items, mostly docstring-example drift (W7-0019..W7-0052).
