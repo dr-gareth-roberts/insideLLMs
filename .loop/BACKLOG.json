@@ -1123,6 +1123,20 @@
       "fix_commit": null,
       "verification": null,
       "notes": "Downgraded MEDIUM -> LOW on correction: the loop's own scan recipe is unaffected, so this is a papercut for per-module coverage checks rather than a blocked gate. The bisect script used to hunt the interaction was itself buggy (its error-match never fired, so it walked to the last file and named tests/test_visualization.py, which does NOT reproduce when paired with the viz tests) -- root cause remains unidentified. Workaround: cover the whole package and read the per-module rows from the report instead of scoping --cov."
+    },
+    {
+      "id": "W7-0081",
+      "category": "bug",
+      "severity": "\ud83d\udd34 HIGH",
+      "location": "insideLLMs/runtime/_async_runner.py:596-628 (use_probe_batch path)",
+      "found_by": "independent review of the W7-0007 fix",
+      "description": "The use_probe_batch=True path had the same sync/async divergence W7-0007 fixed for run_single. The sync runner writes the failing record and breaks; the async batch loop assigned every result run_batch returned and wrote them all in one pass, so items behind a stop_on_error failure were persisted as completed work. Identical config therefore produced different records.jsonl depending on sync vs async, on a row docs/STABILITY_MATRIX.md:23 calls deterministic, and resume counted the extra records as done.",
+      "evidence": "8 prompts, probe fails at index 1, stop_on_error=True, use_probe_batch=True. BEFORE: sync ['success','error'] vs async ['success','error','success','success','success','success','success','success'], byte-identical False. AFTER: both ['success','error'], byte-identical True. Regression test tests/test_audit_wave7_regressions.py::test_batch_stop_on_error_matches_between_sync_and_async, confirmed failing with _async_runner.py stashed and passing restored.",
+      "status": "verified",
+      "escalation_reason": null,
+      "fix_commit": "aeee5c8c3435fb82c7b3528a15543286cbaaa947",
+      "verification": "Loop breaks once stop_error is set, leaving results past the failure as None so write_ready_records() stops there; `completed` advances by what was processed rather than the full batch. Gates in [all]: ruff clean; ruff format clean (563 files); make typecheck clean (235 files); make golden-path exit 0; pytest 7427 passed / 72 skipped / 0 failed at 96.03% coverage. Gates in [dev] (release.yml's env): make check exit 0; coverage 94.69% against the matrix job's new 94 floor.",
+      "notes": "Same class as W7-0007 and found only because that fix's commit message overclaimed byte-identity for the whole stop_on_error path rather than the run_single path it actually touched. The claim is corrected in this commit message."
     }
   ]
 }
