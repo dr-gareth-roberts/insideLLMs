@@ -125,7 +125,9 @@ python3 -m pip install ".[providers]"        # OpenAI + Anthropic + HuggingFace 
 ## Quickstart (no API key)
 
 The `dummy` model makes the whole flow runnable offline and deterministically.
-Every command below was executed to produce the output shown.
+Every command below was executed in an empty directory against an install from
+a source checkout (see [Install](#install)); nothing here needs the repository
+itself.
 
 **1. Smoke test.**
 
@@ -139,11 +141,10 @@ $ insidellms quicktest "What is 2+2?" --model dummy
   Response length: 35 characters
 ```
 
-**2. Generate a self-contained harness project.**
+**2. Generate a harness config and its sample dataset.**
 
 Run this in a fresh working directory. Unlike the repository's `ci/` fixture,
-the generated config and data are available whether you installed a wheel or a
-source checkout.
+the generated config and data are available wherever the package is installed.
 
 ```console
 $ insidellms init harness.yaml --template harness
@@ -157,16 +158,16 @@ $ insidellms harness harness.yaml --dry-run
   Total evaluations: 12
 ```
 
-**3. Run the harness twice and confirm determinism.**
+**3. Run it twice and confirm determinism.**
 
 ```console
-$ insidellms harness harness.yaml --run-dir baseline
+$ insidellms harness harness.yaml --run-dir baseline --skip-report
 OK Records written to: baseline/records.jsonl
 OK Manifest written to: baseline/manifest.json
 OK Summary written to: baseline/summary.json
-OK Report written to: baseline/report.html
 
-$ insidellms harness harness.yaml --run-dir candidate
+Run written to: baseline
+$ insidellms harness harness.yaml --run-dir candidate --skip-report
 $ diff baseline/records.jsonl candidate/records.jsonl && echo IDENTICAL
 IDENTICAL
 ```
@@ -184,10 +185,28 @@ $ echo $?
 0
 ```
 
-A plain diff is informational. The explicit fail flag turns behavioural changes
-into exit `2`, which is the CI gate. From a source checkout, run
+**5. Change the dataset, re-run, and watch the gate fail (exit 2).**
+
+```console
+$ insidellms harness harness.yaml --run-dir candidate-changed --skip-report
+$ insidellms diff baseline candidate-changed --fail-on-changes
+  Common keys: 0
+  Only in baseline: 12
+  Only in comparison: 12
+$ echo $?
+2
+```
+
+A plain diff is informational. `--fail-on-changes` turns regressions, other
+output changes, or one-sided records into exit `2`, which is the CI gate;
+improvement-only score changes stay informational. From a source checkout, run
 `python3 examples/demo_diff_pipeline.py` to see deliberate score and output
 changes trigger that exit code end to end.
+
+> Examples are keyed by a hash of their input, so editing a prompt reads as
+> "these examples were replaced", as above. To see field-level output diffs
+> (`- baseline` / `+ candidate`), hold the dataset fixed and change the model —
+> which is the case the gate is built for.
 
 ## The workflow
 
