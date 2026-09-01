@@ -45,8 +45,9 @@ insidellms diff ./baseline ./candidate --fail-on-changes
   HuggingFace, OpenRouter, and local models (Ollama, llama.cpp, vLLM).
 - **Zero-key demo path.** A built-in `dummy` model runs the full harness and
   diff flow offline — no API keys required.
-- **Reusable GitHub Action.** `dr-gareth-roberts/insideLLMs@v1` runs the harness
+- **Reusable GitHub Action.** A reusable action (`action.yml`) runs the harness
   on every PR and posts a sticky comment with the top behaviour deltas.
+  (A tagged `@v1` release is planned but not yet published.)
 
 ## Architecture
 
@@ -102,18 +103,23 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for execution-flow sequence diagrams.
 ## Install
 
 ```bash
-pip install insidellms
+# Clone and install (editable)
+git clone https://github.com/dr-gareth-roberts/insideLLMs.git
+cd insideLLMs
+pip install -e .
 ```
 
 Only `pyyaml` is required. Everything else is opt-in:
 
 ```bash
-pip install insidellms[openai]           # OpenAI provider
-pip install insidellms[anthropic]        # Anthropic provider
-pip install insidellms[nlp]              # NLP probes (nltk, spacy)
-pip install insidellms[visualization]    # Charts and reports
-pip install insidellms[providers]        # All providers at once
+pip install -e ".[openai]"           # OpenAI provider
+pip install -e ".[anthropic]"        # Anthropic provider
+pip install -e ".[nlp]"              # NLP probes (nltk, spacy)
+pip install -e ".[visualization]"    # Charts and reports
+pip install -e ".[providers]"        # All providers at once
 ```
+
+> **Note:** A `pip install insidellms` release is planned but not yet published to PyPI.
 
 ## Quickstart (no API key)
 
@@ -229,7 +235,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: dr-gareth-roberts/insideLLMs@v1
+      # Pin to a commit SHA until a tagged release is available
+      - uses: dr-gareth-roberts/insideLLMs@main
         with:
           harness-config: ci/harness.yaml
 ```
@@ -423,7 +430,7 @@ pip install -e ".[dev]"
 python -m pytest -m "not slow and not integration and not performance"
 ```
 
-The fast suite is **6610 passing** tests (349 skipped for optional deps).
+The fast suite passes thousands of tests (exact count varies by optional deps installed).
 
 ## Docs
 

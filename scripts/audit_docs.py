@@ -231,10 +231,13 @@ def main() -> int:
         "--active-red-team",
         "--fail-on-trajectory-drift",
         "shadow.fastapi",
-        "dr-gareth-roberts/insideLLMs@v1",
     ]:
         if token not in readme:
             failures.append(f"README.md missing expected token: {token}")
+
+    # Entry-surface checks: README must not claim unqualified PyPI extras
+    if re.search(r"pip install insidellms\[[a-z]+\]", readme):
+        failures.append("README.md contains unqualified PyPI extras (pip install insidellms[...])")
 
     documentation_index = _read(repo_root / "DOCUMENTATION_INDEX.md")
     for token in [
@@ -381,6 +384,42 @@ def main() -> int:
             failures.append(f"wiki/reference/Models-Catalog.md missing documentation for: {model}")
     else:
         failures.append("wiki/reference/Models-Catalog.md not found")
+
+    # =========================================================================
+    # Entry-Surface Checks (wiki/index.md + wiki/getting-started/*)
+    # =========================================================================
+    entry_surface_files = [
+        repo_root / "wiki" / "index.md",
+        repo_root / "wiki" / "getting-started" / "Quick-Install.md",
+        repo_root / "wiki" / "getting-started" / "First-Run.md",
+        repo_root / "wiki" / "getting-started" / "First-Harness.md",
+        repo_root / "wiki" / "getting-started" / "Understanding-Outputs.md",
+        repo_root / "wiki" / "getting-started" / "index.md",
+    ]
+
+    for path in entry_surface_files:
+        if not path.exists():
+            failures.append(f"entry-surface file missing: {path.relative_to(repo_root)}")
+            continue
+        text = _read(path)
+
+        # Check for wrong exit code (1 instead of 2) for diff --fail-on-changes
+        if re.search(r"#\s*Exit\s+(code\s+)?1\s+(if|when)", text, re.IGNORECASE):
+            failures.append(
+                f"{path.relative_to(repo_root)} teaches wrong diff exit code (1 instead of 2)"
+            )
+
+        # Check for non-existent data/test.jsonl
+        if "data/test.jsonl" in text:
+            failures.append(
+                f"{path.relative_to(repo_root)} references non-existent data/test.jsonl"
+            )
+
+        # Check for unqualified PyPI extras in entry surfaces
+        if re.search(r"pip install insidellms\[[a-z]+\]", text):
+            failures.append(
+                f"{path.relative_to(repo_root)} contains unqualified PyPI extras"
+            )
 
     if failures:
         print("Documentation audit issues detected:", file=sys.stderr)

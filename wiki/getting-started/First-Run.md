@@ -15,12 +15,15 @@ insidellms quicktest "What is 2 + 2?" --model dummy
 ```
 
 ```
-Model: DummyModel
-Prompt: What is 2 + 2?
-Response: This is a dummy response for testing purposes.
+── Response ──────────────────────────────────────────
+  [DummyModel] You said: What is 2 + 2?
+
+── Stats ─────────────────────────────────────────────
+  Latency: 0.0ms
+  Response length: 35 characters
 ```
 
-DummyModel returns fixed responses. Perfect for testing without API costs.
+DummyModel echoes your prompt back. Perfect for testing without API costs.
 
 ## With a Real Model
 
@@ -40,7 +43,7 @@ probe:
   type: logic
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 ```
 
 ```bash

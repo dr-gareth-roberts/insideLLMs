@@ -85,7 +85,7 @@ insidellms harness config.yaml --run-dir ./baseline
 **3. Catch changes in CI**
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
-# Exit code 1 if behaviour changed
+# Exit code 2 if behaviour changed, 0 if not
 ```
 
 **Result:** Breaking changes blocked. Users protected.

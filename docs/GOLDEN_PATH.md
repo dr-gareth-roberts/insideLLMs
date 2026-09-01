@@ -25,22 +25,23 @@ Harness runs default to `~/.insidellms/runs/<run_id>/` unless you pass `--run-di
 `--run-root`, or set `output_dir` in the config (relative to the config file).
 
 ```bash
-insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite
-insidellms report .tmp/runs/baseline
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite --skip-report
 ```
 
 Artefacts:
 - `.tmp/runs/baseline/manifest.json`
 - `.tmp/runs/baseline/records.jsonl` (canonical)
 - `.tmp/runs/baseline/summary.json`
-- `.tmp/runs/baseline/report.html`
+
+> **Note:** `--skip-report` omits the HTML report, which requires optional visualization dependencies.
+> Use `insidellms report .tmp/runs/baseline` after installing `pip install -e ".[visualization]"` if needed.
 
 ### 3) Diff-gate (baseline vs candidate)
 
 Run the same harness again into a second directory:
 
 ```bash
-insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite
+insidellms harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite --skip-report
 insidellms diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
 ```
 

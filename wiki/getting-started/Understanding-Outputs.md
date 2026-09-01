@@ -69,7 +69,7 @@ insidellms diff baseline/ candidate/
 For CI:
 ```bash
 insidellms diff baseline/ candidate/ --fail-on-changes
-# Exit 1 if changes detected
+# Exit 2 if behaviour changed, 0 if not
 ```
 
 ## Why Deterministic?

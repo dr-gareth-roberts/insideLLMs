@@ -19,8 +19,8 @@ cd insideLLMs
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Install with all extras
-pip install -e ".[all]"
+# Install (core only — sufficient for quicktest and harness with DummyModel)
+pip install -e .
 ```
 
 **Using uv?** Replace `pip install` with `uv pip install` above.

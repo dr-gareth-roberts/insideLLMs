@@ -25,7 +25,7 @@ probes:
 
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 
 output_dir: ./harness_results
 ```
@@ -34,15 +34,14 @@ output_dir: ./harness_results
 
 ```bash
 insidellms harness my_harness.yaml
-# Creates: records.jsonl (4 records), summary.json, report.html
+# Creates: records.jsonl, summary.json, report.html
 ```
 
 ## View Results
 
 ```bash
-# Raw records
+# Raw records (count = models × examples × probes)
 wc -l harness_results/records.jsonl
-# 4 (2 models × 2 examples)
 
 # HTML report
 open harness_results/report.html
@@ -61,7 +60,7 @@ probes:
   - type: bias
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 ```
 
 ```bash
