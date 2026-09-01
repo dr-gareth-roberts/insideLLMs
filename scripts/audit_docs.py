@@ -417,9 +417,7 @@ def main() -> int:
 
         # Check for unqualified PyPI extras in entry surfaces
         if re.search(r"pip install insidellms\[[a-z]+\]", text):
-            failures.append(
-                f"{path.relative_to(repo_root)} contains unqualified PyPI extras"
-            )
+            failures.append(f"{path.relative_to(repo_root)} contains unqualified PyPI extras")
 
     if failures:
         print("Documentation audit issues detected:", file=sys.stderr)

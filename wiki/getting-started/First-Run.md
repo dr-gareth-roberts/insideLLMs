@@ -20,7 +20,7 @@ insidellms quicktest "What is 2 + 2?" --model dummy
 
 ── Stats ─────────────────────────────────────────────
   Latency: 0.0ms
-  Response length: 35 characters
+  Response length: 37 characters
 ```
 
 DummyModel echoes your prompt back. Perfect for testing without API costs.

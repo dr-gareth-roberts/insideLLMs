@@ -235,8 +235,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Pin to a commit SHA until a tagged release is available
-      - uses: dr-gareth-roberts/insideLLMs@main
+      # @v1 is not yet published; pin to a commit SHA for now
+      - uses: dr-gareth-roberts/insideLLMs@v1  # TODO: tag v1 release
         with:
           harness-config: ci/harness.yaml
 ```
