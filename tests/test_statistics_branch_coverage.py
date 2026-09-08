@@ -17,6 +17,29 @@ from insideLLMs.types import (
 )
 
 
+@pytest.mark.parametrize("test", [stats.paired_t_test, stats.welchs_t_test])
+@pytest.mark.parametrize("offset, expected", [(0, 1.0), (1, 0.0), (-1, 0.0)])
+def test_valid_zero_variance_is_explicitly_degenerate(test, offset, expected):
+    result = test([offset, offset], [0, 0])
+    assert result.p_value == expected
+    assert result.significant is (expected == 0)
+    assert "degenerate" in result.conclusion.lower()
+
+
+@pytest.mark.parametrize("a, b", [([], [0]), ([0], []), ([0], [0, 1])])
+def test_unequal_pairs_rejected_before_insufficient_data(a, b):
+    with pytest.raises(ValueError, match="equal length"):
+        stats.paired_t_test(a, b)
+
+
+@pytest.mark.parametrize("a, b", [([], [0, 1]), ([0], [0, 1]), ([0, 1], [0])])
+def test_welch_either_small_group_is_insufficient(a, b):
+    result = stats.welchs_t_test(a, b)
+    assert result.p_value == 1
+    assert not result.significant
+    assert "insufficient" in result.conclusion.lower()
+
+
 def _exp_result(model_name: str, score: ProbeScore | None) -> ExperimentResult:
     return ExperimentResult(
         experiment_id=f"exp-{model_name}",

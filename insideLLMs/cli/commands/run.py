@@ -12,6 +12,7 @@ from typing import Optional
 
 from insideLLMs.results import results_to_markdown, save_results_json
 from insideLLMs.runtime._artifact_utils import _default_run_root
+from insideLLMs.runtime._run_health import assess_run_health, check_run_directory_health
 from insideLLMs.runtime.runner import (
     derive_run_id_from_config_path,
     run_experiment_from_config,
@@ -158,6 +159,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         success_count = sum(1 for r in raw_results if r.get("status") == "success")
         error_count = sum(1 for r in raw_results if r.get("status") == "error")
         timeout_count = sum(1 for r in raw_results if r.get("status") == "timeout")
+        health = assess_run_health(raw_results, expected_count=total)
+        if (effective_run_dir / "manifest.json").exists():
+            health = check_run_directory_health(effective_run_dir)
 
         # Output results
         if args.output:
@@ -176,7 +180,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(results_to_markdown(raw_results))
         elif args.format == "summary":
             # Minimal summary output
-            summary_text = f"OK {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
+            outcome = "OK" if health["healthy"] else "FAIL"
+            summary_text = f"{outcome} {success_count}/{total} successful ({success_count / max(1, total) * 100:.1f}%)"
             if timeout_count:
                 summary_text += f", timeouts: {timeout_count}"
             print(summary_text)
@@ -260,7 +265,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                         str(Path(args.output)), artifact_name=Path(args.output).name
                     )
 
-                tracker.end_run(status="finished")
+                tracker.end_run(status="finished" if health["healthy"] else "failed")
                 tracker = None
             except Exception as e:
                 print_warning(f"Tracking error: {e}")
@@ -272,6 +277,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"\nRun written to: {effective_run_dir}", file=hint_stream)
             print(f"Validate with: insidellms validate {effective_run_dir}", file=hint_stream)
 
+        if not health["healthy"]:
+            print_error("Run health check failed: " + "; ".join(health["reasons"]))
+            return 1
         return 0
 
     except Exception as e:

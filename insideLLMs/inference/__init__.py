@@ -1,5 +1,6 @@
 """Composable, async-first inference-time harness strategies."""
 
+from ._limits import OutputLimitBinding
 from .adapters import ModelProposer
 from .best_of_n import NoVerifiedCandidateError, VerifierSpec, select_best
 from .client import InferenceClient
@@ -65,6 +66,7 @@ __all__ = [
     "ModelProposer",
     "NoVerifiedCandidateError",
     "Observation",
+    "OutputLimitBinding",
     "PlanNode",
     "PrefixCacheTelemetry",
     "PromptParts",

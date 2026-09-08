@@ -5,11 +5,13 @@ configuration files, as well as convenience wrappers for simple probe execution.
 """
 
 import logging
+from dataclasses import replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs._serialization import (
     StrictSerializationError,
 )
@@ -17,6 +19,7 @@ from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
 from insideLLMs.analysis.statistics import generate_summary_report
+from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
 from insideLLMs.runtime._base import _normalize_validation_mode
@@ -38,11 +41,14 @@ from insideLLMs.runtime._determinism import (
     _deterministic_run_times,
     _hash_prompt_set,
 )
+from insideLLMs.runtime._interruptions import abort_summary_metadata
 from insideLLMs.runtime._result_utils import (
     _build_result_record,
     _coerce_model_info,
     _normalize_info_obj_to_dict,
 )
+from insideLLMs.runtime._run_health import describe_run_abort
+from insideLLMs.runtime.budget import create_budget_ledger, preflight_budget_config
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.types import (
     ConfigDict,
@@ -258,12 +264,19 @@ def run_experiment_from_config(
             "strict_serialization requires JSON-stable values in the resolved config snapshot."
         ) from exc
 
-    model = _create_model_from_config(config["model"], prefer_async_pipeline=True)
-    probe = _create_probe_from_config(config["probe"])
+    preflight_budget_config(config, resume=bool(resume))
+    budget_ledger = create_budget_ledger(config, resume=bool(resume))
+    budget_kwargs: dict[str, Any] = (
+        {"budget_ledger": budget_ledger} if budget_ledger is not None else {}
+    )
+    model = _create_model_from_config(config["model"], prefer_async_pipeline=True, **budget_kwargs)
+    probe = _create_probe_from_config(config["probe"], **budget_kwargs)
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
+    if config.get("max_examples") is not None:
+        dataset = dataset[: config["max_examples"]]
 
-    probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
-    probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
+    probe_kwargs = _extract_probe_kwargs_from_config(config)
+    probe_kwargs.update(_extract_probe_kwargs_from_config(config.get("probe")))
 
     runner = ProbeRunner(model, probe)
     effective_stop_on_error = (
@@ -293,6 +306,7 @@ def run_experiment_from_config(
         batch_workers=effective_batch_workers,
         stop_on_error=effective_stop_on_error,
         return_experiment=return_experiment,
+        **budget_kwargs,
         **probe_kwargs,
     )
 
@@ -373,9 +387,14 @@ def run_harness_from_config(
     harness_base_time = _deterministic_base_time(harness_run_id)
     harness_generated_at, _ = _deterministic_run_times(harness_base_time, 0)
 
-    models_config = config_snapshot.get("models", [])
-    probes_config = config_snapshot.get("probes", [])
-    dataset_config = config_snapshot.get("dataset")
+    models_config = config.get("models", [])
+    probes_config = config.get("probes", [])
+    dataset_config = config.get("dataset")
+    preflight_budget_config(config)
+    budget_ledger = create_budget_ledger(config)
+    budget_kwargs: dict[str, Any] = (
+        {"budget_ledger": budget_ledger} if budget_ledger is not None else {}
+    )
 
     if not models_config:
         raise ValueError("Harness config requires at least one model in 'models'.")
@@ -389,10 +408,11 @@ def run_harness_from_config(
     if max_examples:
         dataset = dataset[:max_examples]
 
-    global_probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
+    global_probe_kwargs = _extract_probe_kwargs_from_config(config)
 
     experiments: list[ExperimentResult] = []
     records: list[dict[str, Any]] = []
+    stop_error: Optional[RunnerExecutionError] = None
 
     total_items = len(dataset) * len(models_config) * len(probes_config)
     dataset_ref = dataset_config.get("name") or dataset_config.get("path") or "dataset"
@@ -421,7 +441,9 @@ def run_harness_from_config(
             or info.get("model_type")
         )
         provider = str(provider) if provider is not None else None
-        return {"model_id": str(model_id), "provider": provider, "params": info}
+        return redact_config_secrets(
+            {"model_id": str(model_id), "provider": provider, "params": info}
+        )
 
     def _probe_spec_for_harness(probe_obj: Probe, probe_cfg: dict[str, Any]) -> dict[str, Any]:
         probe_id = (
@@ -455,26 +477,47 @@ def run_harness_from_config(
         )
         return {
             "dataset_id": str(dataset_id) if dataset_id is not None else None,
-            "dataset_version": str(dataset_version) if dataset_version is not None else None,
+            "dataset_version": (str(dataset_version) if dataset_version is not None else None),
             "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
             "provenance": str(provenance) if provenance is not None else None,
             "params": dataset_cfg,
         }
 
     for model_idx, model_config in enumerate(models_config):
-        model = _create_model_from_config(model_config, prefer_async_pipeline=True)
-        model_info = _coerce_model_info(model)
-        model_spec = _model_spec_for_harness(model, model_config)
+        try:
+            model = _create_model_from_config(
+                model_config, prefer_async_pipeline=True, **budget_kwargs
+            )
+            model_info = _coerce_model_info(model)
+            model_spec = _model_spec_for_harness(model, model_config)
+        except Exception as exc:
+            stop_error = RunnerExecutionError(
+                reason="Model initialization failed",
+                run_id=harness_run_id,
+                model_id=model_config.get("type"),
+                original_error=exc,
+            )
+            break
 
         for probe_idx, probe_config in enumerate(probes_config):
-            probe = _create_probe_from_config(probe_config)
-            probe_spec = _probe_spec_for_harness(probe, probe_config)
-            dataset_spec = _dataset_spec_for_harness(dataset_config)
+            try:
+                probe = _create_probe_from_config(probe_config, **budget_kwargs)
+                probe_spec = _probe_spec_for_harness(probe, probe_config)
+            except Exception as exc:
+                stop_error = RunnerExecutionError(
+                    reason="Probe initialization failed",
+                    run_id=harness_run_id,
+                    model_id=model_spec.get("model_id"),
+                    probe_id=probe_config.get("type"),
+                    original_error=exc,
+                )
+                break
+            dataset_spec = _dataset_spec_for_harness(config_snapshot["dataset"])
             run_offset = (model_idx * len(probes_config) + probe_idx) * len(dataset)
             experiment_id = _deterministic_harness_experiment_id(
-                model_config=model_config,
-                probe_config=probe_config,
-                dataset_config=dataset_config,
+                model_config=config_snapshot["models"][model_idx],
+                probe_config=config_snapshot["probes"][probe_idx],
+                dataset_config=config_snapshot["dataset"],
                 model_index=model_idx,
                 probe_index=probe_idx,
                 max_examples=max_examples,
@@ -495,37 +538,53 @@ def run_harness_from_config(
             probe_kwargs = dict(global_probe_kwargs)
             probe_kwargs.update(_extract_probe_kwargs_from_config(probe_config))
 
-            results = ProbeRunner(model, probe).run(
-                dataset,
-                progress_callback=local_progress if progress_callback else None,
-                validate_output=validate_output,
-                schema_version=schema_version,
-                validation_mode=validation_mode,
-                emit_run_artifacts=False,
-                run_id=experiment_id,
-                strict_serialization=strict_serialization,
-                deterministic_artifacts=deterministic_artifacts,
-                use_probe_batch=effective_use_probe_batch,
-                batch_workers=effective_batch_workers,
-                stop_on_error=effective_stop_on_error,
-                **probe_kwargs,
+            partial_experiment = None
+            cell_runner = ProbeRunner(model, probe)
+            try:
+                results = cell_runner.run(
+                    dataset,
+                    progress_callback=local_progress if progress_callback else None,
+                    validate_output=validate_output,
+                    schema_version=schema_version,
+                    validation_mode=validation_mode,
+                    emit_run_artifacts=False,
+                    run_id=experiment_id,
+                    strict_serialization=strict_serialization,
+                    deterministic_artifacts=deterministic_artifacts,
+                    use_probe_batch=effective_use_probe_batch,
+                    batch_workers=effective_batch_workers,
+                    stop_on_error=effective_stop_on_error,
+                    **budget_kwargs,
+                    **probe_kwargs,
+                )
+            except RunnerExecutionError as exc:
+                stop_error = exc
+                results = exc.partial_results
+                if exc.partial_result is not None:
+                    partial_experiments = exc.partial_result.get("experiments", [])
+                    if partial_experiments:
+                        partial_experiment = partial_experiments[0]
+                _, experiment_completed_at = _deterministic_run_times(
+                    experiment_base_time, len(results)
+                )
+
+            experiment_config = redact_config_secrets(
+                {
+                    "model": model_config,
+                    "probe": probe_config,
+                    "dataset": dataset_config,
+                }
             )
 
-            experiment_config = {
-                "model": model_config,
-                "probe": probe_config,
-                "dataset": dataset_config,
-            }
-
-            experiment = create_experiment_result(
-                model,
-                probe,
-                results,
+            # The runner already aggregated this cell; aggregation can have side effects.
+            completed_experiment = partial_experiment or cell_runner.last_experiment
+            assert completed_experiment is not None
+            experiment = replace(
+                completed_experiment,
                 config=experiment_config,
                 experiment_id=experiment_id,
                 started_at=experiment_started_at,
                 completed_at=experiment_completed_at,
-                strict_serialization=strict_serialization,
             )
             experiments.append(experiment)
 
@@ -550,6 +609,9 @@ def run_harness_from_config(
                     dataset=dataset_spec,
                     item=result.get("input"),
                     output=result.get("output"),
+                    scores=result.get("scores"),
+                    primary_metric=result.get("primary_metric"),
+                    metadata=result.get("metadata"),
                     latency_ms=result.get("latency_ms"),
                     store_messages=False,
                     index=example_index,
@@ -579,6 +641,11 @@ def run_harness_from_config(
                 record["custom"] = record_custom
                 records.append(record)
 
+            if stop_error is not None:
+                break
+        if stop_error is not None:
+            break
+
     summary = generate_summary_report(
         experiments,
         include_ci=True,
@@ -598,17 +665,27 @@ def run_harness_from_config(
                 mode=validator_mode,
             )
 
-    return {
+    harness_result: dict[str, Any] = {
         "records": records,
         "experiments": experiments,
         "summary": summary,
-        "config": config,
+        "config": redact_config_secrets(config),
         "config_snapshot": config_snapshot,
+        "expected_count": total_items,
         "run_id": harness_run_id,
         "generated_at": harness_generated_at,
         "strict_serialization": strict_serialization,
         "deterministic_artifacts": deterministic_artifacts,
+        "run_completed": stop_error is None,
     }
+    if budget_ledger is not None:
+        harness_result["budget"] = budget_ledger.snapshot()
+    if stop_error is not None:
+        harness_result["abort"] = describe_run_abort(stop_error)
+        summary.update(abort_summary_metadata(stop_error, records, total_items))
+        stop_error.partial_result = harness_result
+        raise stop_error from stop_error.original_error
+    return harness_result
 
 
 async def run_experiment_from_config_async(
@@ -709,12 +786,19 @@ async def run_experiment_from_config_async(
             "strict_serialization requires JSON-stable values in the resolved config snapshot."
         ) from exc
 
-    model = _create_model_from_config(config["model"], prefer_async_pipeline=True)
-    probe = _create_probe_from_config(config["probe"])
+    preflight_budget_config(config, resume=bool(resume))
+    budget_ledger = create_budget_ledger(config, resume=bool(resume))
+    budget_kwargs: dict[str, Any] = (
+        {"budget_ledger": budget_ledger} if budget_ledger is not None else {}
+    )
+    model = _create_model_from_config(config["model"], prefer_async_pipeline=True, **budget_kwargs)
+    probe = _create_probe_from_config(config["probe"], **budget_kwargs)
     dataset = _load_dataset_from_config(config["dataset"], base_dir)
+    if config.get("max_examples") is not None:
+        dataset = dataset[: config["max_examples"]]
 
-    probe_kwargs = _extract_probe_kwargs_from_config(config_snapshot)
-    probe_kwargs.update(_extract_probe_kwargs_from_config(config_snapshot.get("probe")))
+    probe_kwargs = _extract_probe_kwargs_from_config(config)
+    probe_kwargs.update(_extract_probe_kwargs_from_config(config.get("probe")))
 
     runner = AsyncProbeRunner(model, probe)
     effective_concurrency = (
@@ -750,6 +834,7 @@ async def run_experiment_from_config_async(
         stop_on_error=effective_stop_on_error,
         timeout=float(effective_timeout) if effective_timeout is not None else None,
         return_experiment=return_experiment,
+        **budget_kwargs,
         **probe_kwargs,
     )
 
@@ -764,6 +849,8 @@ def create_experiment_result(
     started_at: Optional[datetime] = None,
     completed_at: Optional[datetime] = None,
     strict_serialization: bool = False,
+    _abort_error: Optional[RunnerExecutionError] = None,
+    _skip_scoring: bool = False,
 ) -> ExperimentResult:
     """Create a structured ExperimentResult from raw results.
 
@@ -823,11 +910,25 @@ def create_experiment_result(
                     error=r.get("error"),
                     latency_ms=r.get("latency_ms"),
                     metadata=r.get("metadata") or {},
+                    scores=r.get("scores") or (r.get("metadata") or {}).get("scores") or {},
+                    primary_metric=r.get("primary_metric")
+                    or (r.get("metadata") or {}).get("primary_metric"),
                 )
             )
 
     # Calculate scores
-    score = probe.score(probe_results) if hasattr(probe, "score") else None
+    try:
+        score = (
+            probe.score(probe_results) if not _skip_scoring and hasattr(probe, "score") else None
+        )
+    except Exception as exc:
+        if _abort_error is None:
+            raise
+        # Aggregation must not replace the already-known execution failure.
+        score = None
+        _abort_error.secondary_diagnostics.append(
+            {"stage": "aggregate_scoring", "error_type": type(exc).__name__, "message": str(exc)}
+        )
 
     # Determine category
     category = getattr(probe, "category", ProbeCategory.CUSTOM)
@@ -883,7 +984,7 @@ def create_experiment_result(
         score=score,
         started_at=started_at,
         completed_at=completed_at,
-        config=config or {},
+        config=redact_config_secrets(config or {}),
     )
 
 

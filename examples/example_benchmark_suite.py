@@ -5,15 +5,18 @@ for systematic LLM evaluation.
 """
 
 from insideLLMs import (
-    DatasetCategory,
     # Models
     DummyModel,
     # Probes
     LogicProbe,
     # Runner
     ProbeRunner,
+)
+from insideLLMs.benchmark_datasets import (
+    DatasetCategory,
     create_comprehensive_benchmark_suite,
-    # Dataset utilities
+    cross_validate,
+    filter_dataset,
     list_builtin_datasets,
     load_builtin_dataset,
 )
@@ -98,9 +101,11 @@ def run_with_dummy_model():
 
     print(f"\nRan {len(results)} examples")
     for i, result in enumerate(results):
-        print(f"\n{i + 1}. Status: {result.status}")
-        print(f"   Input: {result.input[:50]}...")
-        print(f"   Output: {result.output[:50] if result.output else 'N/A'}...")
+        input_text = str(result["input"])
+        output = str(result.get("output") or "N/A")
+        print(f"\n{i + 1}. Status: {result['status']}")
+        print(f"   Input: {input_text[:50]}...")
+        print(f"   Output: {output[:50]}...")
 
 
 def cross_validation_example():
@@ -108,8 +113,6 @@ def cross_validation_example():
     print("\n" + "=" * 60)
     print("Cross-Validation Example")
     print("=" * 60)
-
-    from insideLLMs import cross_validate
 
     # Load dataset
     math_ds = load_builtin_dataset("math")
@@ -125,8 +128,6 @@ def filtering_example():
     print("\n" + "=" * 60)
     print("Dataset Filtering Example")
     print("=" * 60)
-
-    from insideLLMs import filter_dataset
 
     # Load dataset
     language = load_builtin_dataset("language")

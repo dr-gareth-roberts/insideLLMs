@@ -133,36 +133,36 @@ def test_cmd_validate_config_validation_errors_and_success_paths(tmp_path):
             {
                 "model": {"type": "unknown-model"},
                 "probe": {"type": "unknown-probe"},
-                "dataset": {"path": str(tmp_path / "nope.jsonl")},
+                "dataset": {"format": "jsonl", "path": str(tmp_path / "nope.jsonl")},
             }
         )
     )
 
     with (
-        patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=[]),
-        patch("insideLLMs.cli.commands.validate.probe_registry.list", return_value=[]),
+        patch("insideLLMs.registry.model_registry.list", return_value=[]),
+        patch("insideLLMs.registry.probe_registry.list", return_value=[]),
     ):
         rc_unknown = cmd_validate(_validate_args(unknown_types, mode="strict"))
     assert rc_unknown == 1
 
-    # Valid config with only warning (missing dataset path) still returns 0.
+    # A missing dataset is an execution error and must fail validation.
     warning_only = tmp_path / "warning_only.yaml"
     warning_only.write_text(
         yaml.safe_dump(
             {
                 "model": {"type": "dummy"},
                 "probe": {"type": "dummy"},
-                "dataset": {"path": str(tmp_path / "missing_data.jsonl")},
+                "dataset": {"format": "jsonl", "path": str(tmp_path / "missing_data.jsonl")},
             }
         )
     )
 
     with (
-        patch("insideLLMs.cli.commands.validate.model_registry.list", return_value=["dummy"]),
-        patch("insideLLMs.cli.commands.validate.probe_registry.list", return_value=["dummy"]),
+        patch("insideLLMs.registry.model_registry.list", return_value=["dummy"]),
+        patch("insideLLMs.registry.probe_registry.list", return_value=["dummy"]),
     ):
         rc_warning_only = cmd_validate(_validate_args(warning_only, mode="strict"))
-    assert rc_warning_only == 0
+    assert rc_warning_only == 1
 
 
 def test_cmd_validate_config_parse_exception_returns_1(tmp_path):

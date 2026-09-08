@@ -11,6 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Union
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs._serialization import (
     StrictSerializationError,
 )
@@ -21,6 +22,7 @@ from insideLLMs._serialization import (
     stable_json_dumps as _stable_json_dumps,
 )
 from insideLLMs.runtime._determinism import _replicate_key
+from insideLLMs.schemas.registry import semver_tuple
 from insideLLMs.types import (
     ModelInfo,
     ProbeResult,
@@ -216,7 +218,7 @@ def _build_model_spec(model: Any) -> dict[str, Any]:
 
     provider = info.get("provider") or info.get("type") or info.get("model_type")
     provider = str(provider) if provider is not None else None
-    return {"model_id": str(model_id), "provider": provider, "params": info}
+    return redact_config_secrets({"model_id": str(model_id), "provider": provider, "params": info})
 
 
 def _build_probe_spec(probe: Any) -> dict[str, Any]:
@@ -339,12 +341,14 @@ def _build_dataset_spec(dataset_info: Optional[dict[str, Any]]) -> dict[str, Any
             dataset_version = str(di.get("split"))
     dataset_hash = di.get("hash") or di.get("dataset_hash")
     provenance = di.get("provenance") or di.get("source") or di.get("format")
-    return {
-        "dataset_id": str(dataset_id) if dataset_id is not None else None,
-        "dataset_version": str(dataset_version) if dataset_version is not None else None,
-        "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
-        "provenance": str(provenance) if provenance is not None else None,
-    }
+    return redact_config_secrets(
+        {
+            "dataset_id": str(dataset_id) if dataset_id is not None else None,
+            "dataset_version": (str(dataset_version) if dataset_version is not None else None),
+            "dataset_hash": str(dataset_hash) if dataset_hash is not None else None,
+            "provenance": str(provenance) if provenance is not None else None,
+        }
+    )
 
 
 def _result_dict_from_probe_result(
@@ -422,7 +426,7 @@ def _result_dict_from_probe_result(
     _build_result_record : Build a full JSONL record with additional context.
     """
     status = _normalize_status(result.status)
-    metadata = result.metadata if isinstance(result.metadata, dict) else {}
+    metadata = redact_config_secrets(result.metadata) if isinstance(result.metadata, dict) else {}
     if error_type is None:
         error_type = metadata.get("error_type")
 
@@ -434,6 +438,15 @@ def _result_dict_from_probe_result(
         "status": status,
         "metadata": metadata,
     }
+    if result.scores or "evaluation" in metadata:
+        payload["metadata"] = {
+            **metadata,
+            "scores": result.scores,
+            "primary_metric": result.primary_metric,
+        }
+        if semver_tuple(schema_version) >= (1, 0, 2):
+            payload["scores"] = result.scores
+            payload["primary_metric"] = result.primary_metric
     if result.error is not None:
         payload["error"] = result.error
     if error_type:
@@ -570,8 +583,14 @@ def _result_dict_from_record(
         "output": record.get("output"),
         "latency_ms": record.get("latency_ms"),
         "status": record.get("status"),
-        "metadata": dict(record["metadata"]) if isinstance(record.get("metadata"), dict) else {},
+        "metadata": (dict(record["metadata"]) if isinstance(record.get("metadata"), dict) else {}),
     }
+    if semver_tuple(payload["schema_version"]) >= (1, 0, 2):
+        payload["scores"] = dict(record.get("scores") or {})
+        payload["primary_metric"] = record.get("primary_metric")
+    custom = record.get("custom")
+    if isinstance(custom, dict) and isinstance(custom.get("evaluation"), dict):
+        payload["metadata"].update(custom["evaluation"])
     if record.get("error") is not None:
         payload["error"] = record.get("error")
     if record.get("error_type"):
@@ -629,9 +648,11 @@ def _coerce_model_info(model: Any) -> ModelInfo:
     except Exception as _:
         info_obj = {}
 
-    # If it's already the canonical type, keep it.
+    # Preserve the canonical fields, but never return live credential metadata.
     if isinstance(info_obj, ModelInfo):
-        return info_obj
+        from dataclasses import replace
+
+        return replace(info_obj, extra=redact_config_secrets(info_obj.extra))
 
     info = _normalize_info_obj_to_dict(info_obj)
 
@@ -673,7 +694,7 @@ def _coerce_model_info(model: Any) -> ModelInfo:
         max_tokens=info.get("max_tokens"),
         supports_streaming=bool(info.get("supports_streaming", False)),
         supports_chat=bool(info.get("supports_chat", True)),
-        extra=extra,
+        extra=redact_config_secrets(extra),
     )
 
 
@@ -695,6 +716,9 @@ def _build_result_record(
     error: Optional[Union[BaseException, str]],
     error_type: Optional[str] = None,
     strict_serialization: bool = False,
+    scores: Optional[dict[str, Any]] = None,
+    primary_metric: Optional[str] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Build a ResultRecord-shaped dict for JSONL emission.
 
@@ -809,17 +833,20 @@ def _build_result_record(
                 "strict_serialization requires JSON-stable structured outputs."
             ) from exc
 
-    scores: dict[str, Any] = {}
+    if scores is None and metadata and "evaluation" in metadata:
+        scores = metadata.get("scores", {})
+        primary_metric = metadata.get("primary_metric")
+    resolved_scores: dict[str, Any] = dict(scores or {})
     usage: dict[str, Any] = {}
-    primary_metric = None
     if isinstance(output, dict):
-        if isinstance(output.get("scores"), dict):
-            scores = output.get("scores")
-        elif output.get("score") is not None:
-            scores = {"score": output.get("score")}
+        if scores is None and isinstance(output.get("scores"), dict):
+            resolved_scores = output.get("scores")
+        elif scores is None and output.get("score") is not None:
+            resolved_scores = {"score": output.get("score")}
         if isinstance(output.get("usage"), dict):
             usage = output.get("usage")
-        primary_metric = output.get("primary_metric")
+        if primary_metric is None and scores is None:
+            primary_metric = output.get("primary_metric")
 
     err_str: Optional[str] = None
     err_type: Optional[str] = None
@@ -842,14 +869,14 @@ def _build_result_record(
         "dataset": dataset,
         "example_id": example_id,
         "input": item,
-        "messages": normalized_messages
-        if (store_messages and normalized_messages is not None)
-        else None,
+        "messages": (
+            normalized_messages if (store_messages and normalized_messages is not None) else None
+        ),
         "messages_hash": messages_hash,
         "messages_storage": None,
         "output": output,
         "output_text": output_text,
-        "scores": scores,
+        "scores": resolved_scores,
         "primary_metric": primary_metric,
         "usage": usage,
         "latency_ms": latency_ms,
@@ -860,6 +887,11 @@ def _build_result_record(
             "replicate_key": replicate_key_value,
             "record_index": index,
             "output_fingerprint": output_fingerprint,
+            **(
+                {"evaluation": redact_config_secrets(metadata)}
+                if metadata and "evaluation" in metadata
+                else {}
+            ),
         },
     }
 

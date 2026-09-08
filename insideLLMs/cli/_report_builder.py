@@ -2,7 +2,7 @@
 
 import html
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 from insideLLMs.types import (
@@ -211,6 +211,8 @@ def _build_basic_harness_report(
     summary: dict[str, Any],
     title: str,
     generated_at: Optional[datetime] = None,
+    *,
+    run_health: Mapping[str, object] | None = None,
 ) -> str:
     rows = []
     for experiment in experiments:
@@ -258,6 +260,26 @@ def _build_basic_harness_report(
     if generated_at is not None:
         meta_line = f'<div class="meta">Generated {generated_at.isoformat()}</div>'
 
+    health_banner = ""
+    if run_health is not None:
+        completion = run_health.get("run_completed")
+        if completion is not True:
+            state = "Incomplete run" if completion is False else "Run completion unknown"
+            details: list[str] = []
+            abort = run_health.get("abort")
+            if isinstance(abort, Mapping) and abort.get("message") is not None:
+                details.append(str(abort["message"]))
+            health = run_health.get("health")
+            if isinstance(health, Mapping):
+                reasons = health.get("reasons")
+                if isinstance(reasons, list):
+                    details.extend(str(reason) for reason in reasons)
+            detail_html = " ".join(html.escape(detail) for detail in details)
+            health_banner = (
+                f'<div class="incomplete-banner"><strong>{html.escape(state)}</strong>'
+                f"<div>{detail_html}</div></div>"
+            )
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -271,11 +293,14 @@ def _build_basic_harness_report(
     th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
     th {{ background: #f5f5f5; }}
     .section {{ margin-top: 24px; }}
+    .incomplete-banner {{ background: #fff3cd; border: 2px solid #b45309;
+      padding: 12px; margin: 16px 0; color: #713f12; }}
   </style>
 </head>
 <body>
   <h1>{html.escape(title)}</h1>
   {meta_line}
+  {health_banner}
 
   <div class="section">
     <h2>Model x Probe Summary</h2>

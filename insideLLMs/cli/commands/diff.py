@@ -115,6 +115,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
     gate_policy = DiffGatePolicy(
         fail_on_regressions=bool(args.fail_on_regressions),
         fail_on_changes=bool(args.fail_on_changes),
+        fail_on_any_difference=bool(getattr(args, "fail_on_any_difference", False)),
         fail_on_trace_violations=bool(args.fail_on_trace_violations),
         fail_on_trace_drift=bool(args.fail_on_trace_drift),
         fail_on_trajectory_drift=bool(getattr(args, "fail_on_trajectory_drift", False)),
@@ -151,15 +152,6 @@ def cmd_diff(args: argparse.Namespace) -> int:
             limit=int(getattr(args, "judge_limit", args.limit)),
         )
         judge_report = judge_computation.judge_report
-
-    if computation.baseline_duplicates:
-        print_warning(
-            f"Baseline has {computation.baseline_duplicates} duplicate key(s); first occurrence used"
-        )
-    if computation.candidate_duplicates:
-        print_warning(
-            f"Comparison has {computation.candidate_duplicates} duplicate key(s); first occurrence used"
-        )
 
     if output_format == "json":
         payload_obj = dict(diff_report)

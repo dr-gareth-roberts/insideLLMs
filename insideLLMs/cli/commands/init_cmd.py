@@ -129,37 +129,19 @@ def cmd_init(args: argparse.Namespace) -> int:
         if model in model_hints:
             config["model"]["args"] = model_hints[model]
 
-        # Apply template enhancements
-        if template == "benchmark":
-            config["benchmark"] = {
-                "datasets": ["reasoning", "math", "coding"],
-                "max_examples_per_dataset": 10,
+        # Only emit settings consumed by execution. Benchmark and tracking
+        # selection live in dedicated CLI commands/options, not YAML blocks.
+        if template == "full":
+            config["runner"] = {"stop_on_error": True}
+            config["determinism"] = {
+                "strict_serialization": True,
+                "deterministic_artifacts": True,
             }
-        elif template == "tracking":
-            config["tracking"] = {
-                "backend": "local",
-                "project": "my-experiment",
-                "log_dir": "./experiments",
-            }
-        elif template == "full":
-            config["benchmark"] = {
-                "datasets": ["reasoning", "math", "coding", "safety"],
-                "max_examples_per_dataset": 20,
-            }
-            config["tracking"] = {
-                "backend": "local",
-                "project": "my-experiment",
-                "log_dir": "./experiments",
-            }
-            config["async"] = {
-                "enabled": True,
-                "concurrency": 5,
-            }
-            config["output"] = {
-                "format": "json",
-                "path": "results/experiment_results.json",
-                "html_report": True,
-            }
+
+    from insideLLMs.config_schema import normalize_runtime_config
+
+    config["config_version"] = "1"
+    config = normalize_runtime_config(config, check_registry=True)
 
     output_path = Path(output)
     if output_path.exists() and not getattr(args, "overwrite", False):
@@ -171,7 +153,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     else:
         content = json.dumps(config, indent=2)
 
-    output_path.write_text(content)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(content, encoding="utf-8")
     print_success(f"Created config: {output_path}")
     print_key_value("Template", template)
     if not harness_template:
@@ -179,7 +162,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         print_key_value("Probe", probe)
 
     # Create sample data directory and file
-    data_dir = Path("data")
+    data_dir = output_path.parent / "data"
     data_dir.mkdir(exist_ok=True)
 
     sample_data_path = (
@@ -245,5 +228,9 @@ def cmd_init(args: argparse.Namespace) -> int:
     else:
         print(f"  1. Edit {colorize(str(output_path), Colors.CYAN)} to customize your experiment")
         print(f"  2. Run: {colorize(f'insidellms run {output_path}', Colors.GREEN)}")
+        if template == "tracking":
+            print(f"  3. Track a run: insidellms run {output_path} --track local")
+        elif template == "benchmark":
+            print("  3. Built-in benchmark suite: insidellms benchmark --models dummy")
 
     return 0

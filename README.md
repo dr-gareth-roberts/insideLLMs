@@ -37,15 +37,16 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 - **Deterministic artifacts.** Same inputs and model responses produce the same
   bytes. Run IDs are SHA-256 hashes of inputs, timestamps derive from run IDs
   (not wall clocks), and JSON keys are sorted — so `git diff` just works.
-- **Behavioural diff gate.** Compare two run directories and exit non-zero when
-  behaviour changes. Drop it into CI to block regressions before they ship.
-- **Ten built-in probes.** Logic, bias, factuality, jailbreak resistance,
+- **Behavioural diff gate.** Compare two run directories and apply an explicit
+  score, output, trace, or trajectory policy. Drop it into CI to block selected
+  regressions before they ship.
+- **Built-in behavioural probes.** Logic, bias, factuality, jailbreak resistance,
   instruction following, code generation, and more — or write your own.
 - **One interface, many providers.** OpenAI, Anthropic, Google Gemini, Cohere,
   HuggingFace, OpenRouter, and local models (Ollama, llama.cpp, vLLM).
 - **Zero-key demo path.** A built-in `dummy` model runs the full harness and
   diff flow offline — no API keys required.
-- **Reusable GitHub Action.** `dr-gareth-roberts/insideLLMs@v1` runs the harness
+- **Reusable GitHub Action.** Pin a reviewed full commit SHA of this repository to run the harness
   on every PR and posts a sticky comment with the top behaviour deltas.
 
 ## Architecture
@@ -102,17 +103,23 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for execution-flow sequence diagrams.
 ## Install
 
 ```bash
-pip install insidellms
+git clone https://github.com/dr-gareth-roberts/insideLLMs.git
+cd insideLLMs
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install .
 ```
 
-Only `pyyaml` is required. Everything else is opt-in:
+Use a source checkout until a tested package release is published. Python 3.10+
+is required; PyYAML and Pydantic are core dependencies so configuration and
+artifact validation work in the base installation. Provider integrations are opt-in:
 
 ```bash
-pip install insidellms[openai]           # OpenAI provider
-pip install insidellms[anthropic]        # Anthropic provider
-pip install insidellms[nlp]              # NLP probes (nltk, spacy)
-pip install insidellms[visualization]    # Charts and reports
-pip install insidellms[providers]        # All providers at once
+python3 -m pip install ".[openai]"           # OpenAI provider
+python3 -m pip install ".[anthropic]"        # Anthropic provider
+python3 -m pip install ".[nlp]"              # NLP probes (nltk, spacy)
+python3 -m pip install ".[visualization]"    # Charts and reports
+python3 -m pip install ".[providers]"        # OpenAI + Anthropic + HuggingFace SDKs
 ```
 
 ## Quickstart (no API key)
@@ -132,21 +139,39 @@ $ insidellms quicktest "What is 2+2?" --model dummy
   Response length: 35 characters
 ```
 
-**2. Run the harness twice and confirm determinism.**
+**2. Generate a self-contained harness project.**
+
+Run this in a fresh working directory. Unlike the repository's `ci/` fixture,
+the generated config and data are available whether you installed a wheel or a
+source checkout.
 
 ```console
-$ insidellms harness ci/harness.yaml --run-dir baseline
+$ insidellms init harness.yaml --template harness
+OK Created config: harness.yaml
+OK Created sample data: data/harness_dataset.jsonl
+
+$ insidellms harness harness.yaml --dry-run
+  Models: 1
+  Probes: 4
+  Dataset examples: 3
+  Total evaluations: 12
+```
+
+**3. Run the harness twice and confirm determinism.**
+
+```console
+$ insidellms harness harness.yaml --run-dir baseline
 OK Records written to: baseline/records.jsonl
 OK Manifest written to: baseline/manifest.json
 OK Summary written to: baseline/summary.json
 OK Report written to: baseline/report.html
 
-$ insidellms harness ci/harness.yaml --run-dir candidate
+$ insidellms harness harness.yaml --run-dir candidate
 $ diff baseline/records.jsonl candidate/records.jsonl && echo IDENTICAL
 IDENTICAL
 ```
 
-**3. Diff the two runs — no change, gate passes (exit 0).**
+**4. Diff the two runs — no change, gate passes (exit 0).**
 
 ```console
 $ insidellms diff baseline candidate --fail-on-changes
@@ -159,23 +184,15 @@ $ echo $?
 0
 ```
 
-**4. Change an input, re-run, and watch the gate fail (exit 2).**
-
-```console
-$ insidellms diff baseline candidate-changed --fail-on-changes
-  Common keys: 0
-  Only in baseline: 12
-  Only in comparison: 12
-$ echo $?
-2
-```
-
-A non-zero exit (`2` for behavioural changes) is your CI gate.
+A plain diff is informational. The explicit fail flag turns behavioural changes
+into exit `2`, which is the CI gate. From a source checkout, run
+`python3 examples/demo_diff_pipeline.py` to see deliberate score and output
+changes trigger that exit code end to end.
 
 ## The workflow
 
-**1. Pick probes.** A probe tests a specific behaviour. There are
-[ten built-in](insideLLMs/probes/), or write your own:
+**1. Pick probes.** A probe tests a specific behaviour. Choose from the
+[built-in probes](insideLLMs/probes/), or write your own:
 
 ```python
 from insideLLMs.probes import Probe
@@ -206,11 +223,17 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
 ```
 
-Exit code `2` if behaviour changed, `0` if not. That's your CI gate. Use `--fail-on-trajectory-drift` when you also want multi-turn trajectory drift to fail the gate.
+`--fail-on-changes` returns `2` for regressions, neutral/other output changes,
+or one-sided records; improvement-only score changes remain informational.
+Use the dedicated trace/trajectory flags for those findings. A plain diff exits
+`0` even when it reports differences.
+Use `--fail-on-any-difference` to also block improvements and trace/trajectory changes.
+Malformed or missing primary-score evidence cannot pass a regression gate.
 
 ## CI integration
 
-Drop this into `.github/workflows/`:
+Drop this into `.github/workflows/`, replacing the action reference with the full
+SHA of a reviewed commit containing the hardened action:
 
 ```yaml
 name: Behavioural Diff Gate
@@ -220,7 +243,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   behavioural-diff:
@@ -229,13 +251,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: dr-gareth-roberts/insideLLMs@v1
+          persist-credentials: false
+      - uses: dr-gareth-roberts/insideLLMs@<reviewed-full-commit-sha>
         with:
           harness-config: ci/harness.yaml
 ```
 
-The action runs both harnesses and posts a sticky PR comment with the top
-behaviour deltas.
+The action checks both runs' health and applies the strict diff gate. Sticky PR
+comments run separately with write permission and trusted code; copy the paired
+workflows described in [the CI guide](ci/README.md). Candidate evaluation must
+retain read-only permissions.
 
 ## Python API
 
@@ -330,11 +355,14 @@ insidellms init            Generate sample configuration
 insidellms quicktest       One-off prompt test
 insidellms list            List available models/probes/datasets
 insidellms info            Show details of a model/probe/dataset
-insidellms export          Export results (csv, parquet, etc.)
+insidellms export          Export results (CSV, Markdown, LaTeX, JSONL)
 insidellms trend           Metric trends across indexed runs
 insidellms interactive     Interactive exploration session
 insidellms welcome         Getting-started guide
 insidellms validate        Validate config or run directory
+insidellms attest          Generate DSSE attestations for a run directory
+insidellms sign            Sign a run directory's attestations with cosign
+insidellms verify-signatures  Verify attestation signature bundles
 ```
 
 Production shadow capture (FastAPI) lives under `insideLLMs.shadow.fastapi` — see the production shadow-capture guide in the docs index.
@@ -420,14 +448,17 @@ CI runs lint (ruff), type-checking (mypy), the test suite across Python
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest -m "not slow and not integration and not performance"
+make check-fast
 ```
 
-The fast suite is **6610 passing** tests (349 skipped for optional deps).
+Use `make check` for the full local quality gate. CI additionally runs strict
+typing on security modules, coverage thresholds, contract tests, and the golden
+path as separate jobs.
 
 ## Docs
 
 - [Documentation site](https://dr-gareth-roberts.github.io/insideLLMs/) — full guides and reference
+- [Newcomer guide](wiki/getting-started/Newcomer-Guide.md) — end-to-end orientation and verified offline path
 - [Getting started](https://dr-gareth-roberts.github.io/insideLLMs/getting-started/)
 - [Architecture](ARCHITECTURE.md) — components and execution flows
 - [API reference](API_REFERENCE.md)

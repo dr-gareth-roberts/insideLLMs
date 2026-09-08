@@ -13,10 +13,12 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs._serialization import (
     StrictSerializationError,
     stable_json_dumps,
 )
+from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -24,6 +26,7 @@ from insideLLMs.runtime._artifact_utils import (
     _prepare_run_dir,
     _semver_tuple,
 )
+from insideLLMs.runtime._run_health import assess_run_health
 from insideLLMs.runtime.runner import (
     _build_resolved_config_snapshot,
     _deterministic_base_time,
@@ -227,7 +230,6 @@ def _apply_active_red_team_mode(
     merged["dataset"] = {
         "format": "jsonl",
         "path": str(dataset_path),
-        "input_field": "prompt",
     }
     merged["max_examples"] = rounds * attempts_per_round
     merged.setdefault("report_title", "Active Adversarial Red-Team Harness Report")
@@ -407,16 +409,23 @@ def cmd_harness(args: argparse.Namespace) -> int:
             schema_version=args.schema_version,
         )
 
-        result = run_harness_from_config(
-            run_config_path,
-            progress_callback=progress_callback if args.verbose else None,
-            validate_output=args.validate_output,
-            schema_version=args.schema_version,
-            validation_mode=args.validation_mode,
-            strict_serialization=args.strict_serialization,
-            deterministic_artifacts=args.deterministic_artifacts,
-        )
+        try:
+            result = run_harness_from_config(
+                run_config_path,
+                progress_callback=progress_callback if args.verbose else None,
+                validate_output=args.validate_output,
+                schema_version=args.schema_version,
+                validation_mode=args.validation_mode,
+                strict_serialization=args.strict_serialization,
+                deterministic_artifacts=args.deterministic_artifacts,
+            )
+        except RunnerExecutionError as exc:
+            if exc.partial_result is None:
+                raise
+            result = exc.partial_result
+            print_error(f"Harness stopped early: {exc}")
         elapsed = time.time() - start_time
+        result["config"] = redact_config_secrets(result["config"])
 
         if progress_bar:
             progress_bar.finish()
@@ -426,6 +435,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             config_snapshot = _build_resolved_config_snapshot(
                 result["config"], run_config_path.parent
             )
+        config_snapshot = redact_config_secrets(config_snapshot)
 
         strict_serialization = result.get("strict_serialization")
         deterministic_artifacts = result.get("deterministic_artifacts")
@@ -522,6 +532,11 @@ def cmd_harness(args: argparse.Namespace) -> int:
         success_count = sum(1 for r in result.get("records", []) if r.get("status") == "success")
         error_count = sum(1 for r in result.get("records", []) if r.get("status") == "error")
         timeout_count = sum(1 for r in result.get("records", []) if r.get("status") == "timeout")
+        health = assess_run_health(
+            result.get("records", []),
+            expected_count=result.get("expected_count"),
+            run_completed=result.get("run_completed", True),
+        )
 
         run_base_time = _deterministic_base_time(resolved_run_id)
         started_at, completed_at = _deterministic_run_times(run_base_time, record_count)
@@ -560,6 +575,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
             "records_file": "records.jsonl",
             "schemas": {"RunManifest": args.schema_version, "ResultRecord": args.schema_version},
             "custom": {
+                "health": health,
                 "status_counts": {
                     "success": success_count,
                     "error": error_count,
@@ -582,7 +598,14 @@ def cmd_harness(args: argparse.Namespace) -> int:
         }
 
         if _semver_tuple(args.schema_version) >= (1, 0, 1):
-            manifest["run_completed"] = True
+            manifest["run_completed"] = result.get("run_completed", True)
+
+        if result.get("abort") is not None:
+            manifest["custom"]["abort"] = result["abort"]
+        if result.get("budget") is not None:
+            manifest["custom"]["budget"] = result["budget"]
+            if result["budget"].get("abort_reason"):
+                manifest["custom"]["abort"] = result["budget"]["abort_reason"]
 
         import insideLLMs
 
@@ -631,14 +654,15 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 schema_version=args.schema_version,
                 mode=args.validation_mode,
             )
-        with open(summary_path, "w", encoding="utf-8") as f:
-            json.dump(
+        _atomic_write_text(
+            summary_path,
+            json.dumps(
                 _serialize_manifest(summary_payload),
-                f,
                 indent=2,
                 default=_serialize_manifest,
                 sort_keys=True,
-            )
+            ),
+        )
         print_success(f"Summary written to: {summary_path}")
 
         if getattr(args, "explain", False):
@@ -815,7 +839,7 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     if artifact.exists():
                         tracker.log_artifact(str(artifact), artifact_name=artifact.name)
 
-                tracker.end_run(status="finished")
+                tracker.end_run(status="finished" if health["healthy"] else "failed")
                 tracker = None
             except Exception as e:
                 print_warning(f"Tracking error: {e}")
@@ -823,6 +847,9 @@ def cmd_harness(args: argparse.Namespace) -> int:
         if not args.quiet:
             print(f"\nRun written to: {output_dir}")
             print(f"Validate with: insidellms validate {output_dir}")
+        if not health["healthy"]:
+            print_error("Run health check failed: " + "; ".join(health["reasons"]))
+            return 1
         return 0
 
     except Exception as e:

@@ -100,6 +100,7 @@ from .commands.schema import cmd_schema as cmd_schema
 from .commands.sign import cmd_sign as cmd_sign
 from .commands.trend import cmd_trend as cmd_trend
 from .commands.validate import cmd_validate as cmd_validate
+from .commands.verify import cmd_verify_policy as cmd_verify_policy
 from .commands.verify import cmd_verify_signatures as cmd_verify_signatures
 from .commands.welcome import cmd_welcome as cmd_welcome
 
@@ -180,6 +181,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "attest": cmd_attest,
             "sign": cmd_sign,
             "verify-signatures": cmd_verify_signatures,
+            "verify-policy": cmd_verify_policy,
             "welcome": cmd_welcome,
         }
 

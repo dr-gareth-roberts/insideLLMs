@@ -10,17 +10,28 @@ Complete reference for YAML/JSON configuration files.
 
 ## Which Config API to Use
 
-insideLLMs has two configuration surfaces; use the one that matches your workflow:
+Run and harness files share the version 1 schema. Direct runner calls retain
+their separate execution-options dataclass:
 
-| Use case | Module | Primary types | When to use |
-|----------|--------|---------------|-------------|
-| **YAML/JSON config files** (run, harness) | `insideLLMs.config` | `ExperimentConfig`, `ModelConfig`, `ProbeConfig`, `DatasetConfig`, `RunnerConfig` | Loading from files, `load_config()`, `save_config_to_yaml()` |
-| **Programmatic runner control** | `insideLLMs.config_types` | `RunConfig`, `RunConfigBuilder`, `ProgressInfo` | Passing options to `ProbeRunner.run()` / `AsyncProbeRunner.run()` |
+| Use case | Surface | Shape |
+|----------|---------|-------|
+| **CLI YAML/JSON** | `init`, `validate`, `run`, `harness` | Validated mappings with `config_version: "1"` and `type`/`args` |
+| **Application config** | `insideLLMs.config_schema.RuntimeConfiguration` | The same Pydantic schema; also accepted by `insideLLMs.config.load_config` |
+| **Programmatic runner control** | `insideLLMs.config_types` | `RunConfig`, `RunConfigBuilder`, `ProgressInfo` |
 
-- **Config files** → `insideLLMs.config` (Pydantic models for YAML/JSON).
-- **Runner kwargs** → `insideLLMs.config_types.RunConfig` (dataclass-style runtime controls).
+Pydantic is required by the base package; validation cannot silently turn off.
+Existing files without `config_version` are treated as version 1. Dataset paths
+resolve relative to the configuration file for both validation and execution.
 
-The CLI (`insidellms run`, `insidellms harness`) loads YAML via `config` and internally builds `RunConfig`-compatible settings.
+The old `insideLLMs.config.ExperimentConfig` builder uses `provider`/`model_id` and
+dataset `source`. Call its `to_runtime_config()` method to convert explicitly.
+The CLI can also convert legacy files with a deprecation warning. Unsupported
+legacy settings raise errors rather than being ignored.
+
+Unknown top-level execution settings are rejected. Earlier generated `benchmark`,
+`tracking`, `async`, and `output` blocks were not executed; remove those blocks and
+use the `benchmark` command or `run --track`, `--async`, and output CLI flags.
+The current `full` template emits supported runner and determinism settings only.
 
 ## Config Types
 
@@ -33,15 +44,21 @@ The CLI (`insidellms run`, `insidellms harness`) loads YAML via `config` and int
 
 ## Run Config
 
-For `insidellms run`:
+Generate a working single-run config and its dataset with:
+
+```bash
+insidellms init run.yaml --template basic
+```
+
+The generated shape for `insidellms run` is:
 
 ```yaml
+config_version: "1"
 # model: The model to use
 model:
   type: openai           # Model type (required)
   args:                  # Model constructor arguments
     model_name: gpt-4o
-    temperature: 0.7
 
 # probe: The probe to run
 probe:
@@ -51,7 +68,7 @@ probe:
 # dataset: Input data
 dataset:
   format: jsonl          # Format: jsonl, csv, hf
-  path: data/test.jsonl  # Path to dataset file
+  path: data/questions.jsonl  # Relative to this config file
 
 # Optional settings
 generation:              # Passed to probe/model generate call
@@ -79,14 +96,25 @@ probe:
 
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 ```
 
 ---
 
 ## Harness Config
 
-For `insidellms harness`:
+Generate a portable offline harness and sample dataset with:
+
+```bash
+insidellms init harness.yaml --template harness
+insidellms harness harness.yaml --dry-run
+```
+
+Run the initializer in the directory where the config will live. It creates
+`data/harness_dataset.jsonl` relative to the current directory, while execution
+resolves the path relative to the config file.
+
+The shape for `insidellms harness` is:
 
 ```yaml
 # models: List of models to compare
@@ -101,21 +129,27 @@ models:
 # probes: List of probes to run
 probes:
   - type: logic
-  - type: factuality
-  - type: bias
+  - type: instruction_following
+  - type: attack
+    args:
+      attack_type: prompt_injection
+  - type: code_generation
+    args:
+      language: python
 
 # dataset: Shared dataset
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/harness_dataset.jsonl
 
 # Output settings
 output_dir: ./comparison_results
 
 # Optional settings
 max_examples: 50
-confidence_level: 0.95
 ```
+
+`max_examples` is applied by `harness`; it is not applied by `run`.
 
 ---
 
@@ -126,7 +160,7 @@ confidence_level: 0.95
 ```yaml
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 ```
 
 File format:
@@ -140,10 +174,7 @@ File format:
 ```yaml
 dataset:
   format: csv
-  path: data/test.csv
-  columns:
-    question: prompt_column
-    expected: answer_column
+  path: path/to/your/evaluation.csv
 ```
 
 ### HuggingFace
@@ -154,6 +185,7 @@ dataset:
   name: cais/mmlu
   split: test
 
+# Harness-only limit
 max_examples: 100
 ```
 
@@ -163,14 +195,18 @@ max_examples: 100
 
 ### Common Options
 
+`model.args` are constructor arguments. Put sampling and token limits in the
+top-level `generation` mapping so they are passed to the probe/model call.
+
 ```yaml
 model:
   type: openai           # Required: model type
   args:
     model_name: gpt-4o   # Model identifier
-    temperature: 0.7     # Sampling temperature (0.0-2.0)
-    max_tokens: 1000     # Max response tokens
-    timeout: 60          # Request timeout in seconds
+
+generation:
+  temperature: 0.7
+  max_tokens: 1000
 ```
 
 ### Provider-Specific
@@ -182,11 +218,13 @@ model:
   type: openai
   args:
     model_name: gpt-4o
-    temperature: 0.7
-    max_tokens: 1000
-    top_p: 1.0
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
+
+generation:
+  temperature: 0.7
+  max_tokens: 1000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
 ```
 
 #### Anthropic
@@ -196,8 +234,10 @@ model:
   type: anthropic
   args:
     model_name: claude-3-5-sonnet-20241022
-    max_tokens: 1000
-    temperature: 0.7
+
+generation:
+  max_tokens: 1000
+  temperature: 0.7
 ```
 
 #### Ollama
@@ -238,8 +278,7 @@ probe:
 probe:
   type: logic
   args:
-    strict: true
-    timeout: 30
+    extract_answer: true
 ```
 
 ### Multiple Probes (Harness)
@@ -247,11 +286,18 @@ probe:
 ```yaml
 probes:
   - type: logic
-  - type: bias
+  - type: attack
     args:
-      sensitivity: high
-  - type: factuality
+      attack_type: prompt_injection
+  - type: code_generation
+    args:
+      language: python
 ```
+
+Probe constructor options and row contracts differ. In particular,
+`BiasProbe` takes `bias_dimension`/`analyze_sentiment` constructor arguments and
+expects each invocation to receive a collection of paired prompts; an ordinary
+question row is not valid bias input.
 
 ---
 
@@ -262,28 +308,33 @@ Relative paths are resolved relative to the **config file's directory**, not the
 ```yaml
 # If config is at /project/configs/harness.yaml
 dataset:
-  path: ../data/test.jsonl  # Resolves to /project/data/test.jsonl
+  path: ../data/harness_dataset.jsonl
+# Resolves to /project/data/harness_dataset.jsonl
 ```
 
 ---
 
 ## Environment Variables
 
-Reference environment variables in configs:
+Model arguments are literal values. `${NAME}` placeholders in `model.args` are
+**not** expanded by the CLI runtime. Export the provider's supported variable
+and omit `api_key` from the config:
 
-```yaml
-model:
-  type: openai
-  args:
-    api_key: ${OPENAI_API_KEY}  # Expanded at runtime
+```bash
+export OPENAI_API_KEY="sk-..."
+insidellms run config.yaml
 ```
+
+Avoid inline secrets because the resolved mapping is written to
+`config.resolved.yaml`. Environment expansion is used for supported file paths,
+not arbitrary model arguments.
 
 ---
 
 ## Execution Options
 
 ```yaml
-# Limit dataset
+# Limit the dataset in a harness (ignored by `run`)
 max_examples: 100
 
 # Optional generation kwargs passed through to probes/models
@@ -291,6 +342,10 @@ generation:
   temperature: 0.3
   max_tokens: 500
 ```
+
+`probe_kwargs` and the legacy `run_kwargs` are also accepted. When more than
+one is present, later mappings override earlier ones in this order:
+`generation`, `probe_kwargs`, `run_kwargs`.
 
 Execution controls are CLI flags:
 
@@ -314,7 +369,7 @@ probe:
   type: logic
 dataset:
   format: jsonl
-  path: data/test.jsonl
+  path: data/questions.jsonl
 ```
 
 ### Production Harness
@@ -324,25 +379,24 @@ models:
   - type: openai
     args:
       model_name: gpt-4o
-      temperature: 0.3
   - type: anthropic
     args:
       model_name: claude-3-5-sonnet-20241022
-      temperature: 0.3
 
 probes:
   - type: logic
   - type: factuality
-  - type: bias
   - type: instruction_following
 
 dataset:
   format: jsonl
-  path: data/evaluation_set.jsonl
+  path: path/to/your/evaluation_set.jsonl
+
+generation:
+  temperature: 0.3
 
 output_dir: ./evaluation_results
 max_examples: 500
-confidence_level: 0.95
 ```
 
 ### CI Baseline Config
@@ -358,7 +412,7 @@ probes:
 
 dataset:
   format: jsonl
-  path: ci/test_data.jsonl
+  path: data/harness_dataset.jsonl
 
 output_dir: ci/baseline
 ```
@@ -367,15 +421,30 @@ output_dir: ci/baseline
 
 ## Validation
 
-Validate your config before running:
+`validate` has two different scopes:
+
+- For a single-run config containing singular `model`, `probe`, and `dataset`
+  entries, it performs the current legacy config checks.
+- For a completed run directory, it validates `manifest.json` and
+  `records.jsonl` against their schema contracts.
+
+It does not validate a harness config containing plural `models` and `probes`.
+For a harness, resolve and check its evaluation plan first, run it, and then
+validate the output directory:
 
 ```bash
-# Check config syntax
-python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+# Single-run config only
+insidellms validate run.yaml
 
-# Validate config against schema contracts
-insidellms validate config.yaml
+# Harness config and then its artifacts
+insidellms harness harness.yaml --dry-run
+insidellms harness harness.yaml --run-dir ./runs/candidate
+insidellms validate ./runs/candidate
 ```
+
+The legacy config validator checks relative dataset paths from the current
+working directory, whereas execution resolves them from the config file's
+directory. Treat a path warning from another working directory accordingly.
 
 ---
 

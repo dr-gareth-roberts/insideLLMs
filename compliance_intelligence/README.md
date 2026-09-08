@@ -24,6 +24,19 @@ Financial institutions process millions of transactions daily and must screen ea
 
 The Decision Agent can **trigger re-analysis cycles** (LangGraph conditional edges + cycles) when confidence is insufficient — a key differentiator from simple linear pipelines.
 
+Known sanctions matches and active embargo flags are deterministic hard vetoes in both
+simulation and live-LLM modes, even when a risk score is unavailable. They are demo flags
+produced by this application's existing synthetic screening logic, not evidence of current
+or complete real-world sanctions-list accuracy.
+
+Both `POST /api/analyze` and `POST /api/analyze/custom` run the synchronous pipeline
+in worker threads, keeping the event loop available for health checks. They share
+a limit of four admitted analyses per server process. Additional analysis requests
+receive HTTP 503 before pipeline dispatch and may retry later. Canceling a request
+does not stop its running analysis or free its slot: capacity becomes available
+when the worker finishes, including on failure. Multiple server processes each
+have their own limit; this is not an account-wide spending budget.
+
 ## Architecture
 
 ```

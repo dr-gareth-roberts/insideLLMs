@@ -31,6 +31,8 @@ class NoVerifiedCandidateError(RuntimeError):
 
 @dataclass(frozen=True)
 class VerifierSpec:
+    """Named candidate verifier, optionally requiring a passing result."""
+
     id: str
     verify: VerifierCallback
     hard: bool = False

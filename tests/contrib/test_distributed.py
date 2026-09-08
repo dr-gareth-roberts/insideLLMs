@@ -3,6 +3,7 @@
 import pickle
 import tempfile
 import time
+from pathlib import Path
 
 import pytest
 
@@ -408,6 +409,22 @@ class TestCheckpointManager:
             assert pending == []
             assert completed == []
             assert metadata == {}
+
+    def test_failed_checkpoint_overwrite_preserves_previous_checkpoint(self, tmp_path):
+        from insideLLMs.contrib.distributed import CheckpointManager
+
+        manager = CheckpointManager(str(tmp_path))
+        checkpoint_path = manager.save("run", [], [], {"generation": 1})
+        original = Path(checkpoint_path).read_bytes()
+
+        with pytest.raises(ValueError, match="not JSON-serializable"):
+            manager.save("run", [], [], {"invalid": {1, 2, 3}})
+
+        assert Path(checkpoint_path).read_bytes() == original
+        pending, completed, metadata = manager.load("run")
+        assert pending == []
+        assert completed == []
+        assert metadata == {"generation": 1}
 
 
 class TestMapReduceExecutor:

@@ -6,9 +6,10 @@ This directory contains runnable examples for common insideLLMs workflows. Each 
 
 **Recommended order for new users:**
 1. Start with `example_quickstart.py` - Learn the basics in 5 minutes
-2. Try `example_cli_golden_path.py` - See the CLI workflow
-3. Run `demo_diff_pipeline.py` - Understand the full diff pipeline
-4. Explore other examples based on your needs
+2. Run `example_harness_programmatic.py` - Exercise the offline Python API
+3. Try `example_registry.py` - Learn how models and probes are extended
+4. Try `example_cli_golden_path.py` - See the CLI workflow
+5. Run `demo_diff_pipeline.py` - Understand the full diff pipeline
 
 ## Prerequisites
 
@@ -29,7 +30,7 @@ This directory contains runnable examples for common insideLLMs workflows. Each 
 | `example_cli_golden_path.py` | Yes | None | ~1 minute |
 | `demo_diff_pipeline.py` | Yes | None | ~2 minutes |
 | `example_harness_programmatic.py` | Yes | None | ~30 seconds |
-| `example_models.py` | Partial | Dummy/HF work offline; OpenAI needs `OPENAI_API_KEY` | ~1 minute |
+| `example_models.py` | Partial | Dummy works offline; HF may download weights; OpenAI needs `OPENAI_API_KEY` | ~1 minute |
 | `example_factuality.py` | Partial | Skips OpenAI/Anthropic if keys missing | ~2 minutes |
 | `example_registry.py` | Yes | None | ~30 seconds |
 | `example_benchmark_suite.py` | Yes | None | ~1 minute |
@@ -263,10 +264,10 @@ python examples/example_registry.py
 ### `example_benchmark_suite.py` - Benchmarking
 
 **What it demonstrates:**
-- Running benchmark suites
-- Performance measurement
-- Result aggregation
-- Comparative analysis
+- Exploring the built-in smoke-test datasets
+- Creating and sampling custom suites
+- Running a small suite with DummyModel
+- Dataset filtering and cross-validation
 
 **Run it:**
 ```bash
@@ -361,14 +362,15 @@ A minimal configuration file for running experiments with DummyModel (no API key
 
 **Use with:**
 ```bash
-insidellms run examples/experiment.yaml --output-dir .tmp/experiment_run
+insidellms run examples/experiment.yaml --run-dir .tmp/experiment_run
 ```
 
 ---
 
 ### `harness.yaml` - Multi-Model Harness
 
-Sample configuration for running a harness across multiple model providers.
+Sample configuration for running LogicProbe and FactualityProbe against a
+question-and-reference-answer dataset across multiple model providers.
 
 **Requires:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
 

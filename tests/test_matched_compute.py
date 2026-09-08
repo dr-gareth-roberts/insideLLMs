@@ -86,6 +86,8 @@ def test_matched_compute_example_emits_auditable_json() -> None:
     assert payload["matching"] == {
         "calls": True,
         "models": True,
+        "declared_limits_match": True,
+        "output_limit_assurance": "verified",
         "max_output_tokens": True,
         "order_balanced": True,
     }
@@ -132,7 +134,9 @@ async def test_matched_compute_reports_quality_oracle_spend_and_regressions() ->
     assert report.strategy_spend.input_tokens == 16
     assert report.calls_matched
     assert report.models_matched
-    assert report.output_tokens_matched
+    assert report.declared_limits_match
+    assert report.output_limit_assurance == "unknown"
+    assert not report.output_tokens_matched
     assert report.order_balanced
     assert report.input_token_ratio == 1.0
     assert report.output_token_ratio == 0.5
@@ -367,7 +371,9 @@ async def test_matched_compute_runs_canonical_model_backed_variants() -> None:
     assert report.mean_baseline_score == 0.5
     assert report.mean_strategy_score == 1.0
     assert report.baseline_spend.calls == report.strategy_spend.calls == 2
-    assert report.output_tokens_matched
+    assert report.declared_limits_match
+    assert report.output_limit_assurance == "unknown"
+    assert not report.output_tokens_matched
 
 
 async def test_matched_compute_allows_observed_calls_under_declared_ceiling() -> None:

@@ -1,0 +1,121 @@
+name: Diff Gate Comment
+
+on:
+  workflow_run:
+    workflows: [Diff Gate]
+    types: [completed]
+
+permissions:
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # This workflow executes only trusted inline code from the default branch.
+      # Never check out PR code, install its package, or execute artifact contents.
+      - name: Download small report from the triggering run
+        id: download
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const run = context.payload.workflow_run;
+            if (run.repository.id !== context.payload.repository.id || run.pull_requests.length !== 1) {
+              core.notice('Skipping comment: no unambiguous trusted PR metadata.');
+              return;
+            }
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              ...context.repo, run_id: run.id, per_page: 100,
+            });
+            const matches = data.artifacts.filter(a => a.name === 'insidellms-pr-report' && !a.expired);
+            if (matches.length !== 1 || matches[0].size_in_bytes > 65536) {
+              core.notice('Skipping comment: missing, ambiguous, or oversized report.');
+              return;
+            }
+            const archive = await github.rest.actions.downloadArtifact({
+              ...context.repo, artifact_id: matches[0].id, archive_format: 'zip',
+            });
+            const bytes = Buffer.from(archive.data);
+            if (bytes.length > 65536) throw new Error('Report archive exceeds size limit');
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'insidellms-report.zip'), bytes);
+            core.setOutput('ready', 'true');
+
+      - name: Validate report without extracting the archive
+        if: steps.download.outputs.ready == 'true'
+        id: validate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import zipfile
+          from pathlib import Path
+
+          archive_path = Path(os.environ['RUNNER_TEMP']) / 'insidellms-report.zip'
+          with zipfile.ZipFile(archive_path) as archive:
+              entries = archive.infolist()
+              if len(entries) != 1 or entries[0].filename != 'pr-report.json':
+                  raise ValueError('Expected exactly pr-report.json')
+              if entries[0].file_size > 16384:
+                  raise ValueError('Report is too large')
+              report = json.loads(archive.read(entries[0]))
+          fields = ('common', 'regressions', 'improvements', 'other_changes',
+                    'only_baseline', 'only_candidate', 'trace_drifts',
+                    'trace_violation_increases', 'trajectory_drifts')
+          if not isinstance(report, dict) or set(report) != {'pr_number', 'head_sha', 'exit_code', 'counts'}:
+              raise ValueError('Unexpected report fields')
+          if type(report['pr_number']) is not int or report['pr_number'] <= 0:
+              raise ValueError('Invalid PR number')
+          if not isinstance(report['head_sha'], str) or not re.fullmatch(r'[0-9a-fA-F]{40}', report['head_sha']):
+              raise ValueError('Invalid head SHA')
+          if type(report['exit_code']) is not int or report['exit_code'] not in range(6):
+              raise ValueError('Invalid gate result')
+          if not isinstance(report['counts'], dict) or set(report['counts']) != set(fields):
+              raise ValueError('Unexpected count fields')
+          if any(type(v) is not int or not 0 <= v <= 1_000_000_000 for v in report['counts'].values()):
+              raise ValueError('Invalid counts')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write('report=' + json.dumps(report, separators=(',', ':')) + '\n')
+          PY
+
+      - name: Post fixed-format report to the verified pull request
+        if: steps.validate.outputs.report != ''
+        uses: actions/github-script@v9
+        env:
+          VALIDATED_REPORT: ${{ steps.validate.outputs.report }}
+        with:
+          script: |
+            const report = JSON.parse(process.env.VALIDATED_REPORT);
+            const run = context.payload.workflow_run;
+            const associated = run.pull_requests[0];
+            if (associated.number !== report.pr_number || associated.head.sha !== report.head_sha || run.head_sha !== report.head_sha) {
+              throw new Error('Report does not match the triggering PR and commit');
+            }
+            const { data: pr } = await github.rest.pulls.get({...context.repo, pull_number: report.pr_number});
+            if (pr.base.repo.id !== context.payload.repository.id || pr.head.sha !== report.head_sha || pr.state !== 'open') {
+              core.notice('Skipping stale or unrelated PR report.');
+              return;
+            }
+            const marker = '<!-- insidellms-diff-comment -->';
+            const passed = run.conclusion === 'success' && report.exit_code === 0;
+            const rows = Object.entries(report.counts).map(([key, value]) => '| ' + key + ' | ' + value + ' |');
+            const body = [marker, '### insideLLMs behavioural gate', '',
+              passed ? 'Passed.' : 'Failed or incomplete. Inspect the evaluation artifacts.', '',
+              'Commit: `' + report.head_sha + '`', '',
+              '| Reported result | Count |', '| --- | ---: |', ...rows, '',
+              '[Evaluation run](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + run.id + ')',
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo, issue_number: report.pr_number, per_page: 100,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.user.login === 'github-actions[bot]' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({...context.repo, comment_id: existing.id, body});
+            } else {
+              await github.rest.issues.createComment({...context.repo, issue_number: report.pr_number, body});
+            }

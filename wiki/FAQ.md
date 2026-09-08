@@ -24,16 +24,20 @@ API keys are only needed for hosted providers (OpenAI, Anthropic, etc.).
 Python 3.10 or higher. Check with:
 
 ```bash
-python --version
+python3 --version
 ```
 
 ### How do I install optional features?
 
 ```bash
-pip install -e ".[nlp]"           # NLP features
-pip install -e ".[visualization]" # Charts and reports
-pip install -e ".[all]"           # Everything
+python3 -m pip install "insidellms[nlp]"           # NLP features
+python3 -m pip install "insidellms[visualization]" # Report dependencies
+python3 -m pip install "insidellms[providers]"     # OpenAI, Anthropic, Hugging Face
 ```
+
+Other provider integrations may require their SDK separately. When developing
+from a repository clone, use editable forms such as
+`python3 -m pip install -e ".[dev]"` from the repository root.
 
 ---
 
@@ -46,17 +50,25 @@ Relative paths are resolved from the **config file's directory**, not your curre
 ```yaml
 # If config is at /project/configs/harness.yaml
 dataset:
-  path: ../data/test.jsonl  # Resolves to /project/data/test.jsonl
+  path: ../data/harness_dataset.jsonl
+# Resolves to /project/data/harness_dataset.jsonl
 ```
 
-### How do I use environment variables in configs?
+For the generated sample, run `insidellms init harness.yaml --template harness`
+from `/project` and keep `harness.yaml` there; the initializer creates
+`/project/data/harness_dataset.jsonl`.
 
-```yaml
-model:
-  type: openai
-  args:
-    api_key: ${OPENAI_API_KEY}
+### How do I keep API keys out of configs?
+
+```bash
+export OPENAI_API_KEY="sk-..."
+insidellms run config.yaml
 ```
+
+Do not write `${OPENAI_API_KEY}` in model `args`: CLI model arguments are
+literal values and are not environment-expanded. Supported providers read their
+usual environment variables when `api_key` is omitted. This also avoids copying
+a key into `config.resolved.yaml`.
 
 ### What's the difference between `run` and `harness`?
 
@@ -170,12 +182,14 @@ See [Rate Limiting Guide](guides/Rate-Limiting.md).
 
 ### What files does insideLLMs create?
 
-| File | Purpose |
-|------|---------|
-| `records.jsonl` | Raw results |
-| `manifest.json` | Run metadata |
-| `summary.json` | Aggregated stats |
-| `report.html` | Visual report |
+| Command | Files |
+|---------|-------|
+| `run` | `config.resolved.yaml`, `records.jsonl`, `manifest.json` |
+| `harness` | The files above plus `summary.json`, legacy `results.jsonl`, and normally `report.html` |
+| `report` | Rebuilds `summary.json` and `report.html` in an existing run directory |
+
+`harness --skip-report` omits `report.html`. A `diff.json` file is only created
+when explicitly requested with `diff --format json --output diff.json`.
 
 ### How do I keep outputs out of `~/.insidellms`?
 
@@ -203,7 +217,12 @@ insidellms report ./my_run
 insidellms diff ./baseline ./candidate --fail-on-changes
 ```
 
-Exit code 1 = changes detected, 0 = identical.
+With `--fail-on-changes`, exit code 2 means the diff found regressions, other
+changes, or records present on only one side. Improvements alone do not fail
+this gate, and trace/trajectory-only findings require their dedicated flags.
+Without a fail flag, `diff` is informational and returns 0 even when it reports
+differences. A parsed command/setup error normally returns 1; argparse usage
+errors also return 2. Specialized trace and trajectory gates use codes 3–5.
 
 ### Why do my CI runs produce different outputs?
 
@@ -236,13 +255,13 @@ Activate your virtual environment:
 source .venv/bin/activate
 ```
 
-Or run as module: `python -m insideLLMs.cli`
+Or run as module: `python3 -m insideLLMs.cli`
 
 ### "Invalid API key"
 
 1. Check key format (OpenAI: `sk-...`, Anthropic: `sk-ant-...`)
 2. Verify key in provider dashboard
-3. Ensure env var is set: `echo $OPENAI_API_KEY`
+3. Check presence without printing it: `test -n "$OPENAI_API_KEY" && echo "key is set"`
 
 ### How do I turn off coloured output?
 
@@ -252,8 +271,8 @@ export NO_COLOR=1
 
 ### Where can I find example datasets?
 
-- `data/` directory in the repo
-- `benchmarks/` for standard benchmarks
+- `data/questions.jsonl` and `data/harness_dataset.jsonl`, created locally by `insidellms init`
+- `ci/harness_dataset.jsonl` in a source checkout
 - `insideLLMs.benchmark_datasets` for built-in smoke-test datasets (87 tiny handwritten examples — not real benchmarks)
 - HuggingFace datasets via config
 

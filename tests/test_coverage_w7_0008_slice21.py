@@ -593,7 +593,8 @@ def test_cli_init_invalid_template(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         )
     )
     assert rc == 0
-    assert "benchmark" in out.read_text()
+    assert "config_version:" in out.read_text()
+    assert "benchmark:" not in out.read_text()
 
 
 def test_cli_schema_warn_and_strict_errors(tmp_path: Path) -> None:

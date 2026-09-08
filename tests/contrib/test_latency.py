@@ -411,6 +411,21 @@ class TestResponseProfiler:
         assert profile.total_time_ms == 100
         assert profile.tokens_per_second > 0
 
+    def test_profile_response_preserves_explicit_zero_token_counts(self):
+        profiler = ResponseProfiler(token_estimator=lambda text: 7)
+
+        profile = profiler.profile_response(
+            prompt="non-empty prompt",
+            response="non-empty response",
+            total_time_ms=100,
+            prompt_tokens=0,
+            completion_tokens=0,
+        )
+
+        assert profile.prompt_tokens == 0
+        assert profile.completion_tokens == 0
+        assert profile.tokens_per_second == 0.0
+
     def test_generate_report(self):
         """Test generating a performance report."""
         profiler = ResponseProfiler(model_id="test-model")

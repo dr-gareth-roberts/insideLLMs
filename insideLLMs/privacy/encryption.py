@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
+import stat
+import tempfile
+from collections.abc import Callable
 from pathlib import Path
+from typing import BinaryIO
 
 try:
     from cryptography.fernet import Fernet
@@ -11,6 +16,89 @@ try:
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
+
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_source_metadata(path: Path) -> None:
+    try:
+        path_metadata = path.lstat()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {path}") from None
+    if stat.S_ISLNK(path_metadata.st_mode):
+        raise ValueError("JSONL source must not be a symbolic link")
+    if not stat.S_ISREG(path_metadata.st_mode):
+        raise ValueError("JSONL source must be a regular file")
+
+
+def _open_regular_source(path: Path) -> BinaryIO:
+    """Open *path* without following a final-component symlink."""
+    _validate_source_metadata(path)
+
+    def no_follow_opener(name: str, flags: int) -> int:
+        if os.name == "posix" and hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        return os.open(name, flags)
+
+    source = open(path, "rb", opener=no_follow_opener)
+    if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+        source.close()
+        raise ValueError("JSONL source must be a regular file")
+    return source
+
+
+def _transform_jsonl(path: Path, transform: Callable[[bytes], bytes]) -> None:
+    """Transform nonblank lines through an exclusively owned sibling stage.
+
+    Simultaneous in-place transforms of the same source require caller
+    serialization. Unique staging is not a transactional concurrency guarantee
+    against a malicious owner of the parent directory.
+    """
+    temporary_path: Path | None = None
+    descriptor: int | None = None
+    try:
+        with _open_regular_source(path) as source:
+            source_mode = stat.S_IMODE(os.fstat(source.fileno()).st_mode)
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+            )
+            temporary_path = Path(temporary_name)
+            output = os.fdopen(descriptor, "wb")
+            descriptor = None  # The stream now owns and closes the descriptor.
+            with output:
+                if hasattr(os, "fchmod"):
+                    os.fchmod(output.fileno(), 0o600)
+                for line in source:
+                    if line.strip():
+                        output.write(transform(line.strip()) + b"\n")
+                if hasattr(os, "fchmod"):
+                    os.fchmod(output.fileno(), source_mode)
+                output.flush()
+                os.fsync(output.fileno())
+
+        os.replace(temporary_path, path)
+        temporary_path = None
+    except Exception:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except Exception as cleanup_error:
+                logger.warning(
+                    "Failed to close owned JSONL staging descriptor (%s)",
+                    type(cleanup_error).__name__,
+                )
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception as cleanup_error:
+                logger.warning(
+                    "Failed to clean up owned JSONL staging file (%s)",
+                    type(cleanup_error).__name__,
+                )
+        raise
 
 
 def encrypt_jsonl(path: Path | str, *, key: bytes | None = None) -> None:
@@ -25,27 +113,10 @@ def encrypt_jsonl(path: Path | str, *, key: bytes | None = None) -> None:
     if not key:
         raise ValueError("Encryption key is required")
 
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"File not found: {p}")
-
+    source_path = Path(path)
+    _validate_source_metadata(source_path)
     fernet = Fernet(key)
-    temp_path = p.with_suffix(p.suffix + ".enc.tmp")
-
-    try:
-        with open(p, "rb") as f_in, open(temp_path, "wb") as f_out:
-            for line in f_in:
-                if not line.strip():
-                    continue
-                encrypted_line = fernet.encrypt(line.strip())
-                f_out.write(encrypted_line + b"\n")
-
-        # Replace original file with encrypted version
-        os.replace(temp_path, p)
-    except Exception as e:
-        if temp_path.exists():
-            temp_path.unlink()
-        raise e
+    _transform_jsonl(source_path, fernet.encrypt)
 
 
 def decrypt_jsonl(path: Path | str, *, key: bytes | None = None) -> None:
@@ -56,24 +127,7 @@ def decrypt_jsonl(path: Path | str, *, key: bytes | None = None) -> None:
     if not key:
         raise ValueError("Decryption key is required")
 
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"File not found: {p}")
-
+    source_path = Path(path)
+    _validate_source_metadata(source_path)
     fernet = Fernet(key)
-    temp_path = p.with_suffix(p.suffix + ".dec.tmp")
-
-    try:
-        with open(p, "rb") as f_in, open(temp_path, "wb") as f_out:
-            for line in f_in:
-                if not line.strip():
-                    continue
-                decrypted_line = fernet.decrypt(line.strip())
-                f_out.write(decrypted_line + b"\n")
-
-        # Replace original file with decrypted version
-        os.replace(temp_path, p)
-    except Exception as e:
-        if temp_path.exists():
-            temp_path.unlink()
-        raise e
+    _transform_jsonl(source_path, fernet.decrypt)

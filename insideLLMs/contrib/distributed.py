@@ -130,6 +130,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Generic, Optional, TypeVar
 
+from insideLLMs.resources import atomic_write_text
+
 T = TypeVar("T")
 R = TypeVar("R")
 
@@ -2451,14 +2453,14 @@ class DistributedCheckpointManager:
 
         path = self._get_checkpoint_path(checkpoint_id)
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(json.dumps(checkpoint_data, sort_keys=True, separators=(",", ":")))
+            content = json.dumps(checkpoint_data, sort_keys=True, separators=(",", ":"))
         except TypeError as exc:
             raise ValueError(
                 "Checkpoint data is not JSON-serializable. "
                 "Use JSON-compatible payloads for checkpointing."
             ) from exc
 
+        atomic_write_text(path, content)
         return str(path)
 
     def load(self, checkpoint_id: str) -> tuple[list[Task], list[TaskResult], dict[str, Any]]:

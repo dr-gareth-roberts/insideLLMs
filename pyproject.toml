@@ -23,7 +23,7 @@ keywords = [
     "behavioural",
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
@@ -40,6 +40,7 @@ classifiers = [
 
 dependencies = [
     "pyyaml>=6.0",
+    "pydantic>=2.0.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -59,7 +60,6 @@ providers = [
 ]
 # Feature extras
 signing = [
-    "tuf>=3.0.0",
     "oras>=0.2.0",
 ]
 crypto = [
@@ -76,6 +76,7 @@ visualization = [
     "pillow>=12.1.1",
     "pandas>=2.0.0",
     "seaborn>=0.12.0",
+    "jinja2>=3.1.5",
 ]
 langchain = [
     "langchain",
@@ -97,7 +98,6 @@ dev = [
     "isort>=5.12.0",
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
-    "pydantic>=2.0.0",
 ]
 # Everything
 all = [

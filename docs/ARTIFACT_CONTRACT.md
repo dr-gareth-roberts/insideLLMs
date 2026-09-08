@@ -5,15 +5,19 @@ Use it as the source of truth when updating artefact emission, validation, or CI
 
 For broader guidance, see `docs/DETERMINISM.md`.
 
-### Canonical Run Artifact Set
+### Canonical artefact sets
 
-Every run directory is expected to include:
+Every config-driven, artefact-emitting `run` or `harness` directory includes:
 
+- `.insidellms_run` (managed-directory safety marker)
 - `records.jsonl` (canonical record stream)
 - `manifest.json` (run-level metadata)
 - `config.resolved.yaml` (resolved config snapshot)
-- `summary.json` (aggregated metrics)
-- `report.html` (human-readable report)
+
+`insidellms harness` additionally writes `summary.json` and, unless
+`--skip-report` is used, `report.html`. A single `insidellms run` does not
+initially write those derived files; run `insidellms report <run-dir>` to add or
+rebuild them from `records.jsonl`.
 
 ### Determinism and Volatility Rules
 
@@ -22,8 +26,8 @@ Every run directory is expected to include:
 | `records.jsonl` | One JSON object per execution item, stable ordering | Yes | `latency_ms` is intentionally persisted as `null` |
 | `manifest.json` | Run-level metadata and schema references | Yes | `command` is intentionally persisted as `null`; `python_version`/`platform` may be `null` in deterministic mode |
 | `config.resolved.yaml` | Fully resolved effective config for replay/repro | Yes | None |
-| `summary.json` | Aggregated summaries derived from records | Yes (for fixed records) | Generation timestamp is deterministic in standard run flow |
-| `report.html` | Human-facing summary report | Yes (for fixed records) | Should not include wall-clock or host-specific unstable fields |
+| `summary.json` | Aggregated summaries derived from records | Yes (for fixed records) | Harness/report output; generation timestamp is deterministic |
+| `report.html` | Human-facing summary report | Yes (for fixed records) | Harness/report output; should not include wall-clock or host-specific unstable fields |
 
 ### `records.jsonl` Field Expectations
 
@@ -52,11 +56,10 @@ Every run directory is expected to include:
 
 | Alias | Canonical | Status | Deprecation |
 |-------|-----------|--------|-------------|
-| `results.jsonl` | `records.jsonl` | Deprecated | Emitted for backward compatibility (symlink/copy). Prefer `records.jsonl`. **Removal planned in v0.3.0** — announced in `CHANGELOG.md` [Unreleased] (Deprecated). |
+| `results.jsonl` | `records.jsonl` | Deprecated | Emitted by the harness compatibility path as a symlink/copy. Prefer `records.jsonl`. **Removal planned in v0.3.0** — announced in `CHANGELOG.md` [Unreleased] (Deprecated). |
 
 ### Compatibility Policy
 
 - New fields should prefer `custom` namespaces unless schema versioning is explicitly updated.
 - Existing canonical fields must not change semantics without schema/version migration.
 - Any planned alias/shim/removal should be documented in changelog and migration docs.
-

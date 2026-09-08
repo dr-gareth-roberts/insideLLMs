@@ -264,7 +264,6 @@ class TestCmdRun:
             "dataset": {
                 "path": str(data_path),
                 "format": "jsonl",
-                "input_field": "question",
             },
         }
         config_path.write_text(yaml.dump(config), encoding="utf-8")
@@ -559,7 +558,7 @@ class TestCmdHarness:
         config = {
             "models": [{"type": "dummy", "args": {}}],
             "probes": [{"type": "logic", "args": {}}],
-            "dataset": {"format": "jsonl", "path": str(data_path), "input_field": "question"},
+            "dataset": {"format": "jsonl", "path": str(data_path)},
             "max_examples": 1,
         }
         config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
@@ -765,8 +764,10 @@ class TestCmdInit:
 
             assert "model" in config
             assert "probe" in config
-            assert "benchmark" in config
-            assert "tracking" in config
+            assert "runner" in config
+            assert "determinism" in config
+            assert "benchmark" not in config
+            assert "tracking" not in config
 
 
 class TestCmdInfo:
@@ -833,6 +834,7 @@ class TestCmdValidate:
             with open(config_path, "w") as f:
                 yaml.dump(config, f)
 
+            (Path(tmpdir) / "data.jsonl").write_text('{"question": "hello"}\n')
             result = main(["validate", str(config_path)])
             assert result == 0
 
@@ -1705,6 +1707,7 @@ class TestSpinnerMethods:
         spinner.spin()
         captured = capsys.readouterr()
         assert "Processing" in captured.out
+        assert "\r" not in captured.out
 
     def test_spinner_stop_success(self, capsys):
         """Test spinner stop with success."""
@@ -1737,6 +1740,7 @@ class TestProgressBarRender:
         captured = capsys.readouterr()
         assert "50.0%" in captured.out
         assert "5/10" in captured.out
+        assert "\r" not in captured.out
 
     def test_progress_bar_zero_total(self, capsys):
         """Test progress bar with zero total."""
@@ -1746,3 +1750,15 @@ class TestProgressBarRender:
         bar.update(0)
         captured = capsys.readouterr()
         assert "100" in captured.out  # Should show 100%
+
+    def test_progress_bar_throttles_non_interactive_output(self, capsys):
+        """Non-interactive progress should report milestones instead of every update."""
+        from insideLLMs.cli import ProgressBar
+
+        bar = ProgressBar(total=100, show_eta=False)
+        for current in range(1, 5):
+            bar.update(current)
+        assert capsys.readouterr().out.count("Progress:") == 1
+
+        bar.update(5)
+        assert capsys.readouterr().out.count("Progress:") == 1

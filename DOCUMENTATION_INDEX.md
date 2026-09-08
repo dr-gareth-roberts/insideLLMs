@@ -1,7 +1,18 @@
 # insideLLMs Documentation Index
 
-Welcome to the insideLLMs documentation. Start with the Docs Site for guides and then use this
-index for local references.
+Welcome to the insideLLMs documentation. New users should begin with the
+[Newcomer guide](wiki/getting-started/Newcomer-Guide.md), then use the Docs Site and this index
+for focused guides and local references.
+
+For the scoring, CI, credential-handling, and configuration fixes from the
+release audit, see [Release readiness](docs/RELEASE_READINESS.md).
+
+Operational assurance guides:
+
+- [Policy assurance](docs/POLICY_ASSURANCE.md): structural checks versus verified signer identity.
+- [Run budgets](docs/RUN_BUDGETS.md): pre-call reservations, supported requests, and pricing assumptions.
+- [Provider capabilities](docs/PROVIDER_CAPABILITIES.md): one catalogue and offline doctor semantics.
+- [Editor extension](extensions/vscode-insidellms/README.md): pinned local VSIX builds and isolated editor tests.
 
 [Docs Site](https://dr-gareth-roberts.github.io/insideLLMs/)
 
@@ -76,6 +87,20 @@ flowchart LR
 - Contributing guidelines
 
 **Best for:** First-time users, understanding what the library does, installation
+
+---
+
+### [wiki/getting-started/Newcomer-Guide.md](wiki/getting-started/Newcomer-Guide.md)
+**End-to-end newcomer orientation** grounded in the install-independent generated harness flow.
+
+**Contents:**
+- Product mental model and terminology
+- Verified offline run → artefact → diff workflow
+- Configuration, provider, Python API, CI, and contributor guidance
+- Data, security, stability, and advanced provenance boundaries
+- Current 0.2.x troubleshooting and known limitations
+
+**Best for:** Anyone evaluating, adopting, integrating, or contributing to insideLLMs
 
 ---
 
@@ -237,7 +262,8 @@ for CLI, artifacts, schemas, and extension points.
 ### I want to...
 
 #### **Get started with the library**
-→ Start with [README.md](README.md), then [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
+→ Start with the [Newcomer guide](wiki/getting-started/Newcomer-Guide.md), then use
+[QUICK_REFERENCE.md](QUICK_REFERENCE.md) for lookup
 
 #### **Use a specific model (OpenAI, Anthropic, HuggingFace)**
 → [API_REFERENCE.md - Core Model Classes](API_REFERENCE.md#core-model-classes)

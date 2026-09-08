@@ -448,15 +448,20 @@ def create_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument(
         "--fail-on-regressions",
         action="store_true",
-        help="Exit with non-zero status if regressions are detected",
+        help="Fail on regressions (exit 2) or missing/incomparable metric evidence (exit 1)",
     )
     diff_parser.add_argument(
         "--fail-on-changes",
         action="store_true",
         help=(
-            "Exit with non-zero status if any differences are detected "
-            "(regressions, changes, or missing/extra records)"
+            "Legacy gate: fail on regressions, output/metric changes, or missing/extra "
+            "records; excludes improvements and trace-only/trajectory-only differences"
         ),
+    )
+    diff_parser.add_argument(
+        "--fail-on-any-difference",
+        action="store_true",
+        help="Exit 2 on any behavioural, score, trace, or trajectory difference, including improvements",
     )
     diff_parser.add_argument(
         "--output-fingerprint-ignore",
@@ -1144,7 +1149,26 @@ def create_parser() -> argparse.ArgumentParser:
         "--identity",
         type=str,
         default=None,
-        help="Identity constraints for verification (e.g. issuer+subject)",
+        help="Exact signer certificate identity",
+    )
+    verify_parser.add_argument("--oidc-issuer", help="Exact certificate OIDC issuer")
+
+    policy_parser = subparsers.add_parser(
+        "verify-policy",
+        help="Verify required signed stages and artifact binding",
+        formatter_class=CustomFormatter,
+        parents=[common_parser],
+    )
+    policy_parser.add_argument("run_dir")
+    policy_parser.add_argument("--identity", required=True)
+    policy_parser.add_argument("--oidc-issuer", required=True)
+    policy_parser.add_argument(
+        "--trusted-root", required=True, help="Caller-provisioned Sigstore TrustedRoot JSON"
+    )
+    policy_parser.add_argument(
+        "--require-scitt",
+        action="store_true",
+        help="Require SCITT authenticity (currently unsupported; fails closed)",
     )
 
     return parser

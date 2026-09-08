@@ -113,6 +113,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs.types import ExperimentResult, ProbeScore
 
 
@@ -1127,7 +1128,7 @@ class WandBTracker(ExperimentTracker):
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
 
-        self._wandb.config.update(params)
+        self._wandb.config.update(redact_config_secrets(params))
 
     def log_artifact(
         self,
@@ -1541,7 +1542,7 @@ class MLflowTracker(ExperimentTracker):
             raise RuntimeError("No active run. Call start_run() first.")
 
         # Convert non-string values to strings
-        str_params = {k: str(v) for k, v in params.items()}
+        str_params = {k: str(v) for k, v in redact_config_secrets(params).items()}
         self._mlflow.log_params(str_params)
 
     def log_artifact(
@@ -1878,7 +1879,7 @@ class TensorBoardTracker(ExperimentTracker):
             raise RuntimeError("No active run. Call start_run() first.")
 
         # Log params as text
-        params_text = "\n".join(f"{k}: {v}" for k, v in params.items())
+        params_text = "\n".join(f"{k}: {v}" for k, v in redact_config_secrets(params).items())
         self._writer.add_text("params", params_text)
 
     def log_artifact(
@@ -2231,7 +2232,7 @@ class LocalFileTracker(ExperimentTracker):
         if not self._run_active:
             raise RuntimeError("No active run. Call start_run() first.")
 
-        self._params.update(params)
+        self._params.update(redact_config_secrets(params))
 
     def log_artifact(
         self,
@@ -2571,7 +2572,7 @@ class MultiTracker(ExperimentTracker):
         ...     tracker.log_params({"model": "gpt-4"})
         """
         for tracker in self.trackers:
-            tracker.log_params(params)
+            tracker.log_params(redact_config_secrets(params))
 
     def log_artifact(
         self,

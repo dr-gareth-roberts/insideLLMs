@@ -89,6 +89,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
+from insideLLMs.analysis._student_t import two_sided_t_probability as _two_sided_t_probability
 from insideLLMs.types import (
     ExperimentResult,
 )
@@ -1210,6 +1211,13 @@ def interpret_cohens_d(d: float) -> str:
         return "large"
 
 
+def _validate_t_test_inputs(group1: list[float], group2: list[float], alpha: float) -> None:
+    if not math.isfinite(alpha) or not 0 < alpha < 1:
+        raise ValueError("Significance level alpha must be finite and strictly between 0 and 1")
+    if any(not math.isfinite(value) for group in (group1, group2) for value in group):
+        raise ValueError("T-test samples must contain only finite values")
+
+
 def welchs_t_test(
     group1: list[float],
     group2: list[float],
@@ -1228,6 +1236,16 @@ def welchs_t_test(
 
     Returns:
         HypothesisTestResult with t-statistic, p-value, and effect size.
+
+    Notes:
+        Each group needs at least two observations; otherwise the result is
+        non-significant with an insufficient-data conclusion. With zero variance
+        in both valid groups, p=1 for equal means and p=0 otherwise. This is an
+        explicit degenerate convention, not a Student-t distribution estimate.
+
+    Raises:
+        ValueError: Samples contain nonfinite values or alpha is not finite
+            and strictly between zero and one.
 
     Examples:
         Testing if two models have significantly different accuracy:
@@ -1262,7 +1280,8 @@ def welchs_t_test(
             >>> result.significant
             False
     """
-    if not group1 or not group2:
+    _validate_t_test_inputs(group1, group2, alpha)
+    if len(group1) < 2 or len(group2) < 2:
         return HypothesisTestResult(
             test_name="Welch's t-test",
             statistic=0.0,
@@ -1277,19 +1296,26 @@ def welchs_t_test(
     var1, var2 = calculate_variance(group1), calculate_variance(group2)
 
     # Standard error of difference
-    se = math.sqrt(var1 / n1 + var2 / n2) if (var1 / n1 + var2 / n2) > 0 else 1e-10
+    se = math.sqrt(var1 / n1 + var2 / n2)
+    if se == 0:
+        return HypothesisTestResult(
+            test_name="Welch's t-test",
+            statistic=float("inf") if mean1 != mean2 else 0.0,
+            p_value=0.0 if mean1 != mean2 else 1.0,
+            significant=mean1 != mean2,
+            alpha=alpha,
+            conclusion="Degenerate case: zero variance in both groups",
+        )
 
     # t-statistic
     t_stat = (mean1 - mean2) / se
 
-    # Welch-Satterthwaite degrees of freedom
-    num = (var1 / n1 + var2 / n2) ** 2
-    denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
-    df = num / denom if denom > 0 else 1  # noqa: F841 - degrees of freedom for reference
-
-    # Approximate p-value (two-tailed)
-    # Using normal approximation for simplicity
-    p_value = 2 * (1 - _normal_cdf(abs(t_stat)))
+    # Normalize before squaring so degrees of freedom do not overflow or
+    # underflow merely because observations use very large or small units.
+    variance_sum = var1 / n1 + var2 / n2
+    weight1, weight2 = (var1 / n1) / variance_sum, (var2 / n2) / variance_sum
+    df = 1.0 / (weight1**2 / (n1 - 1) + weight2**2 / (n2 - 1))
+    p_value = _two_sided_t_probability(t_stat, df)
 
     effect_size = cohens_d(group1, group2)
     effect_interp = interpret_cohens_d(effect_size)
@@ -1334,11 +1360,22 @@ def paired_t_test(
 
     Returns:
         HypothesisTestResult object.
+
+    Notes:
+        Fewer than two pairs yield a non-significant insufficient-data result.
+        For at least two pairs with zero variance in differences, p=1 for a
+        zero difference and p=0 otherwise. This is an explicit degenerate
+        convention, not a Student-t distribution estimate.
+
+    Raises:
+        ValueError: Pair lengths differ, observations are nonfinite, or alpha
+            is not finite and strictly between zero and one.
     """
+    _validate_t_test_inputs(values1, values2, alpha)
     if len(values1) != len(values2):
         raise ValueError("Paired samples must have equal length")
 
-    if not values1:
+    if len(values1) < 2:
         return HypothesisTestResult(
             test_name="Paired t-test",
             statistic=0.0,
@@ -1363,11 +1400,11 @@ def paired_t_test(
             p_value=0.0 if mean_diff != 0 else 1.0,
             significant=mean_diff != 0,
             alpha=alpha,
-            conclusion="Zero variance in differences",
+            conclusion="Degenerate case: zero variance in differences",
         )
 
     t_stat = mean_diff / se
-    p_value = 2 * (1 - _normal_cdf(abs(t_stat)))
+    p_value = _two_sided_t_probability(t_stat, n - 1)
 
     # Effect size (Cohen's d for paired samples)
     effect_size = mean_diff / std_diff if std_diff != 0 else 0.0

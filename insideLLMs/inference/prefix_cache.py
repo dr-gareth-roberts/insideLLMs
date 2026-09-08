@@ -12,6 +12,8 @@ from .schemas import PromptParts
 
 @dataclass(frozen=True)
 class CachedPrompt:
+    """Composed prompt and tenant-scoped identity for exact-prefix caching."""
+
     text: str
     stable_prefix: str
     cache_key: str
@@ -20,6 +22,8 @@ class CachedPrompt:
 
 @dataclass(frozen=True)
 class PrefixCacheTelemetry:
+    """Normalized cache-use counters reported for one composed prompt."""
+
     cache_key: str
     input_tokens: int
     cached_tokens: int

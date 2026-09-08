@@ -1,4 +1,6 @@
 import json
+import os
+import stat
 
 import pytest
 
@@ -49,3 +51,17 @@ def test_encrypt_jsonl_no_key_raises(tmp_path):
 
     with pytest.raises(ValueError, match="Encryption key is required"):
         encrypt_jsonl(file_path)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits are not portable to Windows")
+def test_encrypt_decrypt_jsonl_preserves_file_mode(tmp_path):
+    file_path = tmp_path / "private.jsonl"
+    file_path.write_text('{"secret":"value"}\n', encoding="utf-8")
+    file_path.chmod(0o600)
+    key = Fernet.generate_key()
+
+    encrypt_jsonl(file_path, key=key)
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600
+
+    decrypt_jsonl(file_path, key=key)
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600

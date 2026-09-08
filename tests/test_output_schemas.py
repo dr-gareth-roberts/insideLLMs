@@ -34,7 +34,7 @@ def test_benchmark_outputs_validate_against_schemas(tmp_path):
 
     # ModelBenchmark -> BenchmarkSummary
     mb = ModelBenchmark([DummyModel(name="BenchDummy")], LogicProbe(), name="Bench")
-    mb_out = mb.run(["Test?"])
+    mb_out = mb.run(["Test?"], schema_version="1.0.0")
     validator.validate(registry.BENCHMARK_SUMMARY, mb_out, schema_version="1.0.0")
 
     # compare_models -> ComparisonReport
@@ -47,7 +47,7 @@ def test_benchmark_outputs_validate_against_schemas(tmp_path):
         [LogicProbe(), BiasProbe()],
         name="ProbeBench",
     )
-    pb_out = pb.run(["Test?"])
+    pb_out = pb.run(["Test?"], schema_version="1.0.0")
     validator.validate(registry.BENCHMARK_SUMMARY, pb_out, schema_version="1.0.0")
 
     # Round-trip via JSON to ensure schema validation accepts serialized form

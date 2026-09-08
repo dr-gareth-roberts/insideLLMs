@@ -1173,6 +1173,25 @@ model_registry: Registry[Model] = Registry("models")
 probe_registry: Registry[Probe] = Registry("probes")
 dataset_registry: Registry[Any] = Registry("datasets")
 
+_builtin_model_factories: dict[str, FactoryType[Model]] = {}
+_builtin_probe_factories: dict[str, FactoryType[Probe]] = {}
+
+
+def get_builtin_model_factory(name: str) -> FactoryType[Model] | None:
+    """Return the canonical builtin factory without loading or constructing it.
+
+    Compare this object by identity with ``model_registry.get_factory(name)``
+    to detect an extension replacing a builtin key. Unknown names return None.
+    Registration defaults must be assessed separately by strict callers.
+    """
+    return _builtin_model_factories.get(name)
+
+
+def get_builtin_probe_factory(name: str) -> FactoryType[Probe] | None:
+    """Return a builtin probe factory for identity checks, without invoking it."""
+    return _builtin_probe_factories.get(name)
+
+
 PLUGIN_ENTRYPOINT_GROUP = "insidellms.plugins"
 
 
@@ -1349,42 +1368,17 @@ def register_builtins() -> None:
     probe_registry.clear()
     dataset_registry.clear()
 
-    # Register models - use lazy loading for optional/heavy dependencies.
-    # DummyModel is lightweight, can import directly.
+    # Metadata belongs to the catalogue, not to constructor default_kwargs.
     from insideLLMs.models import DummyModel
+    from insideLLMs.models.catalogue import PROVIDER_CATALOGUE
 
-    model_registry.register("dummy", DummyModel)
-
-    # Hosted/API models (optional SDK dependencies).
-    model_registry.register(
-        "openai", _lazy_import_factory("insideLLMs.models.openai", "OpenAIModel")
-    )
-    model_registry.register(
-        "openrouter", _lazy_import_factory("insideLLMs.models.openrouter", "OpenRouterModel")
-    )
-    model_registry.register(
-        "anthropic", _lazy_import_factory("insideLLMs.models.anthropic", "AnthropicModel")
-    )
-    model_registry.register(
-        "gemini", _lazy_import_factory("insideLLMs.models.gemini", "GeminiModel")
-    )
-    model_registry.register(
-        "cohere", _lazy_import_factory("insideLLMs.models.cohere", "CohereModel")
-    )
-
-    # HuggingFace is heavy - use lazy loading.
-    model_registry.register(
-        "huggingface", _lazy_import_factory("insideLLMs.models.huggingface", "HuggingFaceModel")
-    )
-
-    # Local models (optional deps / local services).
-    model_registry.register(
-        "llamacpp", _lazy_import_factory("insideLLMs.models.local", "LlamaCppModel")
-    )
-    model_registry.register(
-        "ollama", _lazy_import_factory("insideLLMs.models.local", "OllamaModel")
-    )
-    model_registry.register("vllm", _lazy_import_factory("insideLLMs.models.local", "VLLMModel"))
+    _builtin_model_factories.clear()
+    for name, spec in PROVIDER_CATALOGUE.items():
+        factory = (
+            DummyModel if name == "dummy" else _lazy_import_factory(spec.module, spec.class_name)
+        )
+        model_registry.register(name, factory)
+        _builtin_model_factories[name] = factory
 
     # Register probes - these are generally lightweight
     from insideLLMs.probes import (
@@ -1416,6 +1410,10 @@ def register_builtins() -> None:
     probe_registry.register("multi_step_task", MultiStepTaskProbe)
     probe_registry.register("constraint_compliance", ConstraintComplianceProbe)
     probe_registry.register("judge", JudgeScoredProbe)
+    _builtin_probe_factories.clear()
+    _builtin_probe_factories.update(
+        (name, probe_registry.get_factory(name)) for name in probe_registry.list()
+    )
 
     # Register dataset loaders
     from insideLLMs.dataset_utils import (
@@ -1650,7 +1648,7 @@ def load_entrypoint_plugins(
     return loaded
 
 
-def ensure_builtins_registered() -> None:
+def ensure_builtins_registered(*, load_plugins: bool = True) -> None:
     """Ensure built-in registrations and plugins are loaded.
 
     This is the primary initialization function for the registry system.
@@ -1664,6 +1662,10 @@ def ensure_builtins_registered() -> None:
     The initialization order is:
     1. Register all built-in models, probes, and datasets
     2. Discover and load any installed plugins via entry points
+
+    ``load_plugins=False`` initializes only builtins. Read-only discovery uses
+    this to avoid executing extension registration callbacks; existing plugin
+    registrations remain available for introspection.
 
     Examples:
         Ensuring registries are ready before use:
@@ -1724,7 +1726,7 @@ def ensure_builtins_registered() -> None:
                 stacklevel=2,
             )
 
-    if _builtins_registered and not _plugins_loaded:
+    if load_plugins and _builtins_registered and not _plugins_loaded:
         load_entrypoint_plugins()
         _plugins_loaded = True
 
@@ -1740,6 +1742,8 @@ __all__ = [
     "model_registry",
     "probe_registry",
     "dataset_registry",
+    "get_builtin_model_factory",
+    "get_builtin_probe_factory",
     "register_builtins",
     "ensure_builtins_registered",
     "load_entrypoint_plugins",

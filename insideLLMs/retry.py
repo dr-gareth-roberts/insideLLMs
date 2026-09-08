@@ -1078,6 +1078,8 @@ def execute_with_retry(
             return func(*args, **kwargs)
 
         except config.retryable_exceptions as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             last_exception = e
 
             if attempt > config.max_retries:
@@ -1229,6 +1231,8 @@ async def execute_with_retry_async(
             return await func(*args, **kwargs)
 
         except config.retryable_exceptions as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             last_exception = e
 
             if attempt > config.max_retries:
