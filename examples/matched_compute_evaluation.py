@@ -1,6 +1,7 @@
 """Offline smoke test for matched-compute evaluation.
 
-This proves orchestration, accounting, and artifact generation only. Replace
+This proves orchestration, request-bound output-cap evidence, and artifact generation
+for this trusted offline model only. Replace
 ``SmokeModel`` with an ``InferenceClient.from_model_config(...)`` client and a
 representative dataset before drawing quality conclusions.
 """
@@ -17,7 +18,7 @@ from insideLLMs.analysis.matched_compute import (
     single_result_variant,
 )
 from insideLLMs.benchmark_datasets import DatasetExample
-from insideLLMs.inference import InferenceClient, Verification, VerifierSpec
+from insideLLMs.inference import InferenceClient, OutputLimitBinding, Verification, VerifierSpec
 from insideLLMs.types import ModelResponse, TokenUsage
 
 
@@ -42,7 +43,11 @@ class SmokeModel:
 
 
 async def main() -> None:
-    client = InferenceClient(SmokeModel())
+    client = InferenceClient(
+        SmokeModel(),
+        generation_kwargs={"max_tokens": 16},
+        output_limit=OutputLimitBinding("max_tokens", 16),
+    )
     numeric_output = VerifierSpec(
         "numeric-output",
         lambda candidate: Verification(
@@ -76,6 +81,9 @@ async def main() -> None:
         trials=2,
     )
     artifact = report.to_dict()
+    assert artifact["matching"]["declared_limits_match"] is True
+    assert artifact["matching"]["output_limit_assurance"] == "verified"
+    assert artifact["matching"]["max_output_tokens"] is True
     limitations = artifact["limitations"]
     assert isinstance(limitations, dict)
     limitations["evidence_scope"] = "offline-smoke-only"

@@ -79,6 +79,7 @@ insideLLMs.types.BiasResult : Result type for bias probe outputs
 
 from typing import Any
 
+from insideLLMs.probes._scoring import required_output_field
 from insideLLMs.probes.base import ComparativeProbe
 from insideLLMs.types import BiasResult, ProbeCategory, ProbeResult, ProbeScore, ResultStatus
 
@@ -897,7 +898,7 @@ class BiasProbe(ComparativeProbe[BiasResult]):
         # Flatten all BiasResults
         all_bias_results: list[BiasResult] = []
         for result in results:
-            if result.status == ResultStatus.SUCCESS and result.output:
+            if result.status == ResultStatus.SUCCESS and result.output is not None:
                 if isinstance(result.output, list):
                     all_bias_results.extend(result.output)
                 else:
@@ -907,10 +908,19 @@ class BiasProbe(ComparativeProbe[BiasResult]):
             return ProbeScore()
 
         # Calculate aggregate metrics
-        sentiment_diffs = [
-            abs(r.sentiment_diff) for r in all_bias_results if r.sentiment_diff is not None
-        ]
-        length_diffs = [abs(r.length_diff) for r in all_bias_results if r.length_diff is not None]
+        sentiment_diffs = []
+        length_diffs = []
+        for result in all_bias_results:
+            sentiment_diff = required_output_field(
+                result, "sentiment_diff", (int, float), allow_none=True
+            )
+            length_diff = required_output_field(
+                result, "length_diff", (int, float), allow_none=True
+            )
+            if sentiment_diff is not None:
+                sentiment_diffs.append(abs(sentiment_diff))
+            if length_diff is not None:
+                length_diffs.append(abs(length_diff))
 
         avg_sentiment_diff = sum(sentiment_diffs) / len(sentiment_diffs) if sentiment_diffs else 0
         avg_length_diff = sum(length_diffs) / len(length_diffs) if length_diffs else 0

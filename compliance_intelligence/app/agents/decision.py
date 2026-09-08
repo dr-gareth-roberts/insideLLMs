@@ -18,6 +18,7 @@ from app.models import (
     DecisionVerdict,
     PipelineState,
     RiskLevel,
+    RiskScore,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,22 +30,20 @@ def run_decision(state: PipelineState) -> PipelineState:
     state.status = "decision_processing"
     state.processing_steps.append(f"[{_now()}] Decision: evaluating risk score and findings")
 
-    if not state.risk_score:
-        state.decision = ComplianceDecision(
-            verdict=DecisionVerdict.REQUEST_MORE_INFO,
-            confidence=0.0,
-            rationale="Risk score unavailable — cannot render decision.",
-            needs_reanalysis=True,
-            reanalysis_reason="Missing risk score",
-        )
-        state.status = "decision_complete"
-        return state
-
-    risk = state.risk_score
-    if settings.simulation_mode:
-        decision = _rule_based_decision(state, risk)
-    else:
-        decision = _llm_decision(state, risk)
+    decision = _hard_block_decision(state)
+    if decision is None:
+        if state.risk_score is None:
+            decision = ComplianceDecision(
+                verdict=DecisionVerdict.REQUEST_MORE_INFO,
+                confidence=0.0,
+                rationale="Risk score unavailable — cannot render decision.",
+                needs_reanalysis=True,
+                reanalysis_reason="Missing risk score",
+            )
+        elif settings.simulation_mode:
+            decision = _rule_based_decision(state, state.risk_score)
+        else:
+            decision = _llm_decision(state, state.risk_score)
 
     state.decision = decision
 
@@ -69,36 +68,42 @@ def run_decision(state: PipelineState) -> PipelineState:
     return state
 
 
-def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
-    """Deterministic rule-based decision engine."""
-    overall = risk.overall_score
-    level = risk.overall_level
-    # Check for hard blocks
+def _hard_block_decision(state: PipelineState) -> ComplianceDecision | None:
+    """Return the deterministic sanctions/embargo veto, if one is present."""
     has_sanctions = any(k.sanctions_match for k in state.kyc_findings)
     has_embargo = state.geopolitical_finding and state.geopolitical_finding.embargo_active
 
-    if has_sanctions or has_embargo:
-        return ComplianceDecision(
-            verdict=DecisionVerdict.BLOCK,
-            confidence=0.97,
-            rationale=_build_rationale(
-                "BLOCK",
-                state,
-                risk,
-                "Transaction blocked due to sanctions/embargo match. "
-                "Immediate escalation to BSA/AML officer required.",
-            ),
-            regulatory_references=_get_regulatory_refs(state),
-            recommended_actions=[
-                "Freeze transaction immediately",
-                "File SAR (Suspicious Activity Report) within 30 days",
-                "Notify BSA/AML Compliance Officer",
-                "Preserve all related documentation",
-                "Consider filing CTR if applicable",
-            ],
-            escalation_required=True,
-            sla_hours=4,
-        )
+    if not (has_sanctions or has_embargo):
+        return None
+
+    risk = state.risk_score if isinstance(state.risk_score, RiskScore) else None
+    return ComplianceDecision(
+        verdict=DecisionVerdict.BLOCK,
+        confidence=0.97,
+        rationale=_build_rationale(
+            "BLOCK",
+            state,
+            risk,
+            "Transaction blocked due to sanctions/embargo match. "
+            "Immediate escalation to BSA/AML officer required.",
+        ),
+        regulatory_references=_get_regulatory_refs(state),
+        recommended_actions=[
+            "Freeze transaction immediately",
+            "File SAR (Suspicious Activity Report) within 30 days",
+            "Notify BSA/AML Compliance Officer",
+            "Preserve all related documentation",
+            "Consider filing CTR if applicable",
+        ],
+        escalation_required=True,
+        sla_hours=4,
+    )
+
+
+def _rule_based_decision(state: PipelineState, risk: RiskScore) -> ComplianceDecision:
+    """Deterministic rule-based decision engine after hard-veto enforcement."""
+    overall = risk.overall_score
+    level = risk.overall_level
 
     # Critical risk
     if level == RiskLevel.CRITICAL or overall >= 75:
@@ -197,7 +202,12 @@ def _rule_based_decision(state: PipelineState, risk) -> ComplianceDecision:
     )
 
 
-def _build_rationale(action: str, state: PipelineState, risk, summary: str) -> str:
+def _build_rationale(
+    action: str,
+    state: PipelineState,
+    risk: RiskScore | None,
+    summary: str,
+) -> str:
     """Build a detailed rationale string."""
     txn = state.transaction
     lines = [
@@ -205,13 +215,18 @@ def _build_rationale(action: str, state: PipelineState, risk, summary: str) -> s
         f"\nTransaction: {txn.transaction_id} | {txn.transaction_type.value} | "
         f"{txn.currency.value} {txn.amount:,.2f} (~${txn.amount_usd_approx:,.2f} USD)",
         f"Corridor: {txn.source_entity.country_code} → {txn.destination_entity.country_code}",
-        f"Risk breakdown: entity={risk.entity_risk_score:.0f}, txn={risk.transaction_risk_score:.0f}, "
-        f"pattern={risk.pattern_risk_score:.0f}, geo={risk.geopolitical_risk_score:.0f}",
     ]
-    if risk.contributing_factors:
-        lines.append(f"Contributing factors: {'; '.join(risk.contributing_factors[:5])}")
-    if risk.mitigating_factors:
-        lines.append(f"Mitigating factors: {'; '.join(risk.mitigating_factors[:3])}")
+    if risk is not None:
+        lines.append(
+            f"Risk breakdown: entity={risk.entity_risk_score:.0f}, "
+            f"txn={risk.transaction_risk_score:.0f}, "
+            f"pattern={risk.pattern_risk_score:.0f}, "
+            f"geo={risk.geopolitical_risk_score:.0f}"
+        )
+        if risk.contributing_factors:
+            lines.append(f"Contributing factors: {'; '.join(risk.contributing_factors[:5])}")
+        if risk.mitigating_factors:
+            lines.append(f"Mitigating factors: {'; '.join(risk.mitigating_factors[:3])}")
     if state.reanalysis_count > 0:
         lines.append(f"Analysis depth: pass #{state.reanalysis_count + 1}")
     return "\n".join(lines)

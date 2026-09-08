@@ -20,6 +20,8 @@ class DagBudgetExceeded(RuntimeError):
 
 @dataclass(frozen=True)
 class PlanNode:
+    """One executable DAG node with prerequisite node IDs and optional metadata."""
+
     id: str
     dependencies: tuple[str, ...] = ()
     metadata: dict[str, object] | None = None

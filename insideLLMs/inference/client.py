@@ -7,6 +7,7 @@ from dataclasses import replace
 from time import perf_counter
 from typing import Any
 
+from ._limits import OutputLimitBinding
 from .adapters import ModelProposer
 from .best_of_n import JudgeCallback, VerifierSpec, select_best
 from .schemas import Candidate, InferenceRequest, InferenceResult, Spend, StopReason, TraceEvent
@@ -21,8 +22,11 @@ class InferenceClient:
         model: object,
         *,
         generation_kwargs: Mapping[str, object] | None = None,
+        output_limit: OutputLimitBinding | None = None,
     ) -> None:
-        self.proposer = ModelProposer(model, generation_kwargs=generation_kwargs)
+        self.proposer = ModelProposer(
+            model, generation_kwargs=generation_kwargs, output_limit=output_limit
+        )
 
     @classmethod
     def from_model_config(
@@ -30,6 +34,7 @@ class InferenceClient:
         config: Mapping[str, object],
         *,
         generation_kwargs: Mapping[str, object] | None = None,
+        output_limit: OutputLimitBinding | None = None,
     ) -> InferenceClient:
         """Build through the canonical model registry and middleware config path.
 
@@ -46,7 +51,7 @@ class InferenceClient:
         from insideLLMs.runtime._config_loader import _create_model_from_config
 
         model = _create_model_from_config(dict(config), prefer_async_pipeline=True)
-        return cls(model, generation_kwargs=generation_kwargs)
+        return cls(model, generation_kwargs=generation_kwargs, output_limit=output_limit)
 
     @property
     def model(self) -> object:

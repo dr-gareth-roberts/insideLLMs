@@ -27,6 +27,28 @@ from insideLLMs._serialization import (
 from insideLLMs.runtime._result_utils import _record_index_from_record
 
 
+def _require_unsealed_run_directory(run_dir: Path) -> None:
+    """Refuse resume/overwrite of historical evidence before any runner mutation.
+
+    lexists deliberately includes dangling aliases and special-file markers.
+    This is a conservative admission check, not a concurrent-writer lock.
+    """
+    markers = (
+        "integrity/bundle_id.txt",
+        "integrity/bundle_identity.json",
+        "attestations",
+        "signing",
+    )
+    integrity = run_dir / "integrity"
+    unsafe_container = run_dir.is_symlink() or (
+        os.path.lexists(integrity) and (integrity.is_symlink() or not integrity.is_dir())
+    )
+    if unsafe_container or any(os.path.lexists(run_dir / marker) for marker in markers):
+        raise ValueError(
+            "Historical evidence is immutable; use a fresh run directory and preserve originals"
+        )
+
+
 def _default_run_root() -> Path:
     """Get the default root directory for run artifacts.
 
@@ -236,12 +258,11 @@ def _ensure_run_sentinel(run_dir_path: Path) -> None:
 
 
 def _truncate_incomplete_jsonl(path: Path) -> None:
-    """Truncate a JSONL file to remove any incomplete final line.
+    """Normalize a JSONL file by removing only an invalid final line.
 
     When a run is interrupted, the final line of records.jsonl may be
-    incomplete (not terminated with a newline). This function removes
-    any such incomplete line to ensure the file contains only valid
-    JSON records for safe resume.
+    incomplete. This function removes an invalid final line while preserving
+    a syntactically valid final JSON value that lacks a terminating newline.
 
     Parameters
     ----------
@@ -277,23 +298,30 @@ def _truncate_incomplete_jsonl(path: Path) -> None:
 
     Notes
     -----
-    This function operates at the byte level for efficiency and handles
-    files without any newlines by truncating to empty.
+    This function operates at the byte level for efficiency. A missing line
+    terminator is not itself proof of an incomplete write: valid final JSON is
+    retained and normalized with a newline so the next append starts a new line.
 
     See Also
     --------
     _read_jsonl_records : Read records with optional truncation.
     """
     data = path.read_bytes()
-    if not data:
+    if not data or data.endswith(b"\n"):
         return
-    if data.endswith(b"\n"):
-        return
+
     cutoff = data.rfind(b"\n")
-    if cutoff == -1:
-        path.write_bytes(b"")
+    final_line = data[cutoff + 1 :]
+    try:
+        json.loads(final_line)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        if cutoff == -1:
+            path.write_bytes(b"")
+        else:
+            path.write_bytes(data[: cutoff + 1])
         return
-    path.write_bytes(data[: cutoff + 1])
+
+    path.write_bytes(data + b"\n")
 
 
 def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> list[dict[str, Any]]:

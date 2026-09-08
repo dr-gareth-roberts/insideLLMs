@@ -82,6 +82,9 @@ def verify_bundle(
     blob_path: Path | str,
     bundle_path: Path | str,
     identity_constraints: Optional[str] = None,
+    *,
+    oidc_issuer: Optional[str] = None,
+    trusted_root: Path | str | None = None,
 ) -> bool:
     """Verify a Sigstore bundle against the signed blob.
 
@@ -92,8 +95,13 @@ def verify_bundle(
     bundle_path : Path or str
         Path to the .sigstore.bundle.json (or .bundle).
     identity_constraints : str or None
-        Optional identity constraints (e.g. issuer=example@example.com).
+        Optional exact signer identity (e.g. example@example.com).
         Only alphanumeric characters and @, -, _, ., =, +, :, / are allowed.
+    oidc_issuer : str or None
+        Exact OIDC issuer, separate from the signer identity.
+    trusted_root : Path or str or None
+        Explicit local Sigstore TrustedRoot JSON. Requires both exact signer
+        constraints and a cosign release supporting modern Sigstore bundles.
 
     Returns
     -------
@@ -115,6 +123,15 @@ def verify_bundle(
     cmd = [str(cosign), "verify-blob", "--bundle", str(bundle_path), str(blob_path)]
     if identity_constraints:
         _validate_identity_constraints(identity_constraints)
-        cmd.extend(["--cert-identity", identity_constraints])
+        cmd.extend(["--certificate-identity", identity_constraints])
+    if oidc_issuer:
+        cmd.extend(["--certificate-oidc-issuer", oidc_issuer])
+    if trusted_root is not None:
+        if not identity_constraints or not oidc_issuer:
+            raise ValueError("Trusted-root verification requires exact identity and OIDC issuer")
+        root = Path(trusted_root)
+        if not root.is_file():
+            raise FileNotFoundError(f"Trusted root not found: {root}")
+        cmd.extend(["--trusted-root", str(root)])
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)  # noqa: S603
     return result.returncode == 0

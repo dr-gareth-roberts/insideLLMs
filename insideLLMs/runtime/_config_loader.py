@@ -8,13 +8,14 @@ configuration dictionaries.
 import hashlib
 import json
 import logging
-import os
 import posixpath
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import yaml
 
+from insideLLMs._secrets import redact_config_secrets
+from insideLLMs.config_schema import normalize_runtime_config, resolve_dataset_path
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
 from insideLLMs.registry import (
@@ -27,6 +28,9 @@ from insideLLMs.registry import (
 from insideLLMs.types import ConfigDict
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from insideLLMs.runtime.budget import BudgetLedger
 
 
 def load_config(path: Union[str, Path]) -> ConfigDict:
@@ -98,7 +102,7 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
 
     if not isinstance(data, dict):
         raise ValueError(f"Invalid config format in {path}: expected a mapping at top level.")
-    return data
+    return normalize_runtime_config(data)
 
 
 def _resolve_path(path: str, base_dir: Path) -> Path:
@@ -116,11 +120,7 @@ def _resolve_path(path: str, base_dir: Path) -> Path:
     Path
         The resolved absolute path.
     """
-    expanded = os.path.expandvars(os.path.expanduser(path))
-    p = Path(expanded)
-    if p.is_absolute():
-        return p
-    return base_dir / p
+    return resolve_dataset_path(path, base_dir)
 
 
 def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[str, Any]:
@@ -200,7 +200,7 @@ def _build_resolved_config_snapshot(config: ConfigDict, base_dir: Path) -> dict[
                     "run_id may not be stable if the dataset changes."
                 )
 
-    return snapshot
+    return redact_config_secrets(snapshot)
 
 
 def _resolve_determinism_options(
@@ -380,6 +380,7 @@ def _create_model_from_config(
     config: ConfigDict,
     *,
     prefer_async_pipeline: bool = False,
+    budget_ledger: "BudgetLedger | None" = None,
 ) -> Model:
     """Create a model instance from configuration.
 
@@ -402,10 +403,19 @@ def _create_model_from_config(
     ValueError
         If the model type is unknown.
     """
-    ensure_builtins_registered()
+    if budget_ledger is None:
+        ensure_builtins_registered()
+    else:
+        ensure_builtins_registered(load_plugins=False)
 
     model_type = config["type"]
-    model_args = config.get("args", {})
+    model_args = dict(config.get("args", {}))
+    if budget_ledger is not None:
+        from insideLLMs.runtime.budget import validate_budget_model_config
+
+        validate_budget_model_config(config, budget_ledger)
+        if model_type != "dummy":
+            model_args["max_retries"] = 0
 
     try:
         base_model = model_registry.get(model_type, **model_args)
@@ -436,6 +446,9 @@ def _create_model_from_config(
         model_class = getattr(_models, model_class_names[model_type])
         base_model = model_class(**model_args)
 
+    if budget_ledger is not None:
+        setattr(base_model, "_budget_ledger", budget_ledger)
+
     pipeline_cfg = config.get("pipeline") if isinstance(config, dict) else None
     if isinstance(pipeline_cfg, dict):
         from insideLLMs.pipeline import AsyncModelPipeline, ModelPipeline
@@ -465,7 +478,9 @@ def _create_model_from_config(
     return base_model
 
 
-def _create_probe_from_config(config: ConfigDict) -> Probe:
+def _create_probe_from_config(
+    config: ConfigDict, *, budget_ledger: "BudgetLedger | None" = None
+) -> Probe:
     """Create a probe instance from configuration.
 
     Uses the registry if available, falls back to direct imports.
@@ -485,10 +500,23 @@ def _create_probe_from_config(config: ConfigDict) -> Probe:
     ValueError
         If the probe type is unknown.
     """
-    ensure_builtins_registered()
+    if budget_ledger is None:
+        ensure_builtins_registered()
+    else:
+        ensure_builtins_registered(load_plugins=False)
 
     probe_type = config["type"]
-    probe_args = config.get("args", {})
+    probe_args = dict(config.get("args", {}))
+    if budget_ledger is not None:
+        from insideLLMs.runtime.budget import validate_budget_probe_config
+
+        validate_budget_probe_config(config, budget_ledger)
+        if probe_type == "judge":
+            probe_args["judge_model"] = _create_model_from_config(
+                probe_args["judge_model"],
+                prefer_async_pipeline=True,
+                budget_ledger=budget_ledger,
+            )
 
     try:
         return probe_registry.get(probe_type, **probe_args)
@@ -553,6 +581,12 @@ def _load_dataset_from_config(config: ConfigDict, base_dir: Path) -> list[Any]:
     ensure_builtins_registered()
 
     format_type = config["format"]
+
+    if format_type == "inline":
+        data = config.get("data")
+        if not isinstance(data, list):
+            raise ValueError("Inline dataset requires a list in 'data'.")
+        return data
 
     if format_type in ("csv", "jsonl"):
         path = _resolve_path(config["path"], base_dir)

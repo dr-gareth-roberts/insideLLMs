@@ -25,7 +25,14 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
         Verdict dict with keys: passed (bool), reasons (list[str]), checks (dict[str, bool]).
     """
     run_dir = Path(run_dir)
-    verdict: dict[str, Any] = {"passed": True, "reasons": [], "checks": {}}
+    verdict: dict[str, Any] = {
+        "passed": True,
+        "reasons": [],
+        "checks": {},
+        "assurance": "structural",
+        "signature_authenticity": "not_checked",
+        "scitt_authenticity": "not_checked",
+    }
 
     # Required artifacts
     manifest_path = run_dir / "manifest.json"

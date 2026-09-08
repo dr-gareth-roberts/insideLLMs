@@ -12,6 +12,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs._serialization import (
     StrictSerializationError,
 )
@@ -23,6 +24,12 @@ from insideLLMs._serialization import (
 )
 from insideLLMs.config_types import RunConfig
 from insideLLMs.exceptions import ProbeExecutionError, RunnerExecutionError
+from insideLLMs.probes._scoring import (
+    evaluate_batch_result,
+    evaluate_probe_result,
+    probe_input,
+    validate_scored_resume_record,
+)
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -31,6 +38,7 @@ from insideLLMs.runtime._artifact_utils import (
     _prepare_run_dir,
     _prepare_run_dir_for_resume,
     _read_jsonl_records,
+    _require_unsealed_run_directory,
     _semver_tuple,
     _validate_resume_record,
 )
@@ -47,6 +55,7 @@ from insideLLMs.runtime._determinism import (
     _deterministic_run_id_from_inputs,
     _deterministic_run_times,
 )
+from insideLLMs.runtime._interruptions import capture_secondary_error, finalize_runner_results
 from insideLLMs.runtime._result_utils import (
     _build_dataset_spec,
     _build_model_spec,
@@ -55,6 +64,13 @@ from insideLLMs.runtime._result_utils import (
     _normalize_status,
     _result_dict_from_probe_result,
     _result_dict_from_record,
+)
+from insideLLMs.runtime._run_health import assess_run_health
+from insideLLMs.runtime.budget import (
+    BudgetError,
+    BudgetLedger,
+    BudgetUnsupportedError,
+    validate_budget_runner,
 )
 from insideLLMs.types import (
     ExperimentResult,
@@ -178,6 +194,7 @@ class ProbeRunner(_RunnerBase):
         use_probe_batch: Optional[bool] = None,
         batch_workers: Optional[int] = None,
         return_experiment: Optional[bool] = None,
+        budget_ledger: Optional[BudgetLedger] = None,
         **probe_kwargs: Any,
     ) -> Union[list[dict[str, Any]], ExperimentResult]:
         """Run the probe on the model for each item in the prompt set.
@@ -243,8 +260,6 @@ class ProbeRunner(_RunnerBase):
         Union[list[dict[str, Any]], ExperimentResult]
             List of result dicts or ExperimentResult if return_experiment=True.
         """
-        # Import here to avoid circular import
-        from insideLLMs.runtime._high_level import create_experiment_result
         from insideLLMs.schemas import OutputValidator, SchemaRegistry
 
         # Resolve config: use provided config or create default
@@ -266,6 +281,7 @@ class ProbeRunner(_RunnerBase):
         overwrite = overwrite if overwrite is not None else config.overwrite
         dataset_info = dataset_info if dataset_info is not None else config.dataset_info
         config_snapshot = config_snapshot if config_snapshot is not None else config.config_snapshot
+        config_snapshot = redact_config_secrets(config_snapshot)
         store_messages = store_messages if store_messages is not None else config.store_messages
         strict_serialization = (
             strict_serialization
@@ -286,6 +302,11 @@ class ProbeRunner(_RunnerBase):
             return_experiment if return_experiment is not None else config.return_experiment
         )
         run_mode = getattr(config, "run_mode", "default")
+
+        if budget_ledger is not None:
+            if resume:
+                raise BudgetUnsupportedError("Budgeted resume requires durable reservations")
+            validate_budget_runner(self.model, self.probe, budget_ledger)
 
         # Validate prompt set before execution
         validate_prompt_set(prompt_set, field_name="prompt_set", allow_empty_set=False)
@@ -345,6 +366,8 @@ class ProbeRunner(_RunnerBase):
 
         # Create the run directory up-front so we can emit JSONL incrementally.
         if emit_run_artifacts:
+            if resume or overwrite:
+                _require_unsealed_run_directory(resolved_run_dir)
             if resume:
                 _prepare_run_dir_for_resume(resolved_run_dir, run_root=root)
             else:
@@ -399,12 +422,14 @@ class ProbeRunner(_RunnerBase):
                         run_id=resolved_run_id,
                         strict_serialization=strict_serialization,
                     )
+                    validate_scored_resume_record(self.probe, record)
                     results[line_index] = _result_dict_from_record(
                         record,
                         schema_version=schema_version,
                     )
                 completed = len(existing_records)
 
+        stop_error: Optional[RunnerExecutionError] = None
         with ExitStack() as stack:
             records_fp = None
             if emit_run_artifacts:
@@ -425,17 +450,30 @@ class ProbeRunner(_RunnerBase):
                             status="processing",
                         )
 
-                    probe_results = self.probe.run_batch(
-                        effective_model,
-                        remaining_items,
-                        max_workers=resolved_batch_workers,
-                        progress_callback=batch_progress if progress_callback else None,
-                        **probe_kwargs,
-                    )
+                    try:
+                        probe_results = self.probe.run_batch(
+                            effective_model,
+                            [probe_input(self.probe, item) for item in remaining_items],
+                            max_workers=resolved_batch_workers,
+                            progress_callback=batch_progress if progress_callback else None,
+                            **probe_kwargs,
+                        )
+                    except Exception as exc:
+                        # A thrown batch has no known per-item outcomes to persist.
+                        probe_results = []
+                        stop_error = RunnerExecutionError(
+                            reason="Batch execution failed",
+                            model_id=model_spec.get("model_id"),
+                            probe_id=probe_spec.get("probe_id"),
+                            run_id=resolved_run_id,
+                            original_error=exc,
+                        )
 
-                    stop_error: Optional[RunnerExecutionError] = None
                     for offset, probe_result in enumerate(probe_results):
                         i = completed + offset
+                        probe_result = evaluate_batch_result(
+                            self.probe, probe_result, prompt_set[i]
+                        )
                         error_type = None
                         if isinstance(probe_result.metadata, dict):
                             error_type = probe_result.metadata.get("error_type")
@@ -464,6 +502,9 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=prompt_set[i],
                                 output=probe_result.output,
+                                scores=result_obj.get("scores"),
+                                primary_metric=result_obj.get("primary_metric"),
+                                metadata=result_obj.get("metadata"),
                                 latency_ms=None,
                                 store_messages=store_messages,
                                 index=i,
@@ -492,12 +533,22 @@ class ProbeRunner(_RunnerBase):
                             )
                             records_fp.flush()
 
-                        if stop_on_error and stop_error is None:
+                        if (
+                            stop_on_error
+                            or error_type
+                            in {
+                                "BudgetError",
+                                "BudgetExceededError",
+                                "BudgetUnsupportedError",
+                                "BudgetBreachError",
+                            }
+                        ) and stop_error is None:
                             status = _normalize_status(probe_result.status)
                             if status != "success":
                                 prompt_str = str(prompt_set[i])
                                 stop_error = RunnerExecutionError(
                                     reason=probe_result.error or status,
+                                    original_error=probe_result.original_error,
                                     model_id=model_spec.get("model_id"),
                                     probe_id=probe_spec.get("probe_id"),
                                     prompt=prompt_str,
@@ -511,11 +562,6 @@ class ProbeRunner(_RunnerBase):
                                     ],
                                 )
 
-                        if stop_error is not None:
-                            break
-
-                    if stop_error is not None:
-                        raise stop_error
             else:
                 for i in range(completed, len(prompt_set)):
                     item = prompt_set[i]
@@ -531,13 +577,20 @@ class ProbeRunner(_RunnerBase):
 
                     item_started_at, item_completed_at = _deterministic_item_times(run_base_time, i)
                     try:
-                        output = self.probe.run(effective_model, item, **probe_kwargs)
-                        probe_result = ProbeResult(
-                            input=item,
-                            output=output,
-                            status=ResultStatus.SUCCESS,
-                            latency_ms=None,
-                            metadata={},
+                        output = self.probe.run(
+                            effective_model,
+                            probe_input(self.probe, item),
+                            **probe_kwargs,
+                        )
+                        probe_result = evaluate_probe_result(
+                            self.probe,
+                            ProbeResult(
+                                input=item,
+                                output=output,
+                                status=ResultStatus.SUCCESS,
+                                latency_ms=None,
+                                metadata={},
+                            ),
                         )
                         result_obj = _result_dict_from_probe_result(
                             probe_result,
@@ -556,6 +609,9 @@ class ProbeRunner(_RunnerBase):
                                 dataset=dataset_spec,
                                 item=item,
                                 output=output,
+                                scores=result_obj.get("scores"),
+                                primary_metric=result_obj.get("primary_metric"),
+                                metadata=result_obj.get("metadata"),
                                 latency_ms=probe_result.latency_ms,
                                 store_messages=store_messages,
                                 index=i,
@@ -593,7 +649,7 @@ class ProbeRunner(_RunnerBase):
 
                         probe_result = ProbeResult(
                             input=item,
-                            status=ResultStatus.TIMEOUT if is_timeout else ResultStatus.ERROR,
+                            status=(ResultStatus.TIMEOUT if is_timeout else ResultStatus.ERROR),
                             error=str(e),
                             latency_ms=None,
                             metadata={"error_type": type(e).__name__},
@@ -637,9 +693,9 @@ class ProbeRunner(_RunnerBase):
                             )
                             records_fp.flush()
 
-                        if stop_on_error:
+                        if stop_on_error or isinstance(e, BudgetError):
                             prompt_str = str(item) if not isinstance(item, str) else item
-                            raise RunnerExecutionError(
+                            stop_error = RunnerExecutionError(
                                 reason=str(e),
                                 model_id=model_spec.get("model_id"),
                                 probe_id=probe_spec.get("probe_id"),
@@ -653,23 +709,32 @@ class ProbeRunner(_RunnerBase):
                                     "Verify the prompt format is valid for this model",
                                     "Review the original error message above",
                                 ],
-                            ) from e
+                            )
+                            break
 
-        _invoke_progress_callback(
-            progress_callback,
-            current=total,
-            total=total,
-            start_time=run_start_time,
-            status="complete",
-        )
-
-        if any(result is None for result in results):
+        if stop_error is None and any(result is None for result in results):
             raise RuntimeError("Runner did not produce results for all items.")
         final_results = [result for result in results if result is not None]
 
         self._results = final_results
 
         _, run_completed_at = _deterministic_run_times(run_base_time, len(final_results))
+
+        self.last_experiment, stop_error, summary_payload = finalize_runner_results(
+            self.model,
+            self.probe,
+            final_results,
+            run_id=resolved_run_id,
+            started_at=run_started_at,
+            completed_at=run_completed_at,
+            config=config_snapshot or {},
+            strict_serialization=strict_serialization,
+            expected_count=len(prompt_set),
+            schema_version=schema_version,
+            validator=validator if validate_output else None,
+            validation_mode=validator_mode,
+            error=stop_error,
+        )
 
         if emit_run_artifacts:
             python_version = None if deterministic_artifacts else sys.version.split()[0]
@@ -708,11 +773,26 @@ class ProbeRunner(_RunnerBase):
                 "custom": {
                     "status_counts": status_counts,
                     "timeout_count": status_counts["timeout"],
+                    "health": assess_run_health(
+                        final_results,
+                        expected_count=len(prompt_set),
+                        run_completed=stop_error is None,
+                    ),
                 },
             }
 
             if _semver_tuple(schema_version) >= (1, 0, 1):
-                manifest["run_completed"] = True
+                manifest["run_completed"] = stop_error is None
+
+            if stop_error is not None:
+                from insideLLMs.runtime._run_health import describe_run_abort
+
+                manifest["custom"]["abort"] = describe_run_abort(stop_error)
+
+            if budget_ledger is not None:
+                manifest["custom"]["budget"] = budget_ledger.snapshot()
+                if budget_ledger.snapshot().get("abort_reason"):
+                    manifest["custom"]["abort"] = budget_ledger.snapshot()["abort_reason"]
 
             try:
                 import insideLLMs
@@ -721,28 +801,40 @@ class ProbeRunner(_RunnerBase):
             except (ImportError, AttributeError):
                 pass
 
-            if validate_output:
-                validator.validate(
-                    registry.RUN_MANIFEST,
-                    manifest,
-                    schema_version=schema_version,
-                    mode=validator_mode,
+            with capture_secondary_error(stop_error, "manifest_finalization"):
+                if validate_output:
+                    validator.validate(
+                        registry.RUN_MANIFEST,
+                        manifest,
+                        schema_version=schema_version,
+                        mode=validator_mode,
+                    )
+
+                _atomic_write_text(
+                    manifest_path,
+                    json.dumps(
+                        _serialize_manifest(manifest),
+                        sort_keys=True,
+                        indent=2,
+                        default=_serialize_manifest,
+                    ),
                 )
 
-            _atomic_write_text(
-                manifest_path,
-                json.dumps(
-                    _serialize_manifest(manifest),
-                    sort_keys=True,
-                    indent=2,
-                    default=_serialize_manifest,
-                ),
-            )
-
-            if run_mode == "ultimate":
+            if run_mode == "ultimate" and stop_error is None:
                 import insideLLMs as _pkg
+                from insideLLMs.runtime._interruptions import write_scored_summary
                 from insideLLMs.runtime._ultimate import run_ultimate_post_artifact
 
+                write_scored_summary(
+                    resolved_run_dir,
+                    self.last_experiment,
+                    schema_version=schema_version,
+                    generated_at=run_completed_at,
+                    config=config_snapshot or {},
+                    strict_serialization=strict_serialization,
+                    validator=validator if validate_output else None,
+                    validation_mode=validator_mode,
+                )
                 _ver = getattr(_pkg, "__version__", None)
                 run_ultimate_post_artifact(
                     resolved_run_dir,
@@ -753,39 +845,44 @@ class ProbeRunner(_RunnerBase):
                     scitt_service_url=config.scitt_service_url,
                 )
 
-        if validate_output:
-            validator.validate(
-                registry.RUNNER_OUTPUT,
-                {"schema_version": schema_version, "results": final_results},
-                schema_version=schema_version,
-                mode=validator_mode,
-            )
-
-        self.last_experiment = create_experiment_result(
-            self.model,
-            self.probe,
-            final_results,
-            config=config_snapshot or {},
-            experiment_id=resolved_run_id,
-            started_at=run_started_at,
-            completed_at=run_completed_at,
-            strict_serialization=strict_serialization,
-        )
-
         success_count = sum(1 for r in final_results if r.get("status") == "success")
         error_count = sum(1 for r in final_results if r.get("status") == "error")
         timeout_count = sum(1 for r in final_results if r.get("status") == "timeout")
         logger.info(
-            "Sync probe run completed",
+            "Sync probe run aborted" if stop_error is not None else "Sync probe run completed",
             extra={
                 "run_id": resolved_run_id,
                 "total_items": len(final_results),
                 "success_count": success_count,
                 "error_count": error_count,
                 "timeout_count": timeout_count,
-                "success_rate": success_count / len(final_results) if final_results else 0,
+                "success_rate": (success_count / len(final_results) if final_results else 0),
             },
         )
+
+        _invoke_progress_callback(
+            progress_callback,
+            current=sum(result is not None for result in results),
+            total=total,
+            start_time=run_start_time,
+            status="aborted" if stop_error is not None else "complete",
+        )
+
+        if stop_error is not None:
+            if emit_run_artifacts:
+                with capture_secondary_error(stop_error, "summary_finalization"):
+                    if validate_output:
+                        validator.validate(
+                            registry.HARNESS_SUMMARY,
+                            summary_payload,
+                            schema_version=schema_version,
+                            mode=validator_mode,
+                        )
+                    _atomic_write_text(
+                        resolved_run_dir / "summary.json",
+                        _stable_json_dumps(summary_payload, strict=strict_serialization),
+                    )
+            raise stop_error from stop_error.original_error
 
         return self.last_experiment if return_experiment else final_results
 

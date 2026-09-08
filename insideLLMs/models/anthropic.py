@@ -102,7 +102,7 @@ insideLLMs.exceptions : Exception classes for error handling
 
 import os
 from collections.abc import Iterator, Sequence
-from typing import Optional
+from typing import Any, Optional
 
 import anthropic
 from anthropic import APIError as AnthropicAPIError
@@ -300,6 +300,22 @@ class AnthropicModel(Model):
             )
         self._timeout = timeout
 
+    def _create_message(self, messages: list[dict[str, Any]], **kwargs: Any) -> Any:
+        ledger = getattr(self, "_budget_ledger", None)
+        if ledger is not None:
+            from insideLLMs.runtime.budget import dispatch_budgeted_call
+
+            return dispatch_budgeted_call(
+                ledger,
+                provider="anthropic",
+                model=self.model_name,
+                client=self.client,
+                messages=messages,
+                kwargs=kwargs,
+                dispatch=self.client.messages.create,
+            )
+        return self.client.messages.create(model=self.model_name, messages=messages, **kwargs)
+
     def generate(self, prompt: str, **kwargs) -> str:
         """Generate a text response from a single prompt.
 
@@ -404,10 +420,10 @@ class AnthropicModel(Model):
         """
         try:
             api_kwargs = dict(kwargs)
-            api_kwargs.setdefault("max_tokens", 1024)
+            if getattr(self, "_budget_ledger", None) is None:
+                api_kwargs.setdefault("max_tokens", 1024)
             api_kwargs.setdefault("temperature", 0.7)
-            response = self.client.messages.create(
-                model=self.model_name,
+            response = self._create_message(
                 messages=[{"role": "user", "content": prompt}],
                 **api_kwargs,
             )
@@ -432,6 +448,8 @@ class AnthropicModel(Model):
                 message=str(e),
             )
         except Exception as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             raise ModelGenerationError(
                 model_id=self.model_name,
                 prompt=prompt,
@@ -564,7 +582,8 @@ class AnthropicModel(Model):
                 anthropic_messages.append({"role": role, "content": msg.get("content", "")})
 
             api_kwargs = dict(kwargs)
-            api_kwargs.setdefault("max_tokens", 1024)
+            if getattr(self, "_budget_ledger", None) is None:
+                api_kwargs.setdefault("max_tokens", 1024)
             api_kwargs.setdefault("temperature", 0.7)
             # An explicit system= kwarg (documented in the docstring) also contributes.
             explicit_system = api_kwargs.pop("system", None)
@@ -574,8 +593,7 @@ class AnthropicModel(Model):
             if combined_system:
                 api_kwargs["system"] = combined_system
 
-            response = self.client.messages.create(
-                model=self.model_name,
+            response = self._create_message(
                 messages=anthropic_messages,
                 **api_kwargs,
             )
@@ -600,6 +618,8 @@ class AnthropicModel(Model):
                 message=str(e),
             )
         except Exception as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             first_msg = messages[0]["content"] if messages else ""
             raise ModelGenerationError(
                 model_id=self.model_name,
@@ -713,6 +733,10 @@ class AnthropicModel(Model):
         - Consider implementing timeout handling for very long responses
         - Use flush=True when printing to ensure immediate display
         """
+        if getattr(self, "_budget_ledger", None) is not None:
+            from insideLLMs.runtime.budget import BudgetUnsupportedError
+
+            raise BudgetUnsupportedError("Streaming is unsupported in budget mode")
         try:
             api_kwargs = dict(kwargs)
             api_kwargs.setdefault("max_tokens", 1024)

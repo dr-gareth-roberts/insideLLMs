@@ -1,4 +1,4 @@
-.PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path
+.PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path package-smoke
 
 PYTHON ?= python3
 
@@ -19,6 +19,7 @@ help:
 	@echo "  make check         - lint + format-check + typecheck + test"
 	@echo "  make check-fast    - lint + format-check + test-fast (quick pre-commit)"
 	@echo "  make golden-path   - offline harness + diff (DummyModel)"
+	@echo "  make package-smoke PYTHON=/path/to/clean-venv/bin/python - verify installed distribution"
 
 lint:
 	ruff check .
@@ -82,9 +83,14 @@ docs-audit:
 	$(PYTHON) scripts/audit_docs.py
 	$(PYTHON) scripts/check_wiki_links.py
 
-check: lint format-check typecheck test
+check: lint format-check typecheck test docs-audit
 
 check-fast: lint format-check test-fast
+
+# Install the built wheel/sdist in a clean virtualenv first; this rejects an
+# editable/source import and runs every init template without provider access.
+package-smoke:
+	$(PYTHON) scripts/smoke_installed_package.py
 
 golden-path:
 	$(PYTHON) -m insideLLMs.cli harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite --skip-report

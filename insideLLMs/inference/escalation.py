@@ -23,6 +23,8 @@ StepCallback = Callable[[InferenceRequest, Candidate | None], Candidate | Awaita
 
 @dataclass(frozen=True)
 class EscalationStep:
+    """A progressively stronger generation action and its confidence threshold."""
+
     id: str
     run: StepCallback
     minimum_confidence: float

@@ -41,6 +41,9 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
+      - name: Documentation contract and links
+        run: make docs-audit
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest

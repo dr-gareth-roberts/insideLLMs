@@ -14,8 +14,10 @@ Datasets provide the inputs that probes use to test models.
 |--------|-----------|----------|
 | JSONL | `.jsonl` | Structured data with fields |
 | CSV | `.csv` | Tabular data |
-| Inline | (in config) | Small test sets |
 | HuggingFace | (remote) | Standard benchmarks |
+
+Runtime YAML supports these three formats. It does not currently accept an
+inline row list or an arbitrary custom registry format.
 
 ## JSONL Format
 
@@ -59,9 +61,6 @@ question,expected
 dataset:
   format: csv
   path: data/test.csv
-  columns:
-    question: question
-    expected: expected
 ```
 
 ### Loading Programmatically
@@ -70,16 +69,6 @@ dataset:
 from insideLLMs.dataset_utils import load_csv_dataset
 
 items = load_csv_dataset("data/test.csv")
-```
-
-## Inline Format
-
-For small datasets directly in config:
-
-```yaml
-dataset:
-  format: jsonl
-  path: data/test.jsonl
 ```
 
 ## HuggingFace Datasets
@@ -94,6 +83,10 @@ dataset:
 
 max_examples: 100
 ```
+
+The Hugging Face format requires the separate `datasets` package. Pin a
+revision or record an explicit dataset hash when reproducible dataset identity
+matters.
 
 ### Programmatically
 
@@ -143,18 +136,22 @@ dataset:
   format: jsonl
   path: data/large_dataset.jsonl
 
-max_examples: 50  # Only use first 50
+max_examples: 50  # Harness only: use the first 50
 ```
 
-Then run normally:
+Then run the harness:
 
 ```bash
-insidellms run config.yaml
+insidellms harness config.yaml
 ```
+
+`max_examples` is not applied by the current single-run config path. Slice the
+input file or use programmatic runner controls when a hard limit is required for
+`insidellms run`.
 
 ## Dataset Registry
 
-Register custom loaders:
+You can register custom loaders for programmatic lookup:
 
 ```python
 from insideLLMs.registry import dataset_registry
@@ -166,13 +163,9 @@ def load_my_format(path, **kwargs):
 dataset_registry.register("my_format", load_my_format)
 ```
 
-Then in config:
-
-```yaml
-dataset:
-  format: my_format
-  path: data/custom.xyz
-```
+The current CLI runtime loader still accepts only `csv`, `jsonl`, and `hf` in
+YAML. Load custom data in Python before passing it to a runner, or package it as
+one of the supported file formats.
 
 ## Input Structure
 
@@ -204,14 +197,13 @@ Check [Probes Catalog](../reference/Probes-Catalog.md) for each probe's expected
 ### Do
 
 -  Use JSONL for structured data
--  Include `expected` for evaluation
+-  Include the exact reference fields required by the selected probe
 -  Use meaningful field names
 -  Keep datasets version-controlled
 
 ### Don't
 
 -  Include sensitive data
--  Use very large inline datasets
 -  Rely on file modification times
 -  Use absolute paths in configs
 

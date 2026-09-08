@@ -9,12 +9,15 @@ import platform
 import shutil
 import sys
 import warnings
+from dataclasses import asdict
 from typing import Any, Optional
 
+from insideLLMs.models.catalogue import PROVIDER_CATALOGUE, ProviderSpec
 from insideLLMs.registry import (
     PLUGIN_ENTRYPOINT_GROUP,
     dataset_registry,
     ensure_builtins_registered,
+    get_builtin_model_factory,
     model_registry,
     probe_registry,
 )
@@ -29,18 +32,6 @@ from .._output import (
 )
 from .._parsing import _check_nltk_resource, _has_module, _module_version
 from .._record_utils import _json_default
-
-_BUILTIN_MODELS = {
-    "dummy",
-    "openai",
-    "anthropic",
-    "gemini",
-    "cohere",
-    "huggingface",
-    "llamacpp",
-    "ollama",
-    "vllm",
-}
 
 _BUILTIN_PROBES = {
     "logic",
@@ -58,26 +49,6 @@ _BUILTIN_PROBES = {
 }
 
 _BUILTIN_DATASETS = {"csv", "jsonl", "hf"}
-
-_MODEL_REQUIREMENTS: dict[str, dict[str, Any]] = {
-    "dummy": {"modules": [], "env": [], "notes": []},
-    "openai": {"modules": ["openai"], "env": ["OPENAI_API_KEY"], "notes": []},
-    "anthropic": {"modules": ["anthropic"], "env": ["ANTHROPIC_API_KEY"], "notes": []},
-    "gemini": {"modules": ["google.generativeai"], "env": ["GOOGLE_API_KEY"], "notes": []},
-    "cohere": {"modules": ["cohere"], "env": ["COHERE_API_KEY"], "notes": []},
-    "huggingface": {"modules": ["transformers"], "env": [], "notes": []},
-    "llamacpp": {"modules": ["llama_cpp"], "env": [], "notes": []},
-    "ollama": {
-        "modules": [],
-        "env": [],
-        "notes": ["Requires a reachable Ollama service for live generation."],
-    },
-    "vllm": {
-        "modules": [],
-        "env": [],
-        "notes": ["Requires a reachable vLLM endpoint for live generation."],
-    },
-}
 
 
 def _plugins_disabled_via_env() -> bool:
@@ -112,11 +83,18 @@ def _capability_status(
     modules: list[str],
     credential_env: list[str],
     notes: list[str],
+    credential_alternatives: tuple[tuple[str, ...], ...] = (),
 ) -> dict[str, Any]:
     missing_modules = sorted(module for module in modules if not _has_module(module))
     missing_credentials = sorted(
         env_name for env_name in credential_env if not bool(os.environ.get(env_name))
     )
+    missing_groups = [
+        group
+        for group in credential_alternatives
+        if not any(bool(os.environ.get(name)) for name in group)
+    ]
+    missing_credentials.extend(" or ".join(group) for group in missing_groups)
     status = "ready"
     if missing_modules and missing_credentials:
         status = "missing_dependencies_and_credentials"
@@ -137,10 +115,58 @@ def _capability_status(
     }
 
 
+def _provider_capability(name: str, spec: ProviderSpec | None) -> dict[str, Any]:
+    common = {"name": name, "live_verification": "not_checked", "budget_support": "unknown"}
+    if spec is None:
+        return {
+            **common,
+            "source": "plugin",
+            "metadata_status": "unknown",
+            "status": "unknown",
+            "dependency_ready": None,
+            "credential_ready": None,
+            "missing_dependencies": None,
+            "missing_credentials": None,
+            "dependencies": None,
+            "credential_alternatives": None,
+            "optional_credentials": None,
+            "external_requirements": None,
+            "declared_capabilities": None,
+            "prerequisites_ready": None,
+            "notes": ["No static requirement metadata for this registration."],
+        }
+    resolved = _capability_status(
+        modules=[dependency.module for dependency in spec.dependencies],
+        credential_env=[],
+        notes=[],
+        credential_alternatives=spec.credential_alternatives,
+    )
+    return {
+        **common,
+        **resolved,
+        "source": "builtin",
+        "metadata_status": "declared",
+        "budget_support": spec.budget_support,
+        "prerequisites_ready": resolved["dependency_ready"] and resolved["credential_ready"],
+        "dependencies": [
+            {
+                **asdict(dependency),
+                "available": dependency.module not in resolved["missing_dependencies"],
+            }
+            for dependency in spec.dependencies
+        ],
+        "credential_alternatives": [list(group) for group in spec.credential_alternatives],
+        "optional_credentials": list(spec.optional_credentials),
+        "external_requirements": list(spec.external_requirements),
+        "declared_capabilities": asdict(spec.capabilities),
+        "notes": list(spec.external_requirements),
+    }
+
+
 def _build_capabilities(checks: list[dict[str, Any]]) -> dict[str, Any]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        ensure_builtins_registered()
+        ensure_builtins_registered(load_plugins=False)
 
     model_names = sorted(model_registry.list())
     probe_names = sorted(probe_registry.list())
@@ -148,21 +174,13 @@ def _build_capabilities(checks: list[dict[str, Any]]) -> dict[str, Any]:
 
     model_capabilities: list[dict[str, Any]] = []
     for model_name in model_names:
-        requirements = _MODEL_REQUIREMENTS.get(
-            model_name, {"modules": [], "env": [], "notes": ["No static requirement metadata."]}
-        )
-        resolved = _capability_status(
-            modules=list(requirements.get("modules", [])),
-            credential_env=list(requirements.get("env", [])),
-            notes=list(requirements.get("notes", [])),
-        )
-        model_capabilities.append(
-            {
-                "name": model_name,
-                "source": "builtin" if model_name in _BUILTIN_MODELS else "plugin",
-                **resolved,
-            }
-        )
+        # Names alone are insufficient: plugins can replace builtin registrations.
+        spec = PROVIDER_CATALOGUE.get(model_name)
+        if spec is not None and (
+            model_registry.get_factory(model_name) is not get_builtin_model_factory(model_name)
+        ):
+            spec = None
+        model_capabilities.append(_provider_capability(model_name, spec))
 
     probe_capabilities = [
         {
@@ -236,7 +254,7 @@ def _build_capabilities(checks: list[dict[str, Any]]) -> dict[str, Any]:
         {"name": "schema_validate", "available": _ok("pydantic"), "requires": ["pydantic"]},
     ]
 
-    plugin_model_names = [name for name in model_names if name not in _BUILTIN_MODELS]
+    plugin_model_names = [item["name"] for item in model_capabilities if item["source"] == "plugin"]
     plugin_probe_names = [name for name in probe_names if name not in _BUILTIN_PROBES]
     plugin_dataset_names = [name for name in dataset_names if name not in _BUILTIN_DATASETS]
 
@@ -268,7 +286,8 @@ def _print_capabilities_summary(capabilities: dict[str, Any]) -> None:
     models = capabilities.get("models", [])
     ready_models = [m for m in models if m.get("status") == "ready"]
     blocked_models = [m for m in models if m.get("status") != "ready"]
-    print_key_value("Models (ready/total)", f"{len(ready_models)}/{len(models)}")
+    print_key_value("Models (prerequisites ready/total)", f"{len(ready_models)}/{len(models)}")
+    print_info("Live provider verification: not checked.")
     for item in blocked_models:
         print_warning(f"model:{item.get('name')} ({item.get('status')})")
 
@@ -302,8 +321,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     add_check(name="platform", ok=True, hint=platform.platform())
     add_check(name="insideLLMs", ok=True, hint=_module_version("insideLLMs"))
 
-    # Optional validation/schema tooling
-    add_check(name="pydantic", ok=_has_module("pydantic"), hint='pip install ".[dev]"')
+    # Validation is part of the base package contract.
+    add_check(name="pydantic", ok=_has_module("pydantic"), hint="reinstall insideLLMs")
 
     # NLP extras
     add_check(name="nltk", ok=_has_module("nltk"), hint='pip install ".[nlp]"')

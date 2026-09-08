@@ -110,6 +110,27 @@ class TestTruncateIncompleteJsonl:
         _truncate_incomplete_jsonl(p)
         assert p.read_bytes() == b""
 
+    def test_single_valid_record_without_newline_is_preserved(self, tmp_path):
+        from insideLLMs.runtime._artifact_utils import _truncate_incomplete_jsonl
+
+        p = tmp_path / "single.jsonl"
+        p.write_bytes(b'{"a":1}')
+
+        _truncate_incomplete_jsonl(p)
+
+        assert p.read_bytes() == b'{"a":1}\n'
+
+    def test_valid_final_record_without_newline_is_preserved(self, tmp_path):
+        from insideLLMs.runtime._artifact_utils import _read_jsonl_records
+
+        p = tmp_path / "records.jsonl"
+        p.write_bytes(b'{"a":1}\n{"b":2}')
+
+        records = _read_jsonl_records(p, truncate_incomplete=True)
+
+        assert records == [{"a": 1}, {"b": 2}]
+        assert p.read_bytes() == b'{"a":1}\n{"b":2}\n'
+
 
 class TestReadJsonlRecords:
     """Tests for _read_jsonl_records."""

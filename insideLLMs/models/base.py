@@ -1763,6 +1763,8 @@ class ModelWrapper:
                     self._cache[cache_key] = result
                 return result
             except Exception as e:
+                if getattr(e, "retryable", None) is False:
+                    raise
                 last_error = e
                 if attempt < self._max_retries - 1:
                     time.sleep(self._retry_delay * (attempt + 1))

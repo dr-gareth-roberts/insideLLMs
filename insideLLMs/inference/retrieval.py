@@ -34,6 +34,8 @@ class RetrievalItem(Protocol[DocumentT_co]):
 
 @dataclass(frozen=True)
 class AssembledEvidence:
+    """Budgeted retrieval context with source order and reranking scores."""
+
     context: str
     source_ids: tuple[str, ...]
     reranked_scores: dict[str, float]
@@ -104,6 +106,8 @@ async def rerank_and_assemble(
         group_counts[group] = group_counts.get(group, 0) + 1
 
     if len(selected) > 2:
+        # Keep the strongest document first and the runner-up last to give both
+        # high-scoring sources boundary positions in the final prompt.
         ordered = [selected[0], *selected[2:], selected[1]]
     else:
         ordered = selected

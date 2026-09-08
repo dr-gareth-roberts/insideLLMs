@@ -9,6 +9,7 @@ RUN_ARGS_RAW="${INPUT_RUN_ARGS:-}"
 DIFF_ARGS_RAW="${INPUT_DIFF_ARGS:-}"
 FAIL_ON_CHANGES="${INPUT_FAIL_ON_CHANGES:-true}"
 EVENT_PATH="${GITHUB_EVENT_PATH:-}"
+ACTION_PATH="${INSIDELLMS_ACTION_PATH:-${WORKSPACE}}"
 
 BASELINE_SHA=""
 IS_FORK_PR="false"
@@ -69,9 +70,38 @@ BASE_WORKTREE="${RUNNER_TEMP:-/tmp}/insidellms-base-${GITHUB_RUN_ID:-local}-${RA
 BASE_RUN_DIR="${RUNNER_TEMP:-/tmp}/insidellms-run-base-${GITHUB_RUN_ID:-local}-${RANDOM}"
 HEAD_RUN_DIR="${RUNNER_TEMP:-/tmp}/insidellms-run-head-${GITHUB_RUN_ID:-local}-${RANDOM}"
 DIFF_JSON="${RUNNER_TEMP:-/tmp}/insidellms-diff-${GITHUB_RUN_ID:-local}-${RANDOM}.json"
+REPORT_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/insidellms-pr-report.XXXXXX")"
+PR_REPORT_JSON="${REPORT_DIR}/pr-report.json"
+DIFF_EXIT_CODE=1
 
 cleanup() {
+  local script_exit=$?
+  if [[ ! -f "${DIFF_JSON}" ]]; then
+    python - "${DIFF_JSON}" <<'PY'
+import json
+import pathlib
+import sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({"error": "Harness or diff did not complete"}))
+PY
+  fi
+  if [[ -n "${EVENT_PATH}" && -f "${EVENT_PATH}" ]]; then
+    python "${ACTION_PATH}/scripts/github_action_pr_report.py" \
+      --event "${EVENT_PATH}" --diff "${DIFF_JSON}" --output "${PR_REPORT_JSON}" \
+      --exit-code "${DIFF_EXIT_CODE}" || echo "Unable to build safe PR report" >&2
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "diff_json=${DIFF_JSON}"
+      echo "baseline_run_dir=${BASE_RUN_DIR}"
+      echo "candidate_run_dir=${HEAD_RUN_DIR}"
+      echo "diff_exit_code=${DIFF_EXIT_CODE}"
+      echo "baseline_commit=${BASELINE_COMMIT:-}"
+      echo "is_fork_pr=${IS_FORK_PR}"
+      echo "pr_report_json=${PR_REPORT_JSON}"
+    } >>"${GITHUB_OUTPUT}"
+  fi
   git -C "${WORKSPACE}" worktree remove --force "${BASE_WORKTREE}" >/dev/null 2>&1 || true
+  return "${script_exit}"
 }
 trap cleanup EXIT
 
@@ -127,6 +157,7 @@ if [[ -n "${RUN_ARGS_RAW}" ]]; then
   RUN_ARGS=(${RUN_ARGS_RAW})
 fi
 
+BASELINE_EXIT_CODE=0
 (
   cd "${BASE_WORKTREE}"
   python -m insideLLMs.cli harness \
@@ -135,9 +166,10 @@ fi
     --overwrite \
     --skip-report \
     "${RUN_ARGS[@]}"
-)
+) || BASELINE_EXIT_CODE=$?
 
 python -m pip install -e "${WORKSPACE}${EXTRA_SPEC}"
+CANDIDATE_EXIT_CODE=0
 (
   cd "${WORKSPACE}"
   python -m insideLLMs.cli harness \
@@ -146,7 +178,15 @@ python -m pip install -e "${WORKSPACE}${EXTRA_SPEC}"
     --overwrite \
     --skip-report \
     "${RUN_ARGS[@]}"
-)
+) || CANDIDATE_EXIT_CODE=$?
+
+# Inspect the records independently: older baseline versions can exit zero even
+# when every provider call failed. Preserve both runs for diagnosis in CI.
+if ! python "${ACTION_PATH}/scripts/github_action_health.py" \
+  "${BASE_RUN_DIR}" "${HEAD_RUN_DIR}" --output "${DIFF_JSON}" \
+  --baseline-exit "${BASELINE_EXIT_CODE}" --candidate-exit "${CANDIDATE_EXIT_CODE}"; then
+  exit 0
+fi
 
 DIFF_ARGS=()
 if [[ -n "${DIFF_ARGS_RAW}" ]]; then
@@ -163,27 +203,10 @@ DIFF_CMD=(
   "${DIFF_ARGS[@]}"
 )
 if [[ "${FAIL_ON_CHANGES}" == "true" ]]; then
-  DIFF_CMD+=(--fail-on-changes)
+  DIFF_CMD+=(--fail-on-any-difference)
 fi
 
 set +e
 "${DIFF_CMD[@]}"
 DIFF_EXIT_CODE=$?
 set -e
-
-if [[ ! -f "${DIFF_JSON}" ]]; then
-  cat >"${DIFF_JSON}" <<EOF
-{"error":"insidellms diff did not produce JSON output","exit_code":${DIFF_EXIT_CODE}}
-EOF
-fi
-
-if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  {
-    echo "diff_json=${DIFF_JSON}"
-    echo "baseline_run_dir=${BASE_RUN_DIR}"
-    echo "candidate_run_dir=${HEAD_RUN_DIR}"
-    echo "diff_exit_code=${DIFF_EXIT_CODE}"
-    echo "baseline_commit=${BASELINE_COMMIT}"
-    echo "is_fork_pr=${IS_FORK_PR}"
-  } >>"${GITHUB_OUTPUT}"
-fi

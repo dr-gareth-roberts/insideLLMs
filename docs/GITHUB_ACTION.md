@@ -1,7 +1,9 @@
-# insideLLMs GitHub Action (`dr-gareth-roberts/insideLLMs@v1`)
+# insideLLMs GitHub Action
 
-Use the first-class action to run deterministic base-vs-head behavioural diffing and post pull
-request comments automatically.
+Run deterministic base-vs-head behavioural diffing with read-only permissions.
+Sticky PR comments use a separate trusted workflow. Until a published action
+version has been verified, use a full reviewed commit SHA; the placeholder below
+must be replaced before use. Development within this repository can use `uses: ./`.
 
 ## Quick Start
 
@@ -17,24 +19,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: dr-gareth-roberts/insideLLMs@v1
+          persist-credentials: false
+      - uses: dr-gareth-roberts/insideLLMs@<reviewed-full-commit-sha>
         with:
           harness-config: ci/harness.yaml
-          comment-on-forks: "false"
 ```
 
 ## What It Does
 
 1. Resolves baseline commit from `baseline-ref`, then `pull_request.base.sha`, then `GITHUB_BASE_REF`, then `main`.
 2. Runs `insidellms harness` on baseline code and candidate code.
-3. Runs `insidellms diff --format json`.
-4. Upserts a sticky PR comment with summary counts and top changed records.
-5. Fails the workflow when diff gating returns non-zero.
+3. Checks execution status, counts, and completion in both persisted runs, including old baselines.
+4. Runs `insidellms diff --format json --fail-on-any-difference` by default.
+5. Fails the workflow on unhealthy runs or differences, retaining diagnostic artefacts.
+6. Emits a small allowlisted report for a separate trusted PR-comment workflow.
 
 ## Inputs
 
@@ -44,28 +46,37 @@ jobs:
 - `install-extras` (default: empty): extras for `pip install -e` (e.g., `dev,nlp`).
 - `run-args` (default: empty): extra args forwarded to both harness runs.
 - `diff-args` (default: empty): extra args forwarded to diff.
-- `fail-on-changes` (default: `true`): include `--fail-on-changes`.
-- `post-pr-comment` (default: `true`): create/update PR comment.
-- `comment-on-forks` (default: `false`): skip PR comments for forked PRs unless explicitly enabled.
-- `github-token` (default: `${{ github.token }}`): token for comment permissions.
+- `fail-on-changes` (default: `true`): include `--fail-on-any-difference`, including improvements and trace changes.
+- `post-pr-comment` and `comment-on-forks` (default: `false`): deprecated; emit a migration warning when enabled but do not post comments.
+- The old `github-token` input is removed. Do not pass write tokens to evaluation.
 
 ## Outputs
 
-- `diff-json`: generated `diff.json` path.
+- `diff-json`: diff report or run-health error report path.
 - `baseline-run-dir`: baseline run directory path.
 - `candidate-run-dir`: candidate run directory path.
-- `diff-exit-code`: exit code returned by `insidellms diff`.
+- `diff-exit-code`: `1` for unhealthy runs or invalid evidence; otherwise the diff gate exit code.
 - `baseline-commit`: resolved baseline commit used for comparison.
 - `is-fork-pr`: whether pull request head repo is a fork.
-- `comment-status`: comment result (`created`, `updated`, `skipped-fork`, `skipped-permissions`, etc).
+- `comment-status`: `disabled-inline-commenting`.
+- `pr-report-json`: path to the small fixed-field report consumed by the trusted workflow.
 
-## Fork Pull Requests
+## PR comments and fork pull requests
 
-- By default, forked PRs run the diff gate but skip PR comments (`comment-on-forks: false`).
-- If you enable `comment-on-forks: true`, the action still degrades gracefully when token permissions are insufficient (for example, `Resource not accessible by integration`).
-- A ready-to-copy workflow exists at `.github/workflows/behavioural-diff-example.yml`.
+The evaluation workflow executes candidate code, including fork code, with
+`contents: read`, no provider secrets, and checkout credential persistence disabled.
+It must never use `pull_request_target` or a write-capable token.
+
+Copy the paired [evaluation](../.github/workflows/diff-gate.yml) and
+[comment](../.github/workflows/diff-gate-comment.yml) workflows to retain comments.
+The trusted `workflow_run` workflow must exist on the default branch. It downloads
+one size-limited report, validates fixed fields against the triggering PR and head
+commit, and renders integer counts. It never extracts executable artefacts, checks
+out candidate code, or runs candidate scripts. Stale or ambiguous PR reports are
+skipped. See [CI setup](../ci/README.md) for migration details.
 
 ## Recommended Trigger Pattern
 
-Use `pull_request` with `fetch-depth: 0` for safe base-vs-head execution and deterministic diffs.
-This avoids running untrusted fork code in a privileged `pull_request_target` context.
+Use `pull_request` with `fetch-depth: 0` for base-vs-head execution. Select artefact
+retention and access appropriate to your dataset: configuration credentials are
+scrubbed, but model prompts and responses can still contain sensitive information.

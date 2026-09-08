@@ -37,7 +37,7 @@ Module Constants
 DEFAULT_SCHEMA_VERSION : str
     The current default schema version used for output validation.
     This version is applied when no explicit version is specified
-    during validation. Currently set to "1.0.1".
+    during validation. Currently set to "1.0.2".
 
 Examples
 --------
@@ -45,7 +45,7 @@ Accessing the default schema version:
 
     >>> from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
     >>> DEFAULT_SCHEMA_VERSION
-    '1.0.1'
+    '1.0.2'
 
     >>> # The version follows SemVer format
     >>> parts = DEFAULT_SCHEMA_VERSION.split('.')
@@ -95,7 +95,7 @@ Embedding version in output files for traceability:
     >>> # Later, deserialize and check version
     >>> loaded = json.loads(serialized)
     >>> loaded["schema_version"]
-    '1.0.1'
+    '1.0.2'
 
 Comparing versions for migration decisions:
 
@@ -123,7 +123,7 @@ Using version in configuration files:
     ... }
     >>> # The config can now be validated against the correct schema
     >>> config["probe_config"]["schema_version"]
-    '1.0.1'
+    '1.0.2'
 
 Logging version information for debugging:
 
@@ -132,7 +132,7 @@ Logging version information for debugging:
     >>> logger = logging.getLogger(__name__)
     >>> # In practice, this logs version info at startup
     >>> log_msg = f"Using schema version: {DEFAULT_SCHEMA_VERSION}"
-    >>> "1.0.1" in log_msg
+    >>> "1.0.2" in log_msg
     True
 
 See Also
@@ -173,6 +173,10 @@ Version History
     - Defaults to False (an incomplete run is assumed until explicitly marked complete)
     - Enables better run state tracking in long-running probes
 
+1.0.2 : 2026-09-05
+    Added optional ``scores`` and ``primary_metric`` to runner items, including
+    nested RunnerOutput items. Historical contracts remain unchanged.
+
 Warning
 -------
 Do not modify ``DEFAULT_SCHEMA_VERSION`` without updating the corresponding
@@ -206,7 +210,7 @@ __all__ = ["DEFAULT_SCHEMA_VERSION"]
 #:         str
 #:
 #:     Value:
-#:         "1.0.1"
+#:         "1.0.2"
 #:
 #:     Format:
 #:         MAJOR.MINOR.PATCH where each component is a non-negative integer.
@@ -216,13 +220,13 @@ __all__ = ["DEFAULT_SCHEMA_VERSION"]
 #:
 #:             >>> from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 #:             >>> DEFAULT_SCHEMA_VERSION
-#:             '1.0.1'
+#:             '1.0.2'
 #:
 #:         Parsing the version components::
 #:
 #:             >>> major, minor, patch = DEFAULT_SCHEMA_VERSION.split('.')
 #:             >>> int(major), int(minor), int(patch)
-#:             (1, 0, 1)
+#:             (1, 0, 2)
 #:
 #:         Using with validation::
 #:
@@ -248,9 +252,10 @@ __all__ = ["DEFAULT_SCHEMA_VERSION"]
 #:     Version History:
 #:         - 1.0.0: Initial stable release with core schemas (ProbeResult, RunManifest)
 #:         - 1.0.1: Added ``run_completed`` field to RunManifest for completion tracking
+#:         - 1.0.2: Added explicit behavioural scores to runner items
 #:
 #:     Warning:
 #:         Changing this value without corresponding schema registry updates will
 #:         cause :exc:`~insideLLMs.schemas.exceptions.SchemaVersionError` during
 #:         validation operations.
-DEFAULT_SCHEMA_VERSION: str = "1.0.1"
+DEFAULT_SCHEMA_VERSION: str = "1.0.2"

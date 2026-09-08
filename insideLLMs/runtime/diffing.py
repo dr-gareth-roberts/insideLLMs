@@ -8,6 +8,7 @@ and library users can compose on top of the same core behavior.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
@@ -71,6 +72,7 @@ class DiffGatePolicy:
     fail_on_trace_violations: bool = False
     fail_on_trace_drift: bool = False
     fail_on_trajectory_drift: bool = False
+    fail_on_any_difference: bool = False
 
 
 def _trim_text(text: str, limit: int = 200) -> str:
@@ -99,7 +101,9 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
     )
     replicate_key = custom.get("replicate_key")
     example_id = record.get("example_id") or harness.get("example_index")
-    stable_id = record.get("messages_hash") or _fingerprint_value(record.get("input"))
+    stable_id = record.get("messages_hash") or (
+        _fingerprint_value(record["input"]) if "input" in record else None
+    )
     chosen_id = replicate_key or stable_id or example_id or "0"
     return (str(model_id), str(probe_id), str(chosen_id))
 
@@ -502,10 +506,32 @@ def _build_index(
     index: dict[tuple[str, str, str], dict[str, Any]] = {}
     duplicates = 0
     for record in records:
+        scores = record.get("scores")
+        if isinstance(scores, dict):
+            for metric, value in scores.items():
+                if isinstance(value, float) and not math.isfinite(value):
+                    raise ValueError(f"Non-finite score for metric {metric!r}")
+        primary = record.get("primary_metric")
+        # A declared primary score is evidence, not optional decoration. Null
+        # can be a non-finite value normalized by a legacy serializer.
+        if primary is not None:
+            if (
+                not isinstance(primary, str)
+                or not primary
+                or not isinstance(scores, dict)
+                or primary not in scores
+                or not _is_numeric_score(scores[primary])
+            ):
+                raise ValueError("Declared primary_metric must name a finite numeric score")
+        elif (
+            isinstance(scores, dict)
+            and "score" in scores
+            and not _is_numeric_score(scores["score"])
+        ):
+            raise ValueError("Legacy 'score' must be a finite numeric score")
         key = _record_key(record)
         if key in index:
-            duplicates += 1
-            continue
+            raise ValueError(f"Duplicate record identity: {key!r}")
         index[key] = record
     return index, duplicates
 
@@ -765,8 +791,10 @@ def build_diff_computation(
 
         trace_fp_a = _trace_fingerprint(record_a)
         trace_fp_b = _trace_fingerprint(record_b)
-        if trace_fp_a and trace_fp_b and trace_fp_a != trace_fp_b:
-            trace_drifts.append((*label, f"trace {trace_fp_a[:12]} -> {trace_fp_b[:12]}"))
+        if trace_fp_a != trace_fp_b:
+            before = trace_fp_a[:12] if trace_fp_a else "absent"
+            after = trace_fp_b[:12] if trace_fp_b else "absent"
+            trace_drifts.append((*label, f"trace {before} -> {after}"))
             trace_drifts_json.append(
                 {
                     **identity,
@@ -982,6 +1010,15 @@ def compute_diff_exit_code(
 ) -> int:
     """Compute canonical diff gating exit code from a diff computation."""
     policy = policy or DiffGatePolicy()
+    if policy.fail_on_any_difference and computation.has_differences:
+        return 2
+    if policy.fail_on_regressions and any(
+        change.get("kind") in {"metrics_not_comparable", "metric_key_missing"}
+        for change in computation.diff_report.get("changes", [])
+    ):
+        # Missing or incompatible measurements cannot establish an absence of
+        # regressions, even if both model calls completed successfully.
+        return 1
     if policy.fail_on_regressions and computation.regressions:
         return 2
     if policy.fail_on_changes and (

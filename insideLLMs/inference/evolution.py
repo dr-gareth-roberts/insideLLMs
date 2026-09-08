@@ -40,6 +40,8 @@ class EvolutionCandidate:
 
 @dataclass(frozen=True)
 class GenerationRecord:
+    """Summary of one evaluated population generation."""
+
     generation: int
     candidate_ids: tuple[str, ...]
     best_id: str
@@ -48,6 +50,8 @@ class GenerationRecord:
 
 @dataclass(frozen=True)
 class EvolutionConfig:
+    """Deterministic population-search limits and random seed."""
+
     population_size: int
     elite_count: int = 1
     max_generations: int = 10
@@ -59,6 +63,8 @@ class EvolutionConfig:
 
 @dataclass(frozen=True)
 class EvolutionResult:
+    """Best artifact, final population, and provenance from an evolution run."""
+
     best: EvolutionCandidate
     population: tuple[EvolutionCandidate, ...]
     history: tuple[GenerationRecord, ...]

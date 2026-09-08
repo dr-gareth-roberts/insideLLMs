@@ -49,7 +49,7 @@ def _report_args(run_dir: Path, **kwargs):
 
 
 def test_cmd_info_dataset_branch_renders_examples_and_expected_output(capsys):
-    fake_stats = SimpleNamespace(total_count=2, categories=["general"], difficulties=["easy"])
+    fake_stats = SimpleNamespace(total_examples=2, categories=["general"], difficulties=["easy"])
     fake_dataset = SimpleNamespace(
         description="Fake dataset",
         category=SimpleNamespace(value="custom"),
@@ -133,6 +133,56 @@ def test_cmd_export_csv_and_latex(tmp_path):
     assert "\\begin{table}[h]" in latex_file.read_text()
 
 
+def test_cmd_export_latex_escapes_headers_and_truncated_cell_values(tmp_path):
+    special_header = r"head\{}$&#%_^~"
+    results = [
+        {
+            special_header: "\\input{owned}&$#%_^~ café\nnext\tend\x01",
+            "truncated": "12345678901234567890123456789&TAIL",
+            "controls": "a\r\nb\tc\x01d",
+        }
+    ]
+    input_file = tmp_path / "results.json"
+    output_file = tmp_path / "results.tex"
+    input_file.write_text(json.dumps(results), encoding="utf-8")
+
+    rc = cmd_export(_export_args(input=str(input_file), format="latex", output=str(output_file)))
+
+    assert rc == 0
+    assert output_file.read_text(encoding="utf-8").splitlines()[4:7] == [
+        (
+            r"head\textbackslash{}\{\}\$\&\#\%\_\textasciicircum{}"
+            r"\textasciitilde{} & truncated & controls \\"
+        ),
+        r"\hline",
+        (
+            r"\textbackslash{}input\{owned\}\&\$\#\%\_\textasciicircum{}"
+            r"\textasciitilde{} café next & 12345678901234567890123456789\&"
+            r" & a  b c d \\"
+        ),
+    ]
+
+
+def test_cmd_export_latex_keeps_twenty_row_cap_and_csv_literal_values(tmp_path):
+    results = [{"value": f"row_{index}&"} for index in range(21)]
+    input_file = tmp_path / "results.json"
+    latex_file = tmp_path / "results.tex"
+    csv_file = tmp_path / "results.csv"
+    input_file.write_text(json.dumps(results), encoding="utf-8")
+
+    rc_latex = cmd_export(
+        _export_args(input=str(input_file), format="latex", output=str(latex_file))
+    )
+    rc_csv = cmd_export(_export_args(input=str(input_file), format="csv", output=str(csv_file)))
+
+    assert rc_latex == 0
+    latex = latex_file.read_text(encoding="utf-8")
+    assert r"row\_19\&" in latex
+    assert r"row\_20\&" not in latex
+    assert rc_csv == 0
+    assert csv_file.read_text(encoding="utf-8").splitlines()[1:3] == ["row_0&", "row_1&"]
+
+
 def test_cmd_export_html_and_invalid_json_error_paths(tmp_path, capsys):
     valid_input = tmp_path / "results.json"
     valid_input.write_text(json.dumps([{"status": "success"}]))
@@ -204,6 +254,37 @@ def test_cmd_export_encrypt_wrong_format_writes_no_plaintext(tmp_path, monkeypat
     assert not output_file.exists()
 
 
+def test_cmd_export_invalid_encryption_key_leaves_no_plaintext(tmp_path, monkeypatch):
+    monkeypatch.setenv("INSIDELLMS_ENCRYPTION_KEY", "not-a-fernet-key")
+    input_file = tmp_path / "in.jsonl"
+    output_file = tmp_path / "out.jsonl"
+    input_file.write_text('{"secret":"secret-plaintext"}\n', encoding="utf-8")
+
+    rc = cmd_export(
+        _export_args(input=str(input_file), format="jsonl", output=str(output_file), encrypt=True)
+    )
+
+    assert rc == 1
+    assert not output_file.exists()
+    assert list(tmp_path.glob(f".{output_file.name}.*.tmp")) == []
+
+
+def test_cmd_export_encryption_failure_preserves_existing_output(tmp_path, monkeypatch):
+    monkeypatch.setenv("INSIDELLMS_ENCRYPTION_KEY", "not-a-fernet-key")
+    input_file = tmp_path / "in.jsonl"
+    output_file = tmp_path / "out.jsonl"
+    input_file.write_text('{"secret":"secret-plaintext"}\n', encoding="utf-8")
+    output_file.write_bytes(b"existing-encrypted-or-user-data\n")
+
+    rc = cmd_export(
+        _export_args(input=str(input_file), format="jsonl", output=str(output_file), encrypt=True)
+    )
+
+    assert rc == 1
+    assert output_file.read_bytes() == b"existing-encrypted-or-user-data\n"
+    assert list(tmp_path.glob(f".{output_file.name}.*.tmp")) == []
+
+
 def test_cmd_export_encrypt_without_key_fails(tmp_path, capsys):
     """--encrypt without encryption key env set returns 1."""
     input_file = tmp_path / "results.json"
@@ -250,9 +331,11 @@ def test_cmd_init_full_template_creates_yaml_and_sample_data(tmp_path, monkeypat
     assert rc == 0
     assert output_file.exists()
     content = output_file.read_text()
-    assert "benchmark:" in content
-    assert "tracking:" in content
-    assert "async:" in content
+    assert "runner:" in content
+    assert "determinism:" in content
+    assert "benchmark:" not in content
+    assert "tracking:" not in content
+    assert "async:" not in content
     assert "model_name: gpt-4" in content
 
     sample_data = tmp_path / "data" / "questions.jsonl"
@@ -273,7 +356,8 @@ def test_cmd_init_json_output_and_existing_sample_data_is_preserved(tmp_path, mo
 
     assert rc == 0
     payload = json.loads(output_file.read_text())
-    assert payload["tracking"]["backend"] == "local"
+    assert "tracking" not in payload
+    assert payload["config_version"] == "1"
     assert payload["model"]["args"] == {}
     assert sample_path.read_text() == '{"question": "Existing", "reference_answer": "Existing"}\n'
 
@@ -376,7 +460,12 @@ def test_cmd_report_uses_deterministic_generated_at_when_available(tmp_path):
     (run_dir / "records.jsonl").write_text("placeholder\n")
 
     records = [{"run_id": "run-1", "completed_at": "2024-01-02T00:00:00Z"}]
-    fake_html_report = MagicMock()
+
+    def write_fake_html_report(*args, save_path, **kwargs):
+        Path(save_path).write_text("<html>fake report</html>", encoding="utf-8")
+        return save_path
+
+    fake_html_report = MagicMock(side_effect=write_fake_html_report)
 
     with (
         patch("insideLLMs.cli.commands.report._read_jsonl_records", return_value=records),

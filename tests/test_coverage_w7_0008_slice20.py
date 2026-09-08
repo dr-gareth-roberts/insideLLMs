@@ -132,13 +132,20 @@ def test_config_loader_model_probe_paths() -> None:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-    # Force registry miss → direct import path (434-437)
+    # Force registry miss → direct import path (434-437).
+    # NOTE: use plain setattr, not patch.object(create=True) — mock's original-attribute
+    # lookup falls back to getattr(), which fires the package's PEP 562 lazy
+    # __getattr__ and imports the real provider SDK (ModuleNotFoundError on
+    # core-only installs).
     import insideLLMs.models as models_mod
 
     with patch.object(cl.model_registry, "get", side_effect=NotFoundError("x")):
-        with patch.object(models_mod, "OpenAIModel", _Stub, create=True):
+        setattr(models_mod, "OpenAIModel", _Stub)
+        try:
             m = cl._create_model_from_config({"type": "openai", "args": {"api_key": "k"}})
             assert isinstance(m, _Stub)
+        finally:
+            del models_mod.OpenAIModel
 
     # Force probe registry miss → probe_map return (530)
     with patch.object(cl.probe_registry, "get", side_effect=NotFoundError("x")):

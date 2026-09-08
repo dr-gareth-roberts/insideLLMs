@@ -126,6 +126,58 @@ def _get_documented_models(models_md_content: str) -> set[str]:
     return documented
 
 
+# =========================================================================
+# Public API Parity Checks
+# =========================================================================
+
+
+def _get_lazy_import_names() -> set[str]:
+    """Names resolvable via the package root's PEP 562 lazy-import map.
+
+    The ``_LAZY_IMPORTS`` mapping lives inside ``__getattr__`` in
+    ``insideLLMs/__init__.py`` (a local literal, not a module attribute), so
+    extract it by parsing the source instead of executing lazy imports — the
+    audit must run on core-only installs where provider SDKs are absent.
+    """
+    import ast
+
+    import insideLLMs
+
+    init_path = Path(insideLLMs.__file__)
+    tree = ast.parse(init_path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "_LAZY_IMPORTS"
+                for target in node.targets
+            )
+        ):
+            continue
+        if not isinstance(node.value, ast.Dict):
+            raise RuntimeError("_LAZY_IMPORTS must remain a literal dictionary for docs audit")
+        if not all(
+            isinstance(key, ast.Constant) and isinstance(key.value, str) for key in node.value.keys
+        ):
+            raise RuntimeError("_LAZY_IMPORTS keys must remain literal strings for docs audit")
+        return {
+            key.value
+            for key in node.value.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+
+    raise RuntimeError("Unable to locate _LAZY_IMPORTS for docs audit")
+
+
+def _get_exported_api_names() -> set[str]:
+    """All public names exported by the insideLLMs package (eager + lazy)."""
+    import insideLLMs
+
+    exported = set(getattr(insideLLMs, "__all__", ()))
+    exported |= _get_lazy_import_names()
+    return {name for name in exported if not name.startswith("_")}
+
+
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -136,6 +188,15 @@ def _extract_section(markdown: str, heading: str) -> str | None:
     )
     match = pattern.search(markdown)
     return match.group(1) if match else None
+
+
+def _get_documented_api_names(api_reference: str) -> set[str]:
+    """Extract exact first-column names from the Public API Index table."""
+    section = _extract_section(api_reference, "Public API Index")
+    if section is None:
+        return set()
+    row_pattern = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+    return set(row_pattern.findall(section))
 
 
 def _cli_options_for_command(command: str) -> set[str]:
@@ -192,6 +253,7 @@ def main() -> int:
     diff_options = _cli_options_for_command("diff")
 
     harness_expected = [
+        "--dry-run",
         "--profile",
         "--explain",
         "--active-red-team",
@@ -231,7 +293,7 @@ def main() -> int:
         "--active-red-team",
         "--fail-on-trajectory-drift",
         "shadow.fastapi",
-        "dr-gareth-roberts/insideLLMs@v1",
+        "dr-gareth-roberts/insideLLMs@<reviewed-full-commit-sha>",
     ]:
         if token not in readme:
             failures.append(f"README.md missing expected token: {token}")
@@ -275,7 +337,6 @@ def main() -> int:
         "--trace-aware",
         "insidellms doctor --verbose",
         "insidellms run config.yaml --debug",
-        "--dry-run",
         "--summary-only",
         "--model-override",
         "--max-examples",
@@ -381,6 +442,18 @@ def main() -> int:
             failures.append(f"wiki/reference/Models-Catalog.md missing documentation for: {model}")
     else:
         failures.append("wiki/reference/Models-Catalog.md not found")
+
+    # =========================================================================
+    # Public API Parity Check
+    # =========================================================================
+    exported_api_names = _get_exported_api_names()
+    documented_api_names = _get_documented_api_names(api_reference)
+    if not documented_api_names:
+        failures.append("API_REFERENCE.md missing or empty '## Public API Index' table")
+    for name in sorted(exported_api_names - documented_api_names):
+        failures.append(f"API_REFERENCE.md missing Public API Index row for: {name}")
+    for name in sorted(documented_api_names - exported_api_names):
+        failures.append(f"API_REFERENCE.md has stale Public API Index row for: {name}")
 
     if failures:
         print("Documentation audit issues detected:", file=sys.stderr)

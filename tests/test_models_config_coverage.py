@@ -1066,130 +1066,21 @@ class TestConfigNoPydanticFallback:
             sys.modules.pop("insideLLMs.config", None)
             import insideLLMs.config  # noqa: F401
 
-    def test_fallback_classes_loaded(self):
-        """Test that fallback classes load when pydantic is unavailable."""
+    def test_missing_pydantic_fails_closed(self):
+        """A broken base install must never silently disable config validation."""
         import importlib
         import sys
 
-        saved_modules = {}
-        for mod_name in list(sys.modules):
-            if mod_name == "pydantic" or mod_name.startswith("pydantic."):
-                saved_modules[mod_name] = sys.modules.pop(mod_name)
         saved_config = sys.modules.pop("insideLLMs.config", None)
-        sys.modules["pydantic"] = None  # type: ignore[assignment]
-
+        saved_pydantic = sys.modules.get("pydantic")
+        sys.modules["pydantic"] = None
         try:
-            import insideLLMs.config as cfg
-
-            importlib.reload(cfg)
-
-            assert cfg.PYDANTIC_AVAILABLE is False
-
-            # Test fallback BaseModel
-            class TestModel(cfg.BaseModel):
-                pass
-
-            obj = TestModel(x=1, y="hello")
-            assert getattr(obj, "x") == 1
-            assert getattr(obj, "y") == "hello"
-            dumped = obj.model_dump()
-            assert dumped == {"x": 1, "y": "hello"}
-
-            # Test fallback Field
-            result = cfg.Field(default=42)
-            assert result == 42
-
-            # Test fallback field_validator
-            @cfg.field_validator("name")
-            def my_validator(v):
-                return v
-
-            assert callable(my_validator)
-
-            # Test fallback model_validator
-            @cfg.model_validator(mode="after")
-            def my_model_validator(self):
-                return self
-
-            assert callable(my_model_validator)
-
-            # Test fallback ModelConfig
-            mc = cfg.ModelConfig(provider="openai", model_id="gpt-4")
-            assert mc.provider == "openai"
-            assert mc.model_id == "gpt-4"
-            assert mc.name == "gpt-4"  # defaults to model_id
-            assert mc.temperature == 0.7
-            assert mc.max_tokens is None
-            assert mc.timeout == 30.0
-            assert mc.max_retries == 3
-            assert mc.extra_params == {}
-
-            # Test fallback ProbeConfig
-            pc = cfg.ProbeConfig(type="logic")
-            assert pc.type == "logic"
-            assert pc.name == "logic"  # defaults to type
-            assert pc.params == {}
-            assert pc.timeout_per_item == 30.0
-            assert pc.stop_on_error is False
-
-            # Test fallback DatasetConfig
-            dc = cfg.DatasetConfig(source="inline", data=[{"q": "test"}])
-            assert dc.source == "inline"
-            assert dc.data == [{"q": "test"}]
-            assert dc.split == "test"
-            assert dc.shuffle is False
-
-            # Test fallback RunnerConfig
-            rc = cfg.RunnerConfig()
-            assert rc.concurrency == 1
-            assert rc.output_dir == "output"
-            assert rc.output_formats == ["json", "markdown"]
-            assert rc.progress_bar is True
-            assert rc.verbose is False
-
-            # Test fallback ExperimentConfig
-            ec = cfg.ExperimentConfig(
-                name="Test",
-                model=mc,
-                probe=pc,
-                dataset=dc,
-                tags=["a", "b"],
-                metadata={"k": "v"},
-            )
-            assert ec.name == "Test"
-            assert ec.model is mc
-            assert ec.runner.concurrency == 1
-            assert ec.tags == ["a", "b"]
-            assert ec.metadata == {"k": "v"}
-
-            # Test _require_pydantic raises
-            with pytest.raises(ImportError, match="Pydantic is required"):
-                cfg._require_pydantic()
-
-            # Test _parse_config_dict
-            data = {
-                "name": "Parsed",
-                "model": {"provider": "dummy", "model_id": "d"},
-                "probe": {"type": "logic"},
-                "dataset": {"source": "inline", "data": [{"q": "t"}]},
-                "runner": {"concurrency": 3},
-            }
-            parsed = cfg._parse_config_dict(data)
-            assert parsed.name == "Parsed"
-            assert parsed.runner.concurrency == 3
-
-            # Test create_example_config
-            example = cfg.create_example_config()
-            assert example.name == "Example Experiment"
-            assert example.model.model_id == "gpt-4"
-
-            # Test validate_config with dict
-            validated = cfg.validate_config(data)
-            assert validated.name == "Parsed"
-
-            # Test validate_config with ExperimentConfig passthrough
-            result = cfg.validate_config(ec)
-            assert result is ec
-
+            with pytest.raises(ModuleNotFoundError, match="pydantic"):
+                importlib.import_module("insideLLMs.config")
         finally:
-            self._restore_modules(saved_modules, saved_config)
+            if saved_pydantic is None:
+                sys.modules.pop("pydantic", None)
+            else:
+                sys.modules["pydantic"] = saved_pydantic
+            if saved_config is not None:
+                sys.modules["insideLLMs.config"] = saved_config

@@ -7,8 +7,14 @@ from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from time import perf_counter
-from typing import Protocol
+from typing import Literal, Protocol
 
+from insideLLMs.inference._limits import (
+    ComputeMismatchError,
+    DispatchEvidence,
+    dispatch_scope,
+    validate_output_limit_preflight,
+)
 from insideLLMs.inference.client import InferenceClient
 from insideLLMs.inference.schemas import InferenceRequest, InferenceResult, Spend
 
@@ -41,10 +47,6 @@ VariantRunner = Callable[[InferenceRequest], Awaitable[Sequence[InferenceResult]
 SingleResultRunner = Callable[[InferenceRequest], Awaitable[InferenceResult]]
 
 
-class ComputeMismatchError(ValueError):
-    """Raised when paired variants did not consume comparable model compute."""
-
-
 @dataclass(frozen=True)
 class ComputeProfile:
     """Declared generation context used to establish compute equivalence.
@@ -75,10 +77,12 @@ class ComputeProfile:
     executor: object | None = field(default=None, compare=False, repr=False)
 
     def __post_init__(self) -> None:
-        if self.generated_calls < 1:
-            raise ValueError("generated_calls must be positive")
-        if self.max_output_tokens_per_call < 1:
-            raise ValueError("max_output_tokens_per_call must be positive")
+        for name, value in (
+            ("generated_calls", self.generated_calls),
+            ("max_output_tokens_per_call", self.max_output_tokens_per_call),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{name} must be a finite positive integer")
 
     @property
     def max_output_tokens(self) -> int:
@@ -105,8 +109,18 @@ def one_shot_baseline(
 
     if samples < 1:
         raise ValueError("samples must be positive")
+    validate_output_limit_preflight(
+        client.proposer.output_limit,
+        dict(client.proposer.generation_kwargs),
+        max_output_tokens_per_call,
+    )
 
     async def run(request: InferenceRequest) -> Sequence[InferenceResult]:
+        validate_output_limit_preflight(
+            client.proposer.output_limit,
+            dict(client.proposer.generation_kwargs),
+            max_output_tokens_per_call,
+        )
         return await client.generate_many(request, n=samples)
 
     return MatchedComputeVariant(
@@ -166,6 +180,8 @@ class MatchedComputeCase:
     strategy_models: tuple[str, ...]
     baseline_wall_seconds: float
     strategy_wall_seconds: float
+    baseline_output_tokens_available: bool = False
+    strategy_output_tokens_available: bool = False
 
     @property
     def baseline_score(self) -> float:
@@ -226,6 +242,8 @@ class MatchedComputeReport:
     strategy_spend: Spend
     order_balanced: bool
     regressions_by_subset: dict[str, int] = field(default_factory=dict)
+    declared_limits_match: bool = True
+    output_limit_assurance: Literal["verified", "unknown"] = "unknown"
 
     @property
     def mean_baseline_score(self) -> float:
@@ -271,7 +289,15 @@ class MatchedComputeReport:
 
     @property
     def output_tokens_matched(self) -> bool:
-        return self.baseline_compute.max_output_tokens == self.strategy_compute.max_output_tokens
+        return self.declared_limits_match and self.output_limit_assurance == "verified"
+
+    @property
+    def baseline_output_tokens_available(self) -> bool:
+        return all(case.baseline_output_tokens_available for case in self.cases)
+
+    @property
+    def strategy_output_tokens_available(self) -> bool:
+        return all(case.strategy_output_tokens_available for case in self.cases)
 
     def _wall_values(self, side: str) -> tuple[float, ...]:
         return tuple(getattr(case, f"{side}_wall_seconds") for case in self.cases)
@@ -331,6 +357,8 @@ class MatchedComputeReport:
 
     @property
     def output_token_ratio(self) -> float | None:
+        if not self.baseline_output_tokens_available or not self.strategy_output_tokens_available:
+            return None
         return _ratio(self.strategy_spend.output_tokens, self.baseline_spend.output_tokens)
 
     @property
@@ -389,9 +417,22 @@ class MatchedComputeReport:
                     "strategy_to_baseline_ratio": self.input_token_ratio,
                 },
                 "output_tokens": {
-                    "baseline": self.baseline_spend.output_tokens,
-                    "strategy": self.strategy_spend.output_tokens,
-                    "strategy_to_baseline_ratio": self.output_token_ratio,
+                    "baseline": (
+                        self.baseline_spend.output_tokens
+                        if self.baseline_output_tokens_available
+                        else None
+                    ),
+                    "strategy": (
+                        self.strategy_spend.output_tokens
+                        if self.strategy_output_tokens_available
+                        else None
+                    ),
+                    "strategy_to_baseline_ratio": (
+                        self.output_token_ratio
+                        if self.baseline_output_tokens_available
+                        and self.strategy_output_tokens_available
+                        else None
+                    ),
                 },
                 "cost": {
                     "baseline": self.baseline_cost,
@@ -423,6 +464,8 @@ class MatchedComputeReport:
             "matching": {
                 "calls": self.calls_matched,
                 "models": self.models_matched,
+                "declared_limits_match": self.declared_limits_match,
+                "output_limit_assurance": self.output_limit_assurance,
                 "max_output_tokens": self.output_tokens_matched,
                 "order_balanced": self.order_balanced,
             },
@@ -431,6 +474,12 @@ class MatchedComputeReport:
                 "cost_comparable": self.cost_comparable,
                 "provider_seconds_comparable": False,
                 "order_balanced": self.order_balanced,
+                "output_limit_assurance": self.output_limit_assurance,
+                "output_limit_assurance_detail": (
+                    "Verified only for complete instrumented dispatch evidence in trusted callbacks. "
+                    "Callbacks are not sandboxed; strict callers must restrict execution to "
+                    "instrumented clients. Unknown evidence never certifies request caps."
+                ),
             },
             "cases": [
                 {
@@ -445,8 +494,14 @@ class MatchedComputeReport:
                     "regression": case.regression,
                     "baseline_calls": case.baseline_spend.calls,
                     "strategy_calls": case.strategy_spend.calls,
-                    "baseline_spend": _spend_dict(case.baseline_spend),
-                    "strategy_spend": _spend_dict(case.strategy_spend),
+                    "baseline_spend": _spend_dict(
+                        case.baseline_spend,
+                        output_tokens_available=case.baseline_output_tokens_available,
+                    ),
+                    "strategy_spend": _spend_dict(
+                        case.strategy_spend,
+                        output_tokens_available=case.strategy_output_tokens_available,
+                    ),
                     "wall_seconds": {
                         "baseline": case.baseline_wall_seconds,
                         "strategy": case.strategy_wall_seconds,
@@ -479,6 +534,7 @@ async def run_matched_compute(
     _check_compute_profiles(baseline.compute, strategy.compute)
 
     cases: list[MatchedComputeCase] = []
+    verified_dispatches: list[bool] = []
     for trial in range(trials):
         for example in examples:
             reference = example.expected_output
@@ -488,11 +544,19 @@ async def run_matched_compute(
                 metadata={"example_id": example.id, "trial": trial},
             )
             if trial % 2 == 0:
-                baseline_results, baseline_wall_seconds = await _timed_run(baseline, request)
-                strategy_results, strategy_wall_seconds = await _timed_run(strategy, request)
+                baseline_results, baseline_wall_seconds, baseline_evidence = await _timed_run(
+                    baseline, request
+                )
+                strategy_results, strategy_wall_seconds, strategy_evidence = await _timed_run(
+                    strategy, request
+                )
             else:
-                strategy_results, strategy_wall_seconds = await _timed_run(strategy, request)
-                baseline_results, baseline_wall_seconds = await _timed_run(baseline, request)
+                strategy_results, strategy_wall_seconds, strategy_evidence = await _timed_run(
+                    strategy, request
+                )
+                baseline_results, baseline_wall_seconds, baseline_evidence = await _timed_run(
+                    baseline, request
+                )
             if not baseline_results or not strategy_results:
                 raise ValueError("variants must return at least one inference result")
 
@@ -514,14 +578,26 @@ async def run_matched_compute(
                 ),
                 baseline_passed=tuple(bool(result.passed) for result in baseline_evaluations),
                 strategy_passed=tuple(bool(result.passed) for result in strategy_evaluations),
-                baseline_spend=_sum_spend(result.spend for result in baseline_results),
-                strategy_spend=_sum_spend(result.spend for result in strategy_results),
+                baseline_spend=_observed_spend(baseline_results, baseline_evidence),
+                strategy_spend=_observed_spend(strategy_results, strategy_evidence),
                 baseline_models=_models(baseline_results),
                 strategy_models=_models(strategy_results),
                 baseline_wall_seconds=baseline_wall_seconds,
                 strategy_wall_seconds=strategy_wall_seconds,
+                baseline_output_tokens_available=_scoped_usage_available(
+                    baseline_results, baseline_evidence
+                ),
+                strategy_output_tokens_available=_scoped_usage_available(
+                    strategy_results, strategy_evidence
+                ),
             )
             _check_case(case, baseline, strategy)
+            verified_dispatches.extend(
+                (
+                    _dispatches_verified(baseline_evidence, case.baseline_spend, baseline.compute),
+                    _dispatches_verified(strategy_evidence, case.strategy_spend, strategy.compute),
+                )
+            )
             cases.append(case)
 
     regressions = Counter(case.subset for case in cases if case.regression)
@@ -538,6 +614,8 @@ async def run_matched_compute(
         baseline_spend=_sum_spend(case.baseline_spend for case in cases),
         strategy_spend=_sum_spend(case.strategy_spend for case in cases),
         order_balanced=trials % 2 == 0,
+        declared_limits_match=True,
+        output_limit_assurance="verified" if all(verified_dispatches) else "unknown",
         regressions_by_subset=dict(sorted(regressions.items())),
     )
 
@@ -589,15 +667,18 @@ def _check_case(
 ) -> None:
     where = f"example {case.example_id!r}, trial {case.trial}"
     for variant, observed in (
-        (baseline, case.baseline_spend.calls),
-        (strategy, case.strategy_spend.calls),
+        (baseline, case.baseline_spend),
+        (strategy, case.strategy_spend),
     ):
-        if observed > variant.compute.generated_calls:
+        if observed.calls > variant.compute.generated_calls:
             raise ComputeMismatchError(
-                f"variant {variant.name!r} made {observed} model calls for {where} but declared "
+                f"variant {variant.name!r} made {observed.calls} model calls for {where} "
+                "but declared "
                 f"at most {variant.compute.generated_calls}; declare every model-backed judge "
                 "or verifier call in its ComputeProfile"
             )
+        if observed.output_tokens > observed.calls * variant.compute.max_output_tokens_per_call:
+            raise ComputeMismatchError("observed output tokens exceed declared call caps")
     if not case.baseline_models or not case.strategy_models:
         raise ComputeMismatchError(f"model provenance is missing for {where}")
     if not case.models_matched:
@@ -624,11 +705,13 @@ def _finite_scores(
     return tuple(scores)
 
 
-def _spend_dict(spend: Spend) -> dict[str, int | float]:
+def _spend_dict(
+    spend: Spend, *, output_tokens_available: bool = True
+) -> dict[str, int | float | None]:
     return {
         "calls": spend.calls,
         "input_tokens": spend.input_tokens,
-        "output_tokens": spend.output_tokens,
+        "output_tokens": spend.output_tokens if output_tokens_available else None,
         "elapsed_seconds": spend.elapsed_seconds,
         "cost": spend.cost,
         "evaluations": spend.evaluations,
@@ -637,6 +720,8 @@ def _spend_dict(spend: Spend) -> dict[str, int | float]:
 
 def _sum_spend(spends: Iterable[Spend]) -> Spend:
     items = tuple(spends)
+    for item in items:
+        _validate_spend(item)
     return Spend(
         calls=sum(item.calls for item in items),
         input_tokens=sum(item.input_tokens for item in items),
@@ -647,13 +732,85 @@ def _sum_spend(spends: Iterable[Spend]) -> Spend:
     )
 
 
+def _validate_spend(spend: Spend) -> None:
+    for name in ("calls", "input_tokens", "output_tokens", "evaluations"):
+        value = getattr(spend, name)
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ComputeMismatchError(f"observed spend {name} must be finite")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ComputeMismatchError(f"observed spend {name} must be an integer")
+        if value < 0:
+            raise ComputeMismatchError(f"observed spend {name} must be non-negative")
+    for name in ("elapsed_seconds", "cost"):
+        value = getattr(spend, name)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            raise ComputeMismatchError(f"observed spend {name} must be finite")
+        if value < 0:
+            raise ComputeMismatchError(f"observed spend {name} must be non-negative")
+    if spend.calls == 0 and (spend.input_tokens > 0 or spend.output_tokens > 0):
+        raise ComputeMismatchError("observed token usage with zero calls is invalid")
+
+
+def _output_tokens_available(results: Sequence[InferenceResult]) -> bool:
+    """Whether canonical candidate metadata includes usage for every generation."""
+
+    return bool(results) and all(
+        (
+            all("output_tokens" in candidate.metadata for candidate in result.candidates)
+            if result.candidates
+            else result.spend.output_tokens > 0
+        )
+        for result in results
+    )
+
+
 async def _timed_run(
     variant: MatchedComputeVariant,
     request: InferenceRequest,
-) -> tuple[tuple[InferenceResult, ...], float]:
+) -> tuple[tuple[InferenceResult, ...], float, tuple[DispatchEvidence, ...]]:
     started = perf_counter()
-    results = tuple(await variant.run(request))
-    return results, perf_counter() - started
+    with dispatch_scope(
+        variant.compute.generated_calls, variant.compute.max_output_tokens_per_call
+    ) as collector:
+        results = tuple(await variant.run(request))
+    return results, perf_counter() - started, collector.evidence()
+
+
+def _complete_usage(evidence: tuple[DispatchEvidence, ...], calls: int) -> bool:
+    return (
+        bool(evidence)
+        and len(evidence) == calls
+        and all(item.completed and item.output_tokens is not None for item in evidence)
+    )
+
+
+def _scoped_usage_available(
+    results: Sequence[InferenceResult], evidence: tuple[DispatchEvidence, ...]
+) -> bool:
+    if evidence:
+        return _complete_usage(evidence, sum(result.spend.calls for result in results))
+    return _output_tokens_available(results)
+
+
+def _observed_spend(
+    results: Sequence[InferenceResult], evidence: tuple[DispatchEvidence, ...]
+) -> Spend:
+    spend = _sum_spend(result.spend for result in results)
+    if _complete_usage(evidence, spend.calls):
+        return replace(spend, output_tokens=sum(item.output_tokens or 0 for item in evidence))
+    return spend
+
+
+def _dispatches_verified(
+    evidence: tuple[DispatchEvidence, ...], spend: Spend, profile: ComputeProfile
+) -> bool:
+    return _complete_usage(evidence, spend.calls) and all(
+        item.output_cap == profile.max_output_tokens_per_call for item in evidence
+    )
 
 
 def _models(results: Sequence[InferenceResult]) -> tuple[str, ...]:

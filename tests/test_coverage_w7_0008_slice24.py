@@ -19,10 +19,12 @@ def test_export_encrypt_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     inp.write_text(json.dumps({"input": "a", "output": "b", "status": "success"}) + "\n")
     monkeypatch.setenv("INSIDELLMS_ENCRYPTION_KEY", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=")
 
-    called = {}
+    called: dict[str, str] = {}
 
     def _ok(path, key=None):
-        called["path"] = str(path)
+        staged_path = Path(path)
+        called["path"] = str(staged_path)
+        staged_path.write_bytes(b"encrypted-jsonl\n")
 
     monkeypatch.setattr(enc, "encrypt_jsonl", _ok)
 
@@ -36,8 +38,11 @@ def test_export_encrypt_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
             redact_pii=False,
         )
     )
+
     assert rc == 0
-    assert called.get("path") == str(out)
+    assert called["path"] != str(out)
+    assert out.read_bytes() == b"encrypted-jsonl\n"
+    assert not Path(called["path"]).exists()
 
 
 def test_semantic_cache_redis_unavailable_branches(monkeypatch: pytest.MonkeyPatch) -> None:

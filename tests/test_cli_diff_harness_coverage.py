@@ -383,8 +383,8 @@ class TestCmdDiffTextFormat:
 
     def test_status_changed_non_success(self, tmp_path: Path, capsys) -> None:
         """Status change between two non-success statuses is a general change."""
-        rec_a = _make_record(example_id="e1", status="error", scores={})
-        rec_b = _make_record(example_id="e1", status="timeout", scores={})
+        rec_a = _make_record(example_id="e1", status="error", scores={}, primary_metric=None)
+        rec_b = _make_record(example_id="e1", status="timeout", scores={}, primary_metric=None)
         dir_a, dir_b = self._setup_dirs(tmp_path, [rec_a], [rec_b])
         args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b))
         rc = cmd_diff(args)
@@ -426,15 +426,15 @@ class TestCmdDiffTextFormat:
         captured = capsys.readouterr()
         assert "Trace Violation" in captured.out
 
-    def test_duplicate_records_warned(self, tmp_path: Path, capsys) -> None:
-        """Duplicate keys in a run trigger warnings."""
+    def test_duplicate_records_rejected(self, tmp_path: Path, capsys) -> None:
+        """Duplicate keys cannot be compared by silently discarding a record."""
         rec = _make_record(example_id="e1")
         dir_a, dir_b = self._setup_dirs(tmp_path, [rec, rec], [rec, rec])
         args = _diff_namespace(run_dir_a=str(dir_a), run_dir_b=str(dir_b))
         rc = cmd_diff(args)
-        assert rc == 0
+        assert rc == 1
         captured = capsys.readouterr()
-        assert "duplicate" in captured.out.lower()
+        assert "duplicate" in (captured.out + captured.err).lower()
 
     def test_limit_exceeded(self, tmp_path: Path, capsys) -> None:
         """When items exceed --limit, the 'and N more' message is printed."""
@@ -547,7 +547,9 @@ class TestCmdDiffJsonFormat:
             # Will be status regression
             _make_record(model_id="m1", example_id="e4", status="success"),
             # Will be status improvement
-            _make_record(model_id="m1", example_id="e5", status="error", scores={}),
+            _make_record(
+                model_id="m1", example_id="e5", status="error", scores={}, primary_metric=None
+            ),
         ]
         records_b = [
             _make_record(
@@ -557,7 +559,9 @@ class TestCmdDiffJsonFormat:
                 model_id="m1", example_id="e2", scores={"score": 0.8}, primary_metric="score"
             ),
             # e3 missing from b -> only_a
-            _make_record(model_id="m1", example_id="e4", status="error", scores={}),
+            _make_record(
+                model_id="m1", example_id="e4", status="error", scores={}, primary_metric=None
+            ),
             _make_record(model_id="m1", example_id="e5", status="success"),
             # only_b
             _make_record(model_id="m1", example_id="e6"),
@@ -995,7 +999,7 @@ def _minimal_harness_result(
         config = {
             "models": [{"type": "dummy", "args": {}}],
             "probes": [{"type": "logic", "args": {}}],
-            "dataset": {"format": "jsonl", "path": "/tmp/data.jsonl", "input_field": "question"},
+            "dataset": {"format": "jsonl", "path": "/tmp/data.jsonl"},
             "max_examples": 1,
         }
     if records is None:
@@ -1180,7 +1184,6 @@ class TestCmdHarnessProfiles:
                 "dataset:\n"
                 "  path: data.jsonl\n"
                 "  format: jsonl\n"
-                "  input_field: question\n"
             ),
             encoding="utf-8",
         )
@@ -1252,7 +1255,6 @@ class TestCmdHarnessProfiles:
                 "dataset:\n"
                 "  path: data.jsonl\n"
                 "  format: jsonl\n"
-                "  input_field: question\n"
                 "report_title: My Existing Compliance Title\n"
             ),
             encoding="utf-8",
@@ -1311,7 +1313,6 @@ class TestCmdHarnessProfiles:
                 "dataset:\n"
                 "  path: data.jsonl\n"
                 "  format: jsonl\n"
-                "  input_field: question\n"
             ),
             encoding="utf-8",
         )
@@ -1384,7 +1385,6 @@ class TestCmdHarnessProfiles:
                 "dataset:\n"
                 "  path: data.jsonl\n"
                 "  format: jsonl\n"
-                "  input_field: question\n"
             ),
             encoding="utf-8",
         )
@@ -1421,6 +1421,10 @@ class TestCmdHarnessProfiles:
                 if isinstance(dataset_cfg, dict) and isinstance(dataset_cfg.get("path"), str)
                 else None
             )
+            captured["dataset_records"] = [
+                json.loads(line)
+                for line in captured["dataset_path"].read_text(encoding="utf-8").splitlines()
+            ]
             return _minimal_harness_result(config=resolved_cfg, run_id="red-team-run")
 
         with (
@@ -1450,9 +1454,14 @@ class TestCmdHarnessProfiles:
 
         dataset_cfg = resolved_config.get("dataset")
         assert isinstance(dataset_cfg, dict)
-        assert dataset_cfg.get("input_field") == "prompt"
+        assert "input_field" not in dataset_cfg
         assert dataset_cfg.get("format") == "jsonl"
         assert resolved_config.get("max_examples") == 6
+        assert len(captured["dataset_records"]) == 6
+        assert all(
+            isinstance(record.get("prompt"), str) and record["prompt"]
+            for record in captured["dataset_records"]
+        )
 
         compliance = resolved_config.get("compliance_profile")
         assert isinstance(compliance, dict)

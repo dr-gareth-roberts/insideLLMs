@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -63,7 +64,7 @@ def test_cmd_run_sync_table_output_tracking_and_artifacts(tmp_path, capsys):
         ):
             (artifact_dir / name).write_text("{}")
 
-        return [
+        results = [
             {"input": "alpha", "status": "success", "latency_ms": 12.0, "output": "A"},
             {"input": "beta", "status": "success", "latency_ms": 8.0, "output": "B"},
             {"input": "gamma", "status": "error", "latency_ms": None, "output": ""},
@@ -71,6 +72,15 @@ def test_cmd_run_sync_table_output_tracking_and_artifacts(tmp_path, capsys):
             {"input": "epsilon", "status": "error", "latency_ms": None, "output": ""},
             {"input": "z" * 60, "status": "success", "latency_ms": 15.0, "output": "Z"},
         ]
+        (artifact_dir / "records.jsonl").write_text(
+            "".join(json.dumps(result) + "\n" for result in results)
+        )
+        (artifact_dir / "manifest.json").write_text(
+            json.dumps(
+                {"run_completed": True, "record_count": 6, "success_count": 4, "error_count": 2}
+            )
+        )
+        return results
 
     def _fake_save_results_json(results, output_path, **_kwargs):
         Path(output_path).write_text("[]")
@@ -106,14 +116,14 @@ def test_cmd_run_sync_table_output_tracking_and_artifacts(tmp_path, capsys):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
-    assert rc == 0
+    assert rc == 1
     assert "Results Summary" in captured.out
     assert "Sample Results" in captured.out
     assert output_file.exists()
 
     tracker.start_run.assert_called_once_with(run_name="run-1", run_id="run-1")
     tracker.log_metrics.assert_called_once()
-    tracker.end_run.assert_called_once_with(status="finished")
+    tracker.end_run.assert_called_once_with(status="failed")
     logged_artifacts = [
         call.kwargs.get("artifact_name") for call in tracker.log_artifact.call_args_list
     ]
@@ -185,8 +195,8 @@ def test_cmd_run_handles_experiment_result_object(tmp_path, capsys):
         rc = cmd_run(args)
 
     captured = capsys.readouterr()
-    assert rc == 0
-    assert "OK 1/2 successful" in captured.out
+    assert rc == 1
+    assert "FAIL 1/2 successful" in captured.out
 
 
 def test_cmd_run_tracking_setup_failure_is_nonfatal(tmp_path, capsys):
@@ -206,7 +216,10 @@ def test_cmd_run_tracking_setup_failure_is_nonfatal(tmp_path, capsys):
             "insideLLMs.experiment_tracking.create_tracker",
             side_effect=RuntimeError("tracker unavailable"),
         ),
-        patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]),
+        patch(
+            "insideLLMs.cli.commands.run.run_experiment_from_config",
+            return_value=[{"input": "ok", "output": "ok", "status": "success"}],
+        ),
     ):
         rc = cmd_run(args)
 
@@ -234,7 +247,10 @@ def test_cmd_run_tracker_logging_error_is_nonfatal(tmp_path, capsys):
     with (
         patch("insideLLMs.experiment_tracking.create_tracker", return_value=tracker),
         patch("insideLLMs.experiment_tracking.TrackingConfig"),
-        patch("insideLLMs.cli.commands.run.run_experiment_from_config", return_value=[]),
+        patch(
+            "insideLLMs.cli.commands.run.run_experiment_from_config",
+            return_value=[{"input": "ok", "output": "ok", "status": "success"}],
+        ),
     ):
         rc = cmd_run(args)
 

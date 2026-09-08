@@ -29,9 +29,13 @@ The package currently provides the following schema versions:
 **Version 1.0.0** (``insideLLMs.schemas.v1_0_0``)
     Initial stable release with core schemas for all output types.
 
-**Version 1.0.1** (``insideLLMs.schemas.v1_0_1``) - Current Default
+**Version 1.0.1** (``insideLLMs.schemas.v1_0_1``)
     Backward-compatible extension adding ``run_completed`` field to RunManifest
     for explicit run completion tracking.
+
+**Version 1.0.2** (``insideLLMs.schemas.v1_0_2``) - Current Default
+    Adds explicit ``scores`` and ``primary_metric`` to runner items and nested
+    runner/benchmark outputs, preserving historical version contracts.
 
 **Custom Trace Schema** (``insideLLMs.schemas.custom_trace_v1``)
     Specialized schema for trace bundles stored in ``ResultRecord.custom["trace"]``.
@@ -39,7 +43,7 @@ The package currently provides the following schema versions:
 
 Available Schemas
 -----------------
-The following schema types are available in both v1.0.0 and v1.0.1:
+The following schema types are available in v1.0.0, v1.0.1 and v1.0.2:
 
 **Core Output Schemas**
     - ``ProbeResult``: Per-item output produced by ``ProbeRunner.run()``
@@ -66,7 +70,7 @@ The following schema types are available in both v1.0.0 and v1.0.1:
 Module Components
 -----------------
 DEFAULT_SCHEMA_VERSION : str
-    The current default schema version (``"1.0.1"``). Used when no explicit
+    The current default schema version (``"1.0.2"``). Used when no explicit
     version is specified during validation.
 
 OutputValidationError : exception
@@ -97,7 +101,7 @@ The recommended way to use schemas is through the public API::
     ...     OutputValidationError,
     ... )
     >>> DEFAULT_SCHEMA_VERSION
-    '1.0.1'
+    '1.0.2'
 
 **Basic output validation**
 
@@ -315,7 +319,7 @@ Include schema version in serialized outputs::
     >>> serialized = json.dumps(output_record)
     >>> loaded = json.loads(serialized)
     >>> loaded["schema_version"]
-    '1.0.1'
+    '1.0.2'
 
 Notes
 -----

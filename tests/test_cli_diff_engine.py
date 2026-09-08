@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from insideLLMs.cli._record_utils import _read_jsonl_records
 from insideLLMs.runtime.diffing import (
     DiffGatePolicy,
@@ -366,9 +368,9 @@ def test_primary_metric_mismatch_blocks_score_fallback() -> None:
     base = [_record(score=0.9)]
     cand = [_record(score=0.7)]
     base[0]["primary_metric"] = "accuracy"
-    base[0]["scores"] = {"score": 0.9}
+    base[0]["scores"] = {"accuracy": 0.9, "score": 0.9}
     cand[0]["primary_metric"] = "loss"
-    cand[0]["scores"] = {"score": 0.7}
+    cand[0]["scores"] = {"loss": 0.7, "score": 0.7}
 
     computation = build_diff_computation(
         records_baseline=base,
@@ -387,13 +389,13 @@ def test_bool_scores_not_treated_as_numeric() -> None:
     base[0]["scores"] = {"score": True}
     cand[0]["scores"] = {"score": False}
 
-    computation = build_diff_computation(
-        records_baseline=base,
-        records_candidate=cand,
-        baseline_label="a",
-        candidate_label="b",
-    )
-    assert computation.regressions == []
+    with pytest.raises(ValueError, match="primary_metric must name a finite numeric score"):
+        build_diff_computation(
+            records_baseline=base,
+            records_candidate=cand,
+            baseline_label="a",
+            candidate_label="b",
+        )
 
 
 def test_improvements_only_has_differences() -> None:
