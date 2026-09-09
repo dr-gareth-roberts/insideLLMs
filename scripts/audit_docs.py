@@ -267,6 +267,7 @@ def main() -> int:
         "--judge-policy",
         "--judge-limit",
         "--fail-on-trajectory-drift",
+        "--html",
     ]
 
     for token in harness_expected:
@@ -292,6 +293,7 @@ def main() -> int:
     for token in [
         "--active-red-team",
         "--fail-on-trajectory-drift",
+        "--html",
         "shadow.fastapi",
         "dr-gareth-roberts/insideLLMs@<reviewed-full-commit-sha>",
     ]:
@@ -375,6 +377,8 @@ def main() -> int:
             "--judge-limit",
             "50",
             "--interactive",
+            "--html",
+            "diff.html",
         ],
         ["doctor", "--format", "json", "--capabilities"],
         ["init", "experiment.yaml", "--model", "dummy", "--probe", "logic"],

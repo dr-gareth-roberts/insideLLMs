@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `diff --html PATH` writes a deterministic, self-contained HTML diff report
+  (summary counts, per-section tables, inline before/after) from the current
+  DiffReport payload; it works with either `--format` and leaves the exit-code
+  policy unchanged.
 - Output schema 1.0.2 carries per-item scores and primary metrics. Historical
   1.0.0/1.0.1 contracts remain readable; migration does not invent missing scores.
 - `diff --fail-on-any-difference` gates improvements and trace/trajectory changes

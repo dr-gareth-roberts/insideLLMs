@@ -221,6 +221,7 @@ of canonical artifacts:
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
 insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
+insidellms diff ./baseline ./candidate --html diff.html
 ```
 
 `--fail-on-changes` returns `2` for regressions, neutral/other output changes,
@@ -229,6 +230,8 @@ Use the dedicated trace/trajectory flags for those findings. A plain diff exits
 `0` even when it reports differences.
 Use `--fail-on-any-difference` to also block improvements and trace/trajectory changes.
 Malformed or missing primary-score evidence cannot pass a regression gate.
+`--html PATH` additionally writes a self-contained, deterministic HTML report
+(inline CSS, no scripts) without changing the exit code.
 
 ## CI integration
 
