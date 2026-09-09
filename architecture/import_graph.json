@@ -5065,7 +5065,7 @@
       "fan_in": 1,
       "fan_out": 1,
       "layer": "core",
-      "loc": 1821,
+      "loc": 1824,
       "module": "insideLLMs.nlp.text_analysis",
       "path": "insideLLMs/nlp/text_analysis.py"
     },
@@ -6111,7 +6111,7 @@
     "internal_edge_count": 590,
     "module_count": 248,
     "optional_import_count": 66,
-    "package_loc": 252235,
+    "package_loc": 252238,
     "static_test_references_by_subtree": {
       "insideLLMs": 16,
       "insideLLMs._artifact_snapshot": 1,
