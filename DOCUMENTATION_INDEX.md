@@ -35,11 +35,24 @@ flowchart LR
 
 **Contents:**
 - High-level component map
+- Dependency rules and architecture guards (layer matrix)
 - ProbeRunner and config execution flows
 - Benchmarking flow
 - Extension points and supporting subsystems
 
 **Best for:** Understanding how modules interact, onboarding contributors, system-level reasoning
+
+---
+
+### [docs/ARCHITECTURE_GUARDS.md](docs/ARCHITECTURE_GUARDS.md)
+**Executable architecture guards**: the layer matrix in `architecture/layers.json`, the generated import/API evidence, and the owned, expiring exception policy enforced by `make architecture`.
+
+**Best for:** Adding a cross-layer import, reviewing dependency debt, regenerating evidence
+
+---
+
+### [docs/API_STATUS.md](docs/API_STATUS.md) (generated)
+**Root facade inventory** listing every `insideLLMs` root export with its status, provider module, and repository usage evidence. Regenerate with `make architecture-update`; do not edit by hand.
 
 ---
 
@@ -311,7 +324,7 @@ for CLI, artifacts, schemas, and extension points.
 → [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
 
 #### **Understand the architecture and runtime flows**
-→ [ARCHITECTURE.md](ARCHITECTURE.md)
+→ [ARCHITECTURE.md](ARCHITECTURE.md), [docs/ARCHITECTURE_GUARDS.md](docs/ARCHITECTURE_GUARDS.md)
 
 #### **Understand the type system**
 → [API_REFERENCE.md - Type Definitions](API_REFERENCE.md#type-definitions)
