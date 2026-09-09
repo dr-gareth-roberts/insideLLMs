@@ -9,7 +9,7 @@ and answers. v2 looks them up, *also* checks billing, and returns the identical
 sentence.
 
 ```console
-$ pip install insidellms
+$ python3 -m pip install ../..     # from this directory in a source checkout
 $ python run_demo.py
 wrote v1/records.jsonl
 wrote v2/records.jsonl
