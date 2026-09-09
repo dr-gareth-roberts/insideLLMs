@@ -440,6 +440,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="Write JSON output to a file (json format only)",
     )
     diff_parser.add_argument(
+        "--html",
+        type=str,
+        metavar="PATH",
+        help="Write a self-contained HTML diff report to PATH (works with either --format)",
+    )
+    diff_parser.add_argument(
         "--limit",
         type=int,
         default=25,
