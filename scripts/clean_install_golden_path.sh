@@ -74,9 +74,9 @@ mandatory_names = {
     for requirement in requires
     if "extra ==" not in requirement.lower()
 }
-assert mandatory_names == {"pyyaml"}, (mandatory_names, requires)
+assert mandatory_names == {"pydantic", "pyyaml"}, (mandatory_names, requires)
 
-for module in ("anthropic", "fastapi", "matplotlib", "openai", "pydantic", "transformers"):
+for module in ("anthropic", "fastapi", "matplotlib", "openai", "transformers"):
     assert importlib.util.find_spec(module) is None, f"optional dependency leaked: {module}"
 
 import insideLLMs
