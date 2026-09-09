@@ -74,159 +74,35 @@ Notes:
 - Registry and dataset loaders power config-driven and programmatic creation.
 - Infra utilities exist as standalone modules and are not currently enforced by the runner.
 
-## Target Architecture (Proposed)
+## Dependency Rules and Architecture Guards
 
-This is a proposed architecture that makes infra capabilities first-class and
-standardizes result types across runners and benchmarks.
+The layer boundaries are executable, not aspirational. `architecture/layers.json`
+assigns every `insideLLMs.*` module to a layer and lists the layers each one may
+import:
 
-Key deltas from current:
-- Introduce a model pipeline with composable middleware (retry, rate limiting, caching, cost, streaming).
-- Standardize all execution to return `ModelResponse` and `ExperimentResult`.
-- Make batch and async execution explicit in the runner contract.
-
-```mermaid
-graph TD
-  subgraph EntryPoints[Entry Points]
-    CLI[CLI: insidellms]
-    API[Python API]
-  end
-
-  subgraph Orchestration[Execution Orchestration]
-    Runner[ExperimentRunner]
-    Planner[Probe Scheduler]
-  end
-
-  subgraph Probing[Probing]
-    Probe[Probe.run / run_batch]
-  end
-
-  subgraph Pipeline[Model Pipeline]
-    MW[Middleware Chain]
-    Retry[Retry + Backoff]
-    RateLimit[Rate Limiting]
-    Cache[Caching]
-    Cost[Cost Tracking]
-    Stream[Streaming Adapter]
-    Trace[Tracing + Metrics]
-  end
-
-  subgraph Providers[Model Providers]
-    Adapter[Provider Adapter]
-    Provider[OpenAI / Anthropic / HF / Local]
-  end
-
-  subgraph Results[Results + Reporting]
-    Result[ExperimentResult]
-    Export[Export + Visualization]
-  end
-
-  CLI --> Runner
-  API --> Runner
-  Runner --> Planner
-  Planner --> Probe
-  Probe --> MW
-  MW --> Retry
-  MW --> RateLimit
-  MW --> Cache
-  MW --> Cost
-  MW --> Stream
-  MW --> Trace
-  MW --> Adapter
-  Adapter --> Provider
-  Runner --> Result
-  Result --> Export
+```text
+contracts -> contracts only
+core      -> contracts + core infrastructure + runtime protocols
+runtime   -> contracts + core infrastructure
+inference -> contracts + core + runtime protocols
+providers -> contracts + core + runtime protocols
+evals     -> contracts + core
+analysis  -> contracts + core + artifacts/analysis
+cli       -> leaf integration layer
+labs      -> may consume stable product layers; never the reverse
 ```
 
-## Proposed Model Pipeline Flow
+`scripts/architecture_evidence.py` builds the import graph and the root-API
+manifest statically (it never imports the package), and `tests/architecture/`
+fails on any edge the matrix forbids unless that exact edge is recorded in
+`architecture/import_exceptions.json` with an owner, a reason, and an expiry.
+Run `make architecture` locally; CI runs the same check. The exception policy
+and the regeneration workflow are described in
+[docs/ARCHITECTURE_GUARDS.md](docs/ARCHITECTURE_GUARDS.md); the generated
+root-facade inventory is [docs/API_STATUS.md](docs/API_STATUS.md).
 
-```mermaid
-sequenceDiagram
-  participant P as Probe
-  participant MP as ModelPipeline
-  participant C as Cache
-  participant RL as RateLimiter
-  participant A as Provider Adapter
-  participant CT as CostTracker
-
-  P->>MP: generate(prompt, params)
-  MP->>C: lookup(key)
-  alt Cache hit
-    C-->>MP: cached response
-  else Cache miss
-    MP->>RL: acquire()
-    RL-->>MP: ok
-    MP->>A: request(prompt, params)
-    A-->>MP: response + usage
-    MP->>C: store(key, response)
-  end
-  MP->>CT: record(usage)
-  MP-->>P: ModelResponse
-```
-
-## Model Pipeline API Sketch (Proposed)
-
-This sketch illustrates the intended API shape for composable model middleware.
-
-```python
-from insideLLMs.models import OpenAIModel
-from insideLLMs.pipeline import (
-    ModelPipeline,
-    CacheMiddleware,
-    RateLimitMiddleware,
-    RetryMiddleware,
-    CostTrackingMiddleware,
-)
-
-base_model = OpenAIModel(model_name="gpt-4o")
-
-pipeline = ModelPipeline(
-    base_model,
-    middlewares=[
-        CacheMiddleware(),
-        RateLimitMiddleware(),
-        RetryMiddleware(),
-        CostTrackingMiddleware(),
-    ],
-)
-
-response = pipeline.generate("Explain transformers in one paragraph.")
-print(response.content)
-```
-
-## Proposed Streaming Flow
-
-```mermaid
-sequenceDiagram
-  participant U as User Code
-  participant MP as ModelPipeline
-  participant A as Provider Adapter
-  participant SB as StreamBuffer
-  participant SM as StreamMetrics
-
-  U->>MP: stream(prompt, params)
-  MP->>A: stream_request(...)
-  loop chunks
-    A-->>MP: chunk
-    MP->>SB: add_chunk(chunk)
-    MP->>SM: update_metrics()
-    MP-->>U: yield chunk
-  end
-  MP->>SM: finalize()
-```
-
-## Proposed Cost Tracking Flow
-
-```mermaid
-sequenceDiagram
-  participant MP as ModelPipeline
-  participant A as Provider Adapter
-  participant CT as UsageTracker
-
-  MP->>A: request(prompt, params)
-  A-->>MP: response + usage
-  MP->>CT: record(model, tokens, cost)
-  CT-->>MP: ok
-```
+The composable model middleware that earlier revisions of this document
+sketched as a proposal is implemented in `insideLLMs/runtime/pipeline.py`.
 
 ## Core Execution Flow (ProbeRunner)
 
