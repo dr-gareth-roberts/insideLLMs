@@ -3,6 +3,8 @@
 insideLLMs aims to be CI-friendly: deterministic runs, stable artefacts, and explicit contracts.
 
 For a surface-by-surface contract table, see `docs/STABILITY_MATRIX.md`.
+For the generated root API inventory and executable dependency rules, see
+`docs/API_STATUS.md` and `docs/ARCHITECTURE_GUARDS.md`.
 
 ### What is considered stable
 

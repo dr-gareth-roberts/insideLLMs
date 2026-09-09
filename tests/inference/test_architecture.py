@@ -1,5 +1,6 @@
-import ast
 from pathlib import Path
+
+from scripts.architecture_evidence import scan_imports
 
 INFERENCE_ROOT = Path(__file__).parents[2] / "insideLLMs" / "inference"
 FORBIDDEN_PREFIXES = (
@@ -14,31 +15,12 @@ FORBIDDEN_PREFIXES = (
 )
 
 
-def _module_package(path: Path, inference_root: Path) -> list[str]:
-    relative = path.relative_to(inference_root)
-    return ["insideLLMs", "inference", *relative.parent.parts]
-
-
 def _imports(path: Path, *, inference_root: Path | None = None) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    imported: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                package = (
-                    _module_package(path, inference_root)
-                    if inference_root is not None
-                    else ["insideLLMs", "inference"]
-                )
-                parent = package[: len(package) - (node.level - 1)]
-                base = ".".join([*parent, *([node.module] if node.module else [])])
-            else:
-                base = node.module or ""
-            for alias in node.names:
-                imported.add(".".join(part for part in (base, alias.name) if part))
-    return imported
+    package = ["insideLLMs", "inference"]
+    if inference_root is not None:
+        relative = path.relative_to(inference_root)
+        package.extend(relative.parent.parts)
+    return {reference.imported for reference in scan_imports(path, containing_package=package)}
 
 
 def test_import_scanner_resolves_relative_package_imports(tmp_path: Path) -> None:

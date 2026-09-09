@@ -1,0 +1,453 @@
+{
+  "exceptions": [
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes analysis statistics pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.analysis.statistics"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental agents pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.agents"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental benchmarks pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.benchmark"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental deployment pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.deployment"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental HITL support pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.hitl"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental routing pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.routing"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes experimental synthesis pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.contrib.synthesis"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes evaluation APIs pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.evaluation"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes inference APIs pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.inference"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade exposes provider-backed model APIs pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.models"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade exposes model protocols pending contract extraction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade exposes evaluation probes pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.probes"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes safety APIs pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.safety"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The root compatibility facade lazily exposes visualization pending facade reduction.",
+      "source": "insideLLMs",
+      "target": "insideLLMs.visualization"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Move the shared model protocol into contracts before separating analysis.",
+      "source": "insideLLMs.analysis.evaluation",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Matched-compute analysis currently orchestrates the inference client directly.",
+      "source": "insideLLMs.analysis.matched_compute",
+      "target": "insideLLMs.inference.client"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Matched-compute result envelopes await consolidation into shared contracts.",
+      "source": "insideLLMs.analysis.matched_compute",
+      "target": "insideLLMs.inference.schemas"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Dataset commitments use Merkle helpers pending an artifact contract boundary.",
+      "source": "insideLLMs.datasets.commitments",
+      "target": "insideLLMs.crypto.merkle"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "The legacy evaluation facade delegates to its analysis-owned implementation.",
+      "source": "insideLLMs.evaluation",
+      "target": "insideLLMs.analysis.evaluation"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "The legacy export facade delegates to the analysis-owned artifact exporter.",
+      "source": "insideLLMs.export",
+      "target": "insideLLMs.analysis.export"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Inference uses a legacy evaluator protocol that must move into contracts.",
+      "source": "insideLLMs.inference.client",
+      "target": "insideLLMs.analysis.evaluation"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "security-maintainers",
+      "reason": "The stable injection facade currently delegates to the contrib security engine.",
+      "source": "insideLLMs.injection",
+      "target": "insideLLMs.contrib.security.injection_engine"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "security-maintainers",
+      "reason": "Policy verification consumes crypto support pending an artifact-layer boundary.",
+      "source": "insideLLMs.policy.engine",
+      "target": "insideLLMs.crypto"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "security-maintainers",
+      "reason": "Policy publication currently calls the transparency adapter directly.",
+      "source": "insideLLMs.policy.engine",
+      "target": "insideLLMs.transparency.scitt_client"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "security-maintainers",
+      "reason": "Disclosure commitments require canonical crypto pending contract extraction.",
+      "source": "insideLLMs.privacy.disclosure",
+      "target": "insideLLMs.crypto.canonical"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "security-maintainers",
+      "reason": "Disclosure commitments require Merkle crypto pending contract extraction.",
+      "source": "insideLLMs.privacy.disclosure",
+      "target": "insideLLMs.crypto.merkle"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry initializes built-in provider models pending registry boundary extraction.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the Anthropic provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.anthropic"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry uses model protocols pending their extraction into contracts.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the Cohere provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.cohere"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the Gemini provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.gemini"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the Hugging Face provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.huggingface"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers local model adapters pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.local"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the OpenAI provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.openai"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry lazily registers the OpenRouter provider pending plugin separation.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.models.openrouter"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry initializes built-in probes pending registry boundary extraction.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.probes"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The core registry uses probe protocols pending their extraction into contracts.",
+      "source": "insideLLMs.registry",
+      "target": "insideLLMs.probes.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Core result summaries delegate to analysis statistics pending facade separation.",
+      "source": "insideLLMs.results",
+      "target": "insideLLMs.analysis.statistics"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "Runtime model protocols remain in the providers package until contracts freeze.",
+      "source": "insideLLMs.runtime._base",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "Runtime probe protocols remain in evals until probe contracts are extracted.",
+      "source": "insideLLMs.runtime._base",
+      "target": "insideLLMs.probes.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The runtime config adapter owns registry-based provider model construction.",
+      "source": "insideLLMs.runtime._config_loader",
+      "target": "insideLLMs.models"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The runtime config adapter uses provider protocols pending contract extraction.",
+      "source": "insideLLMs.runtime._config_loader",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The runtime config adapter owns registry-based probe construction.",
+      "source": "insideLLMs.runtime._config_loader",
+      "target": "insideLLMs.probes"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "The runtime config adapter uses probe protocols pending contract extraction.",
+      "source": "insideLLMs.runtime._config_loader",
+      "target": "insideLLMs.probes.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "High-level runtime summaries delegate to analysis pending artifact extraction.",
+      "source": "insideLLMs.runtime._high_level",
+      "target": "insideLLMs.analysis.statistics"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "High-level runtime execution uses model protocols pending contract extraction.",
+      "source": "insideLLMs.runtime._high_level",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "High-level runtime execution uses probe protocols pending contract extraction.",
+      "source": "insideLLMs.runtime._high_level",
+      "target": "insideLLMs.probes.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently builds attestations directly.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.attestations"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently calls attestation builders.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.attestations.steps.builders"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently computes crypto roots directly.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.crypto"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently invokes policy evaluation.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.policy.engine"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently invokes OCI publication.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.publish.oras"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Ultimate-mode artifact orchestration currently invokes SCITT publication.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.transparency.scitt_client"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "Runtime observability wraps model protocols pending contract extraction.",
+      "source": "insideLLMs.runtime.observability",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "Runtime middleware wraps model protocols pending contract extraction.",
+      "source": "insideLLMs.runtime.pipeline",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "artifact-maintainers",
+      "reason": "Runtime receipts use canonical crypto pending artifact contract extraction.",
+      "source": "insideLLMs.runtime.receipt",
+      "target": "insideLLMs.crypto.canonical"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "runtime-maintainers",
+      "reason": "Runtime receipts describe model calls pending contract extraction.",
+      "source": "insideLLMs.runtime.receipt",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "cli-maintainers",
+      "reason": "The Python workflow facade delegates to the CLI diff implementation.",
+      "source": "insideLLMs.runtime.workflows",
+      "target": "insideLLMs.cli.commands.diff"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "cli-maintainers",
+      "reason": "The Python workflow facade delegates to the CLI harness implementation.",
+      "source": "insideLLMs.runtime.workflows",
+      "target": "insideLLMs.cli.commands.harness"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "contract-maintainers",
+      "reason": "Custom trace schemas use core serialization until contracts are isolated.",
+      "source": "insideLLMs.schemas.custom_trace_v1",
+      "target": "insideLLMs._serialization"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "contract-maintainers",
+      "reason": "The schema registry imports structured adapters lazily pending separation.",
+      "source": "insideLLMs.schemas.registry",
+      "target": "insideLLMs.structured"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Structured output helpers construct provider models pending adapter separation.",
+      "source": "insideLLMs.structured",
+      "target": "insideLLMs.models"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "architecture-maintainers",
+      "reason": "Structured output helpers use model protocols pending contract extraction.",
+      "source": "insideLLMs.structured",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2027-02-28",
+      "owner": "contract-maintainers",
+      "reason": "The root trace-contract facade delegates to its current implementation.",
+      "source": "insideLLMs.trace_contracts",
+      "target": "insideLLMs.trace.trace_contracts"
+    }
+  ],
+  "schema_version": 1
+}
