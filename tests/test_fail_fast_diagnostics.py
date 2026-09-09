@@ -318,14 +318,13 @@ async def test_async_runner_finalizes_incomplete_manifest_before_raising(tmp_pat
         )
 
     assert len(calls) == 2
-    assert [item["status"] for item in caught.value.partial_results] == [
-        "success",
-        "error",
-        "skipped",
-    ]
+    # Undispatched items leave no placeholder (W7-0007); incompleteness is
+    # explicit in the manifest instead.
+    assert [item["status"] for item in caught.value.partial_results] == ["success", "error"]
     manifest = json.loads((tmp_path / "run" / "manifest.json").read_text())
     assert manifest["run_completed"] is False
     assert manifest["custom"]["health"]["healthy"] is False
+    assert "Expected 3 records, found 2" in manifest["custom"]["health"]["reasons"]
     assert runner.last_experiment is not None
     summary = json.loads((tmp_path / "run" / "summary.json").read_text())
     assert summary["summary"]["run_completed"] is False

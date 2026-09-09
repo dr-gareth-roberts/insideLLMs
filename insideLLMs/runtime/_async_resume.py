@@ -6,6 +6,28 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+SCHEDULER_UNATTEMPTED_EXECUTION = {"attempted": False, "reason": "stop_on_error"}
+
+
+def is_scheduler_attested_unattempted(record: dict[str, Any]) -> bool:
+    """True only for the exact placeholder older async runners wrote when stop_on_error fired.
+
+    The runner no longer persists anything for undispatched items, so a
+    ``skipped`` record can only be admitted on resume when it carries this
+    scheduler-owned attestation verbatim (``0 == False`` in Python, hence the
+    identity check).
+    """
+    custom = record.get("custom")
+    if not isinstance(custom, dict):
+        return False
+    execution = custom.get("execution")
+    return (
+        isinstance(execution, dict)
+        and set(execution) == set(SCHEDULER_UNATTEMPTED_EXECUTION)
+        and execution["attempted"] is False
+        and execution["reason"] == SCHEDULER_UNATTEMPTED_EXECUTION["reason"]
+    )
+
 
 def replace_resume_records(path: Path, retained: bytes) -> None:
     """Atomically retain exact bytes without platform newline translation."""
@@ -71,8 +93,7 @@ def attempted_prefix_length(records: list[dict[str, Any]]) -> int:
         if (
             record.get("status") != "skipped"
             or not isinstance(custom, dict)
-            or custom.get("execution") != {"attempted": False, "reason": "stop_on_error"}
-            or custom["execution"]["attempted"] is not False
+            or not is_scheduler_attested_unattempted(record)
             or custom.get("output_fingerprint") is not None
             or set(custom) - {"record_index", "replicate_key", "output_fingerprint", "execution"}
             or any(

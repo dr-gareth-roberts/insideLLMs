@@ -376,7 +376,6 @@ class AsyncProbeRunner(_RunnerBase):
         semaphore = asyncio.Semaphore(concurrency)
         results: list[Optional[dict[str, Any]]] = [None] * len(prompt_set)
         errors: list[Optional[BaseException]] = [None] * len(prompt_set)
-        unattempted_indices: set[int] = set()
         stop_event = asyncio.Event()
         stop_error: Optional[RunnerExecutionError] = None
         completed = 0
@@ -472,11 +471,6 @@ class AsyncProbeRunner(_RunnerBase):
                         strict_serialization=strict_serialization,
                     )
                     record_metadata = result_obj.get("metadata")
-                    if next_write_index in unattempted_indices:
-                        record["custom"]["execution"] = {
-                            "attempted": False,
-                            "reason": "stop_on_error",
-                        }
                     if isinstance(record_metadata, dict) and isinstance(record.get("custom"), dict):
                         timeout_seconds = record_metadata.get("timeout_seconds")
                         if isinstance(timeout_seconds, (int, float)):
@@ -505,15 +499,12 @@ class AsyncProbeRunner(_RunnerBase):
             nonlocal completed, stop_error
             async with semaphore:
                 if stop_event.is_set():
-                    results[index] = {
-                        "input": item,
-                        "output": None,
-                        "status": "skipped",
-                        "metadata": {"skipped": True, "reason": "stop_on_error"},
-                    }
-                    # Only the scheduler can attest that a probe was never dispatched.
-                    if stop_on_error:
-                        unattempted_indices.add(index)
+                    # Leave results[index] as None. The item never executed, so
+                    # write_ready_records() must stop here instead of persisting a
+                    # placeholder: records.jsonl is documented as deterministic for
+                    # identical inputs/config, and the sync runner writes nothing
+                    # past the failure. stop_error is always set alongside
+                    # stop_event, so the None entries are never read.
                     return
                 try:
                     loop = asyncio.get_running_loop()

@@ -10,6 +10,7 @@ import pytest
 from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models import DummyModel
 from insideLLMs.probes import LogicProbe
+from insideLLMs.runtime._async_resume import SCHEDULER_UNATTEMPTED_EXECUTION
 from insideLLMs.runtime.runner import AsyncProbeRunner
 
 
@@ -43,6 +44,34 @@ async def failed_run(tmp_path, monkeypatch, *, batch=False, schema_version="1.0.
     return runner, directory, calls
 
 
+def append_scheduler_attested_tail(directory, *, item, index):
+    """Append the placeholder older async runners persisted for an undispatched item.
+
+    The runner now writes nothing past a fail-fast failure (W7-0007), but run
+    directories written before that change can still end in scheduler-attested
+    ``skipped`` records. Resume must keep handling them fail-closed, so the tests
+    that exercise that path synthesize one from the last attempted record.
+    """
+    path = directory / "records.jsonl"
+    lines = path.read_bytes().splitlines(keepends=True)
+    tail = dict(json.loads(lines[-1]))
+    tail["input"] = item
+    tail["status"] = "skipped"
+    for field in ("output", "output_text", "error", "error_type", "latency_ms", "primary_metric"):
+        if field in tail:
+            tail[field] = None
+    for field in ("usage", "scores", "metadata"):
+        if field in tail:
+            tail[field] = None
+    if "example_id" in tail:
+        tail["example_id"] = str(index)
+    tail["custom"] = {
+        "record_index": index,
+        "execution": dict(SCHEDULER_UNATTEMPTED_EXECUTION),
+    }
+    path.write_bytes(b"".join(lines) + json.dumps(tail).encode("utf-8") + b"\n")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("schema_version", ["1.0.0", "1.0.1", "1.0.2"])
 async def test_resume_attempts_only_verified_tail_and_preserves_error(
@@ -72,6 +101,25 @@ async def test_resume_attempts_only_verified_tail_and_preserves_error(
 
 
 @pytest.mark.asyncio
+async def test_scheduler_attested_legacy_tail_is_truncated_and_reattempted(tmp_path, monkeypatch):
+    """Positive control for the synthetic tail: undamaged, it must be admitted and retried."""
+    runner, directory, calls = await failed_run(tmp_path, monkeypatch)
+    append_scheduler_attested_tail(directory, item="c", index=2)
+    path = directory / "records.jsonl"
+    prefix = b"".join(path.read_bytes().splitlines(keepends=True)[:2])
+    assert [json.loads(line)["status"] for line in path.read_text().splitlines()] == [
+        "success",
+        "error",
+        "skipped",
+    ]
+    await runner.run(["a", "b", "c"], run_dir=directory, resume=True)
+    assert calls == ["a", "b", "c"]
+    assert path.read_bytes().startswith(prefix)
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [record["status"] for record in records] == ["success", "error", "success"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "damage",
     [
@@ -92,6 +140,7 @@ async def test_resume_attempts_only_verified_tail_and_preserves_error(
 )
 async def test_ambiguous_history_rejects_without_artifact_mutation(tmp_path, monkeypatch, damage):
     runner, directory, calls = await failed_run(tmp_path, monkeypatch)
+    append_scheduler_attested_tail(directory, item="c", index=2)
     path = directory / "records.jsonl"
     records = [json.loads(line) for line in path.read_text().splitlines()]
     tail = records[2]
@@ -166,6 +215,7 @@ async def test_recovery_interruption_preserves_attempts_and_allows_later_resume(
     tmp_path, monkeypatch, after_replace
 ):
     runner, directory, calls = await failed_run(tmp_path, monkeypatch)
+    append_scheduler_attested_tail(directory, item="c", index=2)
     records_path = directory / "records.jsonl"
     original = records_path.read_bytes()
     prefix = b"".join(original.splitlines(keepends=True)[:2])

@@ -24,6 +24,7 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
+from insideLLMs.runtime._async_resume import is_scheduler_attested_unattempted
 from insideLLMs.runtime._result_utils import _record_index_from_record
 
 
@@ -461,11 +462,27 @@ def _validate_resume_record(
     Raises
     ------
     ValueError
-        If the record doesn't match the expected index, run_id, or input.
+        If the record doesn't match the expected index, run_id, or input, or if
+        it is a ``skipped`` placeholder for an item that never executed and does
+        not carry the scheduler's own attestation of that fact.
     """
     record_index = _record_index_from_record(record, default=expected_index)
     if record_index != expected_index:
         raise ValueError("Existing records are not a contiguous prefix; cannot resume safely.")
+
+    # A "skipped" record describes an item that was never executed. Counting it
+    # as completed work would silently drop that item from the resumed run. The
+    # runner writes nothing for undispatched items, so the only admissible
+    # skipped record is the scheduler-attested placeholder older run
+    # directories can still end in; attempted_prefix_length() then verifies
+    # that such records form a well-formed, evidence-free suffix.
+    if str(record.get("status") or "") == "skipped" and not is_scheduler_attested_unattempted(
+        record
+    ):
+        raise ValueError(
+            f"Existing record at index {expected_index} has status 'skipped'; "
+            "the item never executed and cannot be resumed as completed work."
+        )
 
     if run_id is not None:
         record_run_id = record.get("run_id")
