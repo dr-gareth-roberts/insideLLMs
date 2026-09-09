@@ -627,3 +627,10 @@ decision: W7-0007 write path wins (stricter artefact: every record is an attempt
 decision: W7-0081 runtime change dropped -- the base had already removed the sync batch break (attempted work is never retried); the rebased commit is test-only and asserts parity with all eight attempted outcomes persisted.
 docs: README keeps the branch's lead and five-step quickstart; every claim re-verified on the merged tree (source install not PyPI; action pinned by reviewed SHA, @v1 note dropped; 13 probes; identical hashes on py3.13/py3.12/TZ+HASHSEED+LC_ALL; config in config.resolved.yaml). FIXES_APPLIED.md stays deleted and MONSTER_LOOP.md stays at root per the base's plan.
 commits: W7-0007 066e91e3789b5e9c04c627d96c10254f1f3608c1; W7-0002 d8930ea0189617c4abce9ea8eb361d1437314d71; W7-0081 6858cbaa2b1e23d9c8b71dc771c1600a46dba2eb; rebased tip before the bookkeeping commits 633ba51320bf81e7f7e7342ea8980cfce837f402.
+
+## [2026-08-14T17:08] R8-01 — streaming JSONL ingestion
+category: performance | files: runtime/_artifact_utils.py, runtime/diffing.py, runtime/_async_runner.py, cli/_record_utils.py, cli/__init__.py, cli/commands/diff.py, tests/test_audit_wave8_regressions.py
+before: both JSONL readers accumulated complete lists; CLI diff loaded both runs; async resume materialized all existing records.
+after: added shared iter_jsonl_records; retained list-reader compatibility wrappers; CLI diff now streams candidate records against a baseline index. Async resume keeps the whole-file, byte-preserving read from the audit remediation (A07) rather than the iterator; the rebase dropped that hunk deliberately.
+verification: tests/test_audit_wave8_regressions.py — 5 passed including the 100k-record tracemalloc bound; focused downstream diff/CLI/async suites — 236 passed; make golden-path — passed with 12 common keys and zero changes; make check — passed with 7181 passed and 336 skipped; ruff/format/mypy clean.
+commit: c38f304 (fix(runtime): stream JSONL ingestion [R8-01])
