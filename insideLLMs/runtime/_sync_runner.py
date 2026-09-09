@@ -37,10 +37,14 @@ from insideLLMs.runtime._artifact_utils import (
     _ensure_run_sentinel,
     _prepare_run_dir,
     _prepare_run_dir_for_resume,
-    _read_jsonl_records,
     _require_unsealed_run_directory,
     _semver_tuple,
     _validate_resume_record,
+)
+from insideLLMs.runtime._async_resume import (
+    attempted_prefix_length,
+    read_resume_history,
+    replace_resume_records,
 )
 from insideLLMs.runtime._base import (
     ProgressCallback,
@@ -408,7 +412,11 @@ class ProbeRunner(_RunnerBase):
         run_start_time = time.perf_counter()
 
         if emit_run_artifacts and resume:
-            existing_records = _read_jsonl_records(records_path, truncate_incomplete=True)
+            # Same contract as the async runner: validate the whole history
+            # read-only, count only the attempted prefix as done, and retain
+            # exactly those bytes so a scheduler-attested unattempted tail left
+            # by an earlier async runner is re-run rather than counted.
+            existing_records, existing_lines, original_bytes = read_resume_history(records_path)
             if existing_records:
                 if len(existing_records) > len(prompt_set):
                     raise ValueError(
@@ -423,11 +431,15 @@ class ProbeRunner(_RunnerBase):
                         strict_serialization=strict_serialization,
                     )
                     validate_scored_resume_record(self.probe, record)
+                completed = attempted_prefix_length(existing_records)
+                for line_index, record in enumerate(existing_records[:completed]):
                     results[line_index] = _result_dict_from_record(
                         record,
                         schema_version=schema_version,
                     )
-                completed = len(existing_records)
+            retained_bytes = b"".join(existing_lines[:completed])
+            if retained_bytes != original_bytes:
+                replace_resume_records(records_path, retained_bytes)
 
         stop_error: Optional[RunnerExecutionError] = None
         with ExitStack() as stack:

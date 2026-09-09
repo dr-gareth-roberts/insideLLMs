@@ -11,7 +11,7 @@ from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models import DummyModel
 from insideLLMs.probes import LogicProbe
 from insideLLMs.runtime._async_resume import SCHEDULER_UNATTEMPTED_EXECUTION
-from insideLLMs.runtime.runner import AsyncProbeRunner
+from insideLLMs.runtime.runner import AsyncProbeRunner, ProbeRunner
 
 
 class EchoProbe(LogicProbe):
@@ -117,6 +117,35 @@ async def test_scheduler_attested_legacy_tail_is_truncated_and_reattempted(tmp_p
     assert path.read_bytes().startswith(prefix)
     records = [json.loads(line) for line in path.read_text().splitlines()]
     assert [record["status"] for record in records] == ["success", "error", "success"]
+
+
+@pytest.mark.asyncio
+async def test_sync_resume_truncates_and_reattempts_scheduler_attested_tail(tmp_path, monkeypatch):
+    """The sync runner shares the resume contract: an attested tail is retried, not counted."""
+    runner, directory, calls = await failed_run(tmp_path, monkeypatch)
+    append_scheduler_attested_tail(directory, item="c", index=2)
+    path = directory / "records.jsonl"
+    prefix = b"".join(path.read_bytes().splitlines(keepends=True)[:2])
+    ProbeRunner(runner.model, runner.probe).run(["a", "b", "c"], run_dir=directory, resume=True)
+    assert calls == ["a", "b", "c"]
+    assert path.read_bytes().startswith(prefix)
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [record["status"] for record in records] == ["success", "error", "success"]
+
+
+@pytest.mark.asyncio
+async def test_sync_resume_rejects_unattested_skipped_tail_without_mutation(tmp_path, monkeypatch):
+    runner, directory, calls = await failed_run(tmp_path, monkeypatch)
+    append_scheduler_attested_tail(directory, item="c", index=2)
+    path = directory / "records.jsonl"
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    records[2]["custom"].pop("execution")
+    path.write_text("".join(json.dumps(record) + "\n" for record in records))
+    snapshot = {p.name: p.read_bytes() for p in directory.iterdir() if p.is_file()}
+    with pytest.raises(ValueError, match="never executed"):
+        ProbeRunner(runner.model, runner.probe).run(["a", "b", "c"], run_dir=directory, resume=True)
+    assert calls == ["a", "b"]
+    assert snapshot == {p.name: p.read_bytes() for p in directory.iterdir() if p.is_file()}
 
 
 @pytest.mark.asyncio
