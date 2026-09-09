@@ -1108,7 +1108,7 @@
       "escalation_reason": null,
       "fix_commit": "c38f304",
       "verification": "BEFORE: both JSONL readers accumulated full lists; the new regression module failed collection because iter_jsonl_records was absent. AFTER: tests/test_audit_wave8_regressions.py passed 5 tests including the 100k-record peak-memory bound; focused downstream diff/CLI/async suites passed 236 tests; make golden-path passed with 12 common keys and zero changes; PATH=.venv/bin:$PATH make PYTHON=.venv/bin/python check passed with 7181 tests passed and 336 skipped, plus clean ruff, format, and mypy checks.",
-      "notes": "Fixed in c38f304. The runtime iterator is shared by CLI and async resume; compatibility list readers remain, and diff indexes only baseline records while streaming candidate records."
+      "notes": "Fixed in c38f304 (rebased as 9a76ee0). The runtime iterator is shared by the CLI diff path; async resume keeps the whole-file byte-preserving read from A07 (the _async_runner hunk was dropped on rebase). Compatibility list readers remain; diff indexes only baseline records while streaming candidate records."
     },
     {
       "id": "R8-02",
