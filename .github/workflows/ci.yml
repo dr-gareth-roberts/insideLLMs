@@ -129,11 +129,33 @@ jobs:
           key: pip-determinism-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-determinism-
 
-      - name: Install dependencies
+      - name: Run clean-install golden-path determinism check
+        run: make clean-install-golden-path
+
+  architecture:
+    name: Architecture Contracts
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-architecture-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-architecture-
+
+      - name: Install test dependencies
         run: pip install -e ".[dev]"
 
-      - name: Run golden-path determinism check
-        run: make golden-path
+      - name: Check generated evidence and import boundaries
+        run: make architecture
 
   contracts:
     name: Stability Contracts

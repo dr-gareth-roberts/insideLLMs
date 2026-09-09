@@ -1,0 +1,10 @@
+{
+  "default_status": "experimental",
+  "overrides": {
+    "Registry": "stable",
+    "ensure_builtins_registered": "stable",
+    "model_registry": "stable",
+    "probe_registry": "stable"
+  },
+  "schema_version": 1
+}

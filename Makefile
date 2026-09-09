@@ -1,4 +1,4 @@
-.PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path package-smoke
+.PHONY: help lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit architecture architecture-update check check-fast golden-path package-smoke clean-install-golden-path
 
 PYTHON ?= python3
 
@@ -16,10 +16,13 @@ help:
 	@echo "  make test-adapter  - \$$PYTHON -m pytest -m adapter"
 	@echo "  make test-performance - \$$PYTHON -m pytest -m performance"
 	@echo "  make docs-audit    - markdown/docs coverage + wiki link checks"
+	@echo "  make architecture  - check API/import evidence and architecture boundaries"
+	@echo "  make architecture-update - regenerate API/import evidence"
 	@echo "  make check         - lint + format-check + typecheck + test"
 	@echo "  make check-fast    - lint + format-check + test-fast (quick pre-commit)"
 	@echo "  make golden-path   - offline harness + diff (DummyModel)"
 	@echo "  make package-smoke PYTHON=/path/to/clean-venv/bin/python - verify installed distribution"
+	@echo "  make clean-install-golden-path - build/install core wheel in an isolated venv"
 
 lint:
 	ruff check .
@@ -83,7 +86,14 @@ docs-audit:
 	$(PYTHON) scripts/audit_docs.py
 	$(PYTHON) scripts/check_wiki_links.py
 
-check: lint format-check typecheck test docs-audit
+architecture:
+	$(PYTHON) scripts/architecture_evidence.py --check
+	$(PYTHON) -m pytest tests/architecture tests/inference/test_architecture.py
+
+architecture-update:
+	$(PYTHON) scripts/architecture_evidence.py --write
+
+check: lint format-check typecheck test docs-audit architecture
 
 check-fast: lint format-check test-fast
 
@@ -96,3 +106,6 @@ golden-path:
 	$(PYTHON) -m insideLLMs.cli harness ci/harness.yaml --run-dir .tmp/runs/baseline --overwrite --skip-report
 	$(PYTHON) -m insideLLMs.cli harness ci/harness.yaml --run-dir .tmp/runs/candidate --overwrite --skip-report
 	$(PYTHON) -m insideLLMs.cli diff .tmp/runs/baseline .tmp/runs/candidate --fail-on-changes
+
+clean-install-golden-path:
+	PYTHON=$(PYTHON) bash scripts/clean_install_golden_path.sh

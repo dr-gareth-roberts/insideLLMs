@@ -1,0 +1,5652 @@
+{
+  "edges": [
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.caching",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.config",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.agents",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.benchmark",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.deployment",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.hitl",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.routing",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.synthesis",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.evaluation",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.inference",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.models",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.observability",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.pipeline",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.probes",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.results",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.safety",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.semantic_cache",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.shadow",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.structured",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.trace.trace_config",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs",
+      "source_layer": "core",
+      "target": "insideLLMs.visualization",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.comparison",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.evaluation",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.export",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.matched_compute",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.visualization",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis.evaluation",
+      "source_layer": "analysis",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.analysis.evaluation",
+      "source_layer": "analysis",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.analysis.export",
+      "source_layer": "analysis",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.analysis.export",
+      "source_layer": "analysis",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.analysis.matched_compute",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.evaluation",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis.matched_compute",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis.matched_compute",
+      "source_layer": "analysis",
+      "target": "insideLLMs.inference.client",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.analysis.matched_compute",
+      "source_layer": "analysis",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.analysis.plan",
+      "source_layer": "analysis",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis.statistics",
+      "source_layer": "analysis",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.analysis.visualization",
+      "source_layer": "analysis",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.attestations",
+      "source_layer": "analysis",
+      "target": "insideLLMs.attestations.dsse",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.attestations",
+      "source_layer": "analysis",
+      "target": "insideLLMs.attestations.statement",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.attestations.predicates",
+      "source_layer": "analysis",
+      "target": "insideLLMs.attestations.predicates.slsa_provenance",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.attestations.steps",
+      "source_layer": "analysis",
+      "target": "insideLLMs.attestations.steps.builders",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.attestations.steps.builders",
+      "source_layer": "analysis",
+      "target": "insideLLMs.attestations.statement",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.caching",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.caching",
+      "source_layer": "core",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._parsing",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._report_builder",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.attest",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.benchmark",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.compare",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.diff",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.doctor",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.export",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.generate_suite",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.harness",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.info",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.init_cmd",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.interactive",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.list_cmd",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.optimize_prompt",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.quicktest",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.report",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.run",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.schema",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.sign",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.trend",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.validate",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.verify",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands.welcome",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.__main__",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli._diff_engine",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.diffing",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli._output",
+      "source_layer": "cli",
+      "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli._parsing",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli._parsing",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli._record_utils",
+      "source_layer": "cli",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli._record_utils",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.diffing",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli._record_utils",
+      "source_layer": "cli",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli._report_builder",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli._report_builder",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli._report_builder",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli._report_builder",
+      "source_layer": "cli",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands._run_common",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands._run_common",
+      "source_layer": "cli",
+      "target": "insideLLMs.experiment_tracking",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands._run_common",
+      "source_layer": "cli",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.cli.commands._run_common",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands._run_common",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.attest",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.attest",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._ultimate",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.benchmark_datasets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.benchmark",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.compare",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.compare",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.compare",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.compare",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.diff",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.diff",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.diff",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.diffing",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.diff",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.diffing_interactive",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.diff",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.doctor",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.doctor",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._parsing",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.doctor",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.doctor",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.export",
+      "source_layer": "cli",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.export",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.export",
+      "source_layer": "cli",
+      "target": "insideLLMs.privacy.encryption",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.cli.commands.export",
+      "source_layer": "cli",
+      "target": "insideLLMs.privacy.redaction",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.cli.commands.export",
+      "source_layer": "cli",
+      "target": "insideLLMs.results",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.generate_suite",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.generate_suite",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.generate_suite",
+      "source_layer": "cli",
+      "target": "insideLLMs.contrib.synthesis",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs.cli.commands.generate_suite",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.analysis.visualization",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._report_builder",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.info",
+      "source_layer": "cli",
+      "target": "insideLLMs.benchmark_datasets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.info",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.info",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.init_cmd",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.interactive",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.interactive",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.interactive",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.list_cmd",
+      "source_layer": "cli",
+      "target": "insideLLMs.benchmark_datasets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.list_cmd",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.list_cmd",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.optimize_prompt",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.optimize_prompt",
+      "source_layer": "cli",
+      "target": "insideLLMs.optimization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.quicktest",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.quicktest",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.quicktest",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.analysis.visualization",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._report_builder",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli.commands._run_common",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.results",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.schema",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.schema",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._record_utils",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.schema",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.sign",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.sign",
+      "source_layer": "cli",
+      "target": "insideLLMs.signing",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.cli.commands.trend",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.trend",
+      "source_layer": "cli",
+      "target": "insideLLMs.tracking",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.validate",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.validate",
+      "source_layer": "cli",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.validate",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.verify",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.verify",
+      "source_layer": "cli",
+      "target": "insideLLMs.signing",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.cli.commands.welcome",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli._output",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.config",
+      "source_layer": "core",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.config_types",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.contrib.adversarial",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.benchmark",
+      "source_layer": "labs",
+      "target": "insideLLMs.models",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.contrib.benchmark",
+      "source_layer": "labs",
+      "target": "insideLLMs.probes",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.contrib.benchmark",
+      "source_layer": "labs",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.contrib.benchmark",
+      "source_layer": "labs",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.contrib.claims",
+      "source_layer": "labs",
+      "target": "insideLLMs.contrib.claims.compiler",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs.contrib.context_window",
+      "source_layer": "labs",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.diffing",
+      "source_layer": "labs",
+      "target": "insideLLMs.diffing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.diffing",
+      "source_layer": "labs",
+      "target": "insideLLMs.runtime.diffing_interactive",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.contrib.diversity",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.diversity",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.hallucination",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.introspection",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.knowledge",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.preprocessing",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.text_cleaning",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.prompt_testing",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.prompt_utils",
+      "source_layer": "labs",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.retrieval",
+      "source_layer": "labs",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.contrib.retrieval",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.routing",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.security",
+      "source_layer": "labs",
+      "target": "insideLLMs.contrib.security.openvex",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs.contrib.security.injection_engine",
+      "source_layer": "labs",
+      "target": "insideLLMs.safety",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.contrib.sensitivity",
+      "source_layer": "labs",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.synthesis",
+      "source_layer": "labs",
+      "target": "insideLLMs.logging_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.contrib.synthesis",
+      "source_layer": "labs",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.crypto",
+      "source_layer": "analysis",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.crypto",
+      "source_layer": "analysis",
+      "target": "insideLLMs.crypto.merkle",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.crypto.canonical",
+      "source_layer": "analysis",
+      "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.crypto.canonical",
+      "source_layer": "analysis",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.crypto.merkle",
+      "source_layer": "analysis",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.datasets",
+      "source_layer": "core",
+      "target": "insideLLMs.datasets.commitments",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.datasets.commitments",
+      "source_layer": "core",
+      "target": "insideLLMs.crypto.merkle",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.diffing",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.diffing",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.diffing",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.diffing_interactive",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.evaluation",
+      "source_layer": "evals",
+      "target": "insideLLMs.analysis.evaluation",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.experiment_tracking",
+      "source_layer": "core",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.export",
+      "source_layer": "core",
+      "target": "insideLLMs.analysis.export",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.adapters",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.best_of_n",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.client",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.dag",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.escalation",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.evolution",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.prefix_cache",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.repair",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.retrieval",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.search",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.self_consistency",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.structured",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.sync",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.tools",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference._callbacks",
+      "source_layer": "inference",
+      "target": "insideLLMs.async_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.inference.adapters",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.adapters",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.adapters",
+      "source_layer": "inference",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.inference.best_of_n",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.best_of_n",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.analysis.evaluation",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.adapters",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.best_of_n",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.self_consistency",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.runtime._config_loader",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.inference.dag",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.dag",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.dag",
+      "source_layer": "inference",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.inference.escalation",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.escalation",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.evolution",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.prefix_cache",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.repair",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.repair",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.retrieval",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.retrieval",
+      "source_layer": "inference",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.inference.search",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.search",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.search",
+      "source_layer": "inference",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.inference.self_consistency",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.self_consistency",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.structured",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.structured",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference.schemas",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.tools",
+      "source_layer": "inference",
+      "target": "insideLLMs.async_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.inference.tools",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._callbacks",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.injection",
+      "source_layer": "core",
+      "target": "insideLLMs.contrib.security.injection_engine",
+      "target_layer": "labs"
+    },
+    {
+      "source": "insideLLMs.integrations.langchain",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.anthropic",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.cohere",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.gemini",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.huggingface",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.local",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.openai",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.openrouter",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.anthropic",
+      "source_layer": "providers",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.anthropic",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.base",
+      "source_layer": "providers",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.base",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.base",
+      "source_layer": "providers",
+      "target": "insideLLMs.validation",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.models.cohere",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.cohere",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.gemini",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.gemini",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.huggingface",
+      "source_layer": "providers",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.huggingface",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.local",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.local",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.openai",
+      "source_layer": "providers",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.openai",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.openai",
+      "source_layer": "providers",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.models.openrouter",
+      "source_layer": "providers",
+      "target": "insideLLMs.models.openai",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.char_level",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.chunking",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.classification",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.encoding",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.extraction",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.feature_extraction",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.keyword_extraction",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.language_detection",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.similarity",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.text_analysis",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.text_cleaning",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.text_metrics",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.text_transformation",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.chunking",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.chunking",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.classification",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.extraction",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.feature_extraction",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.keyword_extraction",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.keyword_extraction",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.language_detection",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.similarity",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.similarity",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.text_analysis",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.text_metrics",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.text_metrics",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.tokenization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.nlp.tokenization",
+      "source_layer": "core",
+      "target": "insideLLMs.nlp.dependencies",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.observability",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.observability",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.pipeline",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.policy",
+      "source_layer": "evals",
+      "target": "insideLLMs.policy.engine",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.policy.engine",
+      "source_layer": "evals",
+      "target": "insideLLMs.crypto",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.policy.engine",
+      "source_layer": "evals",
+      "target": "insideLLMs.transparency.scitt_client",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.privacy",
+      "source_layer": "evals",
+      "target": "insideLLMs.privacy.redaction",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.privacy.disclosure",
+      "source_layer": "evals",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.privacy.disclosure",
+      "source_layer": "evals",
+      "target": "insideLLMs.crypto.merkle",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.privacy.redaction",
+      "source_layer": "evals",
+      "target": "insideLLMs.safety",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.agent_probe",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.attack",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.bias",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.code",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.factuality",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.instruction",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.judge",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.logic",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.agent_probe",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.agent_probe",
+      "source_layer": "evals",
+      "target": "insideLLMs.trace.trace_config",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.probes.agent_probe",
+      "source_layer": "evals",
+      "target": "insideLLMs.tracing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.probes.agent_probe",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.attack",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.attack",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.base",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.bias",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.bias",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.code",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.code",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.factuality",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.instruction",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.instruction",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.judge",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.judge",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.logic",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.logic",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.publish",
+      "source_layer": "analysis",
+      "target": "insideLLMs.publish.oras",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.rate_limiting",
+      "source_layer": "core",
+      "target": "insideLLMs.retry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.dataset_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.anthropic",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.cohere",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.gemini",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.huggingface",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.local",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.openai",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.models.openrouter",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.probes",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.registry",
+      "source_layer": "core",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.reproducibility",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime.reproducibility",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.results",
+      "source_layer": "core",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.results",
+      "source_layer": "core",
+      "target": "insideLLMs.resources",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.results",
+      "source_layer": "core",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.results",
+      "source_layer": "core",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.results",
+      "source_layer": "core",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.retry",
+      "source_layer": "core",
+      "target": "insideLLMs.async_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.retry",
+      "source_layer": "core",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.async_io",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.diffing",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.observability",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.reproducibility",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.timeout_wrapper",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._artifact_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._artifact_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs.resources",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._artifact_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._result_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._artifact_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas.registry",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._base",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._high_level",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._result_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._ultimate",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.receipt",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.timeout_wrapper",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.validation",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._base",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._base",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime._base",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._base",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.dataset_utils",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.pipeline",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.receipt",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._determinism",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._async_runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._base",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._config_loader",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._result_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._sync_runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._result_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._result_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._result_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._base",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._high_level",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._result_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._ultimate",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.receipt",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.validation",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.attestations",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.attestations.steps.builders",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.crypto",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.policy.engine",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.publish.oras",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.transparency.scitt_client",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime.diffing",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.diffing",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._base",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.diffing",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.observability",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime.observability",
+      "source_layer": "runtime",
+      "target": "insideLLMs.tokens",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.observability",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.pipeline",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.pipeline",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime.pipeline",
+      "source_layer": "runtime",
+      "target": "insideLLMs.tracing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.pipeline",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.receipt",
+      "source_layer": "runtime",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime.receipt",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.receipt",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime.receipt",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.reproducibility",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._async_runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._base",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._config_loader",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._high_level",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._result_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._sync_runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.workflows",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime.runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.timeout_wrapper",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.workflows",
+      "source_layer": "runtime",
+      "target": "insideLLMs.cli.commands.diff",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.runtime.workflows",
+      "source_layer": "runtime",
+      "target": "insideLLMs.cli.commands.harness",
+      "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.runtime.workflows",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.registry",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.validator",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.custom_trace_v1",
+      "source_layer": "contracts",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.schemas.registry",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.custom_trace_v1",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.registry",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_0",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.registry",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_1",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.registry",
+      "source_layer": "contracts",
+      "target": "insideLLMs.structured",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.schemas.v1_0_0",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.registry",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.v1_0_1",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_0",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.validator",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.constants",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.validator",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.validator",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.registry",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.semantic_cache",
+      "source_layer": "core",
+      "target": "insideLLMs.caching",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.shadow",
+      "source_layer": "core",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.shadow",
+      "source_layer": "core",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.signing",
+      "source_layer": "analysis",
+      "target": "insideLLMs.signing.cosign",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.structured",
+      "source_layer": "core",
+      "target": "insideLLMs.models",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.structured",
+      "source_layer": "core",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.trace",
+      "source_layer": "core",
+      "target": "insideLLMs.trace.trace_config",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.trace",
+      "source_layer": "core",
+      "target": "insideLLMs.trace.trace_contracts",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.trace",
+      "source_layer": "core",
+      "target": "insideLLMs.trace.tracing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.trace.trace_config",
+      "source_layer": "core",
+      "target": "insideLLMs.trace_contracts",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.trace.trace_contracts",
+      "source_layer": "core",
+      "target": "insideLLMs.tracing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.trace.tracing",
+      "source_layer": "core",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.trace_contracts",
+      "source_layer": "contracts",
+      "target": "insideLLMs.trace.trace_contracts",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.tracing",
+      "source_layer": "core",
+      "target": "insideLLMs.trace.tracing",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.tracking",
+      "source_layer": "core",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.tracking",
+      "source_layer": "core",
+      "target": "insideLLMs.runtime._determinism",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.transparency",
+      "source_layer": "analysis",
+      "target": "insideLLMs.transparency.scitt_client",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.transparency.scitt_client",
+      "source_layer": "analysis",
+      "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.visualization",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis.visualization",
+      "target_layer": "analysis"
+    }
+  ],
+  "layer_edges": [
+    {
+      "count": 22,
+      "source_layer": "analysis",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 4,
+      "source_layer": "analysis",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 3,
+      "source_layer": "analysis",
+      "target_layer": "core"
+    },
+    {
+      "count": 2,
+      "source_layer": "analysis",
+      "target_layer": "inference"
+    },
+    {
+      "count": 1,
+      "source_layer": "analysis",
+      "target_layer": "providers"
+    },
+    {
+      "count": 5,
+      "source_layer": "cli",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 70,
+      "source_layer": "cli",
+      "target_layer": "cli"
+    },
+    {
+      "count": 10,
+      "source_layer": "cli",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 24,
+      "source_layer": "cli",
+      "target_layer": "core"
+    },
+    {
+      "count": 2,
+      "source_layer": "cli",
+      "target_layer": "evals"
+    },
+    {
+      "count": 1,
+      "source_layer": "cli",
+      "target_layer": "labs"
+    },
+    {
+      "count": 1,
+      "source_layer": "cli",
+      "target_layer": "providers"
+    },
+    {
+      "count": 12,
+      "source_layer": "cli",
+      "target_layer": "runtime"
+    },
+    {
+      "count": 13,
+      "source_layer": "contracts",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 3,
+      "source_layer": "contracts",
+      "target_layer": "core"
+    },
+    {
+      "count": 5,
+      "source_layer": "core",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 10,
+      "source_layer": "core",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 54,
+      "source_layer": "core",
+      "target_layer": "core"
+    },
+    {
+      "count": 5,
+      "source_layer": "core",
+      "target_layer": "evals"
+    },
+    {
+      "count": 1,
+      "source_layer": "core",
+      "target_layer": "inference"
+    },
+    {
+      "count": 7,
+      "source_layer": "core",
+      "target_layer": "labs"
+    },
+    {
+      "count": 13,
+      "source_layer": "core",
+      "target_layer": "providers"
+    },
+    {
+      "count": 7,
+      "source_layer": "core",
+      "target_layer": "runtime"
+    },
+    {
+      "count": 5,
+      "source_layer": "evals",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 9,
+      "source_layer": "evals",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 2,
+      "source_layer": "evals",
+      "target_layer": "core"
+    },
+    {
+      "count": 20,
+      "source_layer": "evals",
+      "target_layer": "evals"
+    },
+    {
+      "count": 1,
+      "source_layer": "inference",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 1,
+      "source_layer": "inference",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 5,
+      "source_layer": "inference",
+      "target_layer": "core"
+    },
+    {
+      "count": 39,
+      "source_layer": "inference",
+      "target_layer": "inference"
+    },
+    {
+      "count": 1,
+      "source_layer": "inference",
+      "target_layer": "runtime"
+    },
+    {
+      "count": 1,
+      "source_layer": "labs",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 15,
+      "source_layer": "labs",
+      "target_layer": "core"
+    },
+    {
+      "count": 2,
+      "source_layer": "labs",
+      "target_layer": "evals"
+    },
+    {
+      "count": 2,
+      "source_layer": "labs",
+      "target_layer": "labs"
+    },
+    {
+      "count": 3,
+      "source_layer": "labs",
+      "target_layer": "providers"
+    },
+    {
+      "count": 2,
+      "source_layer": "labs",
+      "target_layer": "runtime"
+    },
+    {
+      "count": 10,
+      "source_layer": "providers",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 1,
+      "source_layer": "providers",
+      "target_layer": "core"
+    },
+    {
+      "count": 16,
+      "source_layer": "providers",
+      "target_layer": "providers"
+    },
+    {
+      "count": 7,
+      "source_layer": "runtime",
+      "target_layer": "analysis"
+    },
+    {
+      "count": 2,
+      "source_layer": "runtime",
+      "target_layer": "cli"
+    },
+    {
+      "count": 25,
+      "source_layer": "runtime",
+      "target_layer": "contracts"
+    },
+    {
+      "count": 20,
+      "source_layer": "runtime",
+      "target_layer": "core"
+    },
+    {
+      "count": 5,
+      "source_layer": "runtime",
+      "target_layer": "evals"
+    },
+    {
+      "count": 7,
+      "source_layer": "runtime",
+      "target_layer": "providers"
+    },
+    {
+      "count": 45,
+      "source_layer": "runtime",
+      "target_layer": "runtime"
+    }
+  ],
+  "modules": [
+    {
+      "fan_in": 5,
+      "fan_out": 27,
+      "layer": "core",
+      "loc": 801,
+      "module": "insideLLMs",
+      "path": "insideLLMs/__init__.py"
+    },
+    {
+      "fan_in": 19,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 247,
+      "module": "insideLLMs._serialization",
+      "path": "insideLLMs/_serialization.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 6,
+      "layer": "analysis",
+      "loc": 554,
+      "module": "insideLLMs.analysis",
+      "path": "insideLLMs/analysis/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 2380,
+      "module": "insideLLMs.analysis.comparison",
+      "path": "insideLLMs/analysis/comparison.py"
+    },
+    {
+      "fan_in": 4,
+      "fan_out": 2,
+      "layer": "analysis",
+      "loc": 3488,
+      "module": "insideLLMs.analysis.evaluation",
+      "path": "insideLLMs/analysis/evaluation.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "analysis",
+      "loc": 2590,
+      "module": "insideLLMs.analysis.export",
+      "path": "insideLLMs/analysis/export.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "analysis",
+      "loc": 681,
+      "module": "insideLLMs.analysis.matched_compute",
+      "path": "insideLLMs/analysis/matched_compute.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 26,
+      "module": "insideLLMs.analysis.plan",
+      "path": "insideLLMs/analysis/plan.py"
+    },
+    {
+      "fan_in": 6,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 1873,
+      "module": "insideLLMs.analysis.statistics",
+      "path": "insideLLMs/analysis/statistics.py"
+    },
+    {
+      "fan_in": 4,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 4113,
+      "module": "insideLLMs.analysis.visualization",
+      "path": "insideLLMs/analysis/visualization.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 2292,
+      "module": "insideLLMs.async_utils",
+      "path": "insideLLMs/async_utils.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "analysis",
+      "loc": 23,
+      "module": "insideLLMs.attestations",
+      "path": "insideLLMs/attestations/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 106,
+      "module": "insideLLMs.attestations.dsse",
+      "path": "insideLLMs/attestations/dsse.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 5,
+      "module": "insideLLMs.attestations.predicates",
+      "path": "insideLLMs/attestations/predicates/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 46,
+      "module": "insideLLMs.attestations.predicates.slsa_provenance",
+      "path": "insideLLMs/attestations/predicates/slsa_provenance.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 44,
+      "module": "insideLLMs.attestations.statement",
+      "path": "insideLLMs/attestations/statement.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 27,
+      "module": "insideLLMs.attestations.steps",
+      "path": "insideLLMs/attestations/steps/__init__.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 217,
+      "module": "insideLLMs.attestations.steps.builders",
+      "path": "insideLLMs/attestations/steps/builders.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 2131,
+      "module": "insideLLMs.benchmark_datasets",
+      "path": "insideLLMs/benchmark_datasets.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 3501,
+      "module": "insideLLMs.caching",
+      "path": "insideLLMs/caching.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 27,
+      "layer": "cli",
+      "loc": 198,
+      "module": "insideLLMs.cli",
+      "path": "insideLLMs/cli/__init__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 7,
+      "module": "insideLLMs.cli.__main__",
+      "path": "insideLLMs/cli/__main__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 24,
+      "module": "insideLLMs.cli._diff_engine",
+      "path": "insideLLMs/cli/_diff_engine.py"
+    },
+    {
+      "fan_in": 26,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 314,
+      "module": "insideLLMs.cli._output",
+      "path": "insideLLMs/cli/_output.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 1150,
+      "module": "insideLLMs.cli._parsing",
+      "path": "insideLLMs/cli/_parsing.py"
+    },
+    {
+      "fan_in": 9,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 108,
+      "module": "insideLLMs.cli._record_utils",
+      "path": "insideLLMs/cli/_record_utils.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 4,
+      "layer": "cli",
+      "loc": 331,
+      "module": "insideLLMs.cli._report_builder",
+      "path": "insideLLMs/cli/_report_builder.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "cli",
+      "loc": 1,
+      "module": "insideLLMs.cli.commands",
+      "path": "insideLLMs/cli/commands/__init__.py"
+    },
+    {
+      "fan_in": 7,
+      "fan_out": 5,
+      "layer": "cli",
+      "loc": 161,
+      "module": "insideLLMs.cli.commands._run_common",
+      "path": "insideLLMs/cli/commands/_run_common.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 28,
+      "module": "insideLLMs.cli.commands.attest",
+      "path": "insideLLMs/cli/commands/attest.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 6,
+      "layer": "cli",
+      "loc": 176,
+      "module": "insideLLMs.cli.commands.benchmark",
+      "path": "insideLLMs/cli/commands/benchmark.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "cli",
+      "loc": 219,
+      "module": "insideLLMs.cli.commands.compare",
+      "path": "insideLLMs/cli/commands/compare.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 5,
+      "layer": "cli",
+      "loc": 250,
+      "module": "insideLLMs.cli.commands.diff",
+      "path": "insideLLMs/cli/commands/diff.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "cli",
+      "loc": 432,
+      "module": "insideLLMs.cli.commands.doctor",
+      "path": "insideLLMs/cli/commands/doctor.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 5,
+      "layer": "cli",
+      "loc": 139,
+      "module": "insideLLMs.cli.commands.export",
+      "path": "insideLLMs/cli/commands/export.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "cli",
+      "loc": 143,
+      "module": "insideLLMs.cli.commands.generate_suite",
+      "path": "insideLLMs/cli/commands/generate_suite.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 10,
+      "layer": "cli",
+      "loc": 848,
+      "module": "insideLLMs.cli.commands.harness",
+      "path": "insideLLMs/cli/commands/harness.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 70,
+      "module": "insideLLMs.cli.commands.info",
+      "path": "insideLLMs/cli/commands/info.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 249,
+      "module": "insideLLMs.cli.commands.init_cmd",
+      "path": "insideLLMs/cli/commands/init_cmd.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 146,
+      "module": "insideLLMs.cli.commands.interactive",
+      "path": "insideLLMs/cli/commands/interactive.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 95,
+      "module": "insideLLMs.cli.commands.list_cmd",
+      "path": "insideLLMs/cli/commands/list_cmd.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 100,
+      "module": "insideLLMs.cli.commands.optimize_prompt",
+      "path": "insideLLMs/cli/commands/optimize_prompt.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 86,
+      "module": "insideLLMs.cli.commands.quicktest",
+      "path": "insideLLMs/cli/commands/quicktest.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 6,
+      "layer": "cli",
+      "loc": 104,
+      "module": "insideLLMs.cli.commands.report",
+      "path": "insideLLMs/cli/commands/report.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 7,
+      "layer": "cli",
+      "loc": 286,
+      "module": "insideLLMs.cli.commands.run",
+      "path": "insideLLMs/cli/commands/run.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 149,
+      "module": "insideLLMs.cli.commands.schema",
+      "path": "insideLLMs/cli/commands/schema.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 41,
+      "module": "insideLLMs.cli.commands.sign",
+      "path": "insideLLMs/cli/commands/sign.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 108,
+      "module": "insideLLMs.cli.commands.trend",
+      "path": "insideLLMs/cli/commands/trend.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "cli",
+      "loc": 212,
+      "module": "insideLLMs.cli.commands.validate",
+      "path": "insideLLMs/cli/commands/validate.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "cli",
+      "loc": 51,
+      "module": "insideLLMs.cli.commands.verify",
+      "path": "insideLLMs/cli/commands/verify.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 51,
+      "module": "insideLLMs.cli.commands.welcome",
+      "path": "insideLLMs/cli/commands/welcome.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 1882,
+      "module": "insideLLMs.config",
+      "path": "insideLLMs/config.py"
+    },
+    {
+      "fan_in": 4,
+      "fan_out": 1,
+      "layer": "contracts",
+      "loc": 2355,
+      "module": "insideLLMs.config_types",
+      "path": "insideLLMs/config_types.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 363,
+      "module": "insideLLMs.constants",
+      "path": "insideLLMs/constants.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 12,
+      "module": "insideLLMs.contrib",
+      "path": "insideLLMs/contrib/__init__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3207,
+      "module": "insideLLMs.contrib.adapters",
+      "path": "insideLLMs/contrib/adapters.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2818,
+      "module": "insideLLMs.contrib.adversarial",
+      "path": "insideLLMs/contrib/adversarial.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3642,
+      "module": "insideLLMs.contrib.agents",
+      "path": "insideLLMs/contrib/agents.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2580,
+      "module": "insideLLMs.contrib.behavior",
+      "path": "insideLLMs/contrib/behavior.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "labs",
+      "loc": 1325,
+      "module": "insideLLMs.contrib.benchmark",
+      "path": "insideLLMs/contrib/benchmark.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2899,
+      "module": "insideLLMs.contrib.calibration",
+      "path": "insideLLMs/contrib/calibration.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2926,
+      "module": "insideLLMs.contrib.chains",
+      "path": "insideLLMs/contrib/chains.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 5,
+      "module": "insideLLMs.contrib.claims",
+      "path": "insideLLMs/contrib/claims/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 82,
+      "module": "insideLLMs.contrib.claims.compiler",
+      "path": "insideLLMs/contrib/claims/compiler.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 3361,
+      "module": "insideLLMs.contrib.context_window",
+      "path": "insideLLMs/contrib/context_window.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3205,
+      "module": "insideLLMs.contrib.conversation",
+      "path": "insideLLMs/contrib/conversation.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2805,
+      "module": "insideLLMs.contrib.debugging",
+      "path": "insideLLMs/contrib/debugging.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3063,
+      "module": "insideLLMs.contrib.deployment",
+      "path": "insideLLMs/contrib/deployment.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 2,
+      "layer": "labs",
+      "loc": 33,
+      "module": "insideLLMs.contrib.diffing",
+      "path": "insideLLMs/contrib/diffing.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3199,
+      "module": "insideLLMs.contrib.distributed",
+      "path": "insideLLMs/contrib/distributed.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 2,
+      "layer": "labs",
+      "loc": 2785,
+      "module": "insideLLMs.contrib.diversity",
+      "path": "insideLLMs/contrib/diversity.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2795,
+      "module": "insideLLMs.contrib.ensemble",
+      "path": "insideLLMs/contrib/ensemble.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 90,
+      "module": "insideLLMs.contrib.evalbom",
+      "path": "insideLLMs/contrib/evalbom.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2725,
+      "module": "insideLLMs.contrib.fingerprinting",
+      "path": "insideLLMs/contrib/fingerprinting.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2807,
+      "module": "insideLLMs.contrib.hallucination",
+      "path": "insideLLMs/contrib/hallucination.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3821,
+      "module": "insideLLMs.contrib.hitl",
+      "path": "insideLLMs/contrib/hitl.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2563,
+      "module": "insideLLMs.contrib.introspection",
+      "path": "insideLLMs/contrib/introspection.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2943,
+      "module": "insideLLMs.contrib.knowledge",
+      "path": "insideLLMs/contrib/knowledge.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3042,
+      "module": "insideLLMs.contrib.latency",
+      "path": "insideLLMs/contrib/latency.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 1775,
+      "module": "insideLLMs.contrib.leaderboard",
+      "path": "insideLLMs/contrib/leaderboard.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 76,
+      "module": "insideLLMs.contrib.model_identity",
+      "path": "insideLLMs/contrib/model_identity.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3061,
+      "module": "insideLLMs.contrib.orchestration",
+      "path": "insideLLMs/contrib/orchestration.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3370,
+      "module": "insideLLMs.contrib.parsing",
+      "path": "insideLLMs/contrib/parsing.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 3419,
+      "module": "insideLLMs.contrib.preprocessing",
+      "path": "insideLLMs/contrib/preprocessing.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 3267,
+      "module": "insideLLMs.contrib.prompt_testing",
+      "path": "insideLLMs/contrib/prompt_testing.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 1643,
+      "module": "insideLLMs.contrib.prompt_utils",
+      "path": "insideLLMs/contrib/prompt_utils.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 1810,
+      "module": "insideLLMs.contrib.quality",
+      "path": "insideLLMs/contrib/quality.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3548,
+      "module": "insideLLMs.contrib.reasoning",
+      "path": "insideLLMs/contrib/reasoning.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 2,
+      "layer": "labs",
+      "loc": 2970,
+      "module": "insideLLMs.contrib.retrieval",
+      "path": "insideLLMs/contrib/retrieval.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2613,
+      "module": "insideLLMs.contrib.routing",
+      "path": "insideLLMs/contrib/routing.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 5,
+      "module": "insideLLMs.contrib.security",
+      "path": "insideLLMs/contrib/security/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2311,
+      "module": "insideLLMs.contrib.security.injection_engine",
+      "path": "insideLLMs/contrib/security/injection_engine.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 62,
+      "module": "insideLLMs.contrib.security.openvex",
+      "path": "insideLLMs/contrib/security/openvex.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 1772,
+      "module": "insideLLMs.contrib.semantic_analysis",
+      "path": "insideLLMs/contrib/semantic_analysis.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "labs",
+      "loc": 2703,
+      "module": "insideLLMs.contrib.sensitivity",
+      "path": "insideLLMs/contrib/sensitivity.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 3803,
+      "module": "insideLLMs.contrib.steering",
+      "path": "insideLLMs/contrib/steering.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "labs",
+      "loc": 3122,
+      "module": "insideLLMs.contrib.synthesis",
+      "path": "insideLLMs/contrib/synthesis.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 2819,
+      "module": "insideLLMs.contrib.template_versioning",
+      "path": "insideLLMs/contrib/template_versioning.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "labs",
+      "loc": 1842,
+      "module": "insideLLMs.contrib.templates",
+      "path": "insideLLMs/contrib/templates.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 1654,
+      "module": "insideLLMs.cost_tracking",
+      "path": "insideLLMs/cost_tracking.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "analysis",
+      "loc": 34,
+      "module": "insideLLMs.crypto",
+      "path": "insideLLMs/crypto/__init__.py"
+    },
+    {
+      "fan_in": 6,
+      "fan_out": 2,
+      "layer": "analysis",
+      "loc": 171,
+      "module": "insideLLMs.crypto.canonical",
+      "path": "insideLLMs/crypto/canonical.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 172,
+      "module": "insideLLMs.crypto.merkle",
+      "path": "insideLLMs/crypto/merkle.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 326,
+      "module": "insideLLMs.dataset_utils",
+      "path": "insideLLMs/dataset_utils.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 5,
+      "module": "insideLLMs.datasets",
+      "path": "insideLLMs/datasets/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 12,
+      "module": "insideLLMs.datasets.commitments",
+      "path": "insideLLMs/datasets/commitments.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 76,
+      "module": "insideLLMs.datasets.tuf_client",
+      "path": "insideLLMs/datasets/tuf_client.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 38,
+      "module": "insideLLMs.diffing",
+      "path": "insideLLMs/diffing.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 336,
+      "module": "insideLLMs.evaluation",
+      "path": "insideLLMs/evaluation.py"
+    },
+    {
+      "fan_in": 12,
+      "fan_out": 0,
+      "layer": "contracts",
+      "loc": 2541,
+      "module": "insideLLMs.exceptions",
+      "path": "insideLLMs/exceptions.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 2779,
+      "module": "insideLLMs.experiment_tracking",
+      "path": "insideLLMs/experiment_tracking.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 300,
+      "module": "insideLLMs.export",
+      "path": "insideLLMs/export.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 15,
+      "layer": "inference",
+      "loc": 94,
+      "module": "insideLLMs.inference",
+      "path": "insideLLMs/inference/__init__.py"
+    },
+    {
+      "fan_in": 11,
+      "fan_out": 1,
+      "layer": "inference",
+      "loc": 88,
+      "module": "insideLLMs.inference._callbacks",
+      "path": "insideLLMs/inference/_callbacks.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 3,
+      "layer": "inference",
+      "loc": 151,
+      "module": "insideLLMs.inference.adapters",
+      "path": "insideLLMs/inference/adapters.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 244,
+      "module": "insideLLMs.inference.best_of_n",
+      "path": "insideLLMs/inference/best_of_n.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 6,
+      "layer": "inference",
+      "loc": 271,
+      "module": "insideLLMs.inference.client",
+      "path": "insideLLMs/inference/client.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "inference",
+      "loc": 180,
+      "module": "insideLLMs.inference.dag",
+      "path": "insideLLMs/inference/dag.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 162,
+      "module": "insideLLMs.inference.escalation",
+      "path": "insideLLMs/inference/escalation.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "inference",
+      "loc": 344,
+      "module": "insideLLMs.inference.evolution",
+      "path": "insideLLMs/inference/evolution.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "inference",
+      "loc": 104,
+      "module": "insideLLMs.inference.prefix_cache",
+      "path": "insideLLMs/inference/prefix_cache.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 92,
+      "module": "insideLLMs.inference.repair",
+      "path": "insideLLMs/inference/repair.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 117,
+      "module": "insideLLMs.inference.retrieval",
+      "path": "insideLLMs/inference/retrieval.py"
+    },
+    {
+      "fan_in": 12,
+      "fan_out": 0,
+      "layer": "inference",
+      "loc": 112,
+      "module": "insideLLMs.inference.schemas",
+      "path": "insideLLMs/inference/schemas.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "inference",
+      "loc": 218,
+      "module": "insideLLMs.inference.search",
+      "path": "insideLLMs/inference/search.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 83,
+      "module": "insideLLMs.inference.self_consistency",
+      "path": "insideLLMs/inference/self_consistency.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 93,
+      "module": "insideLLMs.inference.structured",
+      "path": "insideLLMs/inference/structured.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "inference",
+      "loc": 39,
+      "module": "insideLLMs.inference.sync",
+      "path": "insideLLMs/inference/sync.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "inference",
+      "loc": 159,
+      "module": "insideLLMs.inference.tools",
+      "path": "insideLLMs/inference/tools.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 8,
+      "module": "insideLLMs.injection",
+      "path": "insideLLMs/injection.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "providers",
+      "loc": 5,
+      "module": "insideLLMs.integrations",
+      "path": "insideLLMs/integrations/__init__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "providers",
+      "loc": 223,
+      "module": "insideLLMs.integrations.langchain",
+      "path": "insideLLMs/integrations/langchain.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 2916,
+      "module": "insideLLMs.logging_utils",
+      "path": "insideLLMs/logging_utils.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 9,
+      "layer": "providers",
+      "loc": 560,
+      "module": "insideLLMs.models",
+      "path": "insideLLMs/models/__init__.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "providers",
+      "loc": 832,
+      "module": "insideLLMs.models.anthropic",
+      "path": "insideLLMs/models/anthropic.py"
+    },
+    {
+      "fan_in": 21,
+      "fan_out": 3,
+      "layer": "providers",
+      "loc": 1904,
+      "module": "insideLLMs.models.base",
+      "path": "insideLLMs/models/base.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "providers",
+      "loc": 1256,
+      "module": "insideLLMs.models.cohere",
+      "path": "insideLLMs/models/cohere.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "providers",
+      "loc": 853,
+      "module": "insideLLMs.models.gemini",
+      "path": "insideLLMs/models/gemini.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "providers",
+      "loc": 807,
+      "module": "insideLLMs.models.huggingface",
+      "path": "insideLLMs/models/huggingface.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "providers",
+      "loc": 1880,
+      "module": "insideLLMs.models.local",
+      "path": "insideLLMs/models/local.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 3,
+      "layer": "providers",
+      "loc": 591,
+      "module": "insideLLMs.models.openai",
+      "path": "insideLLMs/models/openai.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "providers",
+      "loc": 74,
+      "module": "insideLLMs.models.openrouter",
+      "path": "insideLLMs/models/openrouter.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 14,
+      "layer": "core",
+      "loc": 636,
+      "module": "insideLLMs.nlp",
+      "path": "insideLLMs/nlp/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 846,
+      "module": "insideLLMs.nlp.char_level",
+      "path": "insideLLMs/nlp/char_level.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 404,
+      "module": "insideLLMs.nlp.chunking",
+      "path": "insideLLMs/nlp/chunking.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 358,
+      "module": "insideLLMs.nlp.classification",
+      "path": "insideLLMs/nlp/classification.py"
+    },
+    {
+      "fan_in": 9,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 613,
+      "module": "insideLLMs.nlp.dependencies",
+      "path": "insideLLMs/nlp/dependencies.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 720,
+      "module": "insideLLMs.nlp.encoding",
+      "path": "insideLLMs/nlp/encoding.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 608,
+      "module": "insideLLMs.nlp.extraction",
+      "path": "insideLLMs/nlp/extraction.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 492,
+      "module": "insideLLMs.nlp.feature_extraction",
+      "path": "insideLLMs/nlp/feature_extraction.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 475,
+      "module": "insideLLMs.nlp.keyword_extraction",
+      "path": "insideLLMs/nlp/keyword_extraction.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 516,
+      "module": "insideLLMs.nlp.language_detection",
+      "path": "insideLLMs/nlp/language_detection.py"
+    },
+    {
+      "fan_in": 9,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 908,
+      "module": "insideLLMs.nlp.similarity",
+      "path": "insideLLMs/nlp/similarity.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 1821,
+      "module": "insideLLMs.nlp.text_analysis",
+      "path": "insideLLMs/nlp/text_analysis.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 781,
+      "module": "insideLLMs.nlp.text_cleaning",
+      "path": "insideLLMs/nlp/text_cleaning.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 741,
+      "module": "insideLLMs.nlp.text_metrics",
+      "path": "insideLLMs/nlp/text_metrics.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 572,
+      "module": "insideLLMs.nlp.text_transformation",
+      "path": "insideLLMs/nlp/text_transformation.py"
+    },
+    {
+      "fan_in": 10,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 641,
+      "module": "insideLLMs.nlp.tokenization",
+      "path": "insideLLMs/nlp/tokenization.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 460,
+      "module": "insideLLMs.observability",
+      "path": "insideLLMs/observability.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 2607,
+      "module": "insideLLMs.optimization",
+      "path": "insideLLMs/optimization.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 290,
+      "module": "insideLLMs.pipeline",
+      "path": "insideLLMs/pipeline.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 5,
+      "module": "insideLLMs.policy",
+      "path": "insideLLMs/policy/__init__.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 107,
+      "module": "insideLLMs.policy.engine",
+      "path": "insideLLMs/policy/engine.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "evals",
+      "loc": 7,
+      "module": "insideLLMs.policy.rules",
+      "path": "insideLLMs/policy/rules/__init__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 5,
+      "module": "insideLLMs.privacy",
+      "path": "insideLLMs/privacy/__init__.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 138,
+      "module": "insideLLMs.privacy.disclosure",
+      "path": "insideLLMs/privacy/disclosure.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "evals",
+      "loc": 79,
+      "module": "insideLLMs.privacy.encryption",
+      "path": "insideLLMs/privacy/encryption.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 31,
+      "module": "insideLLMs.privacy.redaction",
+      "path": "insideLLMs/privacy/redaction.py"
+    },
+    {
+      "fan_in": 4,
+      "fan_out": 10,
+      "layer": "evals",
+      "loc": 540,
+      "module": "insideLLMs.probes",
+      "path": "insideLLMs/probes/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 4,
+      "layer": "evals",
+      "loc": 1762,
+      "module": "insideLLMs.probes.agent_probe",
+      "path": "insideLLMs/probes/agent_probe.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 1183,
+      "module": "insideLLMs.probes.attack",
+      "path": "insideLLMs/probes/attack.py"
+    },
+    {
+      "fan_in": 13,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 1482,
+      "module": "insideLLMs.probes.base",
+      "path": "insideLLMs/probes/base.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 930,
+      "module": "insideLLMs.probes.bias",
+      "path": "insideLLMs/probes/bias.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 1577,
+      "module": "insideLLMs.probes.code",
+      "path": "insideLLMs/probes/code.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "evals",
+      "loc": 525,
+      "module": "insideLLMs.probes.factuality",
+      "path": "insideLLMs/probes/factuality.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 1810,
+      "module": "insideLLMs.probes.instruction",
+      "path": "insideLLMs/probes/instruction.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 395,
+      "module": "insideLLMs.probes.judge",
+      "path": "insideLLMs/probes/judge.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "evals",
+      "loc": 1389,
+      "module": "insideLLMs.probes.logic",
+      "path": "insideLLMs/probes/logic.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 5,
+      "module": "insideLLMs.publish",
+      "path": "insideLLMs/publish/__init__.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 136,
+      "module": "insideLLMs.publish.oras",
+      "path": "insideLLMs/publish/oras.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 3439,
+      "module": "insideLLMs.rate_limiting",
+      "path": "insideLLMs/rate_limiting.py"
+    },
+    {
+      "fan_in": 13,
+      "fan_out": 12,
+      "layer": "core",
+      "loc": 1746,
+      "module": "insideLLMs.registry",
+      "path": "insideLLMs/registry.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 421,
+      "module": "insideLLMs.reproducibility",
+      "path": "insideLLMs/reproducibility.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 1204,
+      "module": "insideLLMs.resources",
+      "path": "insideLLMs/resources.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 5,
+      "layer": "core",
+      "loc": 2174,
+      "module": "insideLLMs.results",
+      "path": "insideLLMs/results.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 2328,
+      "module": "insideLLMs.retry",
+      "path": "insideLLMs/retry.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 7,
+      "layer": "runtime",
+      "loc": 403,
+      "module": "insideLLMs.runtime",
+      "path": "insideLLMs/runtime/__init__.py"
+    },
+    {
+      "fan_in": 7,
+      "fan_out": 4,
+      "layer": "runtime",
+      "loc": 580,
+      "module": "insideLLMs.runtime._artifact_utils",
+      "path": "insideLLMs/runtime/_artifact_utils.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 16,
+      "layer": "runtime",
+      "loc": 756,
+      "module": "insideLLMs.runtime._async_runner",
+      "path": "insideLLMs/runtime/_async_runner.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 4,
+      "layer": "runtime",
+      "loc": 295,
+      "module": "insideLLMs.runtime._base",
+      "path": "insideLLMs/runtime/_base.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 9,
+      "layer": "runtime",
+      "loc": 612,
+      "module": "insideLLMs.runtime._config_loader",
+      "path": "insideLLMs/runtime/_config_loader.py"
+    },
+    {
+      "fan_in": 6,
+      "fan_out": 1,
+      "layer": "runtime",
+      "loc": 537,
+      "module": "insideLLMs.runtime._determinism",
+      "path": "insideLLMs/runtime/_determinism.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 14,
+      "layer": "runtime",
+      "loc": 950,
+      "module": "insideLLMs.runtime._high_level",
+      "path": "insideLLMs/runtime/_high_level.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 3,
+      "layer": "runtime",
+      "loc": 878,
+      "module": "insideLLMs.runtime._result_utils",
+      "path": "insideLLMs/runtime/_result_utils.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 15,
+      "layer": "runtime",
+      "loc": 793,
+      "module": "insideLLMs.runtime._sync_runner",
+      "path": "insideLLMs/runtime/_sync_runner.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 7,
+      "layer": "runtime",
+      "loc": 276,
+      "module": "insideLLMs.runtime._ultimate",
+      "path": "insideLLMs/runtime/_ultimate.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "runtime",
+      "loc": 70,
+      "module": "insideLLMs.runtime.async_io",
+      "path": "insideLLMs/runtime/async_io.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 3,
+      "layer": "runtime",
+      "loc": 1011,
+      "module": "insideLLMs.runtime.diffing",
+      "path": "insideLLMs/runtime/diffing.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "runtime",
+      "loc": 198,
+      "module": "insideLLMs.runtime.diffing_interactive",
+      "path": "insideLLMs/runtime/diffing_interactive.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 3,
+      "layer": "runtime",
+      "loc": 2519,
+      "module": "insideLLMs.runtime.observability",
+      "path": "insideLLMs/runtime/observability.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 4,
+      "layer": "runtime",
+      "loc": 3159,
+      "module": "insideLLMs.runtime.pipeline",
+      "path": "insideLLMs/runtime/pipeline.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 4,
+      "layer": "runtime",
+      "loc": 188,
+      "module": "insideLLMs.runtime.receipt",
+      "path": "insideLLMs/runtime/receipt.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "runtime",
+      "loc": 1672,
+      "module": "insideLLMs.runtime.reproducibility",
+      "path": "insideLLMs/runtime/reproducibility.py"
+    },
+    {
+      "fan_in": 7,
+      "fan_out": 12,
+      "layer": "runtime",
+      "loc": 227,
+      "module": "insideLLMs.runtime.runner",
+      "path": "insideLLMs/runtime/runner.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "runtime",
+      "loc": 48,
+      "module": "insideLLMs.runtime.timeout_wrapper",
+      "path": "insideLLMs/runtime/timeout_wrapper.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "runtime",
+      "loc": 128,
+      "module": "insideLLMs.runtime.workflows",
+      "path": "insideLLMs/runtime/workflows.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "evals",
+      "loc": 2395,
+      "module": "insideLLMs.safety",
+      "path": "insideLLMs/safety.py"
+    },
+    {
+      "fan_in": 14,
+      "fan_out": 4,
+      "layer": "contracts",
+      "loc": 398,
+      "module": "insideLLMs.schemas",
+      "path": "insideLLMs/schemas/__init__.py"
+    },
+    {
+      "fan_in": 8,
+      "fan_out": 0,
+      "layer": "contracts",
+      "loc": 256,
+      "module": "insideLLMs.schemas.constants",
+      "path": "insideLLMs/schemas/constants.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "contracts",
+      "loc": 1034,
+      "module": "insideLLMs.schemas.custom_trace_v1",
+      "path": "insideLLMs/schemas/custom_trace_v1.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 0,
+      "layer": "contracts",
+      "loc": 600,
+      "module": "insideLLMs.schemas.exceptions",
+      "path": "insideLLMs/schemas/exceptions.py"
+    },
+    {
+      "fan_in": 4,
+      "fan_out": 4,
+      "layer": "contracts",
+      "loc": 1870,
+      "module": "insideLLMs.schemas.registry",
+      "path": "insideLLMs/schemas/registry.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "contracts",
+      "loc": 1392,
+      "module": "insideLLMs.schemas.v1_0_0",
+      "path": "insideLLMs/schemas/v1_0_0.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "contracts",
+      "loc": 549,
+      "module": "insideLLMs.schemas.v1_0_1",
+      "path": "insideLLMs/schemas/v1_0_1.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 3,
+      "layer": "contracts",
+      "loc": 945,
+      "module": "insideLLMs.schemas.validator",
+      "path": "insideLLMs/schemas/validator.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 1790,
+      "module": "insideLLMs.semantic_cache",
+      "path": "insideLLMs/semantic_cache.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 299,
+      "module": "insideLLMs.shadow",
+      "path": "insideLLMs/shadow.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 5,
+      "module": "insideLLMs.signing",
+      "path": "insideLLMs/signing/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 120,
+      "module": "insideLLMs.signing.cosign",
+      "path": "insideLLMs/signing/cosign.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 3376,
+      "module": "insideLLMs.streaming",
+      "path": "insideLLMs/streaming.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 2900,
+      "module": "insideLLMs.structured",
+      "path": "insideLLMs/structured.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 1678,
+      "module": "insideLLMs.structured_extraction",
+      "path": "insideLLMs/structured_extraction.py"
+    },
+    {
+      "fan_in": 6,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 1686,
+      "module": "insideLLMs.tokens",
+      "path": "insideLLMs/tokens.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 3,
+      "layer": "core",
+      "loc": 458,
+      "module": "insideLLMs.trace",
+      "path": "insideLLMs/trace/__init__.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 2274,
+      "module": "insideLLMs.trace.trace_config",
+      "path": "insideLLMs/trace/trace_config.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 2058,
+      "module": "insideLLMs.trace.trace_contracts",
+      "path": "insideLLMs/trace/trace_contracts.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 2204,
+      "module": "insideLLMs.trace.tracing",
+      "path": "insideLLMs/trace/tracing.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "contracts",
+      "loc": 195,
+      "module": "insideLLMs.trace_contracts",
+      "path": "insideLLMs/trace_contracts.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 142,
+      "module": "insideLLMs.tracing",
+      "path": "insideLLMs/tracing.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "core",
+      "loc": 252,
+      "module": "insideLLMs.tracking",
+      "path": "insideLLMs/tracking.py"
+    },
+    {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 9,
+      "module": "insideLLMs.transparency",
+      "path": "insideLLMs/transparency/__init__.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 134,
+      "module": "insideLLMs.transparency.scitt_client",
+      "path": "insideLLMs/transparency/scitt_client.py"
+    },
+    {
+      "fan_in": 33,
+      "fan_out": 0,
+      "layer": "contracts",
+      "loc": 1357,
+      "module": "insideLLMs.types",
+      "path": "insideLLMs/types.py"
+    },
+    {
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 1301,
+      "module": "insideLLMs.validation",
+      "path": "insideLLMs/validation.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 1,
+      "layer": "analysis",
+      "loc": 211,
+      "module": "insideLLMs.visualization",
+      "path": "insideLLMs/visualization.py"
+    }
+  ],
+  "optional_imports": [
+    {
+      "extra": "visualization",
+      "imported": "matplotlib.pyplot",
+      "source": "insideLLMs.analysis.visualization"
+    },
+    {
+      "extra": "visualization",
+      "imported": "pandas",
+      "source": "insideLLMs.analysis.visualization"
+    },
+    {
+      "extra": "visualization",
+      "imported": "pandas",
+      "source": "insideLLMs.analysis.visualization"
+    },
+    {
+      "extra": "visualization",
+      "imported": "seaborn",
+      "source": "insideLLMs.analysis.visualization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk",
+      "source": "insideLLMs.cli._parsing"
+    },
+    {
+      "extra": "anthropic",
+      "imported": "anthropic",
+      "source": "insideLLMs.contrib.adapters"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai",
+      "source": "insideLLMs.contrib.adapters"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.Depends",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.FastAPI",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.FastAPI",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.HTTPException",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.HTTPException",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.Request",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.Request",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "fastapi.middleware.cors.CORSMiddleware",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "serving",
+      "imported": "uvicorn",
+      "source": "insideLLMs.contrib.deployment"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.language_models.chat_models.BaseChatModel",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.messages.AIMessage",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.messages.AIMessageChunk",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.outputs.ChatGeneration",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.outputs.ChatGenerationChunk",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.outputs.ChatResult",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "langchain",
+      "imported": "langchain_core.runnables.RunnableLambda",
+      "source": "insideLLMs.integrations.langchain"
+    },
+    {
+      "extra": "anthropic",
+      "imported": "anthropic",
+      "source": "insideLLMs.models.anthropic"
+    },
+    {
+      "extra": "anthropic",
+      "imported": "anthropic.APIError",
+      "source": "insideLLMs.models.anthropic"
+    },
+    {
+      "extra": "anthropic",
+      "imported": "anthropic.APITimeoutError",
+      "source": "insideLLMs.models.anthropic"
+    },
+    {
+      "extra": "anthropic",
+      "imported": "anthropic.RateLimitError",
+      "source": "insideLLMs.models.anthropic"
+    },
+    {
+      "extra": "cohere",
+      "imported": "cohere",
+      "source": "insideLLMs.models.cohere"
+    },
+    {
+      "extra": "gemini",
+      "imported": "google.generativeai",
+      "source": "insideLLMs.models.gemini"
+    },
+    {
+      "extra": "gemini",
+      "imported": "google.generativeai",
+      "source": "insideLLMs.models.gemini"
+    },
+    {
+      "extra": "huggingface",
+      "imported": "transformers.AutoModelForCausalLM",
+      "source": "insideLLMs.models.huggingface"
+    },
+    {
+      "extra": "huggingface",
+      "imported": "transformers.AutoTokenizer",
+      "source": "insideLLMs.models.huggingface"
+    },
+    {
+      "extra": "huggingface",
+      "imported": "transformers.pipeline",
+      "source": "insideLLMs.models.huggingface"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai.OpenAI",
+      "source": "insideLLMs.models.local"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai.APIError",
+      "source": "insideLLMs.models.openai"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai.APITimeoutError",
+      "source": "insideLLMs.models.openai"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai.OpenAI",
+      "source": "insideLLMs.models.openai"
+    },
+    {
+      "extra": "openai",
+      "imported": "openai.RateLimitError",
+      "source": "insideLLMs.models.openai"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.sentiment.SentimentIntensityAnalyzer",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.CountVectorizer",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.TfidfVectorizer",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.naive_bayes.MultinomialNB",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.pipeline.Pipeline",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.pipeline.Pipeline",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.svm.LinearSVC",
+      "source": "insideLLMs.nlp.classification"
+    },
+    {
+      "extra": "nlp",
+      "imported": "gensim",
+      "source": "insideLLMs.nlp.dependencies"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk",
+      "source": "insideLLMs.nlp.dependencies"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn",
+      "source": "insideLLMs.nlp.dependencies"
+    },
+    {
+      "extra": "nlp",
+      "imported": "spacy",
+      "source": "insideLLMs.nlp.dependencies"
+    },
+    {
+      "extra": "nlp",
+      "imported": "gensim.models.Word2Vec",
+      "source": "insideLLMs.nlp.feature_extraction"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.CountVectorizer",
+      "source": "insideLLMs.nlp.feature_extraction"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.TfidfVectorizer",
+      "source": "insideLLMs.nlp.feature_extraction"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.TfidfVectorizer",
+      "source": "insideLLMs.nlp.keyword_extraction"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.corpus.stopwords",
+      "source": "insideLLMs.nlp.language_detection"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.tokenize.word_tokenize",
+      "source": "insideLLMs.nlp.language_detection"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.feature_extraction.text.TfidfVectorizer",
+      "source": "insideLLMs.nlp.similarity"
+    },
+    {
+      "extra": "nlp",
+      "imported": "sklearn.metrics.pairwise.cosine_similarity",
+      "source": "insideLLMs.nlp.similarity"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.corpus.stopwords",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.stem.PorterStemmer",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.stem.WordNetLemmatizer",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.tokenize.sent_tokenize",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.tokenize.word_tokenize",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "nlp",
+      "imported": "nltk.tokenize.wordpunct_tokenize",
+      "source": "insideLLMs.nlp.tokenization"
+    },
+    {
+      "extra": "crypto",
+      "imported": "cryptography.fernet.Fernet",
+      "source": "insideLLMs.privacy.encryption"
+    },
+    {
+      "extra": "signing",
+      "imported": "oras.client",
+      "source": "insideLLMs.publish.oras"
+    },
+    {
+      "extra": "visualization",
+      "imported": "pandas",
+      "source": "insideLLMs.structured"
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "internal_edge_count": 521,
+    "module_count": 235,
+    "optional_import_count": 66,
+    "package_loc": 248745,
+    "static_test_references_by_subtree": {
+      "insideLLMs": 15,
+      "insideLLMs._serialization": 10,
+      "insideLLMs.analysis": 167,
+      "insideLLMs.async_utils": 30,
+      "insideLLMs.attestations": 13,
+      "insideLLMs.benchmark_datasets": 29,
+      "insideLLMs.caching": 107,
+      "insideLLMs.cli": 338,
+      "insideLLMs.config": 73,
+      "insideLLMs.config_types": 13,
+      "insideLLMs.constants": 17,
+      "insideLLMs.contrib": 994,
+      "insideLLMs.cost_tracking": 35,
+      "insideLLMs.crypto": 19,
+      "insideLLMs.dataset_utils": 10,
+      "insideLLMs.datasets": 4,
+      "insideLLMs.evaluation": 58,
+      "insideLLMs.exceptions": 99,
+      "insideLLMs.experiment_tracking": 36,
+      "insideLLMs.export": 21,
+      "insideLLMs.inference": 113,
+      "insideLLMs.injection": 17,
+      "insideLLMs.integrations": 5,
+      "insideLLMs.logging_utils": 16,
+      "insideLLMs.models": 316,
+      "insideLLMs.nlp": 200,
+      "insideLLMs.observability": 23,
+      "insideLLMs.optimization": 24,
+      "insideLLMs.pipeline": 25,
+      "insideLLMs.policy": 2,
+      "insideLLMs.privacy": 12,
+      "insideLLMs.probes": 143,
+      "insideLLMs.publish": 12,
+      "insideLLMs.rate_limiting": 51,
+      "insideLLMs.registry": 22,
+      "insideLLMs.reproducibility": 29,
+      "insideLLMs.resources": 7,
+      "insideLLMs.results": 73,
+      "insideLLMs.retry": 42,
+      "insideLLMs.runtime": 234,
+      "insideLLMs.safety": 36,
+      "insideLLMs.schemas": 118,
+      "insideLLMs.semantic_cache": 30,
+      "insideLLMs.shadow": 9,
+      "insideLLMs.signing": 2,
+      "insideLLMs.streaming": 44,
+      "insideLLMs.structured": 149,
+      "insideLLMs.structured_extraction": 43,
+      "insideLLMs.tokens": 25,
+      "insideLLMs.trace": 38,
+      "insideLLMs.trace_contracts": 16,
+      "insideLLMs.tracing": 13,
+      "insideLLMs.tracking": 9,
+      "insideLLMs.transparency": 6,
+      "insideLLMs.types": 186,
+      "insideLLMs.validation": 13,
+      "insideLLMs.visualization": 107
+    }
+  }
+}
