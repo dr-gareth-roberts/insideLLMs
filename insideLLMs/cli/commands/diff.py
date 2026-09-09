@@ -8,6 +8,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
+from insideLLMs.runtime.diff_html_report import render_diff_html
 from insideLLMs.runtime.diffing import (
     DiffGatePolicy,
     build_diff_computation,
@@ -165,6 +166,17 @@ def cmd_diff(args: argparse.Namespace) -> int:
         )
         judge_report = judge_computation.judge_report
 
+    html_path = getattr(args, "html", None)
+    if html_path:
+        html_payload = dict(diff_report)
+        if judge_report is not None:
+            html_payload["judge"] = judge_report
+        try:
+            Path(html_path).write_text(render_diff_html(html_payload), encoding="utf-8")
+        except OSError as e:
+            print_error(f"Could not write HTML report to {html_path}: {e}")
+            return 1
+
     if output_format == "json":
         payload_obj = dict(diff_report)
         if judge_report is not None:
@@ -181,6 +193,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_header("Behavioural Diff")
     print_key_value("Baseline", run_dir_a)
     print_key_value("Comparison", run_dir_b)
+    if html_path:
+        print_key_value("HTML report", html_path)
     print_key_value("Common keys", diff_report["counts"]["common"])
     print_key_value("Only in baseline", diff_report["counts"]["only_baseline"])
     print_key_value("Only in comparison", diff_report["counts"]["only_candidate"])
