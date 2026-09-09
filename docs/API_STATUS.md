@@ -102,7 +102,7 @@ file assigns every symbol one of `stable`, `experimental`, `deprecated`, or `int
 | `LogicProbe` | experimental | direct | `insideLLMs.probes` | 5 |
 | `MetricsCollector` | experimental | lazy | `insideLLMs.contrib.deployment` | 0 |
 | `Middleware` | experimental | lazy | `insideLLMs.pipeline` | 0 |
-| `Model` | experimental | direct | `insideLLMs.models` | 1 |
+| `Model` | experimental | direct | `insideLLMs.models` | 2 |
 | `ModelBenchmark` | experimental | lazy | `insideLLMs.contrib.benchmark` | 0 |
 | `ModelConfig` | experimental | direct | `insideLLMs.config` | 0 |
 | `ModelEndpoint` | experimental | lazy | `insideLLMs.contrib.deployment` | 0 |

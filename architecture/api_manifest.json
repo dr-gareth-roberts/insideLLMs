@@ -1332,10 +1332,12 @@
     {
       "evidence": {
         "areas": {
+          "docs": 1,
           "examples": 1
         },
-        "path_count": 1,
+        "path_count": 2,
         "paths": [
+          "docs/superpowers/plans/2026-09-01-insidellms-audit-remediation.md",
           "examples/example_registry.py"
         ]
       },
