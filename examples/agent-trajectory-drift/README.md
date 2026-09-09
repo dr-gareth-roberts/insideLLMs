@@ -39,7 +39,34 @@ $ echo $?
 An extra tool call per request is real money, real latency, and a real
 reliability surface. Nothing about the answer reveals it.
 
-## Two things worth knowing
+## What the gate actually compares
+
+Not the tool-call count — a fingerprint of each step, which includes the tool
+name, an `arguments_fingerprint` and a `result_fingerprint`
+(`insideLLMs/runtime/diffing.py:301-334`). Two consequences:
+
+**It catches route changes that keep the counts identical.** Swap one tool for
+another at the same position and the gate still fires. A count comparison would
+miss that.
+
+**It also fires when only a tool's result changed.** Same route, same answer,
+`{"plan": "pro"}` -> `{"plan": "enterprise"}`:
+
+```console
+$ insidellms diff a b --fail-on-trajectory-drift
+  Trajectory drifts: 1
+  dummy-v1 | support-agent | example 2cb44b1f: trajectory steps 4 -> 4; tool calls 1 -> 1
+$ echo $?
+5
+```
+
+So this is a gate for a **deterministic replay harness** — a fixed model and
+stubbed tools, where every trajectory difference is a change you made. Point it
+at live backends and it will fire on every run, because the data coming back
+genuinely did change. Note also that the summary line is unhelpful in exactly
+that case: `steps 4 -> 4; tool calls 1 -> 1` tells you nothing about what moved.
+
+## Two more things worth knowing
 
 **`--output-fingerprint-ignore` is doing real work here.** `AgentProbe` records
 its trace into the structured output, so `trace_events`, `trace_fingerprint`

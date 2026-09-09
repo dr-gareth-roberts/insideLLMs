@@ -107,7 +107,7 @@ jobs:
           python -m pytest
           --cov
           --cov-report=term-missing
-          --cov-fail-under=95
+          --cov-fail-under=94
           -m "not slow and not integration and not performance"
 
   full-extras:
@@ -137,8 +137,16 @@ jobs:
       - name: Type check with the full extras present
         run: make typecheck
 
-      - name: Run tests
-        run: python -m pytest -m "not slow and not integration and not performance"
+      # Coverage is gated here, not in the matrix job: [all] is the only
+      # environment where every module is importable, so it is the only one
+      # where a whole-package coverage number means what it says.
+      - name: Run tests with coverage
+        run: >
+          python -m pytest
+          --cov
+          --cov-report=term-missing
+          --cov-fail-under=95
+          -m "not slow and not integration and not performance"
 
   determinism:
     name: Determinism (golden-path)

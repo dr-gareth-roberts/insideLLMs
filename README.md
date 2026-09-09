@@ -1,6 +1,5 @@
 <p align="center">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml"><img src="https://github.com/dr-gareth-roberts/insideLLMs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://codecov.io/gh/dr-gareth-roberts/insideLLMs"><img src="https://codecov.io/gh/dr-gareth-roberts/insideLLMs/branch/main/graph/badge.svg" alt="Coverage"></a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <a href="https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
@@ -257,8 +256,8 @@ changes trigger that exit code end to end.
 
 ## The workflow
 
-**1. Pick probes.** A probe tests a specific behaviour. Choose from the
-[built-in probes](insideLLMs/probes/), or write your own:
+**1. Pick probes.** A probe tests a specific behaviour. There are
+[thirteen built-in](insideLLMs/probes/), or write your own:
 
 ```python
 from insideLLMs.probes import Probe
@@ -330,9 +329,6 @@ The action checks both runs' health and applies the strict diff gate. Sticky PR
 comments run separately with write permission and trusted code; copy the paired
 workflows described in [the CI guide](ci/README.md). Candidate evaluation must
 retain read-only permissions.
-
-> The `@v1` tag is published by the release workflow on the first `v*` tag.
-> Until then, reference the action by commit SHA.
 
 ## Python API
 
