@@ -412,3 +412,89 @@ def test_validate_resume_record_rejects_skipped_placeholder():
     _validate_resume_record(
         {**record, "status": "success"}, expected_index=0, expected_item="p0", run_id=None
     )
+
+
+# W7-0081 - the batch path had a sync/async divergence of its own: the sync
+# runner used to write the failing record and break, while the async runner
+# wrote every result run_batch returned, so a stop_on_error run over 8 items
+# produced 2 records synchronously and 8 asynchronously. The divergence closed
+# in the other direction on rebase: the audit remediation (A07/A13) made the
+# sync runner persist every completed batch result too, because run_batch has
+# already attempted every item by the time the failure is observed and a
+# resume must never repeat attempted work. What this locks is parity.
+class _BatchFailOnSecondItem:
+    """run_batch returns an error for the second prompt, success for the rest."""
+
+    name = "batch-fail-on-second"
+
+    def run(self, _model, item, **_kwargs):
+        if item == "p1":
+            raise ValueError("boom")
+        return f"ok:{item}"
+
+    def run_batch(self, _model, items, **_kwargs):
+        from insideLLMs.probes.base import ProbeResult
+        from insideLLMs.types import ResultStatus
+
+        results = []
+        for item in items:
+            if item == "p1":
+                results.append(
+                    ProbeResult(
+                        input=item,
+                        status=ResultStatus.ERROR,
+                        error="boom",
+                        latency_ms=None,
+                        metadata={"error_type": "ValueError"},
+                    )
+                )
+            else:
+                results.append(
+                    ProbeResult(
+                        input=item,
+                        output=f"ok:{item}",
+                        status=ResultStatus.SUCCESS,
+                        latency_ms=None,
+                        metadata={},
+                    )
+                )
+        return results
+
+
+_BATCH_PROMPTS = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7"]
+
+
+async def test_batch_stop_on_error_matches_between_sync_and_async(tmp_path: Path):
+    """use_probe_batch must persist the same attempted results on both runners."""
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner, ProbeRunner
+
+    kwargs = dict(
+        stop_on_error=True,
+        use_probe_batch=True,
+        emit_run_artifacts=True,
+        run_id="batch-run",
+        overwrite=True,
+        return_experiment=False,
+        deterministic_artifacts=True,
+    )
+
+    async_dir = tmp_path / "async"
+    sync_dir = tmp_path / "sync"
+
+    with pytest.raises(RunnerExecutionError):
+        await AsyncProbeRunner(DummyModel(), _BatchFailOnSecondItem()).run(
+            _BATCH_PROMPTS, run_dir=async_dir, **kwargs
+        )
+    with pytest.raises(RunnerExecutionError):
+        ProbeRunner(DummyModel(), _BatchFailOnSecondItem()).run(
+            _BATCH_PROMPTS, run_dir=sync_dir, **kwargs
+        )
+
+    # run_batch attempted all eight items, so all eight outcomes are evidence;
+    # dropping the six behind the failure would make a resume re-run attempted
+    # work. Both runners persist the same eight records, byte for byte.
+    assert [r["status"] for r in _read_records(async_dir)] == ["success", "error"] + ["success"] * 6
+    assert [r["status"] for r in _read_records(sync_dir)] == ["success", "error"] + ["success"] * 6
+    assert (async_dir / "records.jsonl").read_bytes() == (sync_dir / "records.jsonl").read_bytes()
