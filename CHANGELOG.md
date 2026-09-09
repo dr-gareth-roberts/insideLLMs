@@ -34,9 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Async fail-fast resume now retries only scheduler-proven undispatched suffix
-  items, rejects ambiguous legacy skipped histories before mutation, and
-  atomically preserves the exact attempted record prefix.
+- Async fail-fast runs no longer persist placeholder records for items the
+  scheduler never dispatched, so `records.jsonl` is byte-identical between the
+  sync and async runners for identical inputs and config (W7-0007). Resume of
+  histories written by earlier runners retries only the scheduler-attested
+  undispatched suffix, rejects ambiguous or unattested skipped records before
+  any mutation, and atomically preserves the exact attempted record prefix.
+  Batch runs persist every attempted outcome on both runners and never retry
+  them on resume (W7-0081).
 - Attack, Bias and Agent aggregate scoring now validates both live typed outputs
   and persisted mapping outputs during resume without changing serialization.
 - LaTeX export now escapes literal headers and cells after truncation while
