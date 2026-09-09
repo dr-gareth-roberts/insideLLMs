@@ -413,7 +413,7 @@ async def test_delayed_sync_worker_cannot_settle_into_next_variant_scope():
                 assert await asyncio.to_thread(entered.wait, 2)
                 await asyncio.wait_for(asyncio.shield(task), timeout=0.01)
             return (await task,)
-        except TimeoutError:
+        except (TimeoutError, asyncio.TimeoutError):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
             return (favorable_result(),)
