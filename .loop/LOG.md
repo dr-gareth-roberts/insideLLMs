@@ -591,6 +591,6 @@ next: un-omit contrib modules with existing tests until omit empty (true 100% ba
 ## [2026-08-14T17:08] R8-01 — streaming JSONL ingestion
 category: performance | files: runtime/_artifact_utils.py, runtime/diffing.py, runtime/_async_runner.py, cli/_record_utils.py, cli/__init__.py, cli/commands/diff.py, tests/test_audit_wave8_regressions.py
 before: both JSONL readers accumulated complete lists; CLI diff loaded both runs; async resume materialized all existing records.
-after: added shared iter_jsonl_records; retained list-reader compatibility wrappers; CLI diff now streams candidate records against a baseline index; async resume validates records incrementally.
+after: added shared iter_jsonl_records; retained list-reader compatibility wrappers; CLI diff now streams candidate records against a baseline index. Async resume keeps the whole-file, byte-preserving read from the audit remediation (A07) rather than the iterator; the rebase dropped that hunk deliberately.
 verification: tests/test_audit_wave8_regressions.py — 5 passed including the 100k-record tracemalloc bound; focused downstream diff/CLI/async suites — 236 passed; make golden-path — passed with 12 common keys and zero changes; make check — passed with 7181 passed and 336 skipped; ruff/format/mypy clean.
 commit: c38f304 (fix(runtime): stream JSONL ingestion [R8-01])
