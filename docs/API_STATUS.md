@@ -176,7 +176,7 @@ file assigns every symbol one of `stable`, `experimental`, `deprecated`, or `int
 | `VariationStrategy` | experimental | lazy | `insideLLMs.contrib.synthesis` | 0 |
 | `VectorCache` | experimental | lazy | `insideLLMs.semantic_cache` | 0 |
 | `Verification` | experimental | direct, lazy | `insideLLMs`<br>`insideLLMs.inference` | 1 |
-| `__version__` | experimental | direct | `insideLLMs` | 2 |
+| `__version__` | experimental | direct | `insideLLMs` | 3 |
 | `batch_extract` | experimental | lazy | `insideLLMs.structured` | 0 |
 | `bleu_score` | experimental | lazy | `insideLLMs.evaluation` | 0 |
 | `cached` | experimental | lazy | `insideLLMs.caching` | 0 |

@@ -2540,12 +2540,14 @@
       "evidence": {
         "areas": {
           "examples": 1,
-          "scripts": 1
+          "scripts": 1,
+          "tests": 1
         },
-        "path_count": 2,
+        "path_count": 3,
         "paths": [
           "examples/suppress_deprecation_warnings.py",
-          "scripts/clean_install_golden_path.sh"
+          "scripts/clean_install_golden_path.sh",
+          "tests/test_audit_wave7_regressions.py"
         ]
       },
       "export_kinds": [
