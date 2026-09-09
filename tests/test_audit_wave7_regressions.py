@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import warnings
 from pathlib import Path
+
+import pytest
 
 
 # W7-0001 — the SafetyHallucinationIndicatorDetector percentage pattern must
@@ -264,3 +267,132 @@ def test_visualization_shim_emits_deprecation_warning_on_import():
     # Shim still aliases the canonical module object.
     canonical = importlib.import_module("insideLLMs.analysis.visualization")
     assert mod is canonical
+
+
+# W7-0007 — on the async stop_on_error path, run_single used to write a
+# status="skipped" placeholder record for every item queued behind the first
+# failure. Those items never executed, yet write_ready_records persisted them,
+# so records.jsonl depended on whether the run was sync or async and a later
+# resume counted them as completed work.
+class _FailOnSecondItem:
+    """Probe that raises on the second prompt and records what it executed."""
+
+    name = "fail-on-second"
+
+    def __init__(self, fail_on: str = "p1") -> None:
+        self.fail_on = fail_on
+        self.executed: list[str] = []
+
+    def run(self, _model, item, **_kwargs):
+        self.executed.append(item)
+        if item == self.fail_on:
+            raise ValueError(f"boom on {item}")
+        return f"ok:{item}"
+
+
+_STOP_PROMPTS = ["p0", "p1", "p2", "p3", "p4"]
+
+
+def _read_records(run_dir: Path) -> list[dict]:
+    lines = (run_dir / "records.jsonl").read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines if line.strip()]
+
+
+async def _run_async_until_stop(probe, run_dir: Path, run_id: str = "stop-run") -> None:
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner
+
+    with pytest.raises(RunnerExecutionError):
+        await AsyncProbeRunner(DummyModel(), probe).run(
+            _STOP_PROMPTS,
+            stop_on_error=True,
+            concurrency=1,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+            overwrite=True,
+            return_experiment=False,
+            deterministic_artifacts=True,
+        )
+
+
+async def test_async_stop_on_error_writes_no_records_for_unexecuted_items(tmp_path: Path):
+    probe = _FailOnSecondItem()
+    run_dir = tmp_path / "async-stop"
+
+    await _run_async_until_stop(probe, run_dir)
+
+    assert probe.executed == ["p0", "p1"]
+    records = _read_records(run_dir)
+    # One record per item that actually ran, and nothing past the failure.
+    assert [r["status"] for r in records] == ["success", "error"]
+    assert not any(r["status"] == "skipped" for r in records)
+
+
+async def test_sync_and_async_stop_on_error_produce_identical_records(tmp_path: Path):
+    """records.jsonl is Stable and deterministic for identical inputs/config."""
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import ProbeRunner
+
+    async_dir = tmp_path / "async"
+    sync_dir = tmp_path / "sync"
+
+    await _run_async_until_stop(_FailOnSecondItem(), async_dir, run_id="same-run")
+
+    sync_probe = _FailOnSecondItem()
+    with pytest.raises(RunnerExecutionError):
+        ProbeRunner(DummyModel(), sync_probe).run(
+            _STOP_PROMPTS,
+            stop_on_error=True,
+            emit_run_artifacts=True,
+            run_dir=sync_dir,
+            run_id="same-run",
+            overwrite=True,
+            return_experiment=False,
+            deterministic_artifacts=True,
+        )
+
+    assert sync_probe.executed == ["p0", "p1"]
+    assert (async_dir / "records.jsonl").read_bytes() == (sync_dir / "records.jsonl").read_bytes()
+
+
+async def test_resume_after_async_stop_on_error_reexecutes_remaining_items(tmp_path: Path):
+    """Items behind a stop_on_error failure must re-run, not resume as done."""
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner
+
+    run_dir = tmp_path / "resume"
+    await _run_async_until_stop(_FailOnSecondItem(), run_dir)
+
+    resume_probe = _FailOnSecondItem(fail_on="never-fails")
+    results = await AsyncProbeRunner(DummyModel(), resume_probe).run(
+        _STOP_PROMPTS,
+        concurrency=1,
+        resume=True,
+        emit_run_artifacts=True,
+        run_dir=run_dir,
+        run_id="stop-run",
+        return_experiment=False,
+        deterministic_artifacts=True,
+    )
+
+    # p0/p1 are a valid completed prefix; p2-p4 never executed and must re-run.
+    assert resume_probe.executed == ["p2", "p3", "p4"]
+    assert [r["status"] for r in results] == ["success", "error", "success", "success", "success"]
+
+
+def test_validate_resume_record_rejects_skipped_placeholder():
+    """A 'skipped' record describes an item that never ran; resume must refuse it."""
+    from insideLLMs.runtime.runner import _validate_resume_record
+
+    record = {"custom": {"record_index": 0}, "input": "p0", "status": "skipped"}
+
+    with pytest.raises(ValueError, match="never executed"):
+        _validate_resume_record(record, expected_index=0, expected_item="p0", run_id=None)
+
+    # The same record with a real status still validates.
+    _validate_resume_record(
+        {**record, "status": "success"}, expected_index=0, expected_item="p0", run_id=None
+    )
