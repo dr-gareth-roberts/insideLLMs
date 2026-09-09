@@ -250,6 +250,7 @@ insidellms diff <baseline> <candidate> [options]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--output FILE` | Write JSON diff report to file (`--format json`) | stdout |
+| `--html PATH` | Write a self-contained, deterministic HTML diff report to PATH (works with either `--format`) | None |
 | `--fail-on-regressions` | Exit code 2 if regressions are detected | `false` |
 | `--fail-on-changes` | Exit code 2 for regressions, other changes, or records present on only one side | `false` |
 | `--fail-on-trace-violations` | Exit code 3 if trace violations increase | `false` |
@@ -273,6 +274,9 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 
 # Output to file
 insidellms diff ./baseline ./candidate --output diff.json --format json
+
+# Self-contained HTML report (exit code unchanged)
+insidellms diff ./baseline ./candidate --html diff.html
 
 # Ignore volatile fields
 insidellms diff ./baseline ./candidate --output-fingerprint-ignore latency_ms,timestamps

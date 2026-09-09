@@ -83,6 +83,19 @@ python3 -m json.tool "$DIFF_EXAMPLE_DIR/diff.json"
 Add a gate option to the same command if producing the report should also fail
 the CI step.
 
+For a shareable, human-readable artefact, add `--html`:
+
+```bash
+insidellms diff \
+  "$DIFF_EXAMPLE_DIR/baseline" \
+  "$DIFF_EXAMPLE_DIR/candidate" \
+  --html "$DIFF_EXAMPLE_DIR/diff.html"
+```
+
+The HTML report is self-contained (inline CSS, no scripts, no external assets)
+and deterministic: the same diff renders byte-identical output. It works with
+either `--format` and leaves the exit code unchanged.
+
 ## Scored dataset contract
 
 For `ScoredProbe` subclasses, use `reference_answer` for the expected answer or

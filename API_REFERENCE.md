@@ -1303,11 +1303,13 @@ Compare deterministic run artifacts and optionally gate CI.
 - `--output-fingerprint-ignore key1,key2`
 - `--judge`, `--judge-policy {strict,balanced}`, `--judge-limit N`
 - `--interactive`
+- `--html PATH`
 
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
 insidellms diff ./baseline ./candidate --judge --judge-policy balanced
 insidellms diff ./baseline ./candidate --interactive --fail-on-changes
+insidellms diff ./baseline ./candidate --html diff.html
 ```
 
 ### `insidellms doctor`
