@@ -106,6 +106,13 @@
       "target": "insideLLMs.models.base"
     },
     {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Compute-fairness gate (#109) enforces inference dispatch limits; consolidate with the client/schemas edges under P1.1 in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.analysis.matched_compute",
+      "target": "insideLLMs.inference._limits"
+    },
+    {
       "expires": "2027-02-28",
       "owner": "architecture-maintainers",
       "reason": "Matched-compute analysis currently orchestrates the inference client directly.",
@@ -169,6 +176,34 @@
       "target": "insideLLMs.transparency.scitt_client"
     },
     {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Policy verification reads attestation predicate types; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.policy.verification",
+      "target": "insideLLMs.attestations.statement"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Policy verification digests artifacts with crypto helpers; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.policy.verification",
+      "target": "insideLLMs.crypto"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Explicit post-verification OCI publication calls the ORAS adapter; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.policy.verification",
+      "target": "insideLLMs.publish.oras"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Policy verification checks cosign bundles directly; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.policy.verification",
+      "target": "insideLLMs.signing.cosign"
+    },
+    {
       "expires": "2027-02-28",
       "owner": "security-maintainers",
       "reason": "Disclosure commitments require canonical crypto pending contract extraction.",
@@ -192,58 +227,16 @@
     {
       "expires": "2027-02-28",
       "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the Anthropic provider pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.anthropic"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
       "reason": "The core registry uses model protocols pending their extraction into contracts.",
       "source": "insideLLMs.registry",
       "target": "insideLLMs.models.base"
     },
     {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the Cohere provider pending plugin separation.",
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "The core registry seeds builtin model factories from the provider catalogue (replaced per-provider lazy imports in a0678ae) pending registry plugin separation.",
       "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.cohere"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the Gemini provider pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.gemini"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the Hugging Face provider pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.huggingface"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers local model adapters pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.local"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the OpenAI provider pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.openai"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "The core registry lazily registers the OpenRouter provider pending plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.openrouter"
+      "target": "insideLLMs.models.catalogue"
     },
     {
       "expires": "2027-02-28",
@@ -265,6 +258,13 @@
       "reason": "Core result summaries delegate to analysis statistics pending facade separation.",
       "source": "insideLLMs.results",
       "target": "insideLLMs.analysis.statistics"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "The async runner scores probe results inline (a0678ae audit fix); move the scoring protocol into contracts under P1.1 in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.runtime._async_runner",
+      "target": "insideLLMs.probes._scoring"
     },
     {
       "expires": "2027-02-28",
@@ -330,6 +330,34 @@
       "target": "insideLLMs.probes.base"
     },
     {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Interrupted-run finalisation builds a statistics summary; removed by E1 lazy analysis package in docs/superpowers/plans/2026-09-09-determinism-recovery-and-consolidation.md.",
+      "source": "insideLLMs.runtime._interruptions",
+      "target": "insideLLMs.analysis.statistics"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Interrupted-run finalisation annotates the model protocol (TYPE_CHECKING only) pending contract extraction, as for runtime._high_level.",
+      "source": "insideLLMs.runtime._interruptions",
+      "target": "insideLLMs.models.base"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Interrupted-run finalisation annotates the probe protocol (TYPE_CHECKING only) pending contract extraction, as for runtime._high_level.",
+      "source": "insideLLMs.runtime._interruptions",
+      "target": "insideLLMs.probes.base"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "The sync runner scores probe results inline (a0678ae audit fix); move the scoring protocol into contracts under P1.1 in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.runtime._sync_runner",
+      "target": "insideLLMs.probes._scoring"
+    },
+    {
       "expires": "2027-02-28",
       "owner": "artifact-maintainers",
       "reason": "Ultimate-mode artifact orchestration currently builds attestations directly.",
@@ -351,6 +379,13 @@
       "target": "insideLLMs.crypto"
     },
     {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Ultimate-mode orchestration canonicalises payload identity directly; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.runtime._ultimate",
+      "target": "insideLLMs.crypto.canonical"
+    },
+    {
       "expires": "2027-02-28",
       "owner": "artifact-maintainers",
       "reason": "Ultimate-mode artifact orchestration currently invokes policy evaluation.",
@@ -370,6 +405,13 @@
       "reason": "Ultimate-mode artifact orchestration currently invokes SCITT publication.",
       "source": "insideLLMs.runtime._ultimate",
       "target": "insideLLMs.transparency.scitt_client"
+    },
+    {
+      "expires": "2026-12-31",
+      "owner": "gareth",
+      "reason": "Budget validation special-cases the builtin judge probe and scorer; P2.2 judge path integrity in docs/PRIORITISATION.md.",
+      "source": "insideLLMs.runtime.budget",
+      "target": "insideLLMs.probes.judge"
     },
     {
       "expires": "2027-02-28",

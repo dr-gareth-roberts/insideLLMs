@@ -237,6 +237,12 @@
     {
       "source": "insideLLMs.analysis.matched_compute",
       "source_layer": "analysis",
+      "target": "insideLLMs.inference._limits",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.analysis.matched_compute",
+      "source_layer": "analysis",
       "target": "insideLLMs.inference.client",
       "target_layer": "inference"
     },
@@ -250,6 +256,12 @@
       "source": "insideLLMs.analysis.plan",
       "source_layer": "analysis",
       "target": "insideLLMs.crypto.canonical",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.analysis.statistics",
+      "source_layer": "analysis",
+      "target": "insideLLMs.analysis._student_t",
       "target_layer": "analysis"
     },
     {
@@ -287,6 +299,12 @@
       "source_layer": "analysis",
       "target": "insideLLMs.attestations.steps.builders",
       "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.attestations.steps.builders",
+      "source_layer": "analysis",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
     },
     {
       "source": "insideLLMs.attestations.steps.builders",
@@ -693,6 +711,12 @@
     {
       "source": "insideLLMs.cli.commands.doctor",
       "source_layer": "cli",
+      "target": "insideLLMs.models.catalogue",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.cli.commands.doctor",
+      "source_layer": "cli",
       "target": "insideLLMs.registry",
       "target_layer": "core"
     },
@@ -759,6 +783,12 @@
     {
       "source": "insideLLMs.cli.commands.harness",
       "source_layer": "cli",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
       "target": "insideLLMs._serialization",
       "target_layer": "core"
     },
@@ -795,7 +825,19 @@
     {
       "source": "insideLLMs.cli.commands.harness",
       "source_layer": "cli",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
       "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.harness",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._run_health",
       "target_layer": "runtime"
     },
     {
@@ -833,6 +875,12 @@
       "source_layer": "cli",
       "target": "insideLLMs.cli._output",
       "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.init_cmd",
+      "source_layer": "cli",
+      "target": "insideLLMs.config_schema",
+      "target_layer": "core"
     },
     {
       "source": "insideLLMs.cli.commands.interactive",
@@ -933,8 +981,20 @@
     {
       "source": "insideLLMs.cli.commands.report",
       "source_layer": "cli",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
       "target": "insideLLMs.runtime.runner",
       "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.report",
+      "source_layer": "cli",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
     },
     {
       "source": "insideLLMs.cli.commands.run",
@@ -964,6 +1024,12 @@
       "source": "insideLLMs.cli.commands.run",
       "source_layer": "cli",
       "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.cli.commands.run",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._run_health",
       "target_layer": "runtime"
     },
     {
@@ -1029,8 +1095,14 @@
     {
       "source": "insideLLMs.cli.commands.validate",
       "source_layer": "cli",
-      "target": "insideLLMs.registry",
+      "target": "insideLLMs.config_schema",
       "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.cli.commands.validate",
+      "source_layer": "cli",
+      "target": "insideLLMs.runtime._config_loader",
+      "target_layer": "runtime"
     },
     {
       "source": "insideLLMs.cli.commands.validate",
@@ -1043,6 +1115,12 @@
       "source_layer": "cli",
       "target": "insideLLMs.cli._output",
       "target_layer": "cli"
+    },
+    {
+      "source": "insideLLMs.cli.commands.verify",
+      "source_layer": "cli",
+      "target": "insideLLMs.policy.verification",
+      "target_layer": "evals"
     },
     {
       "source": "insideLLMs.cli.commands.verify",
@@ -1060,6 +1138,18 @@
       "source": "insideLLMs.config",
       "source_layer": "core",
       "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.config",
+      "source_layer": "core",
+      "target": "insideLLMs.config_schema",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.config_schema",
+      "source_layer": "core",
+      "target": "insideLLMs.registry",
       "target_layer": "core"
     },
     {
@@ -1121,6 +1211,12 @@
       "source_layer": "labs",
       "target": "insideLLMs.runtime.diffing_interactive",
       "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.contrib.distributed",
+      "source_layer": "labs",
+      "target": "insideLLMs.resources",
+      "target_layer": "core"
     },
     {
       "source": "insideLLMs.contrib.diversity",
@@ -1281,6 +1377,12 @@
     {
       "source": "insideLLMs.experiment_tracking",
       "source_layer": "core",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.experiment_tracking",
+      "source_layer": "core",
       "target": "insideLLMs.types",
       "target_layer": "contracts"
     },
@@ -1289,6 +1391,12 @@
       "source_layer": "core",
       "target": "insideLLMs.analysis.export",
       "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.inference",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._limits",
+      "target_layer": "inference"
     },
     {
       "source": "insideLLMs.inference",
@@ -1395,6 +1503,12 @@
     {
       "source": "insideLLMs.inference.adapters",
       "source_layer": "inference",
+      "target": "insideLLMs.inference._limits",
+      "target_layer": "inference"
+    },
+    {
+      "source": "insideLLMs.inference.adapters",
+      "source_layer": "inference",
       "target": "insideLLMs.inference.schemas",
       "target_layer": "inference"
     },
@@ -1421,6 +1535,12 @@
       "source_layer": "inference",
       "target": "insideLLMs.analysis.evaluation",
       "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.inference.client",
+      "source_layer": "inference",
+      "target": "insideLLMs.inference._limits",
+      "target_layer": "inference"
     },
     {
       "source": "insideLLMs.inference.client",
@@ -1651,6 +1771,12 @@
       "target_layer": "providers"
     },
     {
+      "source": "insideLLMs.models.anthropic",
+      "source_layer": "providers",
+      "target": "insideLLMs.runtime.budget",
+      "target_layer": "runtime"
+    },
+    {
       "source": "insideLLMs.models.base",
       "source_layer": "providers",
       "target": "insideLLMs.exceptions",
@@ -1727,6 +1853,12 @@
       "source_layer": "providers",
       "target": "insideLLMs.models.base",
       "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.models.openai",
+      "source_layer": "providers",
+      "target": "insideLLMs.runtime.budget",
+      "target_layer": "runtime"
     },
     {
       "source": "insideLLMs.models.openai",
@@ -1927,6 +2059,12 @@
       "target_layer": "evals"
     },
     {
+      "source": "insideLLMs.policy",
+      "source_layer": "evals",
+      "target": "insideLLMs.policy.verification",
+      "target_layer": "evals"
+    },
+    {
       "source": "insideLLMs.policy.engine",
       "source_layer": "evals",
       "target": "insideLLMs.crypto",
@@ -1936,6 +2074,36 @@
       "source": "insideLLMs.policy.engine",
       "source_layer": "evals",
       "target": "insideLLMs.transparency.scitt_client",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.policy.verification",
+      "source_layer": "evals",
+      "target": "insideLLMs._artifact_snapshot",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.policy.verification",
+      "source_layer": "evals",
+      "target": "insideLLMs.attestations.statement",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.policy.verification",
+      "source_layer": "evals",
+      "target": "insideLLMs.crypto",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.policy.verification",
+      "source_layer": "evals",
+      "target": "insideLLMs.publish.oras",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.policy.verification",
+      "source_layer": "evals",
+      "target": "insideLLMs.signing.cosign",
       "target_layer": "analysis"
     },
     {
@@ -2023,6 +2191,24 @@
       "target_layer": "contracts"
     },
     {
+      "source": "insideLLMs.probes._scoring",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes._scoring",
+      "source_layer": "evals",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.agent_probe",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
+    },
+    {
       "source": "insideLLMs.probes.agent_probe",
       "source_layer": "evals",
       "target": "insideLLMs.probes.base",
@@ -2049,6 +2235,12 @@
     {
       "source": "insideLLMs.probes.attack",
       "source_layer": "evals",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.attack",
+      "source_layer": "evals",
       "target": "insideLLMs.probes.base",
       "target_layer": "evals"
     },
@@ -2061,8 +2253,20 @@
     {
       "source": "insideLLMs.probes.base",
       "source_layer": "evals",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.probes.base",
+      "source_layer": "evals",
       "target": "insideLLMs.types",
       "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.probes.bias",
+      "source_layer": "evals",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
     },
     {
       "source": "insideLLMs.probes.bias",
@@ -2137,6 +2341,12 @@
       "target_layer": "analysis"
     },
     {
+      "source": "insideLLMs.publish.oras",
+      "source_layer": "analysis",
+      "target": "insideLLMs._artifact_snapshot",
+      "target_layer": "core"
+    },
+    {
       "source": "insideLLMs.rate_limiting",
       "source_layer": "core",
       "target": "insideLLMs.retry",
@@ -2157,49 +2367,13 @@
     {
       "source": "insideLLMs.registry",
       "source_layer": "core",
-      "target": "insideLLMs.models.anthropic",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
       "target": "insideLLMs.models.base",
       "target_layer": "providers"
     },
     {
       "source": "insideLLMs.registry",
       "source_layer": "core",
-      "target": "insideLLMs.models.cohere",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
-      "target": "insideLLMs.models.gemini",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
-      "target": "insideLLMs.models.huggingface",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
-      "target": "insideLLMs.models.local",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
-      "target": "insideLLMs.models.openai",
-      "target_layer": "providers"
-    },
-    {
-      "source": "insideLLMs.registry",
-      "source_layer": "core",
-      "target": "insideLLMs.models.openrouter",
+      "target": "insideLLMs.models.catalogue",
       "target_layer": "providers"
     },
     {
@@ -2337,6 +2511,12 @@
     {
       "source": "insideLLMs.runtime._async_runner",
       "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
       "target": "insideLLMs._serialization",
       "target_layer": "core"
     },
@@ -2355,7 +2535,19 @@
     {
       "source": "insideLLMs.runtime._async_runner",
       "source_layer": "runtime",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._async_resume",
       "target_layer": "runtime"
     },
     {
@@ -2373,7 +2565,7 @@
     {
       "source": "insideLLMs.runtime._async_runner",
       "source_layer": "runtime",
-      "target": "insideLLMs.runtime._high_level",
+      "target": "insideLLMs.runtime._interruptions",
       "target_layer": "runtime"
     },
     {
@@ -2385,7 +2577,19 @@
     {
       "source": "insideLLMs.runtime._async_runner",
       "source_layer": "runtime",
+      "target": "insideLLMs.runtime._run_health",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._ultimate",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._async_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.budget",
       "target_layer": "runtime"
     },
     {
@@ -2451,6 +2655,18 @@
     {
       "source": "insideLLMs.runtime._config_loader",
       "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_schema",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
       "target": "insideLLMs.dataset_utils",
       "target_layer": "core"
     },
@@ -2493,6 +2709,12 @@
     {
       "source": "insideLLMs.runtime._config_loader",
       "source_layer": "runtime",
+      "target": "insideLLMs.runtime.budget",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._config_loader",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime.receipt",
       "target_layer": "runtime"
     },
@@ -2505,7 +2727,19 @@
     {
       "source": "insideLLMs.runtime._determinism",
       "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._determinism",
+      "source_layer": "runtime",
       "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
       "target_layer": "core"
     },
     {
@@ -2524,6 +2758,12 @@
       "source": "insideLLMs.runtime._high_level",
       "source_layer": "runtime",
       "target": "insideLLMs.config_types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
       "target_layer": "contracts"
     },
     {
@@ -2565,13 +2805,31 @@
     {
       "source": "insideLLMs.runtime._high_level",
       "source_layer": "runtime",
+      "target": "insideLLMs.runtime._interruptions",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._result_utils",
       "target_layer": "runtime"
     },
     {
       "source": "insideLLMs.runtime._high_level",
       "source_layer": "runtime",
+      "target": "insideLLMs.runtime._run_health",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._sync_runner",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._high_level",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.budget",
       "target_layer": "runtime"
     },
     {
@@ -2593,6 +2851,72 @@
       "target_layer": "contracts"
     },
     {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs._serialization",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.analysis.statistics",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.models.base",
+      "target_layer": "providers"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes.base",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._artifact_utils",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._high_level",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime._run_health",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.schemas",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._interruptions",
+      "source_layer": "runtime",
+      "target": "insideLLMs.types",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._result_utils",
+      "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
       "source": "insideLLMs.runtime._result_utils",
       "source_layer": "runtime",
       "target": "insideLLMs._serialization",
@@ -2607,6 +2931,12 @@
     {
       "source": "insideLLMs.runtime._result_utils",
       "source_layer": "runtime",
+      "target": "insideLLMs.schemas.registry",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime._result_utils",
+      "source_layer": "runtime",
       "target": "insideLLMs.types",
       "target_layer": "contracts"
     },
@@ -2614,6 +2944,12 @@
       "source": "insideLLMs.runtime._sync_runner",
       "source_layer": "runtime",
       "target": "insideLLMs",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs._secrets",
       "target_layer": "core"
     },
     {
@@ -2637,6 +2973,12 @@
     {
       "source": "insideLLMs.runtime._sync_runner",
       "source_layer": "runtime",
+      "target": "insideLLMs.probes._scoring",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._artifact_utils",
       "target_layer": "runtime"
     },
@@ -2655,7 +2997,7 @@
     {
       "source": "insideLLMs.runtime._sync_runner",
       "source_layer": "runtime",
-      "target": "insideLLMs.runtime._high_level",
+      "target": "insideLLMs.runtime._interruptions",
       "target_layer": "runtime"
     },
     {
@@ -2667,7 +3009,19 @@
     {
       "source": "insideLLMs.runtime._sync_runner",
       "source_layer": "runtime",
+      "target": "insideLLMs.runtime._run_health",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
       "target": "insideLLMs.runtime._ultimate",
+      "target_layer": "runtime"
+    },
+    {
+      "source": "insideLLMs.runtime._sync_runner",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.budget",
       "target_layer": "runtime"
     },
     {
@@ -2703,6 +3057,12 @@
     {
       "source": "insideLLMs.runtime._ultimate",
       "source_layer": "runtime",
+      "target": "insideLLMs._artifact_snapshot",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
       "target": "insideLLMs.attestations",
       "target_layer": "analysis"
     },
@@ -2716,6 +3076,12 @@
       "source": "insideLLMs.runtime._ultimate",
       "source_layer": "runtime",
       "target": "insideLLMs.crypto",
+      "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime._ultimate",
+      "source_layer": "runtime",
+      "target": "insideLLMs.crypto.canonical",
       "target_layer": "analysis"
     },
     {
@@ -2741,6 +3107,36 @@
       "source_layer": "runtime",
       "target": "insideLLMs.transparency.scitt_client",
       "target_layer": "analysis"
+    },
+    {
+      "source": "insideLLMs.runtime.budget",
+      "source_layer": "runtime",
+      "target": "insideLLMs.config_schema",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.budget",
+      "source_layer": "runtime",
+      "target": "insideLLMs.exceptions",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.runtime.budget",
+      "source_layer": "runtime",
+      "target": "insideLLMs.probes.judge",
+      "target_layer": "evals"
+    },
+    {
+      "source": "insideLLMs.runtime.budget",
+      "source_layer": "runtime",
+      "target": "insideLLMs.registry",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.runtime.budget",
+      "source_layer": "runtime",
+      "target": "insideLLMs.runtime.pipeline",
+      "target_layer": "runtime"
     },
     {
       "source": "insideLLMs.runtime.diffing",
@@ -2979,6 +3375,12 @@
     {
       "source": "insideLLMs.schemas.registry",
       "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_2",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.registry",
+      "source_layer": "contracts",
       "target": "insideLLMs.structured",
       "target_layer": "core"
     },
@@ -2992,6 +3394,18 @@
       "source": "insideLLMs.schemas.v1_0_1",
       "source_layer": "contracts",
       "target": "insideLLMs.schemas.v1_0_0",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.v1_0_2",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_0",
+      "target_layer": "contracts"
+    },
+    {
+      "source": "insideLLMs.schemas.v1_0_2",
+      "source_layer": "contracts",
+      "target": "insideLLMs.schemas.v1_0_1",
       "target_layer": "contracts"
     },
     {
@@ -3129,7 +3543,7 @@
   ],
   "layer_edges": [
     {
-      "count": 22,
+      "count": 23,
       "source_layer": "analysis",
       "target_layer": "analysis"
     },
@@ -3139,12 +3553,12 @@
       "target_layer": "contracts"
     },
     {
-      "count": 3,
+      "count": 5,
       "source_layer": "analysis",
       "target_layer": "core"
     },
     {
-      "count": 2,
+      "count": 3,
       "source_layer": "analysis",
       "target_layer": "inference"
     },
@@ -3164,17 +3578,17 @@
       "target_layer": "cli"
     },
     {
-      "count": 10,
+      "count": 12,
       "source_layer": "cli",
       "target_layer": "contracts"
     },
     {
-      "count": 24,
+      "count": 26,
       "source_layer": "cli",
       "target_layer": "core"
     },
     {
-      "count": 2,
+      "count": 3,
       "source_layer": "cli",
       "target_layer": "evals"
     },
@@ -3184,17 +3598,17 @@
       "target_layer": "labs"
     },
     {
-      "count": 1,
+      "count": 2,
       "source_layer": "cli",
       "target_layer": "providers"
     },
     {
-      "count": 12,
+      "count": 16,
       "source_layer": "cli",
       "target_layer": "runtime"
     },
     {
-      "count": 13,
+      "count": 16,
       "source_layer": "contracts",
       "target_layer": "contracts"
     },
@@ -3214,7 +3628,7 @@
       "target_layer": "contracts"
     },
     {
-      "count": 54,
+      "count": 57,
       "source_layer": "core",
       "target_layer": "core"
     },
@@ -3234,7 +3648,7 @@
       "target_layer": "labs"
     },
     {
-      "count": 13,
+      "count": 7,
       "source_layer": "core",
       "target_layer": "providers"
     },
@@ -3244,22 +3658,22 @@
       "target_layer": "runtime"
     },
     {
-      "count": 5,
+      "count": 9,
       "source_layer": "evals",
       "target_layer": "analysis"
     },
     {
-      "count": 9,
+      "count": 10,
       "source_layer": "evals",
       "target_layer": "contracts"
     },
     {
-      "count": 2,
+      "count": 3,
       "source_layer": "evals",
       "target_layer": "core"
     },
     {
-      "count": 20,
+      "count": 26,
       "source_layer": "evals",
       "target_layer": "evals"
     },
@@ -3279,7 +3693,7 @@
       "target_layer": "core"
     },
     {
-      "count": 39,
+      "count": 42,
       "source_layer": "inference",
       "target_layer": "inference"
     },
@@ -3294,7 +3708,7 @@
       "target_layer": "contracts"
     },
     {
-      "count": 15,
+      "count": 16,
       "source_layer": "labs",
       "target_layer": "core"
     },
@@ -3334,7 +3748,12 @@
       "target_layer": "providers"
     },
     {
-      "count": 7,
+      "count": 2,
+      "source_layer": "providers",
+      "target_layer": "runtime"
+    },
+    {
+      "count": 9,
       "source_layer": "runtime",
       "target_layer": "analysis"
     },
@@ -3344,27 +3763,27 @@
       "target_layer": "cli"
     },
     {
-      "count": 25,
+      "count": 31,
       "source_layer": "runtime",
       "target_layer": "contracts"
     },
     {
-      "count": 20,
+      "count": 31,
       "source_layer": "runtime",
       "target_layer": "core"
     },
     {
-      "count": 5,
+      "count": 9,
       "source_layer": "runtime",
       "target_layer": "evals"
     },
     {
-      "count": 7,
+      "count": 8,
       "source_layer": "runtime",
       "target_layer": "providers"
     },
     {
-      "count": 45,
+      "count": 58,
       "source_layer": "runtime",
       "target_layer": "runtime"
     }
@@ -3379,7 +3798,23 @@
       "path": "insideLLMs/__init__.py"
     },
     {
-      "fan_in": 19,
+      "fan_in": 3,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 100,
+      "module": "insideLLMs._artifact_snapshot",
+      "path": "insideLLMs/_artifact_snapshot.py"
+    },
+    {
+      "fan_in": 9,
+      "fan_out": 0,
+      "layer": "core",
+      "loc": 143,
+      "module": "insideLLMs._secrets",
+      "path": "insideLLMs/_secrets.py"
+    },
+    {
+      "fan_in": 20,
       "fan_out": 0,
       "layer": "core",
       "loc": 247,
@@ -3393,6 +3828,14 @@
       "loc": 554,
       "module": "insideLLMs.analysis",
       "path": "insideLLMs/analysis/__init__.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 0,
+      "layer": "analysis",
+      "loc": 91,
+      "module": "insideLLMs.analysis._student_t",
+      "path": "insideLLMs/analysis/_student_t.py"
     },
     {
       "fan_in": 1,
@@ -3420,9 +3863,9 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 4,
+      "fan_out": 5,
       "layer": "analysis",
-      "loc": 681,
+      "loc": 838,
       "module": "insideLLMs.analysis.matched_compute",
       "path": "insideLLMs/analysis/matched_compute.py"
     },
@@ -3435,10 +3878,10 @@
       "path": "insideLLMs/analysis/plan.py"
     },
     {
-      "fan_in": 6,
-      "fan_out": 1,
+      "fan_in": 7,
+      "fan_out": 2,
       "layer": "analysis",
-      "loc": 1873,
+      "loc": 1910,
       "module": "insideLLMs.analysis.statistics",
       "path": "insideLLMs/analysis/statistics.py"
     },
@@ -3446,7 +3889,7 @@
       "fan_in": 4,
       "fan_out": 1,
       "layer": "analysis",
-      "loc": 4113,
+      "loc": 4141,
       "module": "insideLLMs.analysis.visualization",
       "path": "insideLLMs/analysis/visualization.py"
     },
@@ -3491,7 +3934,7 @@
       "path": "insideLLMs/attestations/predicates/slsa_provenance.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 3,
       "fan_out": 0,
       "layer": "analysis",
       "loc": 44,
@@ -3508,9 +3951,9 @@
     },
     {
       "fan_in": 2,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "analysis",
-      "loc": 217,
+      "loc": 228,
       "module": "insideLLMs.attestations.steps.builders",
       "path": "insideLLMs/attestations/steps/builders.py"
     },
@@ -3534,7 +3977,7 @@
       "fan_in": 1,
       "fan_out": 27,
       "layer": "cli",
-      "loc": 198,
+      "loc": 200,
       "module": "insideLLMs.cli",
       "path": "insideLLMs/cli/__init__.py"
     },
@@ -3558,7 +4001,7 @@
       "fan_in": 26,
       "fan_out": 1,
       "layer": "cli",
-      "loc": 314,
+      "loc": 376,
       "module": "insideLLMs.cli._output",
       "path": "insideLLMs/cli/_output.py"
     },
@@ -3566,7 +4009,7 @@
       "fan_in": 2,
       "fan_out": 2,
       "layer": "cli",
-      "loc": 1150,
+      "loc": 1174,
       "module": "insideLLMs.cli._parsing",
       "path": "insideLLMs/cli/_parsing.py"
     },
@@ -3582,7 +4025,7 @@
       "fan_in": 3,
       "fan_out": 4,
       "layer": "cli",
-      "loc": 331,
+      "loc": 356,
       "module": "insideLLMs.cli._report_builder",
       "path": "insideLLMs/cli/_report_builder.py"
     },
@@ -3630,15 +4073,15 @@
       "fan_in": 2,
       "fan_out": 5,
       "layer": "cli",
-      "loc": 250,
+      "loc": 242,
       "module": "insideLLMs.cli.commands.diff",
       "path": "insideLLMs/cli/commands/diff.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 4,
+      "fan_out": 5,
       "layer": "cli",
-      "loc": 432,
+      "loc": 451,
       "module": "insideLLMs.cli.commands.doctor",
       "path": "insideLLMs/cli/commands/doctor.py"
     },
@@ -3646,7 +4089,7 @@
       "fan_in": 1,
       "fan_out": 5,
       "layer": "cli",
-      "loc": 139,
+      "loc": 183,
       "module": "insideLLMs.cli.commands.export",
       "path": "insideLLMs/cli/commands/export.py"
     },
@@ -3660,9 +4103,9 @@
     },
     {
       "fan_in": 2,
-      "fan_out": 10,
+      "fan_out": 13,
       "layer": "cli",
-      "loc": 848,
+      "loc": 875,
       "module": "insideLLMs.cli.commands.harness",
       "path": "insideLLMs/cli/commands/harness.py"
     },
@@ -3676,9 +4119,9 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "cli",
-      "loc": 249,
+      "loc": 236,
       "module": "insideLLMs.cli.commands.init_cmd",
       "path": "insideLLMs/cli/commands/init_cmd.py"
     },
@@ -3716,17 +4159,17 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 6,
+      "fan_out": 8,
       "layer": "cli",
-      "loc": 104,
+      "loc": 334,
       "module": "insideLLMs.cli.commands.report",
       "path": "insideLLMs/cli/commands/report.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 7,
+      "fan_out": 8,
       "layer": "cli",
-      "loc": 286,
+      "loc": 294,
       "module": "insideLLMs.cli.commands.run",
       "path": "insideLLMs/cli/commands/run.py"
     },
@@ -3756,17 +4199,17 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 3,
+      "fan_out": 4,
       "layer": "cli",
-      "loc": 212,
+      "loc": 153,
       "module": "insideLLMs.cli.commands.validate",
       "path": "insideLLMs/cli/commands/validate.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 2,
+      "fan_out": 3,
       "layer": "cli",
-      "loc": 51,
+      "loc": 74,
       "module": "insideLLMs.cli.commands.verify",
       "path": "insideLLMs/cli/commands/verify.py"
     },
@@ -3780,11 +4223,19 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "core",
-      "loc": 1882,
+      "loc": 1536,
       "module": "insideLLMs.config",
       "path": "insideLLMs/config.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 1,
+      "layer": "core",
+      "loc": 336,
+      "module": "insideLLMs.config_schema",
+      "path": "insideLLMs/config_schema.py"
     },
     {
       "fan_in": 4,
@@ -3924,9 +4375,9 @@
     },
     {
       "fan_in": 0,
-      "fan_out": 0,
+      "fan_out": 1,
       "layer": "labs",
-      "loc": 3199,
+      "loc": 3201,
       "module": "insideLLMs.contrib.distributed",
       "path": "insideLLMs/contrib/distributed.py"
     },
@@ -3998,7 +4449,7 @@
       "fan_in": 0,
       "fan_out": 0,
       "layer": "labs",
-      "loc": 3042,
+      "loc": 3044,
       "module": "insideLLMs.contrib.latency",
       "path": "insideLLMs/contrib/latency.py"
     },
@@ -4102,7 +4553,7 @@
       "fan_in": 1,
       "fan_out": 1,
       "layer": "labs",
-      "loc": 2311,
+      "loc": 2323,
       "module": "insideLLMs.contrib.security.injection_engine",
       "path": "insideLLMs/contrib/security/injection_engine.py"
     },
@@ -4171,7 +4622,7 @@
       "path": "insideLLMs/cost_tracking.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 3,
       "fan_out": 2,
       "layer": "analysis",
       "loc": 34,
@@ -4179,10 +4630,10 @@
       "path": "insideLLMs/crypto/__init__.py"
     },
     {
-      "fan_in": 6,
+      "fan_in": 7,
       "fan_out": 2,
       "layer": "analysis",
-      "loc": 171,
+      "loc": 198,
       "module": "insideLLMs.crypto.canonical",
       "path": "insideLLMs/crypto/canonical.py"
     },
@@ -4243,18 +4694,18 @@
       "path": "insideLLMs/evaluation.py"
     },
     {
-      "fan_in": 12,
+      "fan_in": 16,
       "fan_out": 0,
       "layer": "contracts",
-      "loc": 2541,
+      "loc": 2546,
       "module": "insideLLMs.exceptions",
       "path": "insideLLMs/exceptions.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "core",
-      "loc": 2779,
+      "loc": 2780,
       "module": "insideLLMs.experiment_tracking",
       "path": "insideLLMs/experiment_tracking.py"
     },
@@ -4268,9 +4719,9 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 15,
+      "fan_out": 16,
       "layer": "inference",
-      "loc": 94,
+      "loc": 96,
       "module": "insideLLMs.inference",
       "path": "insideLLMs/inference/__init__.py"
     },
@@ -4283,10 +4734,18 @@
       "path": "insideLLMs/inference/_callbacks.py"
     },
     {
-      "fan_in": 2,
-      "fan_out": 3,
+      "fan_in": 4,
+      "fan_out": 0,
       "layer": "inference",
-      "loc": 151,
+      "loc": 141,
+      "module": "insideLLMs.inference._limits",
+      "path": "insideLLMs/inference/_limits.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 4,
+      "layer": "inference",
+      "loc": 175,
       "module": "insideLLMs.inference.adapters",
       "path": "insideLLMs/inference/adapters.py"
     },
@@ -4294,15 +4753,15 @@
       "fan_in": 2,
       "fan_out": 2,
       "layer": "inference",
-      "loc": 244,
+      "loc": 246,
       "module": "insideLLMs.inference.best_of_n",
       "path": "insideLLMs/inference/best_of_n.py"
     },
     {
       "fan_in": 2,
-      "fan_out": 6,
+      "fan_out": 7,
       "layer": "inference",
-      "loc": 271,
+      "loc": 276,
       "module": "insideLLMs.inference.client",
       "path": "insideLLMs/inference/client.py"
     },
@@ -4310,7 +4769,7 @@
       "fan_in": 1,
       "fan_out": 3,
       "layer": "inference",
-      "loc": 180,
+      "loc": 182,
       "module": "insideLLMs.inference.dag",
       "path": "insideLLMs/inference/dag.py"
     },
@@ -4318,7 +4777,7 @@
       "fan_in": 1,
       "fan_out": 2,
       "layer": "inference",
-      "loc": 162,
+      "loc": 164,
       "module": "insideLLMs.inference.escalation",
       "path": "insideLLMs/inference/escalation.py"
     },
@@ -4326,7 +4785,7 @@
       "fan_in": 1,
       "fan_out": 1,
       "layer": "inference",
-      "loc": 344,
+      "loc": 350,
       "module": "insideLLMs.inference.evolution",
       "path": "insideLLMs/inference/evolution.py"
     },
@@ -4334,7 +4793,7 @@
       "fan_in": 1,
       "fan_out": 1,
       "layer": "inference",
-      "loc": 104,
+      "loc": 108,
       "module": "insideLLMs.inference.prefix_cache",
       "path": "insideLLMs/inference/prefix_cache.py"
     },
@@ -4350,7 +4809,7 @@
       "fan_in": 1,
       "fan_out": 2,
       "layer": "inference",
-      "loc": 117,
+      "loc": 121,
       "module": "insideLLMs.inference.retrieval",
       "path": "insideLLMs/inference/retrieval.py"
     },
@@ -4398,7 +4857,7 @@
       "fan_in": 1,
       "fan_out": 2,
       "layer": "inference",
-      "loc": 159,
+      "loc": 165,
       "module": "insideLLMs.inference.tools",
       "path": "insideLLMs/inference/tools.py"
     },
@@ -4443,23 +4902,31 @@
       "path": "insideLLMs/models/__init__.py"
     },
     {
-      "fan_in": 2,
-      "fan_out": 2,
+      "fan_in": 1,
+      "fan_out": 3,
       "layer": "providers",
-      "loc": 832,
+      "loc": 856,
       "module": "insideLLMs.models.anthropic",
       "path": "insideLLMs/models/anthropic.py"
     },
     {
-      "fan_in": 21,
+      "fan_in": 22,
       "fan_out": 3,
       "layer": "providers",
-      "loc": 1904,
+      "loc": 1906,
       "module": "insideLLMs.models.base",
       "path": "insideLLMs/models/base.py"
     },
     {
       "fan_in": 2,
+      "fan_out": 0,
+      "layer": "providers",
+      "loc": 148,
+      "module": "insideLLMs.models.catalogue",
+      "path": "insideLLMs/models/catalogue.py"
+    },
+    {
+      "fan_in": 1,
       "fan_out": 2,
       "layer": "providers",
       "loc": 1256,
@@ -4467,7 +4934,7 @@
       "path": "insideLLMs/models/cohere.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 1,
       "fan_out": 2,
       "layer": "providers",
       "loc": 853,
@@ -4475,7 +4942,7 @@
       "path": "insideLLMs/models/gemini.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 1,
       "fan_out": 2,
       "layer": "providers",
       "loc": 807,
@@ -4483,7 +4950,7 @@
       "path": "insideLLMs/models/huggingface.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 1,
       "fan_out": 2,
       "layer": "providers",
       "loc": 1880,
@@ -4491,15 +4958,15 @@
       "path": "insideLLMs/models/local.py"
     },
     {
-      "fan_in": 3,
-      "fan_out": 3,
+      "fan_in": 2,
+      "fan_out": 4,
       "layer": "providers",
-      "loc": 591,
+      "loc": 615,
       "module": "insideLLMs.models.openai",
       "path": "insideLLMs/models/openai.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 1,
       "fan_out": 1,
       "layer": "providers",
       "loc": 74,
@@ -4660,9 +5127,9 @@
     },
     {
       "fan_in": 0,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "evals",
-      "loc": 5,
+      "loc": 6,
       "module": "insideLLMs.policy",
       "path": "insideLLMs/policy/__init__.py"
     },
@@ -4670,7 +5137,7 @@
       "fan_in": 2,
       "fan_out": 2,
       "layer": "evals",
-      "loc": 107,
+      "loc": 114,
       "module": "insideLLMs.policy.engine",
       "path": "insideLLMs/policy/engine.py"
     },
@@ -4681,6 +5148,14 @@
       "loc": 7,
       "module": "insideLLMs.policy.rules",
       "path": "insideLLMs/policy/rules/__init__.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 5,
+      "layer": "evals",
+      "loc": 214,
+      "module": "insideLLMs.policy.verification",
+      "path": "insideLLMs/policy/verification.py"
     },
     {
       "fan_in": 0,
@@ -4702,7 +5177,7 @@
       "fan_in": 1,
       "fan_out": 0,
       "layer": "evals",
-      "loc": 79,
+      "loc": 133,
       "module": "insideLLMs.privacy.encryption",
       "path": "insideLLMs/privacy/encryption.py"
     },
@@ -4723,34 +5198,42 @@
       "path": "insideLLMs/probes/__init__.py"
     },
     {
-      "fan_in": 1,
-      "fan_out": 4,
+      "fan_in": 6,
+      "fan_out": 2,
       "layer": "evals",
-      "loc": 1762,
+      "loc": 183,
+      "module": "insideLLMs.probes._scoring",
+      "path": "insideLLMs/probes/_scoring.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 5,
+      "layer": "evals",
+      "loc": 1763,
       "module": "insideLLMs.probes.agent_probe",
       "path": "insideLLMs/probes/agent_probe.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 2,
+      "fan_out": 3,
       "layer": "evals",
-      "loc": 1183,
+      "loc": 1189,
       "module": "insideLLMs.probes.attack",
       "path": "insideLLMs/probes/attack.py"
     },
     {
-      "fan_in": 13,
-      "fan_out": 1,
+      "fan_in": 15,
+      "fan_out": 2,
       "layer": "evals",
-      "loc": 1482,
+      "loc": 1497,
       "module": "insideLLMs.probes.base",
       "path": "insideLLMs/probes/base.py"
     },
     {
       "fan_in": 1,
-      "fan_out": 2,
+      "fan_out": 3,
       "layer": "evals",
-      "loc": 930,
+      "loc": 940,
       "module": "insideLLMs.probes.bias",
       "path": "insideLLMs/probes/bias.py"
     },
@@ -4779,7 +5262,7 @@
       "path": "insideLLMs/probes/instruction.py"
     },
     {
-      "fan_in": 1,
+      "fan_in": 2,
       "fan_out": 2,
       "layer": "evals",
       "loc": 395,
@@ -4803,10 +5286,10 @@
       "path": "insideLLMs/publish/__init__.py"
     },
     {
-      "fan_in": 2,
-      "fan_out": 0,
+      "fan_in": 3,
+      "fan_out": 1,
       "layer": "analysis",
-      "loc": 136,
+      "loc": 138,
       "module": "insideLLMs.publish.oras",
       "path": "insideLLMs/publish/oras.py"
     },
@@ -4819,10 +5302,10 @@
       "path": "insideLLMs/rate_limiting.py"
     },
     {
-      "fan_in": 13,
-      "fan_out": 12,
+      "fan_in": 14,
+      "fan_out": 6,
       "layer": "core",
-      "loc": 1746,
+      "loc": 1750,
       "module": "insideLLMs.registry",
       "path": "insideLLMs/registry.py"
     },
@@ -4835,7 +5318,7 @@
       "path": "insideLLMs/reproducibility.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 3,
       "fan_out": 0,
       "layer": "core",
       "loc": 1204,
@@ -4854,7 +5337,7 @@
       "fan_in": 1,
       "fan_out": 2,
       "layer": "core",
-      "loc": 2328,
+      "loc": 2332,
       "module": "insideLLMs.retry",
       "path": "insideLLMs/retry.py"
     },
@@ -4867,18 +5350,26 @@
       "path": "insideLLMs/runtime/__init__.py"
     },
     {
-      "fan_in": 7,
+      "fan_in": 9,
       "fan_out": 4,
       "layer": "runtime",
-      "loc": 580,
+      "loc": 608,
       "module": "insideLLMs.runtime._artifact_utils",
       "path": "insideLLMs/runtime/_artifact_utils.py"
     },
     {
-      "fan_in": 2,
-      "fan_out": 16,
+      "fan_in": 1,
+      "fan_out": 0,
       "layer": "runtime",
-      "loc": 756,
+      "loc": 121,
+      "module": "insideLLMs.runtime._async_resume",
+      "path": "insideLLMs/runtime/_async_resume.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 21,
+      "layer": "runtime",
+      "loc": 869,
       "module": "insideLLMs.runtime._async_runner",
       "path": "insideLLMs/runtime/_async_runner.py"
     },
@@ -4891,50 +5382,66 @@
       "path": "insideLLMs/runtime/_base.py"
     },
     {
-      "fan_in": 3,
-      "fan_out": 9,
+      "fan_in": 4,
+      "fan_out": 12,
       "layer": "runtime",
-      "loc": 612,
+      "loc": 646,
       "module": "insideLLMs.runtime._config_loader",
       "path": "insideLLMs/runtime/_config_loader.py"
     },
     {
       "fan_in": 6,
-      "fan_out": 1,
+      "fan_out": 2,
       "layer": "runtime",
-      "loc": 537,
+      "loc": 538,
       "module": "insideLLMs.runtime._determinism",
       "path": "insideLLMs/runtime/_determinism.py"
     },
     {
-      "fan_in": 3,
-      "fan_out": 14,
+      "fan_in": 2,
+      "fan_out": 19,
       "layer": "runtime",
-      "loc": 950,
+      "loc": 1051,
       "module": "insideLLMs.runtime._high_level",
       "path": "insideLLMs/runtime/_high_level.py"
     },
     {
-      "fan_in": 5,
-      "fan_out": 3,
+      "fan_in": 3,
+      "fan_out": 10,
       "layer": "runtime",
-      "loc": 878,
+      "loc": 189,
+      "module": "insideLLMs.runtime._interruptions",
+      "path": "insideLLMs/runtime/_interruptions.py"
+    },
+    {
+      "fan_in": 5,
+      "fan_out": 5,
+      "layer": "runtime",
+      "loc": 910,
       "module": "insideLLMs.runtime._result_utils",
       "path": "insideLLMs/runtime/_result_utils.py"
     },
     {
-      "fan_in": 2,
-      "fan_out": 15,
+      "fan_in": 6,
+      "fan_out": 0,
       "layer": "runtime",
-      "loc": 793,
+      "loc": 105,
+      "module": "insideLLMs.runtime._run_health",
+      "path": "insideLLMs/runtime/_run_health.py"
+    },
+    {
+      "fan_in": 2,
+      "fan_out": 19,
+      "layer": "runtime",
+      "loc": 890,
       "module": "insideLLMs.runtime._sync_runner",
       "path": "insideLLMs/runtime/_sync_runner.py"
     },
     {
       "fan_in": 3,
-      "fan_out": 7,
+      "fan_out": 9,
       "layer": "runtime",
-      "loc": 276,
+      "loc": 455,
       "module": "insideLLMs.runtime._ultimate",
       "path": "insideLLMs/runtime/_ultimate.py"
     },
@@ -4947,10 +5454,18 @@
       "path": "insideLLMs/runtime/async_io.py"
     },
     {
+      "fan_in": 6,
+      "fan_out": 5,
+      "layer": "runtime",
+      "loc": 433,
+      "module": "insideLLMs.runtime.budget",
+      "path": "insideLLMs/runtime/budget.py"
+    },
+    {
       "fan_in": 5,
       "fan_out": 3,
       "layer": "runtime",
-      "loc": 1011,
+      "loc": 1048,
       "module": "insideLLMs.runtime.diffing",
       "path": "insideLLMs/runtime/diffing.py"
     },
@@ -4971,7 +5486,7 @@
       "path": "insideLLMs/runtime/observability.py"
     },
     {
-      "fan_in": 5,
+      "fan_in": 6,
       "fan_out": 4,
       "layer": "runtime",
       "loc": 3159,
@@ -5014,7 +5529,7 @@
       "fan_in": 1,
       "fan_out": 3,
       "layer": "runtime",
-      "loc": 128,
+      "loc": 132,
       "module": "insideLLMs.runtime.workflows",
       "path": "insideLLMs/runtime/workflows.py"
     },
@@ -5027,10 +5542,10 @@
       "path": "insideLLMs/safety.py"
     },
     {
-      "fan_in": 14,
+      "fan_in": 16,
       "fan_out": 4,
       "layer": "contracts",
-      "loc": 398,
+      "loc": 402,
       "module": "insideLLMs.schemas",
       "path": "insideLLMs/schemas/__init__.py"
     },
@@ -5038,7 +5553,7 @@
       "fan_in": 8,
       "fan_out": 0,
       "layer": "contracts",
-      "loc": 256,
+      "loc": 261,
       "module": "insideLLMs.schemas.constants",
       "path": "insideLLMs/schemas/constants.py"
     },
@@ -5059,15 +5574,15 @@
       "path": "insideLLMs/schemas/exceptions.py"
     },
     {
-      "fan_in": 4,
-      "fan_out": 4,
+      "fan_in": 5,
+      "fan_out": 5,
       "layer": "contracts",
-      "loc": 1870,
+      "loc": 1890,
       "module": "insideLLMs.schemas.registry",
       "path": "insideLLMs/schemas/registry.py"
     },
     {
-      "fan_in": 2,
+      "fan_in": 3,
       "fan_out": 1,
       "layer": "contracts",
       "loc": 1392,
@@ -5075,12 +5590,20 @@
       "path": "insideLLMs/schemas/v1_0_0.py"
     },
     {
-      "fan_in": 1,
+      "fan_in": 2,
       "fan_out": 1,
       "layer": "contracts",
       "loc": 549,
       "module": "insideLLMs.schemas.v1_0_1",
       "path": "insideLLMs/schemas/v1_0_1.py"
+    },
+    {
+      "fan_in": 1,
+      "fan_out": 2,
+      "layer": "contracts",
+      "loc": 69,
+      "module": "insideLLMs.schemas.v1_0_2",
+      "path": "insideLLMs/schemas/v1_0_2.py"
     },
     {
       "fan_in": 1,
@@ -5115,10 +5638,10 @@
       "path": "insideLLMs/signing/__init__.py"
     },
     {
-      "fan_in": 1,
+      "fan_in": 2,
       "fan_out": 0,
       "layer": "analysis",
-      "loc": 120,
+      "loc": 137,
       "module": "insideLLMs.signing.cosign",
       "path": "insideLLMs/signing/cosign.py"
     },
@@ -5227,10 +5750,10 @@
       "path": "insideLLMs/transparency/scitt_client.py"
     },
     {
-      "fan_in": 33,
+      "fan_in": 35,
       "fan_out": 0,
       "layer": "contracts",
-      "loc": 1357,
+      "loc": 1371,
       "module": "insideLLMs.types",
       "path": "insideLLMs/types.py"
     },
@@ -5585,56 +6108,59 @@
   ],
   "schema_version": 1,
   "summary": {
-    "internal_edge_count": 521,
-    "module_count": 235,
+    "internal_edge_count": 590,
+    "module_count": 248,
     "optional_import_count": 66,
-    "package_loc": 248745,
+    "package_loc": 252235,
     "static_test_references_by_subtree": {
-      "insideLLMs": 15,
-      "insideLLMs._serialization": 10,
-      "insideLLMs.analysis": 167,
+      "insideLLMs": 16,
+      "insideLLMs._artifact_snapshot": 1,
+      "insideLLMs._secrets": 2,
+      "insideLLMs._serialization": 12,
+      "insideLLMs.analysis": 194,
       "insideLLMs.async_utils": 30,
-      "insideLLMs.attestations": 13,
-      "insideLLMs.benchmark_datasets": 29,
+      "insideLLMs.attestations": 15,
+      "insideLLMs.benchmark_datasets": 31,
       "insideLLMs.caching": 107,
-      "insideLLMs.cli": 338,
-      "insideLLMs.config": 73,
-      "insideLLMs.config_types": 13,
+      "insideLLMs.cli": 352,
+      "insideLLMs.config": 78,
+      "insideLLMs.config_schema": 4,
+      "insideLLMs.config_types": 15,
       "insideLLMs.constants": 17,
-      "insideLLMs.contrib": 994,
+      "insideLLMs.contrib": 997,
       "insideLLMs.cost_tracking": 35,
-      "insideLLMs.crypto": 19,
+      "insideLLMs.crypto": 20,
       "insideLLMs.dataset_utils": 10,
       "insideLLMs.datasets": 4,
       "insideLLMs.evaluation": 58,
-      "insideLLMs.exceptions": 99,
-      "insideLLMs.experiment_tracking": 36,
+      "insideLLMs.exceptions": 103,
+      "insideLLMs.experiment_tracking": 37,
       "insideLLMs.export": 21,
-      "insideLLMs.inference": 113,
+      "insideLLMs.inference": 126,
       "insideLLMs.injection": 17,
       "insideLLMs.integrations": 5,
       "insideLLMs.logging_utils": 16,
-      "insideLLMs.models": 316,
+      "insideLLMs.models": 333,
       "insideLLMs.nlp": 200,
       "insideLLMs.observability": 23,
       "insideLLMs.optimization": 24,
       "insideLLMs.pipeline": 25,
-      "insideLLMs.policy": 2,
-      "insideLLMs.privacy": 12,
-      "insideLLMs.probes": 143,
-      "insideLLMs.publish": 12,
+      "insideLLMs.policy": 8,
+      "insideLLMs.privacy": 15,
+      "insideLLMs.probes": 161,
+      "insideLLMs.publish": 14,
       "insideLLMs.rate_limiting": 51,
-      "insideLLMs.registry": 22,
+      "insideLLMs.registry": 23,
       "insideLLMs.reproducibility": 29,
       "insideLLMs.resources": 7,
       "insideLLMs.results": 73,
       "insideLLMs.retry": 42,
-      "insideLLMs.runtime": 234,
+      "insideLLMs.runtime": 313,
       "insideLLMs.safety": 36,
-      "insideLLMs.schemas": 118,
+      "insideLLMs.schemas": 123,
       "insideLLMs.semantic_cache": 30,
       "insideLLMs.shadow": 9,
-      "insideLLMs.signing": 2,
+      "insideLLMs.signing": 3,
       "insideLLMs.streaming": 44,
       "insideLLMs.structured": 149,
       "insideLLMs.structured_extraction": 43,
@@ -5644,7 +6170,7 @@
       "insideLLMs.tracing": 13,
       "insideLLMs.tracking": 9,
       "insideLLMs.transparency": 6,
-      "insideLLMs.types": 186,
+      "insideLLMs.types": 201,
       "insideLLMs.validation": 13,
       "insideLLMs.visualization": 107
     }
