@@ -13,41 +13,88 @@
 
 # insideLLMs
 
-**Catch behavioural regressions in LLM-backed products the same way you catch code regressions — with deterministic, diffable artifacts and a CI gate.**
+**A CI gate for LLM behaviour. Two runs in, a build-breaking exit code out.**
 
-Benchmark frameworks tell you how a model scores. insideLLMs tells you **what
-changed** between two runs. You ship a product backed by `gpt-4o`; the provider
-pushes a silent update; prompt #47 used to say *"Consult a doctor for medical
-advice"* and now says *"Here's what you should do..."*. Aggregate scores barely
-move. insideLLMs records every input/output pair as canonical artifacts, diffs
-two runs, and fails your build when behaviour drifts.
+Evaluation frameworks give you a score. Scores tell you where you are; they
+don't tell you what moved. insideLLMs records every input/output pair as a
+canonical artifact, diffs two runs, and fails the build in the specific way the
+behaviour broke.
 
+### The failure nobody else gates on
+
+Your agent still returns the right answer. It just started calling one more
+tool to get there — a silent cost, latency and reliability regression that
+output-level evals cannot see. From
+[`examples/agent-trajectory-drift/`](examples/agent-trajectory-drift/), where
+`v2` of a support agent adds a billing lookup and returns the same sentence:
+
+```console
+$ insidellms diff v1 v2 --fail-on-changes \
+    --output-fingerprint-ignore trace_events,trace_fingerprint,tool_calls
+$ echo $?
+0                                        # user-visible outputs are identical
+
+$ insidellms diff v1 v2 --fail-on-trajectory-drift
+  Trajectory drifts: 2
+── Trajectory Drifts ─────────────────────────────────
+  dummy-v1 | support-agent | example 2cb44b1f797c98a1: trajectory steps 4 -> 6; tool calls 1 -> 2
+  dummy-v1 | support-agent | example 55f3a13c24ed0228: trajectory steps 4 -> 6; tool calls 1 -> 2
+$ echo $?
+5
 ```
-insidellms diff ./baseline ./candidate --fail-on-changes
+
+The gate is directional and typed, so CI can react to *how* it broke:
+
+| Exit | Meaning | Flag |
+|---|---|---|
+| `0` | clean — or the metric moved in the right direction | — |
+| `1` | primary-score evidence missing or not comparable, so no regression verdict is possible | `--fail-on-regressions` |
+| `2` | scores regressed; or outputs changed, or records exist on only one side | `--fail-on-regressions` / `--fail-on-changes` |
+| `3` | trace policy violations increased | `--fail-on-trace-violations` |
+| `4` | internal trace fingerprint drifted | `--fail-on-trace-drift` |
+| `5` | agent trajectory drifted | `--fail-on-trajectory-drift` |
+
+A score that *improves* exits `0` under these flags. Only the wrong direction
+breaks the build; `--fail-on-any-difference` is the switch for blocking
+improvements and trace/trajectory changes as well. A plain `diff` with no fail
+flag always exits `0`, even when it reports differences.
+
+### Artifacts you can commit
+
+Two runs of the same config produce byte-identical `records.jsonl` and
+`manifest.json` — verified across Python versions, timezones, locales and
+`PYTHONHASHSEED` on the repository's own `ci/harness.yaml`:
+
+```console
+$ shasum -a 256 r1/records.jsonl r2/records.jsonl r3/records.jsonl
+f9d5eb74a59093e4...  r1/records.jsonl     # python 3.13
+f9d5eb74a59093e4...  r2/records.jsonl     # + TZ=Asia/Tokyo, PYTHONHASHSEED=12345, LC_ALL=C
+f9d5eb74a59093e4...  r3/records.jsonl     # python 3.12
 ```
-```diff
-  example_id: 47
-  field: output
-- baseline: "Consult a doctor for medical advice."
-+ candidate: "Here's what you should do..."
-```
+
+Run IDs are SHA-256 of the inputs, timestamps derive from run IDs rather than
+the wall clock, and JSON keys are sorted. So the artifacts belong in git, `git
+diff` reads them, and a gate on them has no environmental false positives.
+Each manifest carries the dataset SHA-256 and the library version, and the
+run directory keeps the fully resolved config in `config.resolved.yaml`, so a
+result can be traced back to exactly what produced it.
 
 ## Key features
 
-- **Deterministic artifacts.** Same inputs and model responses produce the same
-  bytes. Run IDs are SHA-256 hashes of inputs, timestamps derive from run IDs
-  (not wall clocks), and JSON keys are sorted — so `git diff` just works.
-- **Behavioural diff gate.** Compare two run directories and apply an explicit
-  score, output, trace, or trajectory policy. Drop it into CI to block selected
-  regressions before they ship.
-- **Built-in behavioural probes.** Logic, bias, factuality, jailbreak resistance,
+- **Typed, directional CI gate.** Five exit codes covering scores, outputs,
+  trace policy, trace fingerprints and agent trajectories.
+- **Byte-reproducible artifacts.** Same inputs, same bytes — across Python
+  versions, timezones, locales and hash seeds.
+- **Zero-key offline path.** The base install needs only PyYAML and Pydantic;
+  the built-in `dummy` model runs the entire harness → diff → gate loop with no
+  API key and no network.
+- **Thirteen built-in probes.** Logic, bias, factuality, jailbreak resistance,
   instruction following, code generation, and more — or write your own.
 - **One interface, many providers.** OpenAI, Anthropic, Google Gemini, Cohere,
   HuggingFace, OpenRouter, and local models (Ollama, llama.cpp, vLLM).
-- **Zero-key demo path.** A built-in `dummy` model runs the full harness and
-  diff flow offline — no API keys required.
-- **Reusable GitHub Action.** Pin a reviewed full commit SHA of this repository to run the harness
-  on every PR and posts a sticky comment with the top behaviour deltas.
+- **Reusable GitHub Action.** Pin a reviewed full commit SHA of this repository
+  to run the harness on every PR and post a sticky comment with the top
+  behaviour deltas.
 
 ## Architecture
 
@@ -283,6 +330,9 @@ The action checks both runs' health and applies the strict diff gate. Sticky PR
 comments run separately with write permission and trusted code; copy the paired
 workflows described in [the CI guide](ci/README.md). Candidate evaluation must
 retain read-only permissions.
+
+> The `@v1` tag is published by the release workflow on the first `v*` tag.
+> Until then, reference the action by commit SHA.
 
 ## Python API
 
