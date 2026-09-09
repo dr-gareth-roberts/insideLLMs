@@ -35,13 +35,13 @@ format-check:
 
 # Standard type checking (matches CI)
 typecheck:
-	mypy insideLLMs
+	$(PYTHON) -m mypy insideLLMs
 
 # Strict type checking on the security-critical modules. This is the gating
 # strict check and is mirrored exactly by CI (which runs `make typecheck-strict`).
 typecheck-strict:
-	mypy --strict --follow-imports=silent insideLLMs/injection.py
-	mypy --strict --follow-imports=silent insideLLMs/safety.py
+	$(PYTHON) -m mypy --strict --follow-imports=silent insideLLMs/injection.py
+	$(PYTHON) -m mypy --strict --follow-imports=silent insideLLMs/safety.py
 
 # Aspirational: full untyped-def strictness on the runtime package. Not yet
 # clean (tracked); run manually, not part of the gating typecheck-strict.
