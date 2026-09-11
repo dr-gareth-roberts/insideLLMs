@@ -54,9 +54,9 @@ class TestInfoCommand:
         assert rc == 1
 
     def test_dataset_info(self, capsys):
-        rc = cmd_info(_info_args(type="dataset", name="factuality"))
-        # May return 0 or 1 depending on dataset availability
-        assert rc in (0, 1)
+        rc = cmd_info(_info_args(type="dataset", name="reasoning"))
+        assert rc == 0
+        assert "Total examples" in capsys.readouterr().out
 
 
 class TestListCommand:

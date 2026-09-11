@@ -8,6 +8,8 @@ and library users can compose on top of the same core behavior.
 from __future__ import annotations
 
 import json
+import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
@@ -71,6 +73,29 @@ class DiffGatePolicy:
     fail_on_trace_violations: bool = False
     fail_on_trace_drift: bool = False
     fail_on_trajectory_drift: bool = False
+    fail_on_any_difference: bool = False
+
+
+class _KeyedEntries:
+    """Collect diff entries while retaining canonical record-key ordering."""
+
+    def __init__(self) -> None:
+        self._current_key: tuple[str, str, str] | None = None
+        self._items: list[tuple[tuple[str, str, str], Any]] = []
+
+    def set_key(self, key: tuple[str, str, str]) -> None:
+        self._current_key = key
+
+    def append(self, item: Any) -> None:
+        if self._current_key is None:
+            raise RuntimeError("A record key must be set before appending a diff entry")
+        self._items.append((self._current_key, item))
+
+    def values(self) -> list[Any]:
+        return [item for _key, item in sorted(self._items, key=lambda pair: pair[0])]
+
+    def __len__(self) -> int:
+        return len(self._items)
 
 
 def _trim_text(text: str, limit: int = 200) -> str:
@@ -99,7 +124,9 @@ def _record_key(record: dict[str, Any]) -> tuple[str, str, str]:
     )
     replicate_key = custom.get("replicate_key")
     example_id = record.get("example_id") or harness.get("example_index")
-    stable_id = record.get("messages_hash") or _fingerprint_value(record.get("input"))
+    stable_id = record.get("messages_hash") or (
+        _fingerprint_value(record["input"]) if "input" in record else None
+    )
     chosen_id = replicate_key or stable_id or example_id or "0"
     return (str(model_id), str(probe_id), str(chosen_id))
 
@@ -496,18 +523,44 @@ def _normalize_ignore_keys(raw_ignore_keys: list[str] | None) -> set[str] | None
     return ignore_keys if ignore_keys else None
 
 
+def _validate_record_scores(record: dict[str, Any]) -> None:
+    """Reject records whose declared scores cannot be compared honestly."""
+    scores = record.get("scores")
+    if isinstance(scores, dict):
+        for metric, value in scores.items():
+            if isinstance(value, float) and not math.isfinite(value):
+                raise ValueError(f"Non-finite score for metric {metric!r}")
+    primary = record.get("primary_metric")
+    # A declared primary score is evidence, not optional decoration. Null
+    # can be a non-finite value normalized by a legacy serializer.
+    if primary is not None:
+        if (
+            not isinstance(primary, str)
+            or not primary
+            or not isinstance(scores, dict)
+            or primary not in scores
+            or not _is_numeric_score(scores[primary])
+        ):
+            raise ValueError("Declared primary_metric must name a finite numeric score")
+    elif isinstance(scores, dict) and "score" in scores and not _is_numeric_score(scores["score"]):
+        raise ValueError("Legacy 'score' must be a finite numeric score")
+
+
 def _build_index(
-    records: list[dict[str, Any]],
-) -> tuple[dict[tuple[str, str, str], dict[str, Any]], int]:
+    records: Iterable[dict[str, Any]],
+) -> tuple[dict[tuple[str, str, str], dict[str, Any]], int, set[Any]]:
     index: dict[tuple[str, str, str], dict[str, Any]] = {}
     duplicates = 0
+    run_ids: set[Any] = set()
     for record in records:
+        _validate_record_scores(record)
         key = _record_key(record)
+        if record.get("run_id"):
+            run_ids.add(record["run_id"])
         if key in index:
-            duplicates += 1
-            continue
+            raise ValueError(f"Duplicate record identity: {key!r}")
         index[key] = record
-    return index, duplicates
+    return index, duplicates, run_ids
 
 
 def _record_identity(record: dict[str, Any]) -> dict[str, Any]:
@@ -555,8 +608,8 @@ def _validate_diff_report(
 
 def build_diff_computation(
     *,
-    records_baseline: list[dict[str, Any]],
-    records_candidate: list[dict[str, Any]],
+    records_baseline: Iterable[dict[str, Any]],
+    records_candidate: Iterable[dict[str, Any]],
     baseline_label: str,
     candidate_label: str,
     output_fingerprint_ignore: list[str] | None = None,
@@ -567,39 +620,63 @@ def build_diff_computation(
     """Build deterministic diff artifacts and categorized change lists."""
     ignore_keys = _normalize_ignore_keys(output_fingerprint_ignore)
 
-    index_a, dup_a = _build_index(records_baseline)
-    index_b, dup_b = _build_index(records_candidate)
-    all_keys = set(index_a) | set(index_b)
+    index_a, dup_a, run_ids_a = _build_index(records_baseline)
+    candidate_keys: set[tuple[str, str, str]] = set()
+    run_ids_b: set[Any] = set()
+    dup_b = 0
 
-    regressions: list[tuple[str, str, str, str]] = []
-    improvements: list[tuple[str, str, str, str]] = []
-    changes: list[tuple[str, str, str, str]] = []
-    only_a: list[tuple[str, str, str]] = []
-    only_b: list[tuple[str, str, str]] = []
+    regressions = _KeyedEntries()
+    improvements = _KeyedEntries()
+    changes = _KeyedEntries()
+    only_a = _KeyedEntries()
+    only_b = _KeyedEntries()
 
-    regressions_json: list[dict[str, Any]] = []
-    improvements_json: list[dict[str, Any]] = []
-    changes_json: list[dict[str, Any]] = []
-    only_a_json: list[dict[str, Any]] = []
-    only_b_json: list[dict[str, Any]] = []
-    trace_drifts: list[tuple[str, str, str, str]] = []
-    trace_drifts_json: list[dict[str, Any]] = []
-    trace_violation_increases: list[tuple[str, str, str, str]] = []
-    trace_violation_increases_json: list[dict[str, Any]] = []
-    trajectory_drifts: list[tuple[str, str, str, str]] = []
-    trajectory_drifts_json: list[dict[str, Any]] = []
+    regressions_json = _KeyedEntries()
+    improvements_json = _KeyedEntries()
+    changes_json = _KeyedEntries()
+    only_a_json = _KeyedEntries()
+    only_b_json = _KeyedEntries()
+    trace_drifts = _KeyedEntries()
+    trace_drifts_json = _KeyedEntries()
+    trace_violation_increases = _KeyedEntries()
+    trace_violation_increases_json = _KeyedEntries()
+    trajectory_drifts = _KeyedEntries()
+    trajectory_drifts_json = _KeyedEntries()
+    keyed_outputs = (
+        regressions,
+        improvements,
+        changes,
+        only_a,
+        only_b,
+        regressions_json,
+        improvements_json,
+        changes_json,
+        only_a_json,
+        only_b_json,
+        trace_drifts,
+        trace_drifts_json,
+        trace_violation_increases,
+        trace_violation_increases_json,
+        trajectory_drifts,
+        trajectory_drifts_json,
+    )
 
-    for key in sorted(all_keys):
+    for record_b in records_candidate:
+        _validate_record_scores(record_b)
+        key = _record_key(record_b)
+        if record_b.get("run_id"):
+            run_ids_b.add(record_b["run_id"])
+        if key in candidate_keys:
+            raise ValueError(f"Duplicate record identity: {key!r}")
+        candidate_keys.add(key)
+        for output in keyed_outputs:
+            output.set_key(key)
+
         record_a = index_a.get(key)
-        record_b = index_b.get(key)
 
         if record_a is None:
-            only_b.append(_record_label(record_b))  # type: ignore[arg-type]
-            only_b_json.append(_record_identity(record_b))  # type: ignore[arg-type]
-            continue
-        if record_b is None:
-            only_a.append(_record_label(record_a))
-            only_a_json.append(_record_identity(record_a))
+            only_b.append(_record_label(record_b))
+            only_b_json.append(_record_identity(record_b))
             continue
 
         label = _record_label(record_a)
@@ -765,8 +842,10 @@ def build_diff_computation(
 
         trace_fp_a = _trace_fingerprint(record_a)
         trace_fp_b = _trace_fingerprint(record_b)
-        if trace_fp_a and trace_fp_b and trace_fp_a != trace_fp_b:
-            trace_drifts.append((*label, f"trace {trace_fp_a[:12]} -> {trace_fp_b[:12]}"))
+        if trace_fp_a != trace_fp_b:
+            before = trace_fp_a[:12] if trace_fp_a else "absent"
+            after = trace_fp_b[:12] if trace_fp_b else "absent"
+            trace_drifts.append((*label, f"trace {before} -> {after}"))
             trace_drifts_json.append(
                 {
                     **identity,
@@ -826,17 +905,21 @@ def build_diff_computation(
                 }
             )
 
+    for key in sorted(set(index_a) - candidate_keys):
+        for output in keyed_outputs:
+            output.set_key(key)
+        record_a = index_a[key]
+        only_a.append(_record_label(record_a))
+        only_a_json.append(_record_identity(record_a))
+
+    all_keys = set(index_a) | candidate_keys
     diff_report = {
         "schema_version": schema_version,
         "baseline": baseline_label,
         "candidate": candidate_label,
         "run_ids": {
-            "baseline": sorted(
-                {record["run_id"] for record in records_baseline if record.get("run_id")}
-            ),
-            "candidate": sorted(
-                {record["run_id"] for record in records_candidate if record.get("run_id")}
-            ),
+            "baseline": sorted(run_ids_a),
+            "candidate": sorted(run_ids_b),
         },
         "counts": {
             "common": len(all_keys) - len(only_a) - len(only_b),
@@ -850,14 +933,14 @@ def build_diff_computation(
             "trajectory_drifts": len(trajectory_drifts),
         },
         "duplicates": {"baseline": dup_a, "candidate": dup_b},
-        "regressions": regressions_json,
-        "improvements": improvements_json,
-        "changes": changes_json,
-        "only_baseline": only_a_json,
-        "only_candidate": only_b_json,
-        "trace_drifts": trace_drifts_json,
-        "trace_violation_increases": trace_violation_increases_json,
-        "trajectory_drifts": trajectory_drifts_json,
+        "regressions": regressions_json.values(),
+        "improvements": improvements_json.values(),
+        "changes": changes_json.values(),
+        "only_baseline": only_a_json.values(),
+        "only_candidate": only_b_json.values(),
+        "trace_drifts": trace_drifts_json.values(),
+        "trace_violation_increases": trace_violation_increases_json.values(),
+        "trajectory_drifts": trajectory_drifts_json.values(),
     }
 
     if validate_output:
@@ -869,14 +952,14 @@ def build_diff_computation(
 
     return DiffComputation(
         diff_report=diff_report,
-        regressions=regressions,
-        improvements=improvements,
-        changes=changes,
-        only_baseline=only_a,
-        only_candidate=only_b,
-        trace_drifts=trace_drifts,
-        trace_violation_increases=trace_violation_increases,
-        trajectory_drifts=trajectory_drifts,
+        regressions=regressions.values(),
+        improvements=improvements.values(),
+        changes=changes.values(),
+        only_baseline=only_a.values(),
+        only_candidate=only_b.values(),
+        trace_drifts=trace_drifts.values(),
+        trace_violation_increases=trace_violation_increases.values(),
+        trajectory_drifts=trajectory_drifts.values(),
         baseline_duplicates=dup_a,
         candidate_duplicates=dup_b,
     )
@@ -982,6 +1065,15 @@ def compute_diff_exit_code(
 ) -> int:
     """Compute canonical diff gating exit code from a diff computation."""
     policy = policy or DiffGatePolicy()
+    if policy.fail_on_any_difference and computation.has_differences:
+        return 2
+    if policy.fail_on_regressions and any(
+        change.get("kind") in {"metrics_not_comparable", "metric_key_missing"}
+        for change in computation.diff_report.get("changes", [])
+    ):
+        # Missing or incompatible measurements cannot establish an absence of
+        # regressions, even if both model calls completed successfully.
+        return 1
     if policy.fail_on_regressions and computation.regressions:
         return 2
     if policy.fail_on_changes and (

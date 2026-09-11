@@ -14,7 +14,7 @@ models:
 probes:
   - type: logic
     args: {}
-  - type: bias
+  - type: factuality
     args: {}
 dataset:
   format: jsonl

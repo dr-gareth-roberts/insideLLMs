@@ -9,6 +9,7 @@ and run bundle IDs.
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any, Optional
 
 from insideLLMs._serialization import stable_json_dumps
@@ -169,3 +170,29 @@ def run_bundle_id(
         parts.append(d.encode("utf-8"))
     payload = b"".join(parts)
     return hashlib.sha256(payload).hexdigest()
+
+
+def payload_identity(payload: Path) -> tuple[dict[str, Any], str]:
+    """Describe an already-private regular-file payload; v2 is independent of Merkle versions.
+
+    Identity metadata and postpublication receipts are excluded to prevent
+    self-reference. The caller owns regular-file containment and input selection.
+    """
+    excluded = {"integrity/bundle_identity.json", "integrity/bundle_id.txt"}
+    files = []
+    for path in sorted(payload.rglob("*"), key=lambda path: path.relative_to(payload).as_posix()):
+        relative = path.relative_to(payload).as_posix()
+        if (
+            relative in excluded
+            or relative == "attestations/09.publish.dsse.json"
+            or relative.startswith("publication/")
+        ):
+            continue
+        if path.is_file():
+            digest = hashlib.sha256()
+            with path.open("rb") as incoming:
+                while chunk := incoming.read(1024 * 1024):
+                    digest.update(chunk)
+            files.append({"path": relative, "sha256": digest.hexdigest()})
+    descriptor: dict[str, Any] = {"version": 2, "files": files}
+    return descriptor, hashlib.sha256(canonical_json_bytes(descriptor)).hexdigest()

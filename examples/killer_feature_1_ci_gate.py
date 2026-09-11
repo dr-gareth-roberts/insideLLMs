@@ -1,6 +1,6 @@
 """Killer Feature #1: deterministic behavioral CI gate.
 
-Runs the same harness twice and fails if any behavior changed.
+Runs the same harness twice and applies the standard change-gate classifications.
 """
 
 from __future__ import annotations

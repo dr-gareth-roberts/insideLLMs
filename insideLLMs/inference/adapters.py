@@ -12,6 +12,7 @@ from insideLLMs.types import ModelResponse
 
 from ._callbacks import is_async_callable
 from ._callbacks import resolve as _resolve
+from ._limits import OutputLimitBinding, current_collector, validate_output_limit
 from .schemas import Candidate, InferenceRequest
 
 # Accounting keys the proposer owns; caller-supplied request metadata must not
@@ -35,9 +36,11 @@ class ModelProposer:
         model: object,
         *,
         generation_kwargs: Mapping[str, object] | None = None,
+        output_limit: OutputLimitBinding | None = None,
     ) -> None:
         self.model = model
         self.generation_kwargs = dict(generation_kwargs or {})
+        self.output_limit = output_limit
 
     async def sample(self, request: InferenceRequest, n: int) -> list[Candidate]:
         """Generate *n* candidates in stable sample-index order."""
@@ -98,13 +101,21 @@ class ModelProposer:
         if method is None:
             raise TypeError("model must implement generate() or agenerate()")
 
-        if is_async_callable(method):
-            return await _resolve(method(prompt, **self.generation_kwargs))
+        kwargs = dict(self.generation_kwargs)
+        collector = current_collector()
+        reservation = collector.reserve(self.output_limit, kwargs) if collector else None
+        if collector is None:
+            validate_output_limit(self.output_limit, kwargs)
 
-        # A synchronously-named method may still be ``async def`` (or return an
-        # awaitable). Handing that to a worker thread yields the coroutine
-        # object itself as the answer text, so resolve whatever comes back.
-        return await _resolve(await asyncio.to_thread(method, prompt, **self.generation_kwargs))
+        if is_async_callable(method):
+            response = await _resolve(method(prompt, **kwargs))
+        else:
+            # Keep settlement on the awaiting task: cancelled sync work remains
+            # unsettled even if its worker eventually returns in another scope.
+            response = await _resolve(await asyncio.to_thread(method, prompt, **kwargs))
+        if collector is not None and reservation is not None:
+            collector.complete(reservation, _response_output_tokens(response))
+        return response
 
     def _candidate(
         self,
@@ -127,11 +138,14 @@ class ModelProposer:
             if response.latency_ms is not None:
                 metadata["latency_ms"] = response.latency_ms
             if response.usage is not None:
-                metadata.update(
-                    prompt_tokens=response.usage.prompt_tokens,
-                    output_tokens=response.usage.completion_tokens,
-                    total_tokens=response.usage.total_tokens,
-                )
+                for key, attribute in (
+                    ("prompt_tokens", "prompt_tokens"),
+                    ("output_tokens", "completion_tokens"),
+                    ("total_tokens", "total_tokens"),
+                ):
+                    value = _token_count(getattr(response.usage, attribute, None))
+                    if value is not None:
+                        metadata[key] = value
         else:
             output = str(response)
 
@@ -149,3 +163,13 @@ def _model_name(model: object, response: str | ModelResponse) -> str:
     if isinstance(response, ModelResponse) and response.model:
         return response.model
     return str(getattr(model, "model_id", getattr(model, "name", type(model).__name__)))
+
+
+def _response_output_tokens(response: object) -> int | None:
+    if not isinstance(response, ModelResponse):
+        return None
+    return _token_count(getattr(response.usage, "completion_tokens", None))
+
+
+def _token_count(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None

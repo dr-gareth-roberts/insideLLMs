@@ -1,9 +1,0 @@
-model:
-  type: dummy
-  args: {}
-probe:
-  type: logic
-  args: {}
-dataset:
-  format: jsonl
-  path: data/questions.jsonl

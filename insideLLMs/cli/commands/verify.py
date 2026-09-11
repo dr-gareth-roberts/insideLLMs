@@ -1,11 +1,31 @@
 """Verify-signatures command: verify attestation signatures in a run directory."""
 
 import argparse
+import json
 from pathlib import Path
 
 from insideLLMs.signing import verify_bundle
 
 from .._output import print_error, print_header, print_success
+
+
+def cmd_verify_policy(args: argparse.Namespace) -> int:
+    """Project caller-owned trust inputs into strict policy verification."""
+    from insideLLMs.policy.verification import VerificationPolicy, verify_policy
+
+    try:
+        policy = VerificationPolicy(
+            args.identity,
+            args.oidc_issuer,
+            Path(args.trusted_root),
+            require_scitt=args.require_scitt,
+        )
+        verdict = verify_policy(args.run_dir, policy)
+    except (OSError, ValueError) as exc:
+        print_error(str(exc))
+        return 1
+    print(json.dumps(verdict, sort_keys=True, indent=2))
+    return 0 if verdict["passed"] else 1
 
 
 def cmd_verify_signatures(args: argparse.Namespace) -> int:
@@ -36,7 +56,10 @@ def cmd_verify_signatures(args: argparse.Namespace) -> int:
             failed += 1
             continue
         try:
-            if verify_bundle(dsse_path, bundle_path, identity_constraints=identity):
+            trust_args = {}
+            if getattr(args, "oidc_issuer", None):
+                trust_args["oidc_issuer"] = args.oidc_issuer
+            if verify_bundle(dsse_path, bundle_path, identity_constraints=identity, **trust_args):
                 print_success(f"Verified {dsse_path.name}")
             else:
                 print_error(f"Verification failed: {dsse_path.name}")

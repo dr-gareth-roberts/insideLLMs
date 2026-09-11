@@ -1167,6 +1167,11 @@ class RunnerExecutionError(ProbeError):
         self.elapsed_seconds = elapsed_seconds
         self.original_error = original_error
         self.suggestions = suggestions or []
+        # Partial evidence is populated before an interrupted runner/harness
+        # reraises; it is deliberately separate from printable error details.
+        self.partial_results: list[dict[str, Any]] = []
+        self.partial_result: Optional[dict[str, Any]] = None
+        self.secondary_diagnostics: list[dict[str, Any]] = []
 
         details: dict[str, Any] = {"reason": reason}
         if model_id:

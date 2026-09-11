@@ -10,9 +10,11 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from pathlib import Path
+from threading import BoundedSemaphore
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.graph.workflow import run_compliance_pipeline
-from app.models import Transaction
+from app.models import PipelineState, Transaction
 from app.scenarios import SCENARIOS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -42,6 +44,32 @@ app.add_middleware(
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
+_analysis_slots = BoundedSemaphore(4)
+
+
+class _AnalysisBusy(Exception):
+    """All process-local analysis slots are occupied."""
+
+
+def _run_admitted_analysis(transaction: Transaction) -> PipelineState:
+    try:
+        return run_compliance_pipeline(transaction)
+    finally:
+        # Only the worker can release capacity: cancellation does not stop a thread.
+        _analysis_slots.release()
+
+
+async def _analyze(transaction: Transaction) -> PipelineState:
+    if not _analysis_slots.acquire(blocking=False):
+        raise _AnalysisBusy
+    try:
+        work = asyncio.get_running_loop().run_in_executor(None, _run_admitted_analysis, transaction)
+    except BaseException:
+        _analysis_slots.release()
+        raise
+    # Retrieve abandoned exceptions as well as those awaited by active requests.
+    work.add_done_callback(lambda completed: completed.exception())
+    return await asyncio.shield(work)
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +141,9 @@ async def analyze_scenario(req: AnalyzeRequest):
     start = time.time()
 
     try:
-        final_state = run_compliance_pipeline(transaction)
+        final_state = await _analyze(transaction)
+    except _AnalysisBusy:
+        raise HTTPException(503, "Analysis capacity reached; retry later") from None
     except Exception as _:
         logger.exception("Pipeline failed for scenario '%s'", req.scenario_key)
         raise HTTPException(500, "Pipeline error — see server logs for details")
@@ -141,7 +171,9 @@ async def analyze_custom(transaction: Transaction):
     start = time.time()
 
     try:
-        final_state = run_compliance_pipeline(transaction)
+        final_state = await _analyze(transaction)
+    except _AnalysisBusy:
+        raise HTTPException(503, "Analysis capacity reached; retry later") from None
     except Exception as _:
         logger.exception("Pipeline failed for custom TXN")
         raise HTTPException(500, "Pipeline error — see server logs for details")

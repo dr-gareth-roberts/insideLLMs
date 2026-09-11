@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -30,6 +31,33 @@ def test_run_harness_to_dir_delegates_to_cli(tmp_path: Path) -> None:
 def test_run_harness_to_dir_rejects_missing_config(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         run_harness_to_dir(tmp_path / "missing.yaml", tmp_path / "run")
+
+
+def test_run_harness_to_dir_executes_offline_and_writes_healthy_report(tmp_path: Path) -> None:
+    config_path = tmp_path / "harness.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "models": [{"type": "dummy", "args": {"canned_response": "Paris"}}],
+                "probes": [{"type": "logic"}],
+                "dataset": {
+                    "format": "inline",
+                    "data": [{"question": "Capital of France?", "reference_answer": "Paris"}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    run_dir = tmp_path / "run"
+
+    assert run_harness_to_dir(config_path, run_dir) == 0
+
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    assert manifest["custom"]["health"]["healthy"] is True
+    assert manifest["record_count"] == 1
+    record = json.loads((run_dir / "records.jsonl").read_text())
+    assert record["scores"]["accuracy"] == 1.0
+    assert (run_dir / "report.html").is_file()
 
 
 def test_run_harness_to_dir_rejects_invalid_validation_mode(tmp_path: Path) -> None:

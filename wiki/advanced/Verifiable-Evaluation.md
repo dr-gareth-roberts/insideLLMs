@@ -16,6 +16,23 @@ Build provenance-oriented evaluation runs with attestations, signatures, and tra
 - Signature verification (`insidellms verify-signatures`)
 - Optional transparency and distribution paths (SCITT receipts, OCI publish)
 
+## Trust boundaries
+
+- `insidellms attest` creates DSSE envelopes with no embedded signatures. They
+  are drafts until detached cosign bundles are created and verified.
+- `insidellms verify-signatures` checks each DSSE file it finds against its
+  detached bundle and fails when that corresponding bundle is missing. It does
+  not require the complete expected attestation set.
+- Optional `--identity` applies one cosign certificate-identity constraint. The
+  command does not enforce an issuer, organization allowlist, or signer policy.
+- SCITT receipt checks in the current client are structural only. They do not
+  verify a COSE signature, Merkle inclusion proof, issuer, or key.
+- The TUF dataset client has no production verification path. It fails closed
+  unless tests explicitly request a mock result labelled `verified=False`.
+
+Do not treat an unsigned envelope, a structurally checked receipt, or a TUF
+mock as verified provenance.
+
 ## Prerequisites
 
 - A completed run directory (must include `manifest.json`)
@@ -46,8 +63,12 @@ insidellms verify-signatures ./baseline
 To enforce signer identity constraints:
 
 ```bash
-insidellms verify-signatures ./baseline --identity "issuer=https://token.actions.githubusercontent.com"
+insidellms verify-signatures ./baseline --identity "EXPECTED_CERTIFICATE_IDENTITY"
 ```
+
+Replace the value with the exact certificate identity you trust. It is not an
+issuer expression; issuer constraints and organizational authorization must be
+enforced separately.
 
 ## Expected run-directory additions
 

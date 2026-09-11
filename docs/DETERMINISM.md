@@ -10,13 +10,16 @@ cached responses, or provider-side determinism).
 
 ### Canonical run artefacts
 
-A run directory contains (at minimum):
+Every config-driven, artefact-emitting run contains:
 
+- `.insidellms_run`: managed-directory safety marker
 - `records.jsonl`: canonical record stream (one JSON object per line)
 - `manifest.json`: run metadata (`RunManifest` schema)
 - `config.resolved.yaml`: normalized config snapshot used for the run
-- `summary.json`: aggregates
-- `report.html`: human-readable report
+
+The harness adds `summary.json` and normally `report.html`; `--skip-report`
+omits the latter. A single run can add/rebuild both derived files with
+`insidellms report <run-dir>`.
 
 ### What we do to stay deterministic
 

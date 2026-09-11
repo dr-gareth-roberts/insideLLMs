@@ -1,0 +1,31 @@
+name: Editor extension package
+
+on:
+  pull_request:
+    paths: ['extensions/vscode-insidellms/**', '.github/workflows/editor-extension.yml']
+  push:
+    paths: ['extensions/vscode-insidellms/**', '.github/workflows/editor-extension.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  local-vsix:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extensions/vscode-insidellms
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: extensions/vscode-insidellms/.nvmrc
+          cache: npm
+          cache-dependency-path: extensions/vscode-insidellms/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm test
+      - run: npm run package
+      - run: npm run verify-package

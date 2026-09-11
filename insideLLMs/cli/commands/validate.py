@@ -4,16 +4,14 @@ import argparse
 import json
 from pathlib import Path
 
-from insideLLMs.registry import ensure_builtins_registered, model_registry, probe_registry
+import yaml
+
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 
 from .._output import (
-    Colors,
-    colorize,
     print_error,
     print_header,
     print_key_value,
-    print_subheader,
     print_success,
     print_warning,
 )
@@ -136,77 +134,20 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print_success("Validation OK")
         return 0
 
-    # ---------------------------------------------------------------------
-    # Config validation (legacy)
-    # ---------------------------------------------------------------------
     print_header("Validate Configuration")
-    config_path = target_path
-    print_key_value("Config", config_path)
-
+    print_key_value("Config", target_path)
     try:
-        import yaml
+        from insideLLMs.config_schema import normalize_runtime_config, resolve_dataset_path
+        from insideLLMs.runtime._config_loader import load_config
 
-        # Load config
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f) if config_path.suffix in (".yaml", ".yml") else json.load(f)
-
-        config_errors: list[str] = []
-        warnings: list[str] = []
-
-        # Validate model
-        if "model" not in config:
-            config_errors.append("Missing required field: model")
-        else:
-            model_config = config["model"]
-            if "type" not in model_config:
-                config_errors.append("Missing model.type")
-            else:
-                ensure_builtins_registered()
-                if model_config["type"] not in model_registry.list():
-                    config_errors.append(f"Unknown model type: {model_config['type']}")
-
-        # Validate probe
-        if "probe" not in config:
-            config_errors.append("Missing required field: probe")
-        else:
-            probe_config = config["probe"]
-            if "type" not in probe_config:
-                config_errors.append("Missing probe.type")
-            else:
-                ensure_builtins_registered()
-                if probe_config["type"] not in probe_registry.list():
-                    config_errors.append(f"Unknown probe type: {probe_config['type']}")
-
-        # Validate dataset
-        if "dataset" not in config:
-            warnings.append("No dataset specified (will use builtin)")
-        else:
-            ds_config = config["dataset"]
-            if "path" in ds_config:
-                ds_path = Path(ds_config["path"])
-                if not ds_path.exists():
-                    warnings.append(f"Dataset file not found: {ds_path}")
-
-        # Report results
-        if config_errors:
-            print_subheader("Errors")
-            for e in config_errors:
-                print(f"  {colorize('ERROR', Colors.RED)} {e}")
-
-        if warnings:
-            print_subheader("Warnings")
-            for w in warnings:
-                print(f"  {colorize('WARN', Colors.YELLOW)} {w}")
-
-        if not config_errors:
-            print()
-            print_success("Configuration is valid!")
-            return 0
-        else:
-            print()
-            print_error(f"Configuration has {len(config_errors)} error(s)")
-            return 1
-
-    except Exception as e:
-        print_error(f"Validation error: {e}")
+        config = normalize_runtime_config(load_config(target_path), check_registry=True)
+        dataset = config["dataset"]
+        if dataset["format"] in ("csv", "jsonl"):
+            dataset_path = resolve_dataset_path(dataset["path"], target_path.parent)
+            if not dataset_path.is_file():
+                raise ValueError(f"Dataset file not found: {dataset_path}")
+        print_success("Configuration is valid!")
+        return 0
+    except (ValueError, OSError, TypeError, yaml.YAMLError) as exc:
+        print_error(f"Validation error: {exc}")
         return 1

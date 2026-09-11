@@ -55,4 +55,8 @@ For world-class contract discipline, enforce these checks in CI:
 - Schema contract tests for canonical artefact files.
 - Determinism golden-path job (`run -> records -> report -> diff`).
 
+These checks are now executable through `make architecture` and
+`make clean-install-golden-path`. The generated root-facade inventory is in
+`docs/API_STATUS.md`; its machine-readable source is `architecture/api_manifest.json`.
+
 This file defines policy and expected behaviour; CI wiring may evolve separately.

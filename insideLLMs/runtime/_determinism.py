@@ -9,6 +9,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs._serialization import (
     StrictSerializationError,
 )
@@ -252,7 +253,7 @@ def _deterministic_run_id_from_config_snapshot(
     _deterministic_run_id_from_inputs : Generate from individual components.
     _deterministic_hash : Hash generation.
     """
-    payload = {"schema_version": schema_version, "config": config_snapshot}
+    payload = {"schema_version": schema_version, "config": redact_config_secrets(config_snapshot)}
     return _deterministic_hash(payload, strict=strict_serialization)[:32]
 
 
@@ -315,11 +316,11 @@ def _deterministic_run_id_from_inputs(
     """
     payload = {
         "schema_version": schema_version,
-        "model": model_spec,
-        "probe": probe_spec,
-        "dataset": dataset_spec,
+        "model": redact_config_secrets(model_spec),
+        "probe": redact_config_secrets(probe_spec),
+        "dataset": redact_config_secrets(dataset_spec),
         "prompt_set_hash": _hash_prompt_set(prompt_set, strict=strict_serialization),
-        "probe_kwargs": probe_kwargs,
+        "probe_kwargs": redact_config_secrets(probe_kwargs),
     }
     return _deterministic_hash(payload, strict=strict_serialization)[:32]
 

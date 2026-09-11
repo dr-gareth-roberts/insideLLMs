@@ -11,7 +11,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 import yaml
 
@@ -24,7 +24,30 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
+from insideLLMs.runtime._async_resume import is_scheduler_attested_unattempted
 from insideLLMs.runtime._result_utils import _record_index_from_record
+
+
+def _require_unsealed_run_directory(run_dir: Path) -> None:
+    """Refuse resume/overwrite of historical evidence before any runner mutation.
+
+    lexists deliberately includes dangling aliases and special-file markers.
+    This is a conservative admission check, not a concurrent-writer lock.
+    """
+    markers = (
+        "integrity/bundle_id.txt",
+        "integrity/bundle_identity.json",
+        "attestations",
+        "signing",
+    )
+    integrity = run_dir / "integrity"
+    unsafe_container = run_dir.is_symlink() or (
+        os.path.lexists(integrity) and (integrity.is_symlink() or not integrity.is_dir())
+    )
+    if unsafe_container or any(os.path.lexists(run_dir / marker) for marker in markers):
+        raise ValueError(
+            "Historical evidence is immutable; use a fresh run directory and preserve originals"
+        )
 
 
 def _default_run_root() -> Path:
@@ -236,12 +259,11 @@ def _ensure_run_sentinel(run_dir_path: Path) -> None:
 
 
 def _truncate_incomplete_jsonl(path: Path) -> None:
-    """Truncate a JSONL file to remove any incomplete final line.
+    """Normalize a JSONL file by removing only an invalid final line.
 
     When a run is interrupted, the final line of records.jsonl may be
-    incomplete (not terminated with a newline). This function removes
-    any such incomplete line to ensure the file contains only valid
-    JSON records for safe resume.
+    incomplete. This function removes an invalid final line while preserving
+    a syntactically valid final JSON value that lacks a terminating newline.
 
     Parameters
     ----------
@@ -277,23 +299,73 @@ def _truncate_incomplete_jsonl(path: Path) -> None:
 
     Notes
     -----
-    This function operates at the byte level for efficiency and handles
-    files without any newlines by truncating to empty.
+    This function operates at the byte level for efficiency. A missing line
+    terminator is not itself proof of an incomplete write: valid final JSON is
+    retained and normalized with a newline so the next append starts a new line.
 
     See Also
     --------
     _read_jsonl_records : Read records with optional truncation.
     """
     data = path.read_bytes()
-    if not data:
+    if not data or data.endswith(b"\n"):
         return
-    if data.endswith(b"\n"):
-        return
+
     cutoff = data.rfind(b"\n")
-    if cutoff == -1:
-        path.write_bytes(b"")
+    final_line = data[cutoff + 1 :]
+    try:
+        json.loads(final_line)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        if cutoff == -1:
+            path.write_bytes(b"")
+        else:
+            path.write_bytes(data[: cutoff + 1])
         return
-    path.write_bytes(data[: cutoff + 1])
+
+    path.write_bytes(data + b"\n")
+
+
+def iter_jsonl_records(
+    path: Path, *, truncate_incomplete: bool = False
+) -> "Iterator[dict[str, Any]]":
+    """Yield dictionary records from a JSON Lines file without materializing it.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the JSONL file. If the file doesn't exist, no records are yielded.
+    truncate_incomplete : bool, default False
+        If True, truncate any incomplete final line before reading. This is useful
+        when resuming an interrupted run.
+
+    Yields
+    ------
+    dict[str, Any]
+        Parsed dictionary records. Empty lines and non-dictionary JSON values are
+        skipped.
+
+    Raises
+    ------
+    ValueError
+        If any non-empty line contains invalid JSON.
+    """
+    if not path.exists():
+        return
+    if truncate_incomplete:
+        _truncate_incomplete_jsonl(path)
+    with open(path, "r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                record = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Invalid JSONL record: Invalid JSON on line {line_no} in {path}: {exc}"
+                ) from exc
+            if isinstance(record, dict):
+                yield record
 
 
 def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> list[dict[str, Any]]:
@@ -357,23 +429,7 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     _truncate_incomplete_jsonl : Truncate incomplete final line.
     _build_result_record : Build records for writing to JSONL.
     """
-    if not path.exists():
-        return []
-    if truncate_incomplete:
-        _truncate_incomplete_jsonl(path)
-    records: list[dict[str, Any]] = []
-    with open(path, "r", encoding="utf-8") as handle:
-        for line_no, line in enumerate(handle, start=1):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                record = json.loads(stripped)
-            except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSONL record on line {line_no} in {path}") from exc
-            if isinstance(record, dict):
-                records.append(record)
-    return records
+    return list(iter_jsonl_records(path, truncate_incomplete=truncate_incomplete))
 
 
 def _validate_resume_record(
@@ -406,11 +462,27 @@ def _validate_resume_record(
     Raises
     ------
     ValueError
-        If the record doesn't match the expected index, run_id, or input.
+        If the record doesn't match the expected index, run_id, or input, or if
+        it is a ``skipped`` placeholder for an item that never executed and does
+        not carry the scheduler's own attestation of that fact.
     """
     record_index = _record_index_from_record(record, default=expected_index)
     if record_index != expected_index:
         raise ValueError("Existing records are not a contiguous prefix; cannot resume safely.")
+
+    # A "skipped" record describes an item that was never executed. Counting it
+    # as completed work would silently drop that item from the resumed run. The
+    # runner writes nothing for undispatched items, so the only admissible
+    # skipped record is the scheduler-attested placeholder older run
+    # directories can still end in; attempted_prefix_length() then verifies
+    # that such records form a well-formed, evidence-free suffix.
+    if str(record.get("status") or "") == "skipped" and not is_scheduler_attested_unattempted(
+        record
+    ):
+        raise ValueError(
+            f"Existing record at index {expected_index} has status 'skipped'; "
+            "the item never executed and cannot be resumed as completed work."
+        )
 
     if run_id is not None:
         record_run_id = record.get("run_id")
@@ -573,6 +645,7 @@ __all__ = [
     "_atomic_write_yaml",
     "_ensure_run_sentinel",
     "_truncate_incomplete_jsonl",
+    "iter_jsonl_records",
     "_read_jsonl_records",
     "_validate_resume_record",
     "_prepare_run_dir",

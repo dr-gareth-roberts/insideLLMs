@@ -11,5 +11,4 @@ probe:
 dataset:
   format: jsonl
   path: ../ci/harness_dataset.jsonl
-  input_field: question
 max_examples: 3

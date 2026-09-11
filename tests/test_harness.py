@@ -9,6 +9,7 @@ import json
 import pytest
 import yaml
 
+from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.runtime.runner import run_harness_from_config
 
 
@@ -438,8 +439,16 @@ class TestHarnessEdgeCases:
         config_path = tmp_path / "harness.yaml"
         config_path.write_text(yaml.safe_dump(config))
 
-        with pytest.raises((ValueError, KeyError, ModuleNotFoundError, ImportError)):
+        with pytest.raises(RunnerExecutionError) as caught:
             run_harness_from_config(config_path)
+        assert isinstance(caught.value.original_error, (ValueError, KeyError, ImportError))
+        assert "nonexistent_model" in str(caught.value.original_error)
+        assert caught.value.__cause__ is caught.value.original_error
+        assert caught.value.partial_result["records"] == []
+        assert caught.value.partial_result["run_completed"] is False
+        assert caught.value.partial_result["expected_count"] == 1
+        assert caught.value.partial_result["summary"]["health"]["record_count"] == 0
+        assert caught.value.partial_result["summary"]["health"]["healthy"] is False
 
     def test_harness_forwards_runner_settings(self, tmp_path, monkeypatch):
         """The optional ``runner:`` config block must reach ProbeRunner.run.
@@ -491,8 +500,16 @@ class TestHarnessEdgeCases:
         config_path = tmp_path / "harness.yaml"
         config_path.write_text(yaml.safe_dump(config))
 
-        with pytest.raises((ValueError, KeyError)):
+        with pytest.raises(RunnerExecutionError) as caught:
             run_harness_from_config(config_path)
+        assert isinstance(caught.value.original_error, (ValueError, KeyError))
+        assert "nonexistent_probe" in str(caught.value.original_error)
+        assert caught.value.__cause__ is caught.value.original_error
+        assert caught.value.partial_result["records"] == []
+        assert caught.value.partial_result["run_completed"] is False
+        assert caught.value.partial_result["expected_count"] == 1
+        assert caught.value.partial_result["summary"]["health"]["record_count"] == 0
+        assert caught.value.partial_result["summary"]["health"]["healthy"] is False
 
 
 class TestHarnessRecordStructure:

@@ -441,7 +441,7 @@ def semver_tuple(version: str) -> tuple[int, int, int]:
         >>> versions = registry.available_versions("ProbeResult")
         >>> latest = max(versions, key=semver_tuple)
         >>> latest
-        '1.0.1'
+        '1.0.2'
 
     Raises
     ------
@@ -1045,7 +1045,7 @@ class SchemaRegistry:
         list[str]
             A list of version strings in ascending order. Returns an empty list
             if the schema name is not recognized. For most schemas, this returns
-            ["1.0.0", "1.0.1"]. The CustomTrace schema uses a special versioning
+            ["1.0.0", "1.0.1", "1.0.2"]. The CustomTrace schema uses a special versioning
             scheme.
 
         Examples
@@ -1058,7 +1058,7 @@ class SchemaRegistry:
             True
             >>> "1.0.1" in versions
             True
-            >>> versions == ["1.0.0", "1.0.1"]
+            >>> versions == ["1.0.0", "1.0.1", "1.0.2"]
             True
 
         Using schema constants (recommended):
@@ -1111,7 +1111,7 @@ class SchemaRegistry:
             >>> versions = registry.available_versions("ProbeResult")
             >>> latest = max(versions, key=semver_tuple)
             >>> latest
-            '1.0.1'
+            '1.0.2'
 
         Checking if a specific version exists:
 
@@ -1168,7 +1168,7 @@ class SchemaRegistry:
             self.EXPORT_METADATA,
         }:
             return []
-        return ["1.0.0", "1.0.1"]
+        return ["1.0.0", "1.0.1", "1.0.2"]
 
     def get_model(self, schema_name: str, schema_version: str) -> Type[Any]:
         """Return the Pydantic model class for a schema.
@@ -1399,6 +1399,10 @@ class SchemaRegistry:
             from insideLLMs.schemas import v1_0_1
 
             model = v1_0_1.get_schema_model(schema_name)
+        elif v == "1.0.2":
+            from insideLLMs.schemas import v1_0_2
+
+            model = v1_0_2.get_schema_model(schema_name)
         else:
             raise KeyError(f"Unknown schema version: {schema_name}@{v}")
 
@@ -1859,6 +1863,22 @@ class SchemaRegistry:
         t = normalize_semver(to_version)
         if f == t:
             return custom_migration(data) if custom_migration else data
+        if t == "1.0.2" and f in {"1.0.0", "1.0.1"} and t in self.available_versions(schema_name):
+            import copy
+
+            migrated = copy.deepcopy(data)
+            if custom_migration:
+                migrated = custom_migration(migrated)
+            if isinstance(migrated, dict):
+                migrated["schema_version"] = t
+                if schema_name == self.RUN_MANIFEST:
+                    migrated.setdefault("run_completed", False)
+                if schema_name == self.RUNNER_OUTPUT:
+                    for item in migrated.get("results", []):
+                        if isinstance(item, dict):
+                            item["schema_version"] = t
+            # New scores default to empty; migration cannot fabricate evaluation.
+            return migrated
         if schema_name == self.RUN_MANIFEST and f == "1.0.0" and t == "1.0.1":
             migrated = dict(data) if isinstance(data, dict) else data
             if isinstance(migrated, dict):

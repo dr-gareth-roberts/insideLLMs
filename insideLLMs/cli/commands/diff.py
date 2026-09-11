@@ -3,9 +3,12 @@
 import argparse
 import json
 import sys
+from collections.abc import Iterator
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
+from insideLLMs.runtime.diff_html_report import render_diff_html
 from insideLLMs.runtime.diffing import (
     DiffGatePolicy,
     build_diff_computation,
@@ -28,7 +31,7 @@ from .._output import (
     print_subheader,
     print_warning,
 )
-from .._record_utils import _json_default, _read_jsonl_records
+from .._record_utils import _json_default, iter_jsonl_records
 
 
 def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
@@ -67,6 +70,16 @@ def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
         print(colorize(f"  ... and {len(verdicts) - limit} more", Colors.DIM))
 
 
+def _nonempty_records(path: Path) -> Iterator[dict[str, Any]] | None:
+    """Return a replayable-first iterator, or None when a JSONL file is empty."""
+    records = iter(iter_jsonl_records(path))
+    try:
+        first = next(records)
+    except StopIteration:
+        return None
+    return chain((first,), records)
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     """Compare two run directories and report behavioural regressions."""
     run_dir_a = Path(args.run_dir_a)
@@ -90,13 +103,13 @@ def cmd_diff(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        records_a = _read_jsonl_records(records_path_a)
-        records_b = _read_jsonl_records(records_path_b)
+        records_a = _nonempty_records(records_path_a)
+        records_b = _nonempty_records(records_path_b)
     except Exception as e:
         print_error(f"Could not read records.jsonl: {e}")
         return 1
 
-    if not records_a or not records_b:
+    if records_a is None or records_b is None:
         print_error("Both run directories must contain records to compare")
         return 1
 
@@ -115,6 +128,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
     gate_policy = DiffGatePolicy(
         fail_on_regressions=bool(args.fail_on_regressions),
         fail_on_changes=bool(args.fail_on_changes),
+        fail_on_any_difference=bool(getattr(args, "fail_on_any_difference", False)),
         fail_on_trace_violations=bool(args.fail_on_trace_violations),
         fail_on_trace_drift=bool(args.fail_on_trace_drift),
         fail_on_trajectory_drift=bool(getattr(args, "fail_on_trajectory_drift", False)),
@@ -152,14 +166,16 @@ def cmd_diff(args: argparse.Namespace) -> int:
         )
         judge_report = judge_computation.judge_report
 
-    if computation.baseline_duplicates:
-        print_warning(
-            f"Baseline has {computation.baseline_duplicates} duplicate key(s); first occurrence used"
-        )
-    if computation.candidate_duplicates:
-        print_warning(
-            f"Comparison has {computation.candidate_duplicates} duplicate key(s); first occurrence used"
-        )
+    html_path = getattr(args, "html", None)
+    if html_path:
+        html_payload = dict(diff_report)
+        if judge_report is not None:
+            html_payload["judge"] = judge_report
+        try:
+            Path(html_path).write_text(render_diff_html(html_payload), encoding="utf-8")
+        except OSError as e:
+            print_error(f"Could not write HTML report to {html_path}: {e}")
+            return 1
 
     if output_format == "json":
         payload_obj = dict(diff_report)
@@ -177,6 +193,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
     print_header("Behavioural Diff")
     print_key_value("Baseline", run_dir_a)
     print_key_value("Comparison", run_dir_b)
+    if html_path:
+        print_key_value("HTML report", html_path)
     print_key_value("Common keys", diff_report["counts"]["common"])
     print_key_value("Only in baseline", diff_report["counts"]["only_baseline"])
     print_key_value("Only in comparison", diff_report["counts"]["only_candidate"])

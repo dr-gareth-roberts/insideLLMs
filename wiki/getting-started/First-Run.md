@@ -23,31 +23,32 @@ insidellms quicktest "What is 2 + 2?" --model dummy
   Response length: 37 characters
 ```
 
-DummyModel echoes your prompt back. Perfect for testing without API costs.
+DummyModel returns deterministic local responses. It is useful for checking the
+workflow without API costs.
 
 ## With a Real Model
 
 ```bash
+python3 -m pip install "insidellms[openai]"
 export OPENAI_API_KEY="sk-..."
-insidellms quicktest "What is 2 + 2?" --model openai
+insidellms quicktest "What is 2 + 2?" \
+  --model openai \
+  --model-args '{"model_name":"gpt-4o"}'
 # Response: 2 + 2 equals 4.
 ```
 
+Keep API keys in environment variables. Do not put them in a config file: model
+arguments are treated as literal values and the resolved config is saved with
+the run artifacts.
+
 ## Config-Driven Run
 
-```yaml
-# my_first_run.yaml
-model:
-  type: dummy
-probe:
-  type: logic
-dataset:
-  format: jsonl
-  path: data/questions.jsonl
-```
-
 ```bash
-insidellms run my_first_run.yaml --run-dir ./my_first_run
+# Creates my_first_run.yaml and data/questions.jsonl
+insidellms init my_first_run.yaml --template basic
+
+# Inspect the plan by opening the generated files, then run it
+insidellms run my_first_run.yaml --run-dir ./runs/my_first_run
 ```
 
 Creates:
@@ -58,12 +59,16 @@ Creates:
 ## Test Determinism
 
 ```bash
-# Run twice, diff should show 0 changes
-insidellms harness ci/harness.yaml --run-dir .tmp/baseline --overwrite
-insidellms harness ci/harness.yaml --run-dir .tmp/candidate --overwrite
-insidellms diff .tmp/baseline .tmp/candidate
+# DummyModel makes this an offline deterministic example
+insidellms run my_first_run.yaml --run-dir ./runs/baseline
+insidellms run my_first_run.yaml --run-dir ./runs/candidate
+insidellms diff ./runs/baseline ./runs/candidate
 # Changes: 0 (deterministic)
 ```
+
+A plain `diff` is informational and exits 0 even when it finds changes. Add a
+gate such as `--fail-on-changes` when a CI job should fail. On reruns, choose new
+directories or explicitly pass `--overwrite` to replace guarded run directories.
 
 ## Next
 

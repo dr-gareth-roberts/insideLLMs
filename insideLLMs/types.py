@@ -515,6 +515,20 @@ class ProbeResult(Generic[T]):
     latency_ms: Optional[float] = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    # These fields are separate from output: execution success is not correctness.
+    scores: dict[str, float] = field(default_factory=dict)
+    primary_metric: Optional[str] = None
+
+    @property
+    def original_error(self) -> Optional[Exception]:
+        """Runtime cause only: deliberately not a dataclass/serialized field."""
+        return getattr(self, "_original_error", None)
+
+    def attach_original_error(self, error: Optional[Exception]) -> "ProbeResult[T]":
+        """Retain a caught exception without putting live objects in artifacts."""
+        self._original_error = error
+        return self
+
 
 @dataclass
 class FactualityResult:

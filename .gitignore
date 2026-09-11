@@ -126,6 +126,7 @@ celerybeat.pid
 
 # Environment variables and secrets
 .env
+.envrc
 .env.local
 .env.*.local
 *.key
@@ -191,4 +192,33 @@ bench_run/
 web/
 /docs/plans/2026-01-25-repo-deep-walk.md
 package-lock.json
+!extensions/vscode-insidellms/package-lock.json
 mypy-coverage/
+
+# Local CLI/demo output at repo root (insidellms init, docstring examples)
+/experiment.yaml
+/test_config.yaml
+/trace.json
+/fingerprint.json
+/trace_export.json
+/log.txt
+
+# Virtual environments
+/.venv/
+/.venv-*/
+
+# Generated repository atlases and agent-tool droppings (kept on disk, not tracked)
+codemap.md
+copilot-debug-logs-*
+/.slim/
+/_PROJECT-STATUS.md
+/.codex/
+/.poolside/
+/run_golden_test/
+
+# Doctest side-effect output. Several docstring examples in contrib/debugging.py,
+# contrib/fingerprinting.py and runtime/pipeline.py write files into the CWD
+# (the four root droppings above were committed by accident once already).
+/experiments/
+/results/
+examples/template.yaml

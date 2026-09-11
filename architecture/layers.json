@@ -1,0 +1,139 @@
+{
+  "allowed_dependencies": {
+    "analysis": [
+      "analysis",
+      "contracts",
+      "core"
+    ],
+    "cli": [
+      "analysis",
+      "cli",
+      "contracts",
+      "core",
+      "evals",
+      "inference",
+      "labs",
+      "providers",
+      "runtime"
+    ],
+    "contracts": [
+      "contracts"
+    ],
+    "core": [
+      "contracts",
+      "core",
+      "runtime"
+    ],
+    "evals": [
+      "contracts",
+      "core",
+      "evals"
+    ],
+    "inference": [
+      "contracts",
+      "core",
+      "inference",
+      "runtime"
+    ],
+    "labs": [
+      "analysis",
+      "contracts",
+      "core",
+      "evals",
+      "inference",
+      "labs",
+      "providers",
+      "runtime"
+    ],
+    "providers": [
+      "contracts",
+      "core",
+      "providers",
+      "runtime"
+    ],
+    "runtime": [
+      "contracts",
+      "core",
+      "runtime"
+    ]
+  },
+  "default_layer": "core",
+  "layers": [
+    {
+      "name": "cli",
+      "prefixes": [
+        "insideLLMs.cli"
+      ]
+    },
+    {
+      "name": "labs",
+      "prefixes": [
+        "insideLLMs.contrib"
+      ]
+    },
+    {
+      "name": "inference",
+      "prefixes": [
+        "insideLLMs.inference"
+      ]
+    },
+    {
+      "name": "runtime",
+      "prefixes": [
+        "insideLLMs.runtime"
+      ]
+    },
+    {
+      "name": "providers",
+      "prefixes": [
+        "insideLLMs.integrations",
+        "insideLLMs.models"
+      ]
+    },
+    {
+      "name": "evals",
+      "prefixes": [
+        "insideLLMs.evaluation",
+        "insideLLMs.policy",
+        "insideLLMs.privacy",
+        "insideLLMs.probes",
+        "insideLLMs.safety"
+      ]
+    },
+    {
+      "name": "analysis",
+      "prefixes": [
+        "insideLLMs.analysis",
+        "insideLLMs.attestations",
+        "insideLLMs.crypto",
+        "insideLLMs.publish",
+        "insideLLMs.signing",
+        "insideLLMs.transparency",
+        "insideLLMs.visualization"
+      ]
+    },
+    {
+      "name": "contracts",
+      "prefixes": [
+        "insideLLMs.config_types",
+        "insideLLMs.exceptions",
+        "insideLLMs.schemas",
+        "insideLLMs.trace_contracts",
+        "insideLLMs.types"
+      ]
+    }
+  ],
+  "provider_sdk_prefixes": [
+    "anthropic",
+    "cohere",
+    "google.generativeai",
+    "huggingface_hub",
+    "openai",
+    "transformers"
+  ],
+  "provider_sdk_allowed_layers": [
+    "labs",
+    "providers"
+  ],
+  "schema_version": 1
+}

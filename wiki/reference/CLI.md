@@ -23,9 +23,10 @@ insidellms <command> [options]
 | [`quicktest`](#quicktest) | Quick single-prompt test |
 | [`diff`](#diff) | Compare two run directories |
 | [`report`](#report) | Generate HTML report from records |
-| [`validate`](#validate) | Validate run artifacts |
+| [`validate`](#validate) | Validate a single-run config or run artifacts |
 | [`schema`](#schema) | Schema utilities |
 | [`doctor`](#doctor) | Check environment and dependencies |
+| [`welcome`](#welcome) | Show the getting-started command sequence |
 | [`attest`](#attest) | Generate DSSE attestations for a run directory |
 | [`sign`](#sign) | Sign attestations with Sigstore |
 | [`verify-signatures`](#verify-signatures) | Verify attestation signature bundles |
@@ -70,11 +71,13 @@ insidellms run <config> [options]
 | `--strict-serialization` / `--no-strict-serialization` | Fail fast on non-deterministic values during hashing/fingerprinting | `true` |
 | `--deterministic-artifacts` / `--no-deterministic-artifacts` | Omit host-dependent manifest fields | `true` |
 | `--async` | Enable async execution | `false` |
-| `--concurrency N` | Max concurrent requests (async mode) | `5` |
+| `--concurrency N` | Max concurrent requests (async mode) | Runtime default |
+| `--timeout SECONDS` | Per-item timeout (async mode only) | None |
+| `--stop-on-error` | Stop after the first item error | `false` |
 | `--track {local,wandb,mlflow,tensorboard}` | Enable experiment tracking backend | None |
-| `--track-project NAME` | Tracking project name | None |
+| `--track-project NAME` | Tracking project name | `insidellms` |
 | `--validate-output` | Validate outputs against schema | `false` |
-| `--schema-version VER` | Output schema version to emit/validate | `1.0.1` |
+| `--schema-version VER` | Output schema version to emit/validate | `1.0.2` |
 | `--validation-mode {strict,warn}` | Schema mismatch handling | `strict` |
 | `--verbose` | Verbose output | `false` |
 
@@ -115,22 +118,43 @@ insidellms harness <config> [options]
 
 ### Options
 
-Same as [`run`](#run), plus:
-
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--output-dir DIR`, `-o DIR` | Deprecated alias for `--run-dir` | None |
+| `--run-dir DIR` | Final harness artifact directory | Auto-generated |
+| `--run-root DIR` | Root for generated run directories | `~/.insidellms/runs` |
+| `--run-id ID` | Explicit run ID and generated directory name | Computed from config |
+| `--overwrite` | Replace a guarded non-empty run directory | `false` |
+| `--strict-serialization` / `--no-strict-serialization` | Override strict serialization | Config/runtime default |
+| `--deterministic-artifacts` / `--no-deterministic-artifacts` | Override deterministic artifact metadata | Config/runtime default |
+| `--report-title TEXT` | Title for `report.html` | Config/default title |
+| `--skip-report` | Do not create `report.html` | `false` |
 | `--profile {healthcare-hipaa,finance-sec,eu-ai-act}` | Apply built-in compliance probe preset | None |
 | `--active-red-team` | Enable adaptive adversarial mode with generated red-team prompts | `false` |
 | `--red-team-rounds N` | Number of adaptive synthesis rounds | `3` |
 | `--red-team-attempts-per-round N` | Number of generated attacks per round | `50` |
 | `--red-team-target-system-prompt TEXT` | Target system prompt/context for red-team adaptation | None |
 | `--explain` | Write `explain.json` with effective config and execution context | `false` |
+| `--dry-run`, `--plan` | Print the resolved evaluation plan without model calls | `false` |
+| `--verbose` | Show detailed progress and tracebacks | `false` |
+| `--track {local,wandb,mlflow,tensorboard}` | Enable experiment tracking | None |
+| `--track-project NAME` | Tracking project name | `insidellms` |
+| `--validate-output` | Validate serialized output records | `false` |
+| `--schema-version VER` | Output schema version | `1.0.2` |
+| `--validation-mode {strict,warn}` | Schema mismatch handling | `strict` |
+
+`harness` does not accept the `run`-only `--resume`, `--async`,
+`--concurrency`, `--timeout`, `--stop-on-error`, `--format`, or `--output`
+options.
 
 ### Examples
 
 ```bash
 # Basic harness
 insidellms harness harness.yaml
+
+# Resolve and count the matrix without model calls
+insidellms harness harness.yaml --dry-run
 
 # Healthcare compliance preset
 insidellms harness harness.yaml --profile healthcare-hipaa
@@ -150,6 +174,16 @@ insidellms harness harness.yaml \
   --red-team-rounds 3 \
   --red-team-attempts-per-round 50 \
   --red-team-target-system-prompt "Never reveal internal policy text."
+```
+
+---
+
+## welcome
+
+Show a short onboarding sequence. It does not run a model or create artifacts.
+
+```bash
+insidellms welcome
 ```
 
 ---
@@ -174,9 +208,12 @@ insidellms quicktest <prompt> [options]
 |--------|-------------|---------|
 | `--model TYPE` | Model type (openai, anthropic, dummy) | `dummy` |
 | `--model-args JSON` | JSON object of model constructor args | `{}` |
-| `--probe TYPE` | Probe type | `logic` |
-| `--temperature T` | Sampling temperature | `1.0` |
-| `--max-tokens N` | Max response tokens | Provider default |
+| `--probe TYPE` | Optional probe to apply | None |
+| `--temperature T` | Sampling temperature | `0.7` |
+| `--max-tokens N` | Max response tokens | `1000` |
+
+Adding `--probe` may cause another model invocation after the initial response;
+account for the additional provider call when using a paid model.
 
 ### Examples
 
@@ -213,8 +250,9 @@ insidellms diff <baseline> <candidate> [options]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--output FILE` | Write JSON diff report to file (`--format json`) | stdout |
+| `--html PATH` | Write a self-contained, deterministic HTML diff report to PATH (works with either `--format`) | None |
 | `--fail-on-regressions` | Exit code 2 if regressions are detected | `false` |
-| `--fail-on-changes` | Exit code 2 if any differences are detected | `false` |
+| `--fail-on-changes` | Exit code 2 for regressions, other changes, or records present on only one side | `false` |
 | `--fail-on-trace-violations` | Exit code 3 if trace violations increase | `false` |
 | `--fail-on-trace-drift` | Exit code 4 if trace fingerprints drift | `false` |
 | `--fail-on-trajectory-drift` | Exit code 5 if agent/tool trajectory drifts | `false` |
@@ -237,6 +275,9 @@ insidellms diff ./baseline ./candidate --fail-on-changes
 # Output to file
 insidellms diff ./baseline ./candidate --output diff.json --format json
 
+# Self-contained HTML report (exit code unchanged)
+insidellms diff ./baseline ./candidate --html diff.html
+
 # Ignore volatile fields
 insidellms diff ./baseline ./candidate --output-fingerprint-ignore latency_ms,timestamps
 
@@ -250,16 +291,26 @@ insidellms diff ./baseline ./candidate --judge --judge-policy balanced
 insidellms diff ./baseline ./candidate --fail-on-trajectory-drift
 ```
 
+A plain diff is informational and exits 0 even when differences are present.
+`--fail-on-changes` excludes improvements and trace/trajectory-only findings;
+improvements remain informational, while trace and trajectory findings have
+their own dedicated `--fail-on-*` flags.
+`--interactive` is mutating: accepting the candidate replaces approved
+baseline artifacts.
+
 ### Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | No diff-gating failures (or interactive baseline accepted) |
-| `1` | Command/setup error (missing files, invalid args, parse failures) |
-| `2` | Regressions or changes detected with fail flags enabled |
+| `1` | Command/setup error after argument parsing, such as missing files |
+| `2` | Enabled regression/change gate fired, or argparse rejected the command usage |
 | `3` | Trace violations increased with `--fail-on-trace-violations` |
 | `4` | Trace drift detected with `--fail-on-trace-drift` |
 | `5` | Trajectory drift detected with `--fail-on-trajectory-drift` |
+
+Because argparse also uses code 2 for invalid command usage, CI should retain
+stderr and distinguish a usage message from a completed diff report.
 
 ---
 
@@ -281,8 +332,7 @@ insidellms report <run-dir> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--output FILE` | Output HTML file | `report.html` in run-dir |
-| `--template FILE` | Custom HTML template | Built-in |
+| `--report-title TEXT` | Title for the rebuilt HTML report | Default report title |
 
 ### Examples
 
@@ -290,15 +340,24 @@ insidellms report <run-dir> [options]
 # Generate report
 insidellms report ./my_run
 
-# Custom output path
-insidellms report ./my_run --output ./reports/comparison.html
+# Set its title
+insidellms report ./my_run --report-title "Release comparison"
 ```
+
+The command rebuilds `summary.json` and `report.html` inside `<run-dir>`; it
+does not accept a custom output path or template. Exit status 0 means both
+report files were generated and validated; it does not mean the underlying run
+was healthy. Incomplete runs retain manifest/summary abort and health details
+and display a warning banner. When completion evidence is absent, the report
+labels status as unknown. Sealed, signed, or attested run directories are
+immutable: copy the source evidence to a fresh derivative/export directory
+before rebuilding a report.
 
 ---
 
 ## validate
 
-Validate run artifacts against schemas.
+Validate a legacy single-run config or validate run artifacts against schemas.
 
 ```bash
 insidellms validate <config-or-run-dir> [options]
@@ -320,12 +379,22 @@ insidellms validate <config-or-run-dir> [options]
 ### Examples
 
 ```bash
+# Validate a single-run config (`model`, `probe`, `dataset`)
+insidellms validate run.yaml
+
 # Validate a run
 insidellms validate ./my_run
 
 # Warn-only mode
 insidellms validate ./my_run --mode warn
 ```
+
+Config validation currently supports only the single-run shape with singular
+`model` and `probe` entries. It does not understand harness configs with
+`models` and `probes`, and its dataset-path warning is evaluated relative to the
+current working directory. For a harness, first use
+`insidellms harness harness.yaml --dry-run`; after execution, validate the run
+directory or its `manifest.json`/`records.jsonl` schema contracts.
 
 ---
 
@@ -388,11 +457,13 @@ insidellms doctor [options]
 
 ### Checks Performed
 
-- Python version
-- Required dependencies
-- Optional dependencies (nlp, visualization)
-- API key environment variables
-- Write permissions for run root
+- Python runtime information
+- Optional dependency availability
+- Selected provider SDK and API-key diagnostics
+- Capability readiness for models, probes, datasets, plugins, and report outputs
+
+`doctor` is advisory unless `--fail-on-warn` is supplied. It does not prove
+provider credentials are valid or that the default run root is writable.
 
 ### Examples
 
@@ -450,6 +521,25 @@ insidellms sign ./baseline
 
 ---
 
+## verify-policy
+
+Verify signed run evidence with independently selected trust requirements.
+
+```bash
+insidellms verify-policy ./run \
+  --identity builder@example.com \
+  --oidc-issuer https://issuer.example \
+  --trusted-root /trusted/config/trusted-root.json
+```
+
+The identity, issuer and trusted root are required. The command emits a JSON
+verdict and exits nonzero if required evidence, artifact binding or cryptographic
+verification fails or is unavailable. `--require-scitt` fails closed because
+authentic SCITT receipt verification is unsupported. This command neither signs
+nor publishes, and structural attestations alone do not establish authenticity.
+See [Policy assurance](../../docs/POLICY_ASSURANCE.md) for signed-byte contracts,
+legacy-artifact migration and external-verifier requirements.
+
 ## verify-signatures
 
 Verify attestation signatures against Sigstore bundles.
@@ -468,14 +558,18 @@ insidellms verify-signatures <run-dir> [--identity ...]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--identity CONSTRAINTS` | Identity constraints passed to verifier | None |
+| `--identity ID` | One certificate identity passed to cosign as `--cert-identity` | None |
 
 ### Examples
 
 ```bash
 insidellms verify-signatures ./baseline
-insidellms verify-signatures ./baseline --identity "issuer=https://token.actions.githubusercontent.com"
+insidellms verify-signatures ./baseline --identity "EXPECTED_CERTIFICATE_IDENTITY"
 ```
+
+The command checks each DSSE file it finds and requires that file's detached
+bundle. It does not require a complete attestation set or enforce an issuer or
+organizational signer policy.
 
 ---
 
@@ -501,6 +595,7 @@ insidellms init [output] [options]
 | `--probe TYPE` | Probe type for the sample config | `logic` |
 | `--template {basic,benchmark,tracking,full,harness}` | Configuration template to use | `basic` |
 | `--interactive` | Run in interactive mode to configure the experiment | `false` |
+| `--overwrite` | Replace an existing output config | `false` |
 
 ### Examples
 
@@ -508,12 +603,19 @@ insidellms init [output] [options]
 # Generate basic experiment config
 insidellms init
 
-# Generate harness config for OpenAI
-insidellms init harness.yaml --model openai --probe bias --template harness
+# Generate the portable offline harness config and sample dataset
+insidellms init harness.yaml --template harness
 
 # Interactive configuration wizard
 insidellms init --interactive
 ```
+
+The `harness` template always generates a DummyModel matrix with a fixed probe
+set; `--model` and `--probe` customize the non-harness templates only. The
+sample dataset is created under `data/` relative to the current working
+directory, so keep the generated harness config in that directory. A
+defaults-only `insidellms init` starts the wizard when stdin is a TTY; specify
+the output and template explicitly in scripts.
 
 ---
 
@@ -600,26 +702,29 @@ insidellms benchmark [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--models LIST` | Comma-separated list of models to benchmark | All available |
-| `--probes LIST` | Comma-separated list of probes to run | All available |
+| `--models LIST` | Comma-separated registry model names | `dummy` |
+| `--probes LIST` | Comma-separated registry probe names | `logic` |
 | `--datasets LIST` | Comma-separated list of benchmark datasets (e.g., reasoning,math,coding) | All available |
 | `-n N` | Maximum examples per dataset | `10` |
-| `--output DIR` | Output directory for benchmark results | Auto-generated |
-| `--html-report` | Generate an HTML report with visualizations | `false` |
+| `--output DIR` | Directory for `benchmark_results.json`; without it, results are terminal-only | None |
+| `--html-report` | Print guidance to use `harness` plus `report`; no HTML is generated here | `false` |
 | `--verbose` | Show detailed progress | `false` |
 
 ### Examples
 
 ```bash
-# Run full benchmark
+# Run selected smoke fixtures
 insidellms benchmark --models openai,anthropic --probes logic,bias
 
 # Benchmark with limited examples
-insidellms benchmark --models gpt-4o -n 5
+insidellms benchmark --models openai -n 5
 
-# Generate HTML report
+# Request report guidance
 insidellms benchmark --models openai --html-report --output ./benchmark_results
 ```
+
+Unavailable models or probes may be skipped without making this command fail.
+Use these fixtures to check integration plumbing, not to claim model quality.
 
 ---
 
@@ -635,7 +740,7 @@ insidellms compare --models <models> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--models LIST` | Comma-separated list of models to compare (required) | None |
+| `--models LIST` | Comma-separated registry model names (required) | None |
 | `--input TEXT` | Single input prompt to compare | None |
 | `--input-file FILE` | File with inputs (one per line or JSON/JSONL) | None |
 | `--output FILE` | Output file for comparison results | stdout |
@@ -645,14 +750,19 @@ insidellms compare --models <models> [options]
 
 ```bash
 # Compare models on a single prompt
-insidellms compare --models gpt-4o,claude-3-5-sonnet --input "Explain quantum computing"
+insidellms compare --models openai,anthropic --input "Explain quantum computing"
 
 # Compare using input file
 insidellms compare --models openai,anthropic --input-file prompts.txt --output comparison.json
 
 # Markdown output for documentation
-insidellms compare --models gpt-4o,gpt-4o-mini --input "Hello" --format markdown
+insidellms compare --models dummy,openai --input "Hello" --format markdown
 ```
+
+Names are registry backends such as `dummy`, `openai`, and `anthropic`, not
+provider model IDs such as `gpt-4o`. Use a harness config when each backend
+needs explicit constructor arguments. A failed or unavailable model is reported
+in the comparison but may not make the command exit non-zero.
 
 ---
 
@@ -668,14 +778,14 @@ insidellms export <input> [options]
 
 | Argument | Description |
 |----------|-------------|
-| `input` | Input results file (JSON) |
+| `input` | Input results file (JSON or JSONL) |
 
 ### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--format {csv,markdown,html,latex,jsonl}` | Export format | `csv` |
-| `--output FILE` | Output file path | stdout |
+| `--format {csv,markdown,html,latex,jsonl}` | Export format; `html` currently directs users to `report` and exits | `csv` |
+| `--output FILE` | Output file path | `<input-stem>.<format>` |
 | `--redact-pii` | Redact PII from exported data before writing | `false` |
 | `--encrypt` | Encrypt JSONL output (requires `--encryption-key-env`) | `false` |
 | `--encryption-key-env VAR` | Environment variable holding the Fernet key | `INSIDELLMS_ENCRYPTION_KEY` |
@@ -684,17 +794,20 @@ insidellms export <input> [options]
 
 ```bash
 # Export to CSV
-insidellms export results.json --format csv --output results.csv
+insidellms export run/records.jsonl --format csv --output results.csv
 
 # Export to Markdown for documentation
-insidellms export results.json --format markdown --output RESULTS.md
+insidellms export run/records.jsonl --format markdown --output RESULTS.md
 
 # Export with PII redaction
-insidellms export results.json --format jsonl --redact-pii
+insidellms export run/records.jsonl --format jsonl --redact-pii
 
 # Encrypted export
-insidellms export results.json --format jsonl --encrypt --output encrypted.jsonl
+insidellms export run/records.jsonl --format jsonl --encrypt --output encrypted.jsonl
 ```
+
+PII redaction changes only the exported copy; it does not modify canonical
+`records.jsonl`. Encryption is available only for JSONL output.
 
 ---
 
@@ -766,11 +879,15 @@ insidellms interactive --model openai
 
 Once in interactive mode, you can:
 - Type prompts directly to send to the model
-- Use `/help` to see available commands
-- Use `/switch <model>` to change models
-- Use `/history` to view conversation history
-- Use `/clear` to clear the conversation
-- Use `/quit` or `Ctrl+D` to exit
+- Use `help` to see available commands
+- Use `model <name>` to change models
+- Use `probe <name>` to select a probe
+- Use `history` to view conversation history
+- Use `clear` to clear the conversation
+- Use `quit`, `exit`, or `Ctrl+D` to exit
+
+Prompts and commands are appended to `--history-file`; choose an appropriate
+location or remove it after a sensitive session.
 
 ---
 
@@ -867,8 +984,8 @@ insidellms optimize-prompt "Summarize this" --format json --output report.json
 | `OPENAI_API_KEY` | OpenAI API key |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `GOOGLE_API_KEY` | Google/Gemini API key |
-| `CO_API_KEY` | Cohere API key |
-| `HUGGINGFACEHUB_API_TOKEN` | HuggingFace token |
+| `COHERE_API_KEY` / `CO_API_KEY` | Cohere API key; `doctor` checks `COHERE_API_KEY` |
+| `HF_TOKEN` | Optional token for private Hugging Face models |
 | `INSIDELLMS_RUN_ROOT` | Default run root directory |
 | `NO_COLOR` | Disable coloured output |
 
@@ -876,10 +993,13 @@ insidellms optimize-prompt "Summarize this" --format json --output report.json
 
 ## Global Options
 
-Available for all commands:
+Available on the root parser and subcommands:
 
 | Option | Description |
 |--------|-------------|
 | `--help` | Show help message |
-| `--version` | Show version number |
 | `--quiet` | Suppress non-error output |
+| `--no-color` | Disable coloured output |
+
+`--version` is a root-only option: use `insidellms --version`, not
+`insidellms <command> --version`.

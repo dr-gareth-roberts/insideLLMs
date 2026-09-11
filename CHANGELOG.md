@@ -8,14 +8,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- `diff --html PATH` writes a deterministic, self-contained HTML diff report
+  (summary counts, per-section tables, inline before/after) from the current
+  DiffReport payload; it works with either `--format` and leaves the exit-code
+  policy unchanged.
+- Output schema 1.0.2 carries per-item scores and primary metrics. Historical
+  1.0.0/1.0.1 contracts remain readable; migration does not invent missing scores.
+- `diff --fail-on-any-difference` gates improvements and trace/trajectory changes
+  as well as regressions. Malformed, missing, or incomparable primary scores
+  cannot pass a regression gate.
+- Clean wheel and source-distribution release smoke checks exercise all starter
+  templates and a real correct-to-incorrect scoring regression.
+- Public-API parity gate: `scripts/audit_docs.py` now fails `make docs-audit` when
+  the exact Public API Index rows differ from the package's eager `__all__` plus
+  PEP 562 lazy-import map; prose mentions no longer satisfy the gate.
+- Declared `jinja2>=3.1.5` in the `visualization` extra (required by the pandas Styler;
+  previously an undeclared transitive dependency)
 - Full CI pipeline: lint, typecheck, test (Python 3.10/3.11/3.12 matrix), determinism, and contract jobs
 - Optional dependency groups: `huggingface`, `signing`, `crypto`, `providers`
 - International PII detection support (EU, UK regions)
 - Rate limiting integration via `RunConfig`
 - Schema version compatibility checking in diff command
-- Delimiter escape protection in defensive prompt builder
+
 
 ### Fixed
+
+- Async fail-fast runs no longer persist placeholder records for items the
+  scheduler never dispatched, so `records.jsonl` is byte-identical between the
+  sync and async runners for identical inputs and config (W7-0007). Resume of
+  histories written by earlier runners retries only the scheduler-attested
+  undispatched suffix, rejects ambiguous or unattested skipped records before
+  any mutation, and atomically preserves the exact attempted record prefix.
+  Batch runs persist every attempted outcome on both runners and never retry
+  them on resume (W7-0081).
+- Attack, Bias and Agent aggregate scoring now validates both live typed outputs
+  and persisted mapping outputs during resume without changing serialization.
+- LaTeX export now escapes literal headers and cells after truncation while
+  preserving Unicode and the existing row cap.
+- Satellite analysis endpoints now offload synchronous work behind a shared
+  process-local four-call cap, return HTTP 503 on overflow, and retain admission
+  across request cancellation until the underlying work completes.
+- Welch and paired t-tests now use two-sided Student-t probabilities with the
+  appropriate degrees of freedom instead of a normal approximation. Historical
+  p-values and significance decisions need recomputation; stored evidence is not
+  rewritten. Fewer than two observations return insufficient data; invalid alpha,
+  nonfinite samples and unequal pair lengths raise `ValueError`. Valid zero-variance
+  samples use a documented degenerate convention. Confidence-interval approximations
+  are unchanged.
+- Scored probes now evaluate held-out `reference_answer`/`reference` values in
+  sync, async, batch, and harness runs, persist scores, and preserve them on resume.
+  Unlabelled successful executions no longer imply measured accuracy.
+- Empty, incomplete, or failed runs return failure from `run`/`harness`; CI checks
+  both persisted runs before diffing. Duplicate identities and invalid numeric
+  scores fail comparison instead of producing misleading passes.
+- Configuration credentials are scrubbed before snapshots, metadata, attestations,
+  tracking parameters, and run-identity hashing. Live credentials remain available
+  to providers. Existing saved artefacts are not rewritten.
+- PR evaluation uses read-only permissions and no persisted checkout credentials.
+  Sticky comments use a separate trusted workflow; inline action commenting is
+  deprecated and its token input is removed.
+- `init`, `validate`, and runtime loading share configuration schema version 1,
+  relative dataset path handling, and required Pydantic validation. Unsupported
+  settings are rejected. Old typed builders use explicit compatibility conversion.
+- Single-run `max_examples`, dataset info statistics, and the Python harness
+  workflow's report arguments now work through their real execution paths.
+- Encrypted JSONL exports now stage plaintext in a private sibling file and
+  publish only after Fernet encryption succeeds; failures preserve an existing
+  destination or leave an absent destination absent.
+- JSONL encryption and decryption preserve source POSIX permissions instead of
+  replacing mode-0600 files with mode-0644 files.
+- Distributed checkpoint saves serialize first and atomically replace the old
+  checkpoint, so invalid payloads and write failures cannot destroy resumable state.
+- Resume recovery preserves a syntactically valid final JSONL record that lacks
+  a trailing newline and normalizes it before appending new records.
+- Defensive delimiter and input-marking strategies escape exact boundary strings
+  supplied by user input, preventing forged structural closing markers.
+- Response profiling preserves explicit zero token counts and estimates only
+  when token counts are omitted.
+- **Core-only `[dev]` installs now pass the full test suite.**
+  `test_config_loader_model_probe_paths` used `patch.object(..., create=True)` on
+  `insideLLMs.models`; mock's original-attribute lookup falls back to `getattr()`,
+  which fired the package's PEP 562 lazy `__getattr__` and imported the real
+  `openai` SDK (`ModuleNotFoundError` without the extra). Replaced with plain
+  `setattr`/`try-finally` so the config-loader fallback branch is covered on
+  every install.
 - **Policy verdicts no longer pass when a SCITT receipt is missing.**
   `run_policy` handled receipt-with-attestation and receipt-without-attestation
   but left attestation-without-receipt unhandled: no `scitt_*` check was
@@ -159,6 +236,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently treating them as strict validation. Supported values are `strict`,
   `lenient`, and `warn`.
 
+### Removed
+- `sentry-sdk` mandatory dependency: never imported anywhere in the codebase, it forced a
+  telemetry SDK into every install. Core dependencies are now `pyyaml` only.
+- `tuf` from the `signing` extra: the dataset TUF client is deliberately unimplemented
+  and fail-closed (`fetch_dataset` refuses without `allow_mock=True`); the package was
+  never imported. `insidellms doctor` still probes for it via `find_spec` with its
+  standalone install hint.
+- Phantom sphinx section from `requirements-dev.txt` (referenced a nonexistent
+  `[docs]` extra; nothing in the repo builds with sphinx) and added the missing
+  `pydantic` mirror entry.
+- Tracked repo-root residue: `FIXES_APPLIED.md`, `experiment.yaml`, `test_config.yaml`,
+  `log.txt`, `trace.json`, `trace_export.json`, `fingerprint.json` (CLI/demo output
+  committed by accident; regeneration paths are now root-scoped in `.gitignore`).
+
 ### Security
 - Added delimiter escape sanitization to prevent injection bypass
 - Enhanced API key exposure prevention in documentation
@@ -183,7 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guide
 
-### Visualization Module (v1.1.0 → v2.0.0)
+### Visualization Module (v0.2.0 → v2.0.0)
 
 **Old code (deprecated):**
 ```python
@@ -196,8 +287,8 @@ from insideLLMs.analysis.visualization import text_bar_chart
 ```
 
 **Timeline:**
-- v1.1.0 (current): Deprecation warnings issued, old imports still work
-- v1.2.0: Continued deprecation warnings
+- v0.2.0 (current): Deprecation warnings issued, old imports still work
+- Until v2.0.0: Deprecation warnings continue, both import paths keep working
 - v2.0.0: Old import path removed, must use new path
 
 **Automated migration:**
@@ -212,7 +303,7 @@ find . -name "*.py" -exec sed -i 's/from insideLLMs\.visualization import/from i
 find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/from insideLLMs.analysis.visualization import/g' {} +
 ```
 
-## [0.2.0] - 2025-01-15
+## [0.2.0] - 2026-02-26
 
 ### Added
 - Deterministic artifact pipeline with SHA-256 run IDs
@@ -232,7 +323,7 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 - Consolidated caching under `insideLLMs.caching`; replace imports from the removed
   `insideLLMs.cache` and `insideLLMs.caching_unified` modules.
 
-## [0.1.0] - 2024-09-01
+## [0.1.0] - 2024-11-10
 
 ### Added
 - Initial release

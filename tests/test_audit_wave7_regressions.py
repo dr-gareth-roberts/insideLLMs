@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import warnings
 from pathlib import Path
+
+import pytest
 
 
 # W7-0001 — the SafetyHallucinationIndicatorDetector percentage pattern must
@@ -229,9 +232,11 @@ def test_dsse_pae_uses_spec_version_tag():
 
 
 # ---------------------------------------------------------------------------
-# Parallel-branch Wave-7 coverage campaign: visualization shim sunset (v2.0.0)
-# NOTE: main backlog W7-0002 proposes indefinite support — product decision pending.
-# These tests document the policy currently landed in the working tree.
+# W7-0072 / W7-0002 — visualization shim sunset. The conflict between the
+# parallel branch's "deprecate, remove at v2.0.0" policy and W7-0002's
+# "indefinite support" stance is settled in favour of the former: the shim
+# emits a DeprecationWarning, and CHANGELOG, docs/IMPORT_PATHS.md and the shim
+# docstring all name v2.0.0 as the removal release.
 # ---------------------------------------------------------------------------
 def test_visualization_shim_sunset_documented_consistently():
     """IMPORT_PATHS, CHANGELOG, and shim docstring must agree on v2.0.0 removal."""
@@ -246,6 +251,20 @@ def test_visualization_shim_sunset_documented_consistently():
     assert "DeprecationWarning" in shim_doc
     assert "indefinitely" not in shim_doc.lower()
     assert "is not deprecated" not in shim_doc
+
+
+def test_changelog_migration_timeline_uses_the_real_package_version():
+    """W7-0002 - the timeline named a fictional v1.1.0 as the current release."""
+    from insideLLMs import __version__
+
+    repo_root = Path(__file__).resolve().parents[1]
+    changelog = (repo_root / "CHANGELOG.md").read_text(encoding="utf-8")
+    section = changelog.split("### Visualization Module")[1].split("\n## ")[0]
+
+    assert f"v{__version__} (current)" in section
+    # The project has never shipped a v1.x; the timeline must not imply otherwise.
+    assert "v1.1.0" not in section
+    assert "v1.2.0" not in section
 
 
 def test_visualization_shim_emits_deprecation_warning_on_import():
@@ -264,3 +283,218 @@ def test_visualization_shim_emits_deprecation_warning_on_import():
     # Shim still aliases the canonical module object.
     canonical = importlib.import_module("insideLLMs.analysis.visualization")
     assert mod is canonical
+
+
+# W7-0007 — on the async stop_on_error path, run_single used to write a
+# status="skipped" placeholder record for every item queued behind the first
+# failure. Those items never executed, yet write_ready_records persisted them,
+# so records.jsonl depended on whether the run was sync or async and a later
+# resume counted them as completed work.
+class _FailOnSecondItem:
+    """Probe that raises on the second prompt and records what it executed."""
+
+    name = "fail-on-second"
+
+    def __init__(self, fail_on: str = "p1") -> None:
+        self.fail_on = fail_on
+        self.executed: list[str] = []
+
+    def run(self, _model, item, **_kwargs):
+        self.executed.append(item)
+        if item == self.fail_on:
+            raise ValueError(f"boom on {item}")
+        return f"ok:{item}"
+
+
+_STOP_PROMPTS = ["p0", "p1", "p2", "p3", "p4"]
+
+
+def _read_records(run_dir: Path) -> list[dict]:
+    lines = (run_dir / "records.jsonl").read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines if line.strip()]
+
+
+async def _run_async_until_stop(probe, run_dir: Path, run_id: str = "stop-run") -> None:
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner
+
+    with pytest.raises(RunnerExecutionError):
+        await AsyncProbeRunner(DummyModel(), probe).run(
+            _STOP_PROMPTS,
+            stop_on_error=True,
+            concurrency=1,
+            emit_run_artifacts=True,
+            run_dir=run_dir,
+            run_id=run_id,
+            overwrite=True,
+            return_experiment=False,
+            deterministic_artifacts=True,
+        )
+
+
+async def test_async_stop_on_error_writes_no_records_for_unexecuted_items(tmp_path: Path):
+    probe = _FailOnSecondItem()
+    run_dir = tmp_path / "async-stop"
+
+    await _run_async_until_stop(probe, run_dir)
+
+    assert probe.executed == ["p0", "p1"]
+    records = _read_records(run_dir)
+    # One record per item that actually ran, and nothing past the failure.
+    assert [r["status"] for r in records] == ["success", "error"]
+    assert not any(r["status"] == "skipped" for r in records)
+
+
+async def test_sync_and_async_stop_on_error_produce_identical_records(tmp_path: Path):
+    """records.jsonl is Stable and deterministic for identical inputs/config."""
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import ProbeRunner
+
+    async_dir = tmp_path / "async"
+    sync_dir = tmp_path / "sync"
+
+    await _run_async_until_stop(_FailOnSecondItem(), async_dir, run_id="same-run")
+
+    sync_probe = _FailOnSecondItem()
+    with pytest.raises(RunnerExecutionError):
+        ProbeRunner(DummyModel(), sync_probe).run(
+            _STOP_PROMPTS,
+            stop_on_error=True,
+            emit_run_artifacts=True,
+            run_dir=sync_dir,
+            run_id="same-run",
+            overwrite=True,
+            return_experiment=False,
+            deterministic_artifacts=True,
+        )
+
+    assert sync_probe.executed == ["p0", "p1"]
+    assert (async_dir / "records.jsonl").read_bytes() == (sync_dir / "records.jsonl").read_bytes()
+
+
+async def test_resume_after_async_stop_on_error_reexecutes_remaining_items(tmp_path: Path):
+    """Items behind a stop_on_error failure must re-run, not resume as done."""
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner
+
+    run_dir = tmp_path / "resume"
+    await _run_async_until_stop(_FailOnSecondItem(), run_dir)
+
+    resume_probe = _FailOnSecondItem(fail_on="never-fails")
+    results = await AsyncProbeRunner(DummyModel(), resume_probe).run(
+        _STOP_PROMPTS,
+        concurrency=1,
+        resume=True,
+        emit_run_artifacts=True,
+        run_dir=run_dir,
+        run_id="stop-run",
+        return_experiment=False,
+        deterministic_artifacts=True,
+    )
+
+    # p0/p1 are a valid completed prefix; p2-p4 never executed and must re-run.
+    assert resume_probe.executed == ["p2", "p3", "p4"]
+    assert [r["status"] for r in results] == ["success", "error", "success", "success", "success"]
+
+
+def test_validate_resume_record_rejects_skipped_placeholder():
+    """A 'skipped' record describes an item that never ran; resume must refuse it."""
+    from insideLLMs.runtime.runner import _validate_resume_record
+
+    record = {"custom": {"record_index": 0}, "input": "p0", "status": "skipped"}
+
+    with pytest.raises(ValueError, match="never executed"):
+        _validate_resume_record(record, expected_index=0, expected_item="p0", run_id=None)
+
+    # The same record with a real status still validates.
+    _validate_resume_record(
+        {**record, "status": "success"}, expected_index=0, expected_item="p0", run_id=None
+    )
+
+
+# W7-0081 - the batch path had a sync/async divergence of its own: the sync
+# runner used to write the failing record and break, while the async runner
+# wrote every result run_batch returned, so a stop_on_error run over 8 items
+# produced 2 records synchronously and 8 asynchronously. The divergence closed
+# in the other direction on rebase: the audit remediation (A07/A13) made the
+# sync runner persist every completed batch result too, because run_batch has
+# already attempted every item by the time the failure is observed and a
+# resume must never repeat attempted work. What this locks is parity.
+class _BatchFailOnSecondItem:
+    """run_batch returns an error for the second prompt, success for the rest."""
+
+    name = "batch-fail-on-second"
+
+    def run(self, _model, item, **_kwargs):
+        if item == "p1":
+            raise ValueError("boom")
+        return f"ok:{item}"
+
+    def run_batch(self, _model, items, **_kwargs):
+        from insideLLMs.probes.base import ProbeResult
+        from insideLLMs.types import ResultStatus
+
+        results = []
+        for item in items:
+            if item == "p1":
+                results.append(
+                    ProbeResult(
+                        input=item,
+                        status=ResultStatus.ERROR,
+                        error="boom",
+                        latency_ms=None,
+                        metadata={"error_type": "ValueError"},
+                    )
+                )
+            else:
+                results.append(
+                    ProbeResult(
+                        input=item,
+                        output=f"ok:{item}",
+                        status=ResultStatus.SUCCESS,
+                        latency_ms=None,
+                        metadata={},
+                    )
+                )
+        return results
+
+
+_BATCH_PROMPTS = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7"]
+
+
+async def test_batch_stop_on_error_matches_between_sync_and_async(tmp_path: Path):
+    """use_probe_batch must persist the same attempted results on both runners."""
+    from insideLLMs.exceptions import RunnerExecutionError
+    from insideLLMs.models import DummyModel
+    from insideLLMs.runtime.runner import AsyncProbeRunner, ProbeRunner
+
+    kwargs = dict(
+        stop_on_error=True,
+        use_probe_batch=True,
+        emit_run_artifacts=True,
+        run_id="batch-run",
+        overwrite=True,
+        return_experiment=False,
+        deterministic_artifacts=True,
+    )
+
+    async_dir = tmp_path / "async"
+    sync_dir = tmp_path / "sync"
+
+    with pytest.raises(RunnerExecutionError):
+        await AsyncProbeRunner(DummyModel(), _BatchFailOnSecondItem()).run(
+            _BATCH_PROMPTS, run_dir=async_dir, **kwargs
+        )
+    with pytest.raises(RunnerExecutionError):
+        ProbeRunner(DummyModel(), _BatchFailOnSecondItem()).run(
+            _BATCH_PROMPTS, run_dir=sync_dir, **kwargs
+        )
+
+    # run_batch attempted all eight items, so all eight outcomes are evidence;
+    # dropping the six behind the failure would make a resume re-run attempted
+    # work. Both runners persist the same eight records, byte for byte.
+    assert [r["status"] for r in _read_records(async_dir)] == ["success", "error"] + ["success"] * 6
+    assert [r["status"] for r in _read_records(sync_dir)] == ["success", "error"] + ["success"] * 6
+    assert (async_dir / "records.jsonl").read_bytes() == (sync_dir / "records.jsonl").read_bytes()

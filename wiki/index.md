@@ -16,7 +16,7 @@ graph LR
     Runner --> Records[records.jsonl]
     Records --> Summary[summary.json]
     Records --> Report[report.html]
-    Records --> Diff[diff.json]
+    Records --> Diff[diff command output]
 ```
 
 ---
@@ -35,7 +35,7 @@ insideLLMs treats model behaviour like code: testable, diffable, gateable.
 insidellms diff ./baseline ./candidate --fail-on-changes
 ```
 
-If behaviour changed, the deploy blocks. Simple.
+If a configured behavioural gate fires, the deploy blocks.
 
 ---
 
@@ -49,6 +49,17 @@ If behaviour changed, the deploy blocks. Simple.
 | **Add provenance checks** | [Verifiable Evaluation](advanced/Verifiable-Evaluation.md) | 15 min |
 | **Understand the approach** | [Philosophy](Philosophy.md) | 10 min |
 
+The portable offline path is:
+
+```bash
+insidellms init harness.yaml --template harness
+insidellms harness harness.yaml --dry-run
+insidellms harness harness.yaml --run-dir ./runs/baseline
+```
+
+The initializer creates both the config and its sample dataset, so this works
+after a package install as well as from a repository checkout.
+
 ---
 
 ## Why Teams Choose insideLLMs
@@ -57,7 +68,9 @@ If behaviour changed, the deploy blocks. Simple.
 Know exactly which prompts changed behaviour. No more debugging aggregate metrics.
 
 ### CI-Native Design
-Built for `git diff` on model behaviour. Deterministic artefacts. Stable diffs. Automated gates.
+Built for reviewing model behaviour as versioned artifacts. Stable artifact
+contracts and automated gates make behavioural changes visible; hosted-model
+responses can still be stochastic.
 
 ### Response-Level Visibility
 `records.jsonl` preserves every input/output pair. See what changed, not just that something changed.
@@ -85,8 +98,12 @@ insidellms harness config.yaml --run-dir ./baseline
 **3. Catch changes in CI**
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
-# Exit code 2 if behaviour changed, 0 if not
+# Exit code 2 for regressions, other changes, or one-sided records
 ```
+
+Without a fail flag, `diff` is informational and exits 0 even when it reports
+differences. Improvements alone do not fail `--fail-on-changes`, and trace or
+trajectory findings require their dedicated gate flags.
 
 **Result:** Breaking changes blocked. Users protected.
 

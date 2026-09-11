@@ -156,7 +156,7 @@ import re
 import warnings as _warnings
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from insideLLMs.types import ExperimentResult
 
@@ -2609,6 +2609,8 @@ def create_interactive_html_report(
     include_individual_results: bool = True,
     embed_plotly_js: bool = False,
     generated_at: Optional[datetime] = None,
+    *,
+    run_health: Mapping[str, object] | None = None,
 ) -> str:
     """Create a comprehensive interactive HTML report with embedded Plotly charts.
 
@@ -2645,6 +2647,22 @@ def create_interactive_html_report(
     # Prevent `</script>` sequences from terminating the JSON script tag early.
     experiments_json_safe = experiments_json.replace("</", "<\\/")
     title_html = _escape_html_text(title)
+    health_banner = ""
+    if run_health is not None and run_health.get("run_completed") is not True:
+        completion = run_health.get("run_completed")
+        state = "Incomplete run" if completion is False else "Run completion unknown"
+        details: list[str] = []
+        abort = run_health.get("abort")
+        if isinstance(abort, Mapping) and abort.get("message") is not None:
+            details.append(str(abort["message"]))
+        health = run_health.get("health")
+        if isinstance(health, Mapping) and isinstance(health.get("reasons"), list):
+            details.extend(str(reason) for reason in health["reasons"])
+        detail_html = " ".join(_escape_html_text(detail) for detail in details)
+        health_banner = (
+            f'<div class="incomplete-banner"><strong>{_escape_html_text(state)}</strong>'
+            f"<div>{detail_html}</div></div>"
+        )
 
     # Generate charts
     charts_html = []
@@ -2947,6 +2965,15 @@ def create_interactive_html_report(
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             margin-bottom: 32px;
+        }}
+
+        .incomplete-banner {{
+            background: #fff3cd;
+            border: 2px solid #b45309;
+            color: #713f12;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 24px;
         }}
 
         .stat-card {{
@@ -3368,6 +3395,7 @@ def create_interactive_html_report(
     </header>
 
     <main class="container">
+        {health_banner}
         <!-- Summary Statistics -->
         <div class="summary-grid">
             <div class="stat-card">

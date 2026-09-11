@@ -274,6 +274,24 @@ class OpenAIModel(Model):
                 redacted[key_str] = value
         return redacted
 
+    def _create_completion(self, messages: list[dict[str, Any]], **kwargs: Any) -> Any:
+        ledger = getattr(self, "_budget_ledger", None)
+        if ledger is not None:
+            from insideLLMs.runtime.budget import dispatch_budgeted_call
+
+            return dispatch_budgeted_call(
+                ledger,
+                provider="openai",
+                model=self.model_name,
+                client=self._client,
+                messages=messages,
+                kwargs=kwargs,
+                dispatch=self._client.chat.completions.create,
+            )
+        return self._client.chat.completions.create(
+            model=self.model_name, messages=messages, **kwargs
+        )
+
     def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate a response from the OpenAI model.
 
@@ -334,8 +352,7 @@ class OpenAIModel(Model):
             ... )
         """
         try:
-            response = self._client.chat.completions.create(
-                model=self.model_name,
+            response = self._create_completion(
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs,
             )
@@ -359,6 +376,8 @@ class OpenAIModel(Model):
                 message=str(e),
             )
         except Exception as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             raise ModelGenerationError(
                 model_id=self.model_name,
                 prompt=prompt,
@@ -429,8 +448,7 @@ class OpenAIModel(Model):
             ...     history.append({"role": "assistant", "content": response})
         """
         try:
-            response = self._client.chat.completions.create(
-                model=self.model_name,
+            response = self._create_completion(
                 messages=list(messages),  # type: ignore[arg-type]
                 **kwargs,
             )
@@ -454,6 +472,8 @@ class OpenAIModel(Model):
                 message=str(e),
             )
         except Exception as e:
+            if getattr(e, "retryable", None) is False:
+                raise
             # Get first message content for error context
             first_msg = messages[0].get("content", "") if messages else ""
             raise ModelGenerationError(
@@ -519,6 +539,10 @@ class OpenAIModel(Model):
             Streaming increases the total response time slightly but provides
             a better user experience by showing output immediately.
         """
+        if getattr(self, "_budget_ledger", None) is not None:
+            from insideLLMs.runtime.budget import BudgetUnsupportedError
+
+            raise BudgetUnsupportedError("Streaming is unsupported in budget mode")
         try:
             stream = self._client.chat.completions.create(
                 model=self.model_name,

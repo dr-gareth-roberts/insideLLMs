@@ -91,7 +91,15 @@ See Also:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Optional, Protocol, TypeVar, runtime_checkable
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Optional,
+    Protocol,
+    TypeVar,
+    runtime_checkable,
+)
 
 from insideLLMs.types import (
     ProbeCategory,
@@ -563,24 +571,29 @@ class Probe(ABC, Generic[T]):
         import time
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
+        from insideLLMs.probes._scoring import evaluate_probe_result, probe_input
+
         def process_item(item: Any) -> ProbeResult[T]:
             start = time.perf_counter()
             try:
-                output = self.run(model, item, **kwargs)
+                output = self.run(model, probe_input(self, item), **kwargs)
                 latency = (time.perf_counter() - start) * 1000
-                return ProbeResult(
-                    input=item,
-                    output=output,
-                    status=ResultStatus.SUCCESS,
-                    latency_ms=latency,
+                return evaluate_probe_result(
+                    self,
+                    ProbeResult(
+                        input=item,
+                        output=output,
+                        status=ResultStatus.SUCCESS,
+                        latency_ms=latency,
+                    ),
                 )
-            except TimeoutError:
+            except TimeoutError as exc:
                 return ProbeResult(
                     input=item,
                     status=ResultStatus.TIMEOUT,
                     error="Request timed out",
                     metadata={"error_type": "TimeoutError"},
-                )
+                ).attach_original_error(exc)
             except Exception as e:
                 error_type = type(e).__name__
                 # Check for rate limiting
@@ -593,7 +606,7 @@ class Probe(ABC, Generic[T]):
                     status=status,
                     error=f"{error_type}: {str(e)}",
                     metadata={"error_type": error_type},
-                )
+                ).attach_original_error(e)
 
         completed = 0
         total = len(dataset)
@@ -621,7 +634,7 @@ class Probe(ABC, Generic[T]):
                             status=status,
                             error=f"{error_type}: {str(e)}",
                             metadata={"error_type": error_type},
-                        )
+                        ).attach_original_error(e)
                     completed += 1
                     if progress_callback:
                         progress_callback(completed, total)
@@ -1155,13 +1168,15 @@ class ScoredProbe(Probe[T]):
         evaluated_count = 0
 
         for result in results:
-            if result.status == ResultStatus.SUCCESS and result.metadata:
+            if result.status == ResultStatus.SUCCESS and isinstance(
+                result.metadata.get("is_correct"), bool
+            ):
                 evaluated_count += 1
                 if result.metadata.get("is_correct", False):
                     correct_count += 1
 
-        if evaluated_count > 0:
-            base_score.accuracy = correct_count / evaluated_count
+        # An unlabelled successful run has no measured behavioural accuracy.
+        base_score.accuracy = correct_count / evaluated_count if evaluated_count else None
 
         return base_score
 

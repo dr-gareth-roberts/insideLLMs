@@ -50,6 +50,8 @@ class ToolOutputTooLarge(ToolPolicyError):
 
 @dataclass(frozen=True)
 class ToolAction:
+    """Allowlisted tool invocation and whether retrying it is side-effect safe."""
+
     tool: str
     arguments: dict[str, object]
     idempotent: bool = False
@@ -57,6 +59,8 @@ class ToolAction:
 
 @dataclass(frozen=True)
 class ToolLimits:
+    """Transport retry, deadline, and output-size limits for a tool action."""
+
     max_transport_attempts: int = 1
     timeout_seconds: float | None = None
     max_output_characters: int | None = None
@@ -64,6 +68,8 @@ class ToolLimits:
 
 @dataclass(frozen=True)
 class Observation:
+    """Tool output, postcondition result, and the transport attempts consumed."""
+
     output: object
     postcondition_passed: bool
     transport_attempts: int

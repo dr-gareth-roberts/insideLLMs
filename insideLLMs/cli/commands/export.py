@@ -3,12 +3,38 @@
 import argparse
 import json
 import os
+import tempfile
+import unicodedata
 from pathlib import Path
 
 from insideLLMs.privacy.redaction import redact_pii
 from insideLLMs.results import results_to_markdown
 
 from .._output import print_error, print_header, print_key_value, print_success
+
+_LATEX_LITERAL_ESCAPES = {
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "$": r"\$",
+    "&": r"\&",
+    "#": r"\#",
+    "%": r"\%",
+    "_": r"\_",
+    "^": r"\textasciicircum{}",
+    "~": r"\textasciitilde{}",
+}
+
+
+def _escape_latex_literal(value: object) -> str:
+    """Render a value as literal text without changing exporter syntax."""
+    escaped: list[str] = []
+    for character in str(value):
+        if unicodedata.category(character) == "Cc" or character in "\u2028\u2029":
+            escaped.append(" ")
+        else:
+            escaped.append(_LATEX_LITERAL_ESCAPES.get(character, character))
+    return "".join(escaped)
 
 
 def _load_results(input_path: Path) -> list:
@@ -34,6 +60,7 @@ def cmd_export(args: argparse.Namespace) -> int:
     print_key_value("Input", input_path)
     print_key_value("Format", args.format)
 
+    staged_output: Path | None = None
     try:
         results = _load_results(input_path)
 
@@ -44,6 +71,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         output_path = args.output
         if not output_path:
             output_path = input_path.stem + f".{args.format}"
+        output_path = Path(output_path)
 
         # Validate encryption preconditions BEFORE writing any plaintext to disk,
         # otherwise a missing key / unsupported format leaves cleartext on disk.
@@ -62,19 +90,31 @@ def cmd_export(args: argparse.Namespace) -> int:
                 print_error("--encrypt is only supported for JSONL format")
                 return 1
 
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=output_path.parent,
+                prefix=f".{output_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as staged:
+                staged_output = Path(staged.name)
+
+        write_path = staged_output if staged_output is not None else output_path
+
         if args.format == "csv":
             import csv
 
             if results:
                 keys = results[0].keys()
-                with open(output_path, "w", newline="", encoding="utf-8") as f:
+                with open(write_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.DictWriter(f, fieldnames=keys)
                     writer.writeheader()
                     writer.writerows(results)
 
         elif args.format == "markdown":
             content = results_to_markdown(results)
-            with open(output_path, "w", encoding="utf-8") as f:
+            with open(write_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
         elif args.format == "html":
@@ -93,11 +133,11 @@ def cmd_export(args: argparse.Namespace) -> int:
                     "\\centering",
                     "\\begin{tabular}{" + "l" * len(keys) + "}",
                     "\\hline",
-                    " & ".join(keys) + " \\\\",
+                    " & ".join(_escape_latex_literal(key) for key in keys) + " \\\\",
                     "\\hline",
                 ]
                 for r in results[:20]:  # Limit rows
-                    values = [str(r.get(k, ""))[:30] for k in keys]
+                    values = [_escape_latex_literal(str(r.get(k, ""))[:30]) for k in keys]
                     lines.append(" & ".join(values) + " \\\\")
                 lines.extend(
                     [
@@ -107,27 +147,28 @@ def cmd_export(args: argparse.Namespace) -> int:
                         "\\end{table}",
                     ]
                 )
-                with open(output_path, "w", encoding="utf-8") as f:
+                with open(write_path, "w", encoding="utf-8") as f:
                     f.write("\n".join(lines))
 
         elif args.format == "jsonl":
             from insideLLMs._serialization import stable_json_dumps
 
-            with open(output_path, "w", encoding="utf-8") as f:
+            with open(write_path, "w", encoding="utf-8") as f:
                 for r in results:
                     f.write(stable_json_dumps(r) + "\n")
 
         if encrypt_requested:
-            # Preconditions (key present, jsonl format) were validated above.
             try:
                 from insideLLMs.privacy.encryption import encrypt_jsonl
 
-                if key_b64 is None:
-                    print_error("Encryption key is required")
+                if key_b64 is None or staged_output is None:
+                    print_error("Encryption key and staging path are required")
                     return 1
-                encrypt_jsonl(output_path, key=key_b64.encode())
+                encrypt_jsonl(staged_output, key=key_b64.encode())
+                os.replace(staged_output, output_path)
+                staged_output = None
                 print_key_value("Encrypted", "yes")
-            except RuntimeError as e:
+            except Exception as e:
                 print_error(f"Encryption failed: {e}")
                 return 1
 
@@ -137,3 +178,6 @@ def cmd_export(args: argparse.Namespace) -> int:
     except Exception as e:
         print_error(f"Export error: {e}")
         return 1
+    finally:
+        if staged_output is not None:
+            staged_output.unlink(missing_ok=True)

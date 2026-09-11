@@ -15,12 +15,20 @@ from typing import Any, Optional, TextIO
 # - machine-readable payloads (e.g., --format json) should go to stdout only
 _CLI_QUIET = False
 _CLI_STATUS_TO_STDERR = False
+_OUTPUT_WIDTH = 70
+_NON_INTERACTIVE_PROGRESS_STEP = 5
 
 
 def _status_stream() -> TextIO:
     # Avoid capturing a fixed sys.stdout/sys.stderr at import time. This ensures
     # pytest's capsys and other stdout/stderr redirection works as expected.
     return sys.stderr if _CLI_STATUS_TO_STDERR else sys.stdout
+
+
+def _status_stream_is_interactive() -> bool:
+    """Return whether status output can safely redraw a single terminal line."""
+    stream = _status_stream()
+    return bool(getattr(stream, "isatty", lambda: False)())
 
 
 def _cli_version_string() -> str:
@@ -121,26 +129,28 @@ def print_header(title: str) -> None:
     """Print a styled header with decorative borders."""
     if _CLI_QUIET:
         return
-    width = 70
-    line = "\u2550" * width
-    print(file=_status_stream())
-    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream())
+    line = "\u2550" * _OUTPUT_WIDTH
+    print(file=_status_stream(), flush=True)
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream(), flush=True)
     print(
-        colorize(f"  {title}".center(width), Colors.BOLD, Colors.BRIGHT_CYAN),
+        colorize(f"  {title}".center(_OUTPUT_WIDTH), Colors.BOLD, Colors.BRIGHT_CYAN),
         file=_status_stream(),
+        flush=True,
     )
-    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream())
+    print(colorize(line, Colors.BRIGHT_CYAN), file=_status_stream(), flush=True)
 
 
 def print_subheader(title: str) -> None:
     """Print a styled subheader with a horizontal rule."""
     if _CLI_QUIET:
         return
-    print(file=_status_stream())
+    prefix = f"\u2500\u2500 {title} "
+    print(file=_status_stream(), flush=True)
     print(
-        colorize(f"\u2500\u2500 {title} ", Colors.CYAN)
-        + colorize("\u2500" * (50 - len(title)), Colors.DIM),
+        colorize(prefix, Colors.CYAN)
+        + colorize("\u2500" * max(0, _OUTPUT_WIDTH - len(prefix)), Colors.DIM),
         file=_status_stream(),
+        flush=True,
     )
 
 
@@ -148,12 +158,16 @@ def print_success(message: str) -> None:
     """Print a success message with green OK prefix."""
     if _CLI_QUIET:
         return
-    print(colorize("OK ", Colors.BRIGHT_GREEN) + message, file=_status_stream())
+    print(colorize("OK ", Colors.BRIGHT_GREEN) + message, file=_status_stream(), flush=True)
 
 
 def print_error(message: str) -> None:
     """Print an error message with red ERROR prefix."""
-    print(colorize("ERROR ", Colors.BRIGHT_RED) + colorize(message, Colors.RED), file=sys.stderr)
+    print(
+        colorize("ERROR ", Colors.BRIGHT_RED) + colorize(message, Colors.RED),
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def print_warning(message: str) -> None:
@@ -163,6 +177,7 @@ def print_warning(message: str) -> None:
     print(
         colorize("WARN ", Colors.BRIGHT_YELLOW) + colorize(message, Colors.YELLOW),
         file=_status_stream(),
+        flush=True,
     )
 
 
@@ -170,7 +185,7 @@ def print_info(message: str) -> None:
     """Print an informational message with blue INFO prefix."""
     if _CLI_QUIET:
         return
-    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message, file=_status_stream())
+    print(colorize("INFO ", Colors.BRIGHT_BLUE) + message, file=_status_stream(), flush=True)
 
 
 def print_key_value(key: str, value: Any, indent: int = 2) -> None:
@@ -178,7 +193,11 @@ def print_key_value(key: str, value: Any, indent: int = 2) -> None:
     if _CLI_QUIET:
         return
     spaces = " " * indent
-    print(f"{spaces}{colorize(key + ':', Colors.DIM)} {value}", file=_status_stream())
+    print(
+        f"{spaces}{colorize(key + ':', Colors.DIM)} {value}",
+        file=_status_stream(),
+        flush=True,
+    )
 
 
 def _format_percent(value: Optional[float]) -> str:
@@ -217,6 +236,7 @@ class ProgressBar:
         self.show_eta = show_eta
         self.current = 0
         self.start_time = time.time()
+        self._last_reported_percent: int | None = None
 
     def update(self, current: int) -> None:
         """Update the progress bar to a specific position."""
@@ -233,6 +253,10 @@ class ProgressBar:
         if _CLI_QUIET:
             return
         pct = 100 if self.total == 0 else min(100, self.current / self.total * 100)
+        interactive = _status_stream_is_interactive()
+        rounded_percent = int(pct)
+        if not interactive and not self._should_report_non_interactive(rounded_percent):
+            return
 
         filled = int(self.width * self.current / max(1, self.total))
         bar = "\u2588" * filled + "\u2591" * (self.width - filled)
@@ -246,22 +270,50 @@ class ProgressBar:
             eta_str = ""
 
         line = (
-            f"\r{self.prefix}: {colorize(bar, Colors.CYAN)} "
+            f"{self.prefix}: {colorize(bar, Colors.CYAN)} "
             f"{pct:5.1f}% ({self.current}/{self.total}){eta_str}"
         )
-        print(line, end="", flush=True, file=_status_stream())
+        if interactive:
+            print(f"\r{line}", end="", flush=True, file=_status_stream())
+        else:
+            print(line, flush=True, file=_status_stream())
+            self._last_reported_percent = rounded_percent
+
+    def _should_report_non_interactive(self, rounded_percent: int) -> bool:
+        """Keep captured logs concise while preserving first, milestone, and final state."""
+        if self._last_reported_percent is None or rounded_percent >= 100:
+            return True
+        if rounded_percent < self._last_reported_percent:
+            return True
+        return (
+            rounded_percent // _NON_INTERACTIVE_PROGRESS_STEP
+            > self._last_reported_percent // _NON_INTERACTIVE_PROGRESS_STEP
+        )
 
     def finish(self) -> None:
         """Complete the progress bar and print final status."""
         if _CLI_QUIET:
             return
         self.current = self.total
-        self._render()
         elapsed = time.time() - self.start_time
-        print(
-            f" {colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}",
-            file=_status_stream(),
-        )
+        if _status_stream_is_interactive():
+            self._render()
+            print(
+                f" {colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}",
+                file=_status_stream(),
+                flush=True,
+            )
+        else:
+            pct = 100 if self.total == 0 else min(100, self.current / self.total * 100)
+            filled = int(self.width * self.current / max(1, self.total))
+            bar = "\u2588" * filled + "\u2591" * (self.width - filled)
+            print(
+                f"{self.prefix}: {colorize(bar, Colors.CYAN)} "
+                f"{pct:5.1f}% ({self.current}/{self.total}) "
+                f"{colorize(f'Done in {elapsed:.2f}s', Colors.GREEN)}",
+                file=_status_stream(),
+                flush=True,
+            )
 
 
 class Spinner:
@@ -289,26 +341,36 @@ class Spinner:
         """Render a single spinner frame."""
         if _CLI_QUIET:
             return
-        frame = self.FRAMES[self.frame_idx % len(self.FRAMES)]
-        print(
-            f"\r{colorize(frame, Colors.CYAN)} {self.message}...",
-            end="",
-            flush=True,
-            file=_status_stream(),
-        )
-        self.frame_idx += 1
+        if _status_stream_is_interactive():
+            frame = self.FRAMES[self.frame_idx % len(self.FRAMES)]
+            print(
+                f"\r{colorize(frame, Colors.CYAN)} {self.message}...",
+                end="",
+                flush=True,
+                file=_status_stream(),
+            )
+            self.frame_idx += 1
+        elif not self.running:
+            print(f"{self.message}...", file=_status_stream(), flush=True)
+        self.running = True
 
     def stop(self, success: bool = True) -> None:
         """Stop the spinner with a final status."""
         if _CLI_QUIET:
             return
+        prefix = "OK" if success else "FAIL"
+        color = Colors.GREEN if success else Colors.RED
+        line_prefix = "\r" if _status_stream_is_interactive() else ""
         if success:
             print(
-                f"\r{colorize('OK', Colors.GREEN)} {self.message}... done",
+                f"{line_prefix}{colorize(prefix, color)} {self.message}... done",
                 file=_status_stream(),
+                flush=True,
             )
         else:
             print(
-                f"\r{colorize('FAIL', Colors.RED)} {self.message}... failed",
+                f"{line_prefix}{colorize(prefix, color)} {self.message}... failed",
                 file=_status_stream(),
+                flush=True,
             )
+        self.running = False

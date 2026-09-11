@@ -67,7 +67,7 @@ flowchart TD
 
 1) Produce a baseline run dir.
 2) Produce a candidate run dir using the exact same harness config.
-3) Diff the two run dirs and fail the build if anything changes.
+3) Diff the two run dirs and apply the gate that matches your policy.
 
 ```bash
 insidellms harness ci/harness.yaml --run-dir .tmp/runs/base --overwrite --skip-report
@@ -87,7 +87,7 @@ It uses `DummyModel` only (no API keys) and probes that accept dict inputs.
 ## Useful Diff Flags
 
 - `--fail-on-regressions`: fail only on score/status regressions
-- `--fail-on-changes`: fail on any difference (including additions/removals)
+- `--fail-on-changes`: fail on regressions, neutral/other output changes, or additions/removals; improvements alone remain informational
 - `--fail-on-trace-drift`: fail if trace fingerprints drift (when enabled)
 - `--fail-on-trace-violations`: fail if contract violations increase (when enabled)
 - `--fail-on-trajectory-drift`: fail when tool/agent execution trajectories drift

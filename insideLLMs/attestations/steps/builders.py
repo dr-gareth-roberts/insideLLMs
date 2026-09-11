@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from insideLLMs._secrets import redact_config_secrets
 from insideLLMs.attestations.statement import (
     PREDICATE_TYPE_EVAL_STEP,
     PREDICATE_TYPE_SLSA_PROVENANCE,
@@ -111,12 +112,13 @@ def build_attestation_04_execution(
     receipts_merkle_root: str | None = None,
     model_identity_snapshot: dict[str, Any] | None = None,
     runner_config_snapshot: dict[str, Any] | None = None,
+    records_count: int | None = None,
 ) -> dict[str, Any]:
     """04. Execution attestation: records, manifest, Merkle roots, model identity, runner config."""
     builder = {"id": "https://insidellms.dev/runner/1.0"}
     invocation: dict[str, Any] = {}
     if runner_config_snapshot is not None:
-        invocation["parameters"] = runner_config_snapshot
+        invocation["parameters"] = redact_config_secrets(runner_config_snapshot)
     materials: list[dict[str, Any]] = []
     if records_digest is not None:
         materials.append({"digest": {"sha256": records_digest}, "uri": "records.jsonl"})
@@ -129,12 +131,14 @@ def build_attestation_04_execution(
         "materials": materials,
         "step": "execution",
     }
+    if records_count is not None:
+        predicate["records_count"] = records_count
     if records_merkle_root is not None:
         predicate["records_merkle_root"] = records_merkle_root
     if receipts_merkle_root is not None:
         predicate["receipts_merkle_root"] = receipts_merkle_root
     if model_identity_snapshot is not None:
-        predicate["model_identity_snapshot"] = model_identity_snapshot
+        predicate["model_identity_snapshot"] = redact_config_secrets(model_identity_snapshot)
     return build_statement(subject, PREDICATE_TYPE_SLSA_PROVENANCE, predicate)
 
 
@@ -149,7 +153,7 @@ def build_attestation_05_scoring(
     if metrics_versions is not None:
         predicate["metrics_versions"] = metrics_versions
     if judge_committee_config is not None:
-        predicate["judge_committee_config"] = judge_committee_config
+        predicate["judge_committee_config"] = redact_config_secrets(judge_committee_config)
     if analysis_plan_digest is not None:
         predicate["analysis_plan_digest"] = analysis_plan_digest
     return build_statement(subject, PREDICATE_TYPE_EVAL_STEP, predicate)
@@ -205,6 +209,9 @@ def build_attestation_09_publish(
     oci_ref: str | None = None,
     oci_digest: str | None = None,
     signature_bundle_digests: list[str] | None = None,
+    *,
+    payload_id: str | None = None,
+    outcome: str | None = None,
 ) -> dict[str, Any]:
     """09. Publication attestation: OCI ref + digest, signature bundle digests."""
     predicate: dict[str, Any] = {"step": "publish"}
@@ -214,4 +221,8 @@ def build_attestation_09_publish(
         predicate["oci_digest"] = oci_digest
     if signature_bundle_digests is not None:
         predicate["signature_bundle_digests"] = signature_bundle_digests
+    if outcome is not None:
+        predicate.update(
+            outcome=outcome, payload_id=payload_id, oci_ref=oci_ref, oci_digest=oci_digest
+        )
     return build_statement(subject, PREDICATE_TYPE_EVAL_STEP, predicate)

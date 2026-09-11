@@ -56,7 +56,7 @@ Result: `git diff` works on model behaviour.
 
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
-# Exit code 1 = behaviour changed = deploy blocked
+# Exit code 2 = configured behavioural gate fired
 ```
 
 ### 3. Response-Level Granularity

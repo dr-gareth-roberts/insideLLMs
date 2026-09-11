@@ -249,6 +249,7 @@ Artifacts are versioned:
 |---------|---------|
 | `1.0.0` | Initial schema |
 | `1.0.1` | Added `run_completed` flag |
+| `1.0.2` | Added optional runner-item `scores` and `primary_metric`; nested runner/benchmark outputs use the scored item schema |
 
 Check version:
 

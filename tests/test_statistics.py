@@ -211,6 +211,47 @@ class TestConfidenceInterval:
 class TestHypothesisTesting:
     """Tests for hypothesis tests."""
 
+    @pytest.mark.parametrize("scale", [1e-100, 1e100])
+    def test_welch_degrees_of_freedom_are_invariant_to_units(self, scale):
+        result = welchs_t_test([scale, 2 * scale, 3 * scale], [0.0, 0.0, 0.0])
+        # t=sqrt(12), df=2: the closed-form two-sided probability.
+        assert result.p_value == pytest.approx(0.07417990022744858, abs=1e-12)
+        assert not result.significant
+
+    @pytest.mark.parametrize(
+        "group_a, expected, significant",
+        [
+            (
+                [
+                    0.4172740600907682,
+                    0.4172740600907682,
+                    1.311701251090684,
+                    2.2061284420905998,
+                    2.2061284420905998,
+                ],
+                0.050188624201646534,
+                False,
+            ),
+            (
+                [
+                    0.41990008862148,
+                    0.41990008862148,
+                    1.3143272796213958,
+                    2.2087544706213116,
+                    2.2087544706213116,
+                ],
+                0.049812062219924062,
+                True,
+            ),
+        ],
+    )
+    def test_welch_noninteger_df_brackets_alpha(self, group_a, expected, significant):
+        # Independent SciPy 1.18.0 fixture: Welch df=9.838279762571398.
+        group_b = [-1.140175425099138] * 3 + [0.0] + [1.140175425099138] * 3
+        result = welchs_t_test(group_a, group_b)
+        assert result.p_value == pytest.approx(expected, abs=1e-12)
+        assert result.significant is significant
+
     def test_welchs_t_test_different(self):
         """Test Welch's t-test with different means."""
         group1 = [1, 2, 3, 4, 5]

@@ -2495,8 +2495,10 @@ class ResponseProfiler:
         Returns:
             ResponseProfile object
         """
-        prompt_toks = prompt_tokens or self._token_estimator(prompt)
-        completion_toks = completion_tokens or self._token_estimator(response)
+        prompt_toks = prompt_tokens if prompt_tokens is not None else self._token_estimator(prompt)
+        completion_toks = (
+            completion_tokens if completion_tokens is not None else self._token_estimator(response)
+        )
 
         # Calculate tokens per second
         tokens_per_second = completion_toks / total_time_ms * 1000 if total_time_ms > 0 else 0.0

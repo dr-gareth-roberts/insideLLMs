@@ -203,6 +203,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from insideLLMs.probes._scoring import required_output_field
 from insideLLMs.probes.base import Probe
 from insideLLMs.trace.trace_config import (
     OnViolationMode,
@@ -1537,9 +1538,9 @@ class AgentProbe(Probe[AgentProbeResult]):
         total_with_output = 0
 
         for r in results:
-            if r.status == ResultStatus.SUCCESS and r.output:
+            if r.status == ResultStatus.SUCCESS and r.output is not None:
                 total_with_output += 1
-                if r.output.violations:
+                if required_output_field(r.output, "violations", list):
                     violation_count += 1
 
         if total_with_output > 0:

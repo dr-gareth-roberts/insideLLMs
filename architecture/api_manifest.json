@@ -1,0 +1,3433 @@
+{
+  "policy": {
+    "allowed_statuses": [
+      "deprecated",
+      "experimental",
+      "internal",
+      "stable"
+    ],
+    "source": "architecture/api_status_policy.json"
+  },
+  "schema_version": 1,
+  "summary": {
+    "direct_export_count": 60,
+    "lazy_export_count": 160,
+    "status_counts": {
+      "experimental": 207,
+      "stable": 4
+    },
+    "symbol_count": 211,
+    "symbols_with_repository_usage": 44
+  },
+  "surface": "insideLLMs root package",
+  "symbols": [
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ACCURACY_CRITERIA",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "APIKeyAuth",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AdversarialGenerator",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AdversarialType",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AgentConfig",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AgentExecutor",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "AgentProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "AgentProbeResult",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AgentResult",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Annotation",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AnnotationCollector",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AnnotationWorkflow",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 1,
+          "wiki": 1
+        },
+        "path_count": 2,
+        "paths": [
+          "README.md",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AnthropicModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "AppConfig",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ApprovalWorkflow",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "AsyncModel",
+      "providers": [
+        "insideLLMs.models.base"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "AsyncProbeRunner",
+      "providers": [
+        "insideLLMs.runtime.runner"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "benchmarks/benchmark_probes.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "AttackProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "BaseCache",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "BatchEndpoint",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1,
+          "examples": 1
+        },
+        "path_count": 2,
+        "paths": [
+          "benchmarks/benchmark_probes.py",
+          "examples/example_quickstart.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "BiasProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "Budget",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CODE_QUALITY_CRITERIA",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CacheEntry",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CacheMiddleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CacheStats",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CachedModel",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CallRecord",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "Candidate",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ChainOfThoughtAgent",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ChatMessage",
+      "providers": [
+        "insideLLMs.models.base"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CodeDebugProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CodeExplanationProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CodeGenerationProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CohereModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ComparativeProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ConsensusValidator",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ConstraintComplianceProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ContentSafetyAnalyzer",
+      "providers": [
+        "insideLLMs.safety"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "CostTrackingMiddleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "CustomProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "DataAugmenter",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "DeploymentApp",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "DeploymentConfig",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_caching.py"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "DiskCache",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 2,
+          "examples": 2,
+          "wiki": 1
+        },
+        "path_count": 5,
+        "paths": [
+          "benchmarks/benchmark_import.py",
+          "benchmarks/benchmark_probes.py",
+          "examples/example_benchmark_suite.py",
+          "examples/example_quickstart.py",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "DummyModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "EndpointConfig",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Evaluator",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "EvolutionConfig",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ExactMatchEvaluator",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ExperimentConfig",
+      "providers": [
+        "insideLLMs.config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ExperimentResult",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "benchmarks/benchmark_probes.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "FactualityProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Feedback",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "FeedbackCollector",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "FeedbackType",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "FingerprintConfig",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "wiki": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "GeminiModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HELPFULNESS_CRITERIA",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HITLConfig",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HITLSession",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HealthChecker",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "wiki": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HuggingFaceModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "HumanValidator",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_caching.py"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "InMemoryCache",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 2,
+          "examples": 1
+        },
+        "path_count": 3,
+        "paths": [
+          "README.md",
+          "docs/INFERENCE_STRATEGIES.md",
+          "examples/inference_client.py"
+        ]
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "InferenceClient",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/inference/test_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "InferenceRequest",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "InferenceResult",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "InsideLLMsError",
+      "providers": [
+        "insideLLMs.exceptions"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "InstructionFollowingProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "IntentClassifier",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "InteractiveSession",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "JailbreakProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "JudgeCriterion",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "JudgeEvaluator",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "JudgeModel",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "JudgeResult",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "LlamaCppModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1,
+          "docs": 1,
+          "examples": 2,
+          "wiki": 1
+        },
+        "path_count": 5,
+        "paths": [
+          "README.md",
+          "benchmarks/benchmark_probes.py",
+          "examples/example_benchmark_suite.py",
+          "examples/example_quickstart.py",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "LogicProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "MetricsCollector",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Middleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 1,
+          "examples": 1
+        },
+        "path_count": 2,
+        "paths": [
+          "docs/superpowers/plans/2026-09-01-insidellms-audit-remediation.md",
+          "examples/example_registry.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "Model",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ModelBenchmark",
+      "providers": [
+        "insideLLMs.contrib.benchmark"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ModelConfig",
+      "providers": [
+        "insideLLMs.config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ModelEndpoint",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ModelError",
+      "providers": [
+        "insideLLMs.exceptions"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ModelInfo",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ModelPipeline",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ModelPool",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/inference/test_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "ModelProposer",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ModelProtocol",
+      "providers": [
+        "insideLLMs.models.base"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ModelResponse",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "MultiStepTaskProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "NormaliserConfig",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "NormaliserKind",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 1,
+          "wiki": 1
+        },
+        "path_count": 2,
+        "paths": [
+          "README.md",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "OllamaModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "OnViolationMode",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 2,
+          "wiki": 1
+        },
+        "path_count": 3,
+        "paths": [
+          "README.md",
+          "docs/INFERENCE_STRATEGIES.md",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "OpenAIModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "wiki": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "OpenRouterModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "PassthroughMiddleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Priority",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "PriorityReviewQueue",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "examples/example_registry.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "Probe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ProbeBenchmark",
+      "providers": [
+        "insideLLMs.contrib.benchmark"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeCategory",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeConfig",
+      "providers": [
+        "insideLLMs.config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ProbeEndpoint",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeError",
+      "providers": [
+        "insideLLMs.exceptions"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeResult",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1,
+          "examples": 2,
+          "wiki": 1
+        },
+        "path_count": 4,
+        "paths": [
+          "benchmarks/benchmark_probes.py",
+          "examples/example_benchmark_suite.py",
+          "examples/example_quickstart.py",
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeRunner",
+      "providers": [
+        "insideLLMs.runtime.runner"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ProbeScore",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "PromptInjectionProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "PromptVariator",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RateLimitMiddleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "wiki": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "wiki/guides/Provider-Setup.md"
+        ]
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RateLimiter",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ReActAgent",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RedisCache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "Registry",
+      "providers": [
+        "insideLLMs.registry"
+      ],
+      "status": "stable"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 2
+        },
+        "path_count": 2,
+        "paths": [
+          "examples/example_experiment_tracking.py",
+          "examples/example_interactive_visualization.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ResultStatus",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RetryMiddleware",
+      "providers": [
+        "insideLLMs.pipeline"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ReviewItem",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ReviewQueue",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ReviewStatus",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ReviewWorkflow",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Route",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RouteMatch",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RouterConfig",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "RoutingStrategy",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SAFETY_CRITERIA",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ScoredProbe",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SemanticCache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SemanticCacheConfig",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SemanticCacheModel",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SemanticRouter",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SimpleAgent",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "StoreMode",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "StructuredOutputConfig",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "StructuredOutputGenerator",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "StructuredResult",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SynthesisConfig",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "SyntheticDataset",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "TelemetryCollector",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "TemplateGenerator",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "TokenUsage",
+      "providers": [
+        "insideLLMs.types"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "Tool",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ToolDefinition",
+      "providers": [
+        "insideLLMs.probes"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "ToolRegistry",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "TraceConfig",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "TracePayloadNormaliser",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "TracedModel",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "TracingConfig",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "VLLMModel",
+      "providers": [
+        "insideLLMs.models"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "VariationStrategy",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "VectorCache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "docs/INFERENCE_STRATEGIES.md"
+        ]
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "Verification",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1,
+          "scripts": 1,
+          "tests": 1
+        },
+        "path_count": 3,
+        "paths": [
+          "examples/suppress_deprecation_warnings.py",
+          "scripts/clean_install_golden_path.sh",
+          "tests/test_audit_wave7_regressions.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "__version__",
+      "providers": [
+        "insideLLMs"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "batch_extract",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "bleu_score",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "cached",
+      "providers": [
+        "insideLLMs.caching"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "collect_feedback",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "compare_experiments",
+      "providers": [
+        "insideLLMs.analysis.statistics"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "confidence_interval",
+      "providers": [
+        "insideLLMs.analysis.statistics"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_app",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_calculator_tool",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "create_experiment_result",
+      "providers": [
+        "insideLLMs.runtime.runner"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_hitl_session",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_html_report",
+      "providers": [
+        "insideLLMs.visualization"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_judge",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_model_endpoint",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_probe_endpoint",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_react_agent",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_router",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_semantic_cache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "create_simple_agent",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "descriptive_statistics",
+      "providers": [
+        "insideLLMs.analysis.statistics"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "detect_pii",
+      "providers": [
+        "insideLLMs.safety"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "examples/example_registry.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "ensure_builtins_registered",
+      "providers": [
+        "insideLLMs.registry"
+      ],
+      "status": "stable"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct",
+        "lazy"
+      ],
+      "name": "evolve_artifacts",
+      "providers": [
+        "insideLLMs",
+        "insideLLMs.inference"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "exact_match",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "extract_json",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "generate_structured",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "generate_test_dataset",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "instrument_model",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "examples/example_quickstart.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "load_results_json",
+      "providers": [
+        "insideLLMs.results"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "load_trace_config",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "make_structural_v1_normaliser",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "benchmarks": 1,
+          "examples": 1
+        },
+        "path_count": 2,
+        "paths": [
+          "benchmarks/benchmark_import.py",
+          "examples/example_registry.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "model_registry",
+      "providers": [
+        "insideLLMs.registry"
+      ],
+      "status": "stable"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "parse_json",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "plot_accuracy_comparison",
+      "providers": [
+        "insideLLMs.visualization"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "examples/example_registry.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "probe_registry",
+      "providers": [
+        "insideLLMs.registry"
+      ],
+      "status": "stable"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_adversarial",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_agent_run",
+      "providers": [
+        "insideLLMs.contrib.agents"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_deploy",
+      "providers": [
+        "insideLLMs.contrib.deployment"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_extract",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_review",
+      "providers": [
+        "insideLLMs.contrib.hitl"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_route",
+      "providers": [
+        "insideLLMs.contrib.routing"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_safety_check",
+      "providers": [
+        "insideLLMs.safety"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_semantic_cache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "quick_variations",
+      "providers": [
+        "insideLLMs.contrib.synthesis"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "results_to_html_report",
+      "providers": [
+        "insideLLMs.structured"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "rouge_l",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "run_harness_from_config",
+      "providers": [
+        "insideLLMs.runtime.runner"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "README.md"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "run_probe",
+      "providers": [
+        "insideLLMs.runtime.runner"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "examples": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "examples/example_quickstart.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "save_results_json",
+      "providers": [
+        "insideLLMs.results"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "docs": 4,
+          "wiki": 1
+        },
+        "path_count": 5,
+        "paths": [
+          "API_REFERENCE.md",
+          "DOCUMENTATION_INDEX.md",
+          "README.md",
+          "docs/AUDITS/2026-02-26-docs-audit.md",
+          "wiki/guides/Production-Shadow-Capture.md"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "shadow",
+      "providers": [
+        "insideLLMs"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "text_comparison_table",
+      "providers": [
+        "insideLLMs.visualization"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "token_f1",
+      "providers": [
+        "insideLLMs.evaluation"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "trace_call",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "trace_function",
+      "providers": [
+        "insideLLMs.observability"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {
+          "tests": 1
+        },
+        "path_count": 1,
+        "paths": [
+          "tests/test_trace_integration.py"
+        ]
+      },
+      "export_kinds": [
+        "direct"
+      ],
+      "name": "validate_with_config",
+      "providers": [
+        "insideLLMs.trace.trace_config"
+      ],
+      "status": "experimental"
+    },
+    {
+      "evidence": {
+        "areas": {},
+        "path_count": 0,
+        "paths": []
+      },
+      "export_kinds": [
+        "lazy"
+      ],
+      "name": "wrap_model_with_semantic_cache",
+      "providers": [
+        "insideLLMs.semantic_cache"
+      ],
+      "status": "experimental"
+    }
+  ]
+}

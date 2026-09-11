@@ -226,7 +226,7 @@ def test_cosign_path_and_sign_verify_branches(
         cosign_mod.verify_bundle(blob, out_bundle, identity_constraints="bad;rm")
 
     def verify_fail(cmd, **_k):
-        assert "--cert-identity" in cmd
+        assert "--certificate-identity" in cmd
         return SimpleNamespace(returncode=2, stderr="no", stdout="")
 
     monkeypatch.setattr(cosign_mod.subprocess, "run", verify_fail)

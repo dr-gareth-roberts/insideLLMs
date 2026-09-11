@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
+
+from insideLLMs._artifact_snapshot import regular_tree_snapshot
 
 try:
     from oras import client as oras_client
@@ -55,25 +56,26 @@ def push_run_oci(run_dir: Path | str, ref: str) -> PushResult:
     RuntimeError
         If oras library is not installed.
     ValueError
-        If run_dir does not exist or is empty.
+        If run_dir is missing, not a directory, or empty; if containment checks
+        reject symbolic links or special files; or if source mutation is detected.
+    OSError
+        If required no-follow filesystem operations are unavailable, a source
+        open is rejected, or snapshot filesystem I/O fails.
     """
     _require_oras()
     run_path = Path(run_dir)
     if not run_path.exists() or not run_path.is_dir():
         raise ValueError(f"Run directory {run_dir} does not exist or is not a directory")
 
-    oci_client = oras_client.OciClient()
-    files_to_push = []
-    for root, _, files in os.walk(run_path):
-        for file in files:
-            file_path = Path(root) / file
-            rel_path = file_path.relative_to(run_path)
-            files_to_push.append(f"{file_path}:{rel_path}")
-
-    if not files_to_push:
-        raise ValueError(f"Run directory {run_dir} is empty")
-
-    oci_client.push(target=ref, files=files_to_push)
+    with regular_tree_snapshot(run_path) as snapshot:
+        files_to_push = [
+            f"{path}:{path.relative_to(snapshot)}"
+            for path in sorted(snapshot.rglob("*"))
+            if path.is_file()
+        ]
+        if not files_to_push:
+            raise ValueError(f"Run directory {run_dir} is empty")
+        oras_client.OciClient().push(target=ref, files=files_to_push)
 
     # oras-py push returns Response; digest may be in Location header.
     # For now return ref; digest can be populated by caller if needed.

@@ -1,7 +1,7 @@
 # insideLLMs API Reference
 
 **Version:** 0.2.0  
-**Last Updated:** February 26, 2026
+**Last Updated:** August 31, 2026
 
 This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the Docs Site.
 
@@ -1303,11 +1303,13 @@ Compare deterministic run artifacts and optionally gate CI.
 - `--output-fingerprint-ignore key1,key2`
 - `--judge`, `--judge-policy {strict,balanced}`, `--judge-limit N`
 - `--interactive`
+- `--html PATH`
 
 ```bash
 insidellms diff ./baseline ./candidate --fail-on-changes
 insidellms diff ./baseline ./candidate --judge --judge-policy balanced
 insidellms diff ./baseline ./candidate --interactive --fail-on-changes
+insidellms diff ./baseline ./candidate --html diff.html
 ```
 
 ### `insidellms doctor`
@@ -2967,6 +2969,225 @@ print(f"Best variant: {results.best_variant_id}")
 ```
 
 ---
+
+## Public API Index
+
+Every public name exported by the `insideLLMs` package — the eager `__all__` list plus the
+PEP 562 lazy-import map resolved by `insideLLMs.__getattr__`. This index is gated by
+`scripts/audit_docs.py`: adding a public export without documenting it here fails `make docs-audit`.
+
+| Name | Import Path | Summary |
+|---|---|---|
+| `ACCURACY_CRITERIA` | `from insideLLMs.evaluation import ACCURACY_CRITERIA` | Built-in mutable sequence. |
+| `APIKeyAuth` | `from insideLLMs.contrib.deployment import APIKeyAuth` | API key authentication handler for securing endpoints. |
+| `AdversarialGenerator` | `from insideLLMs.contrib.synthesis import AdversarialGenerator` | Generate adversarial examples for LLM security and robustness testing. |
+| `AdversarialType` | `from insideLLMs.contrib.synthesis import AdversarialType` | Enumeration of adversarial example types for security testing. |
+| `AgentConfig` | `from insideLLMs.contrib.agents import AgentConfig` | Configuration for agent behavior and execution parameters. |
+| `AgentExecutor` | `from insideLLMs.contrib.agents import AgentExecutor` | Executor for running agents with enhanced features. |
+| `AgentProbe` | `from insideLLMs.probes.agent_probe import AgentProbe` | Probe for testing tool-using LLM agents with trace integration. |
+| `AgentProbeResult` | `from insideLLMs.probes.agent_probe import AgentProbeResult` | Result from running an agent probe. |
+| `AgentResult` | `from insideLLMs.contrib.agents import AgentResult` | Complete result of agent execution. |
+| `Annotation` | `from insideLLMs.contrib.hitl import Annotation` | Represents a human annotation on text for labeling and span marking. |
+| `AnnotationCollector` | `from insideLLMs.contrib.hitl import AnnotationCollector` | Collects annotations with inter-annotator agreement tracking. |
+| `AnnotationWorkflow` | `from insideLLMs.contrib.hitl import AnnotationWorkflow` | Workflow for collecting structured annotations on text data. |
+| `AnthropicModel` | `from insideLLMs.models.anthropic import AnthropicModel` | Model implementation for Anthropic's Claude models via API. |
+| `AppConfig` | `from insideLLMs.contrib.deployment import AppConfig` | Combined application configuration for the deployment. |
+| `ApprovalWorkflow` | `from insideLLMs.contrib.hitl import ApprovalWorkflow` | Workflow for confidence-based approval of model outputs. |
+| `AsyncModel` | `from insideLLMs.models.base import AsyncModel` | Base class for models with async support. |
+| `AsyncProbeRunner` | `from insideLLMs.runtime._async_runner import AsyncProbeRunner` | Asynchronous runner for concurrent probe execution. |
+| `AttackProbe` | `from insideLLMs.probes.attack import AttackProbe` | Probe to test LLMs' vulnerability to adversarial attacks. |
+| `BaseCache` | `from insideLLMs.caching import BaseCache` | Cache with configurable eviction strategies and rich features. |
+| `BatchEndpoint` | `from insideLLMs.contrib.deployment import BatchEndpoint` | Handles batch generation requests for processing multiple prompts efficiently. |
+| `BiasProbe` | `from insideLLMs.probes.bias import BiasProbe` | Probe to test LLMs' propensity for bias in generated responses. |
+| `Budget` | `from insideLLMs.inference.schemas import Budget` | Hard limits shared by online and offline strategies. |
+| `CODE_QUALITY_CRITERIA` | `from insideLLMs.evaluation import CODE_QUALITY_CRITERIA` | Built-in mutable sequence. |
+| `CacheEntry` | `from insideLLMs.caching import CacheEntry` | A single cache entry with metadata and access tracking. |
+| `CacheMiddleware` | `from insideLLMs.runtime.pipeline import CacheMiddleware` | Middleware for caching model responses to avoid redundant API calls. |
+| `CacheStats` | `from insideLLMs.caching import CacheStats` | Cache statistics for monitoring and optimization. |
+| `CachedModel` | `from insideLLMs.caching import CachedModel` | Wrapper that adds caching to any model. |
+| `CallRecord` | `from insideLLMs.runtime.observability import CallRecord` | Immutable record of a single model call for telemetry purposes. |
+| `Candidate` | `from insideLLMs.inference.schemas import Candidate` | One generated answer and its derivation metadata. |
+| `ChainOfThoughtAgent` | `from insideLLMs.contrib.agents import ChainOfThoughtAgent` | Agent that uses chain-of-thought (CoT) reasoning. |
+| `ChatMessage` | `from insideLLMs.models.base import ChatMessage` | A single message in a chat conversation. |
+| `CodeDebugProbe` | `from insideLLMs.probes.code import CodeDebugProbe` | Probe to test LLMs' ability to debug, diagnose, and fix code issues. |
+| `CodeExplanationProbe` | `from insideLLMs.probes.code import CodeExplanationProbe` | Probe to test LLMs' ability to understand and explain code. |
+| `CodeGenerationProbe` | `from insideLLMs.probes.code import CodeGenerationProbe` | Probe to test LLMs' ability to generate correct code from natural language. |
+| `CohereModel` | `from insideLLMs.models.cohere import CohereModel` | Model implementation for Cohere's language models via API. |
+| `ComparativeProbe` | `from insideLLMs.probes.base import ComparativeProbe` | Base class for probes that compare multiple model responses. |
+| `ConsensusValidator` | `from insideLLMs.contrib.hitl import ConsensusValidator` | Validates using consensus from multiple reviewers. |
+| `ConstraintComplianceProbe` | `from insideLLMs.probes.instruction import ConstraintComplianceProbe` | Probe to test specific constraint compliance in LLM outputs. |
+| `ContentSafetyAnalyzer` | `from insideLLMs.safety import ContentSafetyAnalyzer` | Aggregate the module's regex/keyword safety heuristics into one report. |
+| `CostTrackingMiddleware` | `from insideLLMs.runtime.pipeline import CostTrackingMiddleware` | Middleware for tracking API costs and token usage. |
+| `CustomProbe` | `from insideLLMs.probes import CustomProbe` | Template base class for creating custom probes. |
+| `DataAugmenter` | `from insideLLMs.contrib.synthesis import DataAugmenter` | Augment datasets using LLM-generated synthetic data. |
+| `DeploymentApp` | `from insideLLMs.contrib.deployment import DeploymentApp` | Main wrapper for deploying models as FastAPI applications. |
+| `DeploymentConfig` | `from insideLLMs.contrib.deployment import DeploymentConfig` | Configuration for the entire API deployment. |
+| `DiskCache` | `from insideLLMs.caching import DiskCache` | SQLite-based persistent disk cache with size management. |
+| `DummyModel` | `from insideLLMs.models import DummyModel` | A simple model for testing that echoes the prompt or returns canned responses. |
+| `EndpointConfig` | `from insideLLMs.contrib.deployment import EndpointConfig` | Configuration for an API endpoint. |
+| `Evaluator` | `from insideLLMs.analysis.evaluation import Evaluator` | Abstract base class for evaluation metrics. |
+| `EvolutionConfig` | `from insideLLMs.inference.evolution import EvolutionConfig` | Deterministic population-search limits and random seed. |
+| `ExactMatchEvaluator` | `from insideLLMs.analysis.evaluation import ExactMatchEvaluator` | Evaluator for exact string matching. |
+| `ExperimentConfig` | `from insideLLMs.config import ExperimentConfig` | Complete experiment configuration combining all components. |
+| `ExperimentResult` | `from insideLLMs.types import ExperimentResult` | Complete result from running an experiment. |
+| `FactualityProbe` | `from insideLLMs.probes.factuality import FactualityProbe` | Probe for testing and evaluating LLM factual accuracy. |
+| `Feedback` | `from insideLLMs.contrib.hitl import Feedback` | Represents human feedback on a model output. |
+| `FeedbackCollector` | `from insideLLMs.contrib.hitl import FeedbackCollector` | Collects and aggregates feedback from multiple sources. |
+| `FeedbackType` | `from insideLLMs.contrib.hitl import FeedbackType` | Types of human feedback that can be provided on model outputs. |
+| `FingerprintConfig` | `from insideLLMs.trace.trace_config import FingerprintConfig` | Configuration for trace fingerprinting. |
+| `GeminiModel` | `from insideLLMs.models.gemini import GeminiModel` | Model implementation for Google's Gemini models via API. |
+| `HELPFULNESS_CRITERIA` | `from insideLLMs.evaluation import HELPFULNESS_CRITERIA` | Built-in mutable sequence. |
+| `HITLConfig` | `from insideLLMs.contrib.hitl import HITLConfig` | Configuration settings for Human-in-the-Loop sessions. |
+| `HITLSession` | `from insideLLMs.contrib.hitl import HITLSession` | Interactive human-in-the-loop session for model evaluation and feedback. |
+| `HealthChecker` | `from insideLLMs.contrib.deployment import HealthChecker` | Health check manager for monitoring service dependencies. |
+| `HuggingFaceModel` | `from insideLLMs.models.huggingface import HuggingFaceModel` | Model implementation for HuggingFace Transformers models. |
+| `HumanValidator` | `from insideLLMs.contrib.hitl import HumanValidator` | Validates model outputs with human feedback. |
+| `InMemoryCache` | `from insideLLMs.caching import InMemoryCache` | Simple in-memory cache with LRU eviction and optional TTL. |
+| `InferenceClient` | `from insideLLMs.inference.client import InferenceClient` | Run inference strategies against a canonical insideLLMs model. |
+| `InferenceRequest` | `from insideLLMs.inference.schemas import InferenceRequest` | Input shared by every inference strategy. |
+| `InferenceResult` | `from insideLLMs.inference.schemas import InferenceResult` | Common result envelope returned by inference strategies. |
+| `InsideLLMsError` | `from insideLLMs.exceptions import InsideLLMsError` | Base exception for all insideLLMs errors. |
+| `InstructionFollowingProbe` | `from insideLLMs.probes.instruction import InstructionFollowingProbe` | Probe to test LLMs' ability to follow instructions precisely. |
+| `IntentClassifier` | `from insideLLMs.contrib.routing import IntentClassifier` | Classify query intent for intelligent routing decisions. |
+| `InteractiveSession` | `from insideLLMs.contrib.hitl import InteractiveSession` | Extended HITL session with event-driven callbacks for real-time integration. |
+| `JailbreakProbe` | `from insideLLMs.probes.attack import JailbreakProbe` | Specialized probe for testing jailbreak vulnerabilities. |
+| `JudgeCriterion` | `from insideLLMs.analysis.evaluation import JudgeCriterion` | A single evaluation criterion for LLM-as-a-Judge. |
+| `JudgeEvaluator` | `from insideLLMs.analysis.evaluation import JudgeEvaluator` | Evaluator wrapper for JudgeModel to use in standard evaluation pipelines. |
+| `JudgeModel` | `from insideLLMs.analysis.evaluation import JudgeModel` | LLM-as-a-Judge evaluator using a model to assess response quality. |
+| `JudgeResult` | `from insideLLMs.analysis.evaluation import JudgeResult` | Result from an LLM-as-a-Judge evaluation. |
+| `LlamaCppModel` | `from insideLLMs.models.local import LlamaCppModel` | Model implementation for local LLMs using llama-cpp-python. |
+| `LogicProbe` | `from insideLLMs.probes.logic import LogicProbe` | Probe to test LLMs' zero-shot ability at logic problems. |
+| `MetricsCollector` | `from insideLLMs.contrib.deployment import MetricsCollector` | Collects and exposes application metrics for monitoring. |
+| `Middleware` | `from insideLLMs.runtime.pipeline import Middleware` | Abstract base class for model pipeline middleware. |
+| `Model` | `from insideLLMs.models.base import Model` | Base class for all language models. |
+| `ModelBenchmark` | `from insideLLMs.contrib.benchmark import ModelBenchmark` | Benchmark multiple models on the same probe and dataset. |
+| `ModelConfig` | `from insideLLMs.config import ModelConfig` | Configuration for connecting to a language model API. |
+| `ModelEndpoint` | `from insideLLMs.contrib.deployment import ModelEndpoint` | Wraps a model for API serving with async support and statistics tracking. |
+| `ModelError` | `from insideLLMs.exceptions import ModelError` | Base exception for model-related errors. |
+| `ModelInfo` | `from insideLLMs.types import ModelInfo` | Information about a language model configuration. |
+| `ModelPipeline` | `from insideLLMs.runtime.pipeline import ModelPipeline` | A model wrapper that composes multiple middleware for enhanced capabilities. |
+| `ModelPool` | `from insideLLMs.contrib.routing import ModelPool` | Pool of models for load balancing and redundancy. |
+| `ModelProposer` | `from insideLLMs.inference.adapters import ModelProposer` | Expose a canonical model-like object as an inference candidate proposer. |
+| `ModelProtocol` | `from insideLLMs.models.base import ModelProtocol` | Protocol defining the interface for language models. |
+| `ModelResponse` | `from insideLLMs.types import ModelResponse` | A response from a language model API call. |
+| `MultiStepTaskProbe` | `from insideLLMs.probes.instruction import MultiStepTaskProbe` | Probe to test LLMs' ability to complete multi-step tasks. |
+| `NormaliserConfig` | `from insideLLMs.trace.trace_config import NormaliserConfig` | Configuration for the payload normaliser. |
+| `NormaliserKind` | `from insideLLMs.trace.trace_config import NormaliserKind` | Type of normaliser to use for payload transformation. |
+| `OllamaModel` | `from insideLLMs.models.local import OllamaModel` | Model implementation for Ollama-managed local models. |
+| `OnViolationMode` | `from insideLLMs.trace.trace_config import OnViolationMode` | Mode determining behavior when trace contracts are violated. |
+| `OpenAIModel` | `from insideLLMs.models.openai import OpenAIModel` | Model implementation for OpenAI's GPT models via API (openai>=1.0.0). |
+| `OpenRouterModel` | `from insideLLMs.models.openrouter import OpenRouterModel` | OpenRouter model wrapper using the OpenAI-compatible API. |
+| `PassthroughMiddleware` | `from insideLLMs.runtime.pipeline import PassthroughMiddleware` | Middleware that passes requests through unchanged. |
+| `Priority` | `from insideLLMs.contrib.hitl import Priority` | Priority levels for ordering review items in queues. |
+| `PriorityReviewQueue` | `from insideLLMs.contrib.hitl import PriorityReviewQueue` | Review queue that orders items by priority level. |
+| `Probe` | `from insideLLMs.probes.base import Probe` | Base class for all probes. |
+| `ProbeBenchmark` | `from insideLLMs.contrib.benchmark import ProbeBenchmark` | Benchmark multiple probes on the same model and dataset. |
+| `ProbeCategory` | `from insideLLMs.types import ProbeCategory` | Categories of probes for organizing and filtering. |
+| `ProbeConfig` | `from insideLLMs.config import ProbeConfig` | Configuration for a model evaluation probe. |
+| `ProbeEndpoint` | `from insideLLMs.contrib.deployment import ProbeEndpoint` | Wraps evaluation probes for API serving. |
+| `ProbeError` | `from insideLLMs.exceptions import ProbeError` | Base exception for probe-related errors. |
+| `ProbeResult` | `from insideLLMs.types import ProbeResult` | Result from running a single probe item. |
+| `ProbeRunner` | `from insideLLMs.runtime._sync_runner import ProbeRunner` | Synchronous runner for executing probes against a model. |
+| `ProbeScore` | `from insideLLMs.types import ProbeScore` | Scoring metrics for a probe run. |
+| `PromptInjectionProbe` | `from insideLLMs.probes.attack import PromptInjectionProbe` | Specialized probe for testing prompt injection vulnerabilities. |
+| `PromptVariator` | `from insideLLMs.contrib.synthesis import PromptVariator` | Generate diverse variations of prompts using an LLM. |
+| `RateLimitMiddleware` | `from insideLLMs.runtime.pipeline import RateLimitMiddleware` | Middleware for rate limiting model requests using a token bucket algorithm. |
+| `RateLimiter` | `from insideLLMs.contrib.deployment import RateLimiter` | Rate limiter using the token bucket algorithm with per-key tracking. |
+| `ReActAgent` | `from insideLLMs.contrib.agents import ReActAgent` | ReAct (Reasoning + Acting) Agent implementation. |
+| `RedisCache` | `from insideLLMs.semantic_cache import RedisCache` | Redis-based distributed cache. |
+| `Registry` | `from insideLLMs.registry import Registry` | A generic registry for storing and retrieving registered items. |
+| `ResultStatus` | `from insideLLMs.types import ResultStatus` | Status of a probe result indicating execution outcome. |
+| `RetryMiddleware` | `from insideLLMs.runtime.pipeline import RetryMiddleware` | Middleware for retrying failed requests with exponential backoff. |
+| `ReviewItem` | `from insideLLMs.contrib.hitl import ReviewItem` | An item in the human review queue awaiting evaluation. |
+| `ReviewQueue` | `from insideLLMs.contrib.hitl import ReviewQueue` | Thread-safe FIFO queue for managing items awaiting human review. |
+| `ReviewStatus` | `from insideLLMs.contrib.hitl import ReviewStatus` | Status of items in the human review workflow. |
+| `ReviewWorkflow` | `from insideLLMs.contrib.hitl import ReviewWorkflow` | Workflow for batched human review of model outputs. |
+| `Route` | `from insideLLMs.contrib.routing import Route` | A route that maps queries to a specific model based on patterns and semantics. |
+| `RouteMatch` | `from insideLLMs.contrib.routing import RouteMatch` | Result of matching a query to a route. |
+| `RouterConfig` | `from insideLLMs.contrib.routing import RouterConfig` | Configuration settings for the SemanticRouter. |
+| `RoutingStrategy` | `from insideLLMs.contrib.routing import RoutingStrategy` | Strategy for selecting among matching routes when multiple routes match a query. |
+| `SAFETY_CRITERIA` | `from insideLLMs.evaluation import SAFETY_CRITERIA` | Built-in mutable sequence. |
+| `ScoredProbe` | `from insideLLMs.probes.base import ScoredProbe` | Base class for probes that evaluate correctness against reference answers. |
+| `SemanticCache` | `from insideLLMs.semantic_cache import SemanticCache` | High-level semantic cache combining exact and similarity matching. |
+| `SemanticCacheConfig` | `from insideLLMs.semantic_cache import SemanticCacheConfig` | Configuration for semantic caching behavior. |
+| `SemanticCacheModel` | `from insideLLMs.semantic_cache import SemanticCacheModel` | Model wrapper with semantic caching. |
+| `SemanticRouter` | `from insideLLMs.contrib.routing import SemanticRouter` | Main semantic router for intelligent model selection and query routing. |
+| `SimpleAgent` | `from insideLLMs.contrib.agents import SimpleAgent` | Simple agent that executes tools based on direct instructions. |
+| `StoreMode` | `from insideLLMs.trace.trace_config import StoreMode` | Storage mode controlling how much trace data to persist. |
+| `StructuredOutputConfig` | `from insideLLMs.structured import StructuredOutputConfig` | Configuration for structured output generation. |
+| `StructuredOutputGenerator` | `from insideLLMs.structured import StructuredOutputGenerator` | Reusable generator for extracting structured data from LLM responses. |
+| `StructuredResult` | `from insideLLMs.structured import StructuredResult` | Container for structured extraction results with metadata and export methods. |
+| `SynthesisConfig` | `from insideLLMs.contrib.synthesis import SynthesisConfig` | Configuration settings for synthetic data generation. |
+| `SyntheticDataset` | `from insideLLMs.contrib.synthesis import SyntheticDataset` | A collection of synthetic data items with export and manipulation capabilities. |
+| `TelemetryCollector` | `from insideLLMs.runtime.observability import TelemetryCollector` | In-memory telemetry collector for model call records. |
+| `TemplateGenerator` | `from insideLLMs.contrib.synthesis import TemplateGenerator` | Generate synthetic data from templates and example patterns. |
+| `TokenUsage` | `from insideLLMs.types import TokenUsage` | Token usage statistics for a model call. |
+| `Tool` | `from insideLLMs.contrib.agents import Tool` | A tool that an agent can use to perform actions. |
+| `ToolDefinition` | `from insideLLMs.probes.agent_probe import ToolDefinition` | Definition for a tool available to the agent. |
+| `ToolRegistry` | `from insideLLMs.contrib.agents import ToolRegistry` | Registry for managing and organizing multiple tools. |
+| `TraceConfig` | `from insideLLMs.trace.trace_config import TraceConfig` | Top-level trace configuration for recording and validation. |
+| `TracePayloadNormaliser` | `from insideLLMs.trace.trace_config import TracePayloadNormaliser` | Event-kind-aware normaliser for trace payloads. |
+| `TracedModel` | `from insideLLMs.runtime.observability import TracedModel` | Transparent wrapper that adds telemetry tracing to any model. |
+| `TracingConfig` | `from insideLLMs.runtime.observability import TracingConfig` | Configuration for tracing and observability settings. |
+| `VLLMModel` | `from insideLLMs.models.local import VLLMModel` | Model implementation for vLLM server. |
+| `VariationStrategy` | `from insideLLMs.contrib.synthesis import VariationStrategy` | Enumeration of strategies for generating prompt variations. |
+| `VectorCache` | `from insideLLMs.semantic_cache import VectorCache` | Cache with vector-based semantic similarity lookup. |
+| `Verification` | `from insideLLMs.inference.schemas import Verification` | Objective or model-based assessment of a candidate. |
+| `batch_extract` | `from insideLLMs.structured import batch_extract` | Extract structured data from multiple texts. |
+| `bleu_score` | `from insideLLMs.analysis.evaluation import bleu_score` | Calculate approximate BLEU (Bilingual Evaluation Understudy) score. |
+| `cached` | `from insideLLMs.caching import cached` | Decorator to cache function results using simple cache. |
+| `collect_feedback` | `from insideLLMs.contrib.hitl import collect_feedback` | Collect feedback for multiple items. |
+| `compare_experiments` | `from insideLLMs.analysis.statistics import compare_experiments` | Compare two sets of experiment results. |
+| `confidence_interval` | `from insideLLMs.analysis.statistics import confidence_interval` | Calculate confidence interval for the mean of a sample. |
+| `create_app` | `from insideLLMs.contrib.deployment import create_app` | Create a FastAPI application for serving a model. |
+| `create_calculator_tool` | `from insideLLMs.contrib.agents import create_calculator_tool` | Create a calculator tool for evaluating mathematical expressions. |
+| `create_experiment_result` | `from insideLLMs.runtime._high_level import create_experiment_result` | Create a structured ExperimentResult from raw results. |
+| `create_hitl_session` | `from insideLLMs.contrib.hitl import create_hitl_session` | Create a HITL session with default settings. |
+| `create_html_report` | `from insideLLMs.analysis.visualization import create_html_report` | Create a static HTML report from probe results. |
+| `create_judge` | `from insideLLMs.analysis.evaluation import create_judge` | Convenience function to create a JudgeModel with preset or custom criteria. |
+| `create_model_endpoint` | `from insideLLMs.contrib.deployment import create_model_endpoint` | Create a model endpoint. |
+| `create_probe_endpoint` | `from insideLLMs.contrib.deployment import create_probe_endpoint` | Create a probe endpoint. |
+| `create_react_agent` | `from insideLLMs.contrib.agents import create_react_agent` | Create a configured ReAct agent with sensible defaults. |
+| `create_router` | `from insideLLMs.contrib.routing import create_router` | Create a semantic router from a list of route configurations. |
+| `create_semantic_cache` | `from insideLLMs.semantic_cache import create_semantic_cache` | Create a semantic cache. |
+| `create_simple_agent` | `from insideLLMs.contrib.agents import create_simple_agent` | Create a configured SimpleAgent. |
+| `descriptive_statistics` | `from insideLLMs.analysis.statistics import descriptive_statistics` | Calculate comprehensive descriptive statistics for a sample. |
+| `detect_pii` | `from insideLLMs.safety import detect_pii` | Quickly detect all PII in text and return as dictionaries. |
+| `ensure_builtins_registered` | `from insideLLMs.registry import ensure_builtins_registered` | Ensure built-in registrations and plugins are loaded. |
+| `evolve_artifacts` | `from insideLLMs.inference.evolution import evolve_artifacts` | Optimize artifacts offline; validation scores never influence selection. |
+| `exact_match` | `from insideLLMs.analysis.evaluation import exact_match` | Check for exact match between prediction and reference. |
+| `extract_json` | `from insideLLMs.structured import extract_json` | Extract valid JSON from text that may contain markdown or other content. |
+| `generate_structured` | `from insideLLMs.structured import generate_structured` | Generate structured output from text using an LLM. |
+| `generate_test_dataset` | `from insideLLMs.contrib.synthesis import generate_test_dataset` | Generate a complete test dataset from seed examples. |
+| `instrument_model` | `from insideLLMs.runtime.observability import instrument_model` | Wrap a model with automatic telemetry tracing. |
+| `load_results_json` | `from insideLLMs.results import load_results_json` | Load experiment results from a JSON file. |
+| `load_trace_config` | `from insideLLMs.trace.trace_config import load_trace_config` | Load TraceConfig from a YAML-parsed dictionary. |
+| `make_structural_v1_normaliser` | `from insideLLMs.trace.trace_config import make_structural_v1_normaliser` | Factory for the structural_v1 builtin normaliser. |
+| `model_registry` | `from insideLLMs.registry import model_registry` | A generic registry for storing and retrieving registered items. |
+| `parse_json` | `from insideLLMs.structured import parse_json` | Extract and parse JSON from text in a single operation. |
+| `plot_accuracy_comparison` | `from insideLLMs.analysis.visualization import plot_accuracy_comparison` | Plot accuracy comparison across experiments using matplotlib. |
+| `probe_registry` | `from insideLLMs.registry import probe_registry` | A generic registry for storing and retrieving registered items. |
+| `quick_adversarial` | `from insideLLMs.contrib.synthesis import quick_adversarial` | Quick helper to generate adversarial examples. |
+| `quick_agent_run` | `from insideLLMs.contrib.agents import quick_agent_run` | Quick helper to create and run an agent in one step. |
+| `quick_deploy` | `from insideLLMs.contrib.deployment import quick_deploy` | Quickly deploy a model as an API. |
+| `quick_extract` | `from insideLLMs.structured import quick_extract` | Quick one-liner for structured extraction with automatic model setup. |
+| `quick_review` | `from insideLLMs.contrib.hitl import quick_review` | Quick review of a single response. |
+| `quick_route` | `from insideLLMs.contrib.routing import quick_route` | Quick one-liner for routing a single query. |
+| `quick_safety_check` | `from insideLLMs.safety import quick_safety_check` | Perform a quick comprehensive safety check on text. |
+| `quick_semantic_cache` | `from insideLLMs.semantic_cache import quick_semantic_cache` | Quick helper for semantic caching. |
+| `quick_variations` | `from insideLLMs.contrib.synthesis import quick_variations` | Quick helper to generate prompt variations. |
+| `results_to_html_report` | `from insideLLMs.structured import results_to_html_report` | Generate HTML report from multiple results. |
+| `rouge_l` | `from insideLLMs.analysis.evaluation import rouge_l` | Calculate ROUGE-L score based on longest common subsequence (LCS). |
+| `run_harness_from_config` | `from insideLLMs.runtime._high_level import run_harness_from_config` | Run a cross-model probe harness from a configuration file. |
+| `run_probe` | `from insideLLMs.runtime._high_level import run_probe` | Run a probe on a model with a single function call. |
+| `save_results_json` | `from insideLLMs.results import save_results_json` | Save experiment results to a JSON file with optional schema validation. |
+| `shadow` | `from insideLLMs import shadow` | Production traffic shadow capture helpers. |
+| `text_comparison_table` | `from insideLLMs.analysis.visualization import text_comparison_table` | Create a text-based comparison table. |
+| `token_f1` | `from insideLLMs.analysis.evaluation import token_f1` | Calculate token-level F1 score between prediction and reference. |
+| `trace_call` | `from insideLLMs.runtime.observability import trace_call` | Context manager for tracing any operation with telemetry recording. |
+| `trace_function` | `from insideLLMs.runtime.observability import trace_function` | Decorator to trace a function call. |
+| `validate_with_config` | `from insideLLMs.trace.trace_config import validate_with_config` | Run trace contract validators using configuration toggles. |
+| `wrap_model_with_semantic_cache` | `from insideLLMs.semantic_cache import wrap_model_with_semantic_cache` | Wrap a model with semantic caching. |
 
 ## Additional Resources
 

@@ -33,10 +33,12 @@ def test_ultimate_mode_emits_integrity_and_attestations(tmp_path: Path) -> None:
     )
     assert (run_dir / "records.jsonl").exists()
     assert (run_dir / "manifest.json").exists()
+    assert (run_dir / "summary.json").exists()
     assert (run_dir / "receipts" / "calls.jsonl").exists()
     assert (run_dir / "integrity" / "records.merkle.json").exists()
     assert (run_dir / "integrity" / "receipts.merkle.json").exists()
     assert (run_dir / "integrity" / "bundle_id.txt").exists()
+    assert (run_dir / "integrity" / "bundle_identity.json").exists()
     assert (run_dir / "attestations" / "00.source.dsse.json").exists()
     assert (run_dir / "attestations" / "04.execution.dsse.json").exists()
     assert (run_dir / "attestations" / "08.policy.dsse.json").exists()
@@ -80,6 +82,8 @@ def test_ultimate_mode_with_publish_oci_populates_attestation_09(
     pred = statement.get("predicate", {})
     assert pred.get("oci_ref") == "ghcr.io/org/repo:tag"
     assert pred.get("oci_digest") == "sha256:abc123"
+    assert pred["outcome"] == "published"
+    assert pred["payload_id"] == (run_dir / "integrity/bundle_id.txt").read_text().strip()
 
 
 @patch("insideLLMs.runtime._ultimate.submit_statement")

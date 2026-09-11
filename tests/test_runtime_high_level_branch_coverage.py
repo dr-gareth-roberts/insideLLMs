@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from types import SimpleNamespace
 
 import pytest
 
 from insideLLMs._serialization import StrictSerializationError
 from insideLLMs.runtime import _high_level as hl
-from insideLLMs.types import ProbeResult, ResultStatus
+from insideLLMs.types import ExperimentResult, ModelInfo, ProbeCategory, ProbeResult, ResultStatus
 
 
 class _DummyModel:
@@ -32,10 +31,23 @@ class _DummyProbe:
 
 class _FakeRunner:
     def __init__(self, model, probe):
-        _ = model, probe
+        self.model = model
+        self.probe = probe
+        self.last_experiment = None
 
     def run(self, dataset, **kwargs):
-        _ = dataset, kwargs
+        _ = dataset
+        results = [ProbeResult(input="q", output="a", status=ResultStatus.SUCCESS, latency_ms=1.0)]
+        self.last_experiment = ExperimentResult(
+            experiment_id=kwargs["run_id"],
+            model_info=ModelInfo(**self.model.info()),
+            probe_name=self.probe.name,
+            probe_category=ProbeCategory.CUSTOM,
+            results=results,
+            score=self.probe.score(results),
+            started_at=datetime(2025, 1, 1),
+            completed_at=datetime(2025, 1, 1),
+        )
         return [{"input": "q", "output": "a", "status": "success", "latency_ms": 1.0}]
 
 
@@ -124,12 +136,6 @@ def test_run_harness_dataset_version_composition_paths(monkeypatch: pytest.Monke
         "_build_result_record",
         lambda **kwargs: {"dataset": kwargs["dataset"], "custom": {}, "status": kwargs["status"]},
     )
-    monkeypatch.setattr(
-        hl,
-        "create_experiment_result",
-        lambda *args, **kwargs: SimpleNamespace(experiment_id="exp-1"),
-    )
-
     monkeypatch.setattr(
         hl,
         "load_config",

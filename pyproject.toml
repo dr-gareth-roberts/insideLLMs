@@ -23,7 +23,7 @@ keywords = [
     "behavioural",
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing :: Linguistic",
@@ -40,6 +41,7 @@ classifiers = [
 
 dependencies = [
     "pyyaml>=6.0",
+    "pydantic>=2.0.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -59,7 +61,6 @@ providers = [
 ]
 # Feature extras
 signing = [
-    "tuf>=3.0.0",
     "oras>=0.2.0",
 ]
 crypto = [
@@ -76,6 +77,7 @@ visualization = [
     "pillow>=12.1.1",
     "pandas>=2.0.0",
     "seaborn>=0.12.0",
+    "jinja2>=3.1.5",
 ]
 langchain = [
     "langchain",
@@ -91,13 +93,12 @@ dev = [
     "pytest>=7.3.0",
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
-    "ruff==0.16.0",
+    "ruff==0.16.2",
     "mypy>=1.5.0",
     "black>=23.0.0",
     "isort>=5.12.0",
     "pre-commit>=3.3.0",
     "types-PyYAML>=6.0.12.20240311",
-    "pydantic>=2.0.0",
 ]
 # Everything
 all = [
@@ -192,6 +193,16 @@ disable_error_code = [
     "import-untyped",
 ]
 
+# numpy's bundled stubs use PEP 695 `type` statements, which mypy cannot parse
+# under python_version = "3.10". Without this, `make typecheck` aborts before
+# reading any project file in any environment that has numpy installed -- which
+# is every [all] install, i.e. the one AGENTS.md tells contributors to use.
+[[tool.mypy.overrides]]
+module = "numpy.*"
+follow_imports = "skip"
+follow_imports_for_stubs = true
+ignore_errors = true
+
 # Strict checking for core modules
 [[tool.mypy.overrides]]
 module = [
@@ -237,38 +248,9 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
-    # nlp: text_analysis measured @ 100% stmt (un-omitted).
-    # contrib: measured __init__/diffing/evalbom/model_identity/benchmark/templates/
-    # introspection/calibration/hallucination/quality/retrieval; rest omitted until covered.
-    "insideLLMs/contrib/adapters.py",
-    "insideLLMs/contrib/adversarial.py",
-    "insideLLMs/contrib/agents.py",
-    "insideLLMs/contrib/behavior.py",
-    "insideLLMs/contrib/chains.py",
-    "insideLLMs/contrib/context_window.py",
-    "insideLLMs/contrib/conversation.py",
-    "insideLLMs/contrib/debugging.py",
-    "insideLLMs/contrib/deployment.py",
-    "insideLLMs/contrib/distributed.py",
-    "insideLLMs/contrib/diversity.py",
-    "insideLLMs/contrib/ensemble.py",
-    "insideLLMs/contrib/fingerprinting.py",
-    "insideLLMs/contrib/hitl.py",
-    "insideLLMs/contrib/knowledge.py",
-    "insideLLMs/contrib/latency.py",
-    "insideLLMs/contrib/leaderboard.py",
-    "insideLLMs/contrib/orchestration.py",
-    "insideLLMs/contrib/parsing.py",
-    "insideLLMs/contrib/preprocessing.py",
-    "insideLLMs/contrib/prompt_testing.py",
-    "insideLLMs/contrib/prompt_utils.py",
-    "insideLLMs/contrib/reasoning.py",
-    "insideLLMs/contrib/routing.py",
-    "insideLLMs/contrib/semantic_analysis.py",
-    "insideLLMs/contrib/sensitivity.py",
-    "insideLLMs/contrib/steering.py",
-    "insideLLMs/contrib/synthesis.py",
-    "insideLLMs/contrib/template_versioning.py",
+    # Nothing under insideLLMs/ is omitted. 29 contrib modules (85,832 lines)
+    # used to be, which meant the reported coverage described 23,421 of the
+    # package's 36,878 statements. Measured whole-package coverage is 96%.
 ]
 
 [tool.coverage.report]
