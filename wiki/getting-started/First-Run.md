@@ -15,11 +15,12 @@ insidellms quicktest "What is 2 + 2?" --model dummy
 ```
 
 ```
-Model: dummy
-Prompt: What is 2 + 2?
+── Response ──────────────────────────────────────────
+  [DummyModel] You said: What is 2 + 2?
 
-Response
-[DummyModel] You said: What is 2 + 2?
+── Stats ─────────────────────────────────────────────
+  Latency: 0.0ms
+  Response length: 37 characters
 ```
 
 DummyModel returns deterministic local responses. It is useful for checking the
