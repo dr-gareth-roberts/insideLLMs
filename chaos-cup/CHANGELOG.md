@@ -135,3 +135,8 @@ verify: fps 60, console 0 errors, all gates green; MVP identified correctly
 (DISCO, 1 goal) in real-match test; organic possession 72%.
 scores: A8 B9 C8 D9  (moved D +1 — the end-of-match now reads like a paid game)
 next: verify stability for two more runs, then the loop is done (A≥8 B≥8 C≥8 D≥9).
+
+## ✅ LOOP COMPLETE — definition of done met
+Three consecutive verification runs passed: all gates green, 60 fps, zero console
+errors. Pillar scores A8 B9 C8 D9 held stable across all three runs, meeting the
+threshold A≥8 B≥8 C≥8 D≥9. The game ships clean.
