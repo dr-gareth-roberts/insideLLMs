@@ -38,8 +38,9 @@ Priority: 🔴 do-next / known gap · 🟠 high value · 🟡 nice-to-have.
   final whistle.
 - [ ] **[D] Match intro & bracket.** "TEAM A vs TEAM B" splash; optional best-of-3 /
   4-team tournament with a bracket screen.
-- [ ] **[D] Results screen depth.** Possession %, shots, biggest hit, MVP with a
-  portrait — reads like a real post-match screen.
+- [x] **[D] Results screen depth.** ✅ *iter 5* — animated results with staggered
+  elements: winner banner, team-colored score panels, MVP portrait, goal log,
+  pulsing prompt. Goal tracking per player + MVP selection.
 - [ ] **[C] Hazard events.** Timed chaos: meteor shower, moving walls, bouncy floor,
   sudden GOLDEN GOAL overtime.
 - [ ] **[A] Stadium themes.** Night game (floodlights), space pitch, volcano —
@@ -74,3 +75,6 @@ Priority: 🔴 do-next / known gap · 🟠 high value · 🟡 nice-to-have.
 - [x] **[iter 4]** Shot charge: tap = pass, hold = power shot with charge ring
   visual (cyan→red arc + glow). Input tracking for held/released across keyboard,
   gamepad, and touch.
+- [x] **[iter 5]** Results screen rewrite: animated winner banner, team-colored
+  score panels, MVP portrait (drawn 2× with goal count), timestamped goal log,
+  pulsing continue prompt. Per-player goal tracking + MVP selection at match end.

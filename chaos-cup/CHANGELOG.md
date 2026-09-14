@@ -110,3 +110,28 @@ builds (0.433 after 400ms hold), power shot fires (speed 657), tap pass fires
 (speed 400), tap < hold confirmed.
 scores: A8 B9 C8 D8  (moved B +1 — expressive two-mode kick with visual feedback)
 next: per-character celebrations & signature moves (A pillar), or settings panel (D).
+
+## [iteration 5] results screen — end-of-match reads like a real game
+pillar targeted: D (polish) — the results screen was the weakest visible moment:
+just plain text on a dim overlay with no stats, no MVP, no animation.
+change:
+- **[D] full results screen rewrite** with five staggered animated elements:
+  1. Winner banner ("YOU WIN!" / "DRAW!" / "YOU LOSE") scales in with trophy
+  2. Team-colored score panels (blue YOU vs pink RIVALS) with rounded rects
+  3. MVP portrait — the top-scoring player drawn 2× with name + goal count
+  4. Goal log — who scored when, timestamped, in team colors
+  5. Pulsing "Press any key / tap to continue" prompt
+- **[D] goal tracking** per player (`goals` counter on each player, `goalLog[]`
+  on match object). `doGoal` increments and logs each goal with scorer + time.
+- **[D] MVP selection** at match end — most goals wins, ties broken by last
+  scorer. Portrait uses `drawCharacter` with temporarily overridden position/scale.
+- **[D] dismiss delay** increased from 0.6s to 2.0s so the full animation plays
+  before the player can skip.
+- **verify.mjs** result screenshot wait increased to 2.5s to capture the full
+  animated result screen.
+before → after: `05-result.png` — animated results overlay with trophy, score
+panels in team colors, goal log. Compare to the previous bare "1 – 0" text.
+verify: fps 60, console 0 errors, all gates green; MVP identified correctly
+(DISCO, 1 goal) in real-match test; organic possession 72%.
+scores: A8 B9 C8 D9  (moved D +1 — the end-of-match now reads like a paid game)
+next: verify stability for two more runs, then the loop is done (A≥8 B≥8 C≥8 D≥9).

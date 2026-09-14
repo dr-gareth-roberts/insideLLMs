@@ -91,7 +91,7 @@ try {
 
   // ---- Result screen -------------------------------------------------------
   await page.evaluate(() => { const m = window.CHAOS.match; if (m) { m.time = 0.1; } });
-  await sleep(900);
+  await sleep(2500);
   await shot('05-result.png');
 
   // ---- Console cleanliness -------------------------------------------------

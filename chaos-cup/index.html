@@ -521,7 +521,7 @@ function makePlayer(def, team, teamColor, role, homeX, homeY) {
     isUser: false, controlT: 0, powerup: null, // held item key
     frozenT: 0, giantT: 0, tinyT: 0, rocketT: 0, magnetT: 0, ghostT: 0, stunT: 0, tackledT: 0, slipT: 0,
     kickCooldown: 0, tackleT: 0, chargeT: 0, aiTimer: rnd(0, .4), aiTarget: { x: homeX, y: homeY },
-    scaleMod: 1, speedMul: 1,
+    scaleMod: 1, speedMul: 1, goals: 0,
     stat(k) { return this.def[k]; }
   };
 }
@@ -765,7 +765,7 @@ function newMatch(userChoice, aiOnly) {
     teams, items: [], decoys: [], tornado: null,
     time: MATCH_SECONDS, state: 'countdown', countdown: 3.2, celebrateT: 0, scorer: null,
     userPlayer: null, aiOnly: !!aiOnly, itemTimer: 3, kickoffTeam: 1,
-    lastGoalTeam: null, msgT: 0, resultT: 0, slowmo: 1, half: 1,
+    lastGoalTeam: null, msgT: 0, resultT: 0, slowmo: 1, half: 1, goalLog: [],
     juice: makeJuice(),
   };
   if (!aiOnly) {
@@ -1185,6 +1185,8 @@ function doGoal(match, team) {
   match.teams[team].score++;
   match.state = 'goal'; match.celebrateT = 3.0; match.scorer = Ball.lastKicker && Ball.lastKicker.team === team ? Ball.lastKicker : null;
   match.lastGoalTeam = team;
+  if (match.scorer) match.scorer.goals++;
+  match.goalLog.push({ team, name: match.scorer ? match.scorer.def.name : 'OWN GOAL', time: match.time });
   Audio.whistle(); Audio.goal(); crowdCheer();
   match.juice.shake(16); match.juice.flash('#fff', 0.5); match.juice.punch(0.16); match.slowmo = 0.25;
   confetti(Ball.x, Ball.y, 80); confetti(match.teams[team].players[0].x, 300, 40);
@@ -1410,12 +1412,16 @@ function endMatch(m) {
   m.state = 'result'; m.resultT = 0; Audio.whistle();
   const a = m.teams[0].score, b = m.teams[1].score;
   m.userWon = a > b; m.draw = a === b;
-  if (!m.aiOnly) { if (a > b) { announce('🏆 YOU WIN!', '#ffd23f', true); confetti(VW / 2, 200, 120); crowdCheer(); Audio.goal(); } else if (a < b) announce('YOU LOSE…', '#ff6b6b', true); else announce("IT'S A DRAW!", '#fff', true); }
+  // MVP: most goals, break ties by last scorer
+  m.mvp = null; let bestG = 0;
+  for (const t of m.teams) for (const p of t.players) { if (p.goals > bestG) { bestG = p.goals; m.mvp = p; } }
+  if (!m.mvp && m.scorer) m.mvp = m.scorer;
+  if (!m.aiOnly) { if (a > b) { confetti(VW / 2, 200, 120); crowdCheer(); Audio.goal(); } else if (a < b) Audio.whistle(); }
   scene = 'result';
 }
 function updateResult(dt) {
   match.resultT += dt;
-  if (match.resultT > 0.6 && (Input.anyPressed || Input.kickBuf > 0)) { Input.anyPressed = false; Input.kickBuf = 0; Audio.ui(); fade('title'); }
+  if (match.resultT > 2.0 && (Input.anyPressed || Input.kickBuf > 0)) { Input.anyPressed = false; Input.kickBuf = 0; Audio.ui(); fade('title'); }
 }
 
 /* ------------------------------- DRAW SCENES ----------------------------- */
@@ -1551,18 +1557,97 @@ function drawPause(m) {
   ctx.fillText('M mute · Tab switch player · Shift use power-up', VW / 2, VH / 2 + 54);
 }
 function drawResult(m) {
-  const k = clamp(m.resultT, 0, 1);
-  ctx.fillStyle = 'rgba(5,6,13,' + 0.8 * k + ')'; ctx.fillRect(0, 0, VW, VH);
-  ctx.save(); ctx.globalAlpha = k; ctx.textAlign = 'center';
-  const title = m.aiOnly ? 'FULL TIME' : (m.userWon ? '🏆 YOU WIN!' : m.draw ? 'DRAW!' : 'YOU LOSE');
-  ctx.font = '900 74px "Segoe UI", sans-serif'; ctx.lineWidth = 12; ctx.strokeStyle = '#05060d';
-  ctx.strokeText(title, VW / 2, 170); ctx.fillStyle = m.userWon || m.aiOnly ? '#ffd23f' : '#ff6b6b'; ctx.fillText(title, VW / 2, 170);
-  ctx.font = '900 60px "Segoe UI", sans-serif'; ctx.fillStyle = '#fff';
-  ctx.fillText(m.teams[0].score + '  –  ' + m.teams[1].score, VW / 2, 250);
-  // MVP
-  ctx.font = '700 20px "Segoe UI", sans-serif'; ctx.fillStyle = '#8be9ff';
-  ctx.fillText('Press any key / tap to return to menu', VW / 2, VH - 80);
+  const t = m.resultT;
+  ctx.fillStyle = 'rgba(5,6,13,' + Math.min(t * 2.5, 0.88) + ')';
+  ctx.fillRect(0, 0, VW, VH);
+  ctx.save(); ctx.textAlign = 'center';
+  const cx = VW / 2;
+  // 1. winner banner — scales in
+  const bt = clamp((t - 0.15) / 0.35, 0, 1);
+  if (bt > 0) {
+    const s = 0.4 + bt * 0.6 + Math.sin(bt * Math.PI) * 0.08;
+    ctx.save(); ctx.translate(cx, 95); ctx.scale(s, s); ctx.globalAlpha = bt;
+    const title = m.aiOnly ? 'FULL TIME' : (m.userWon ? 'YOU WIN!' : m.draw ? 'DRAW!' : 'YOU LOSE');
+    ctx.font = '900 72px "Segoe UI", sans-serif'; ctx.lineWidth = 10; ctx.strokeStyle = '#05060d';
+    ctx.strokeText(title, 0, 0); ctx.fillStyle = m.userWon || m.aiOnly ? '#ffd23f' : (m.draw ? '#fff' : '#ff6b6b');
+    ctx.fillText(title, 0, 0);
+    if (m.userWon && !m.aiOnly) { ctx.font = '52px "Segoe UI", sans-serif'; ctx.fillText('🏆', 0, -62); }
+    ctx.restore();
+  }
+  // 2. score panels
+  const st = clamp((t - 0.5) / 0.3, 0, 1);
+  if (st > 0) {
+    ctx.globalAlpha = st;
+    const bw = 90, bh = 72, g = 32, by = 145;
+    // blue panel
+    ctx.fillStyle = '#39a7ff'; roundedRect(cx - g / 2 - bw, by, bw, bh, 12);
+    ctx.font = '900 48px "Segoe UI", sans-serif'; ctx.fillStyle = '#fff';
+    ctx.fillText('' + m.teams[0].score, cx - g / 2 - bw / 2, by + 52);
+    // dash
+    ctx.font = '700 32px "Segoe UI", sans-serif'; ctx.fillStyle = '#667';
+    ctx.fillText('–', cx, by + 48);
+    // red panel
+    ctx.fillStyle = '#ff4d6d'; roundedRect(cx + g / 2, by, bw, bh, 12);
+    ctx.font = '900 48px "Segoe UI", sans-serif'; ctx.fillStyle = '#fff';
+    ctx.fillText('' + m.teams[1].score, cx + g / 2 + bw / 2, by + 52);
+    // labels
+    ctx.font = '700 14px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#8be9ff'; ctx.fillText('YOU', cx - g / 2 - bw / 2, by + bh + 18);
+    ctx.fillStyle = '#ff8fa3'; ctx.fillText('RIVALS', cx + g / 2 + bw / 2, by + bh + 18);
+  }
+  // 3. MVP portrait
+  const mt = clamp((t - 0.85) / 0.4, 0, 1);
+  if (mt > 0 && m.mvp) {
+    ctx.globalAlpha = mt;
+    ctx.font = '700 16px "Segoe UI", sans-serif'; ctx.fillStyle = '#ffd23f';
+    ctx.fillText('⭐  MVP  ⭐', cx, 268);
+    // draw MVP character scaled up at center
+    const oldX = m.mvp.x, oldY = m.mvp.y, oldVx = m.mvp.vx, oldVy = m.mvp.vy;
+    const oldCelebT = m.mvp.celebrateT, oldSquash = m.mvp.squash;
+    m.mvp.x = cx; m.mvp.y = 340; m.mvp.vx = 0; m.mvp.vy = 0;
+    m.mvp.celebrateT = 1; m.mvp.squash = 0;
+    const oldR = m.mvp.r; m.mvp.r = 36;
+    drawCharacter(m.mvp);
+    m.mvp.x = oldX; m.mvp.y = oldY; m.mvp.vx = oldVx; m.mvp.vy = oldVy;
+    m.mvp.celebrateT = oldCelebT; m.mvp.squash = oldSquash; m.mvp.r = oldR;
+    ctx.textAlign = 'center';
+    ctx.font = '900 26px "Segoe UI", sans-serif'; ctx.fillStyle = '#fff'; ctx.globalAlpha = mt;
+    ctx.fillText(m.mvp.def.name, cx, 400);
+    if (m.mvp.goals > 0) {
+      ctx.font = '700 16px "Segoe UI", sans-serif'; ctx.fillStyle = '#aab';
+      ctx.fillText(m.mvp.goals + (m.mvp.goals === 1 ? ' GOAL' : ' GOALS'), cx, 422);
+    }
+  }
+  // 4. goal log
+  const lt = clamp((t - 1.3) / 0.3, 0, 1);
+  if (lt > 0 && m.goalLog.length > 0) {
+    ctx.globalAlpha = lt;
+    ctx.font = '700 15px "Segoe UI", sans-serif';
+    const sy = m.mvp ? 452 : 280;
+    const n = Math.min(m.goalLog.length, 5);
+    for (let i = 0; i < n; i++) {
+      const gl = m.goalLog[i];
+      const mins = Math.max(0, Math.floor((MATCH_SECONDS - gl.time) / 60));
+      const secs = Math.max(0, Math.floor((MATCH_SECONDS - gl.time) % 60));
+      ctx.fillStyle = gl.team === 0 ? '#8be9ff' : '#ff8fa3';
+      ctx.fillText('⚽  ' + gl.name + '   ' + mins + ':' + String(secs).padStart(2, '0'), cx, sy + i * 22);
+    }
+  }
+  // 5. prompt
+  const pt = clamp((t - 1.8) / 0.3, 0, 1);
+  if (pt > 0) {
+    ctx.globalAlpha = pt * (0.5 + 0.4 * Math.sin(t * 3));
+    ctx.font = '700 17px "Segoe UI", sans-serif'; ctx.fillStyle = '#8be9ff';
+    ctx.fillText('Press any key / tap to continue', cx, VH - 55);
+  }
   ctx.restore();
+}
+function roundedRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y); ctx.fill();
 }
 
 /* --------------------------- FIT + MAIN LOOP ----------------------------- */
