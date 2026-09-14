@@ -100,7 +100,7 @@ function now() { return performance.now() / 1000; }
 
 /* -------------------------------- [INPUT] -------------------------------- */
 const Input = {
-  keys: {}, kickBuf: 0, powBuf: 0, switchBuf: 0, pausePressed: false, anyPressed: false,
+  keys: {}, kickBuf: 0, powBuf: 0, switchBuf: 0, pausePressed: false, anyPressed: false, kickHeld: false, kickReleased: false,
   mx: 0, my: 0, mDown: false,
   stick: { active: false, x: 0, y: 0 },
   axisX() {
@@ -134,7 +134,10 @@ function pollGamepad() {
   if (gp.buttons[13] && gp.buttons[13].pressed) y = 1;
   padAxis = { x, y };
   const edge = (i) => gp.buttons[i] && gp.buttons[i].pressed && !padPrev[i];
-  if (edge(0)) { Input.kickBuf = 0.16; Input.anyPressed = true; }        // A
+  if (edge(0)) { Input.kickBuf = 0.16; Input.kickHeld = true; Input.anyPressed = true; } // A
+  const aHeld = gp.buttons[0] && gp.buttons[0].pressed;
+  if (!aHeld && padPrev[0]) { Input.kickHeld = false; Input.kickReleased = true; } // A released
+  if (aHeld) Input.kickHeld = true;
   if (edge(1) || edge(2)) { Input.powBuf = 0.16; Input.anyPressed = true; } // B/X
   if (edge(3) || edge(4) || edge(5)) Input.switchBuf = 0.16;            // Y/bumpers
   if (edge(9)) Input.pausePressed = true;                               // start
@@ -145,13 +148,13 @@ addEventListener('keydown', (e) => {
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
   if (e.repeat) return;
   Input.keys[k] = true; Input.anyPressed = true; ensureAudio();
-  if (k === ' ') Input.kickBuf = 0.16;
+  if (k === ' ') { Input.kickBuf = 0.16; Input.kickHeld = true; }
   if (k === 'shift') Input.powBuf = 0.16;
   if (k === 'tab') Input.switchBuf = 0.16;
   if (k === 'escape' || k === 'p') Input.pausePressed = true;
   if (k === 'm') Audio.toggleMute();
 });
-addEventListener('keyup', (e) => { Input.keys[e.key.toLowerCase()] = false; });
+addEventListener('keyup', (e) => { Input.keys[e.key.toLowerCase()] = false; if (e.key === ' ') { Input.kickHeld = false; Input.kickReleased = true; } });
 addEventListener('pointerdown', () => { Input.anyPressed = true; ensureAudio(); });
 addEventListener('blur', () => { Input.keys = {}; });
 
@@ -184,10 +187,12 @@ addEventListener('pointerup', () => { Input.mDown = false; });
   stickEl.addEventListener('touchstart', start, { passive: false });
   stickEl.addEventListener('touchmove', move, { passive: false });
   stickEl.addEventListener('touchend', end); stickEl.addEventListener('touchcancel', end);
-  const bind = (id, fn) => { const el = document.getElementById(id);
+  const bind = (id, fn, upFn) => { const el = document.getElementById(id);
     el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); ensureAudio(); }, { passive: false });
+    if (upFn) { el.addEventListener('touchend', (e) => { e.preventDefault(); upFn(); }); el.addEventListener('touchcancel', (e) => upFn()); }
     el.addEventListener('click', fn); };
-  bind('btnKick', () => { Input.kickBuf = 0.16; Input.anyPressed = true; });
+  bind('btnKick', () => { Input.kickBuf = 0.16; Input.kickHeld = true; Input.anyPressed = true; },
+    () => { Input.kickHeld = false; Input.kickReleased = true; });
   bind('btnPow', () => { Input.powBuf = 0.16; Input.anyPressed = true; });
 })();
 
@@ -358,6 +363,16 @@ function drawCharacter(p) {
   ctx.globalAlpha = p.isUser ? 0.9 : 0.5; ctx.strokeStyle = p.teamColor; ctx.lineWidth = p.isUser ? 3.2 : 2;
   ctx.beginPath(); ctx.ellipse(0, 15, 17, 6.5, 0, 0, TAU); ctx.stroke();
   if (p.isUser) { ctx.globalAlpha = 0.35 + Math.sin(now() * 6) * 0.15; ctx.beginPath(); ctx.ellipse(0, 15, 21, 8, 0, 0, TAU); ctx.stroke(); }
+  // charge ring — fills clockwise, cyan→red
+  if (p.chargeT > 0) {
+    const ct = clamp(p.chargeT / 0.5, 0, 1);
+    const hue = 180 - ct * 180;
+    ctx.strokeStyle = `hsl(${hue},100%,55%)`; ctx.lineWidth = 2.5 + ct * 2.5;
+    ctx.globalAlpha = 0.75 + ct * 0.25;
+    ctx.beginPath(); ctx.arc(0, -2, 26, -Math.PI / 2, -Math.PI / 2 + TAU * ct); ctx.stroke();
+    ctx.globalAlpha = 0.15 + ct * 0.2; ctx.lineWidth = 8 + ct * 6;
+    ctx.beginPath(); ctx.arc(0, -2, 26, -Math.PI / 2, -Math.PI / 2 + TAU * ct); ctx.stroke();
+  }
   ctx.restore(); ctx.globalAlpha = 1;
 
   // legs
@@ -505,7 +520,7 @@ function makePlayer(def, team, teamColor, role, homeX, homeY) {
     animPhase: rnd(0, TAU), seedPhase: rnd(0, TAU), squash: 0, kickT: 0, celebrateT: 0,
     isUser: false, controlT: 0, powerup: null, // held item key
     frozenT: 0, giantT: 0, tinyT: 0, rocketT: 0, magnetT: 0, ghostT: 0, stunT: 0, tackledT: 0, slipT: 0,
-    kickCooldown: 0, tackleT: 0, aiTimer: rnd(0, .4), aiTarget: { x: homeX, y: homeY },
+    kickCooldown: 0, tackleT: 0, chargeT: 0, aiTimer: rnd(0, .4), aiTarget: { x: homeX, y: homeY },
     scaleMod: 1, speedMul: 1,
     stat(k) { return this.def[k]; }
   };
@@ -918,45 +933,59 @@ function userControl(match, dt) {
   me._ax = ix; me._ay = iy;
   if (mag > 0.2) { me.facing = angLerp(me.facing, Math.atan2(iy, ix), 0.35); me.controlT = 0; }
 
-  // kick (context-sensitive, aim-assisted) — Nintendo ease
-  if (Input.kickBuf > 0 && me.kickCooldown <= 0) {
-    Input.kickBuf = 0;
-    if (Ball.owner === me) {
+  // kick: tap=pass, hold=power shot (charge ring), tackle when no ball
+  if (Ball.owner === me) {
+    // charge while kick held
+    if (Input.kickHeld && me.kickCooldown <= 0) {
+      me.chargeT = Math.min(me.chargeT + dt, 0.5);
+    }
+    if (Input.kickReleased && me.kickCooldown <= 0) {
+      Input.kickReleased = false; Input.kickBuf = 0;
+      const ct = me.chargeT; me.chargeT = 0;
+      const t = clamp(ct / 0.5, 0, 1);
       const oppGoalX = PITCH.x + PITCH.w, oppGoalY = PITCH.y + PITCH.h / 2;
-      // base aim: movement dir, else facing, else goalward
       let aim = (mag > 0.2) ? Math.atan2(iy, ix) : me.facing;
-      // aim assist: bias toward goal / open teammate
       const goalAim = angTo(me.x, me.y, oppGoalX, clamp(me.y, oppGoalY - 50, oppGoalY + 50));
       const inRange = dist(me.x, me.y, oppGoalX, oppGoalY) < 460;
-      // choose pass if a teammate lies close to aim and is forward
-      let passMate = null, bestDot = 0.86;
-      for (const mt of match.teams[0].players) {
-        if (mt === me || mt.role === 'gk') continue;
-        const a = angTo(me.x, me.y, mt.x, mt.y); const d = Math.cos(a - aim);
-        if (d > bestDot && dist(me.x, me.y, mt.x, mt.y) < 360) { bestDot = d; passMate = mt; }
-      }
-      if (passMate && !inRange) {
-        const a = angTo(me.x, me.y, passMate.x + passMate.vx * 0.3, passMate.y + passMate.vy * 0.3);
-        doKick(me, Math.cos(a) * 460, Math.sin(a) * 460, 0.7, match);
-        burst(me.x, me.y, 6, { c: me.teamColor, smax: 120 });
+      if (t < 0.25) {
+        // tap = pass to nearest teammate in aim cone
+        let passMate = null, bestDot = 0.82;
+        for (const mt of match.teams[0].players) {
+          if (mt === me || mt.role === 'gk') continue;
+          const a = angTo(me.x, me.y, mt.x, mt.y); const d = Math.cos(a - aim);
+          if (d > bestDot && dist(me.x, me.y, mt.x, mt.y) < 380) { bestDot = d; passMate = mt; }
+        }
+        if (passMate) {
+          const a = angTo(me.x, me.y, passMate.x + passMate.vx * 0.3, passMate.y + passMate.vy * 0.3);
+          doKick(me, Math.cos(a) * 460, Math.sin(a) * 460, 0.65, match);
+          burst(me.x, me.y, 6, { c: me.teamColor, smax: 120 });
+        } else {
+          let a = aim; if (inRange) a = angLerp(aim, goalAim, 0.4);
+          doKick(me, Math.cos(a) * 480, Math.sin(a) * 480, 0.7, match);
+        }
       } else {
-        // shot with assist toward goal mouth
-        let a = aim;
-        if (inRange) a = angLerp(aim, goalAim, 0.55);
-        const power = 1;
-        doKick(me, Math.cos(a) * 640, Math.sin(a) * 640, power, match);
+        // hold = power shot — speed & power scale with charge
+        const power = 0.8 + t * 0.4;
+        const speed = 520 + t * 280;
+        let a = aim; if (inRange) a = angLerp(aim, goalAim, 0.55);
+        doKick(me, Math.cos(a) * speed, Math.sin(a) * speed, power, match);
+        if (t > 0.5) burst(me.x, me.y, 14, { c: '#ff6600', smax: 200 });
       }
-    } else {
-      // tackle / lunge toward ball
+    } else if (Input.kickReleased) { Input.kickReleased = false; }
+  } else {
+    me.chargeT = 0;
+    // tackle / lunge toward ball (instant on press)
+    if (Input.kickBuf > 0 && me.kickCooldown <= 0) {
+      Input.kickBuf = 0;
       me.tackleT = 0.28; me.kickCooldown = 0.3;
       const a = angTo(me.x, me.y, Ball.x, Ball.y);
       me._ax = Math.cos(a) * 2.2; me._ay = Math.sin(a) * 2.2; me.squash = 0.3;
       Audio.tackle();
-      // steal if close
       if (Ball.owner && Ball.owner.team !== 0 && dist(me.x, me.y, Ball.x, Ball.y) < 46 && Ball.owner.giantT <= 0) {
         Ball.owner = null; Ball.ownerCooldown = 0.12; announce('TACKLE!', '#3ddc97'); burst(Ball.x, Ball.y, 10, { c: '#3ddc97' }); match.juice.shake(3);
       }
     }
+    if (Input.kickReleased) Input.kickReleased = false;
   }
   // power-up
   if (Input.powBuf > 0) { Input.powBuf = 0; if (me.powerup) activatePower(me, match); }
@@ -1286,6 +1315,7 @@ function update(dt) {
   updateParticles(dt); updateAnnounce(dt);
   Audio.tickMusic(dt, scene !== 'title');
   Input.pausePressed = false;
+  Input.kickReleased = false; // consume any unhandled release
 }
 
 function updateTitle(dt) {

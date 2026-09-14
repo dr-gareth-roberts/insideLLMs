@@ -83,3 +83,30 @@ SIR KICKS and REX gained natural ball control during a live 3-second sample.
 verify: fps 60, console 0 errors, all gates green; organic possession confirmed.
 scores: A8 B8 C8 D8  (moved B +1 — the dribble/pass/shoot loop actually works)
 next: shot-charge (tap pass / hold power shot) — the biggest remaining feel win.
+
+## [iteration 4] shot charge — tap pass, hold power shot
+pillar targeted: B (controls/feel) — the biggest remaining feel upgrade on the
+backlog: distinguishing taps from holds to give the player expressive control.
+change:
+- **[B] shot charge system.** Tap kick = pass to nearest teammate in aim cone
+  (speed ~400–480). Hold kick = power shot with a visible charge ring that fills
+  over 0.5s (speed 520–800, scaling with charge). The charge ring arcs from cyan
+  (0%) through yellow to red (100%) around the controlled player, with a soft glow.
+- **input tracking** across all three surfaces (keyboard, gamepad A-button, touch
+  kick button): `Input.kickHeld` tracks held state, `Input.kickReleased` fires
+  on release to trigger the kick. Frame-end cleanup resets `kickReleased`.
+- **player state** `chargeT` accumulates while holding with ball; resets on kick or
+  loss of possession.
+- **pass logic**: tap (chargeT < 0.125s, i.e. <25% of max) targets the best
+  teammate within a ±60° forward cone, with speed 460–480 and power 0.65–0.70.
+- **power shot logic**: charge ≥25% fires toward the goal with aim-assist; speed
+  scales from 520 to 800 and power from 0.8 to 1.2. Full charge triggers burst
+  particles.
+before → after: `06-charge-ring.png` — charge ring clearly visible (red-orange at
+~87% charge) around the ball carrier. Power shot measured at speed 657 vs tap pass
+at 400 — hold distinctly stronger. Organic possession 72% (43/60 checks).
+verify: fps 60, console 0 errors, all gates green; charge-specific test: chargeT
+builds (0.433 after 400ms hold), power shot fires (speed 657), tap pass fires
+(speed 400), tap < hold confirmed.
+scores: A8 B9 C8 D8  (moved B +1 — expressive two-mode kick with visual feedback)
+next: per-character celebrations & signature moves (A pillar), or settings panel (D).

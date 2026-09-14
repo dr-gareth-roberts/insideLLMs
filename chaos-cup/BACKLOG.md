@@ -13,9 +13,9 @@ Priority: 🔴 do-next / known gap · 🟠 high value · 🟡 nice-to-have.
 
 - [x] **[A] Team spacing / formation shape.** ✅ *iter 2* — slot-based lanes +
   staggered depth so supporters fan out instead of clumping.
-- [ ] **[B] Shot charge.** Tap = pass / placed shot, hold = power shot, with a clean
-  charge ring on the user player and a satisfying release. The single biggest
-  feel upgrade available.
+- [x] **[B] Shot charge.** ✅ *iter 4* — tap = pass (speed ~400), hold = power shot
+  (speed up to 800) with cyan→red charge ring. Input tracked across keyboard,
+  gamepad, and touch.
 - [ ] **[A] Per-character celebrations & signature move.** Right now everyone
   celebrates the same. Give each archetype a distinct celebration and one signature
   on-pitch flourish so the roster feels authored.
@@ -71,3 +71,6 @@ Priority: 🔴 do-next / known gap · 🟠 high value · 🟡 nice-to-have.
 - [x] **[iter 3]** Fix critical ball possession: `Ball.ownerCooldown` initialized
   (was undefined → possession guard permanently locked). Also: music/title RNG
   isolation, dev server security fix, `ball` exposed on debug API.
+- [x] **[iter 4]** Shot charge: tap = pass, hold = power shot with charge ring
+  visual (cyan→red arc + glow). Input tracking for held/released across keyboard,
+  gamepad, and touch.
