@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Full-codebase audit remediation (behavioral fixes, no schema contract changes):
+  - Probe batch failures are classified by explicit exception type
+    (`ModelTimeoutError`/`TimeoutError` → timeout, `RateLimitError` → rate_limited)
+    instead of fragile message substring matching.
+  - Instruction-following probes fail closed: constraints without deterministic
+    evaluators (language, tone, unknown formats) are rejected; item-count checks
+    evaluate zero-item outputs; multi-step patterns score only within their own
+    `Step N` section; constraint limits must be positive integers.
+  - Code-generation probes require non-empty, syntactically valid code before any
+    correctness credit; heuristic-only languages cap at partial credit without
+    test evidence.
+  - Bias/attack aggregate scoring preserves base health metrics (error/timeout
+    rates) when no analyzable outputs exist, reporting behavioral accuracy as
+    `None` instead of corrupting error rates.
+  - Judge probes require integer thresholds in `[0, 5]` and mapping-shaped judge
+    JSON.
+  - Provider adapters validate prompts at every generate/stream boundary, read
+    `Retry-After` from response headers, pack Gemini generation parameters into
+    `generation_config`, and reject empty or non-user-final chat message lists
+    instead of dispatching malformed requests.
+  - Strict serialization raises `StrictSerializationError` on non-finite floats,
+    and dict key collisions are rejected in all modes.
+  - Secret redaction covers AWS presigned-URL parameters, webhook secrets, and
+    OAuth fragment tokens without redacting ordinary `key` metadata fields.
+  - `RegistrationError`/`NotFoundError` now subclass
+    `insideLLMs.exceptions.RegistryError`; failed plugins roll back partial
+    registrations without aborting discovery; `INSIDELLMS_DISABLE_PLUGINS` parsing
+    is case-insensitive.
+  - Resilience: the default circuit breaker recovers correctly (half-open
+    in-flight gauge); async retry/circuit decorators await awaitables; blocking
+    rate-limit acquisition loops until success and counts once per logical
+    acquire; `run_async` rejects nested event loops with a clear error;
+    `first_completed` cancels children on parent cancellation; cache keys are
+    canonical JSON (invalidating previously cached entries); `DiskCache` enforces
+    byte-based size budgets on value updates too.
+  - Artifact integrity: atomic writes use unique staged files with fsync;
+    interactive snapshot acceptance validates all artifacts before publishing any
+    and rejects path escapes, symlinks, and sealed baselines; `validate` enforces
+    records-file containment; report rebuilds never drop records and restore
+    persisted scores; `trend` fails closed when a metric has no samples; shadow
+    capture is best-effort and never replaces the application response; tracker
+    runs are always ended.
+  - Runner manifests count only records actually persisted to `records.jsonl`,
+    reconciled against the real file even after write/close failures; batch runs
+    validate result cardinality before persistence; unsupported timeout
+    combinations (batch execution, async ultimate mode) fail closed at dispatch.
+  - Diff: a regression gate comparing two nonempty runs with zero common records
+    exits 1 (insufficient evidence); mapping outputs compare full structured
+    fingerprints rather than extracted text only; `--output`/`--html` reports are
+    written atomically; `diff_run_dirs` forwards `fail_on_trajectory_drift`.
+  - `insideLLMs.runtime` no longer eagerly imports the visualization stack
+    (pandas/matplotlib/seaborn) at import time.
+
 ### Added
 
 - `diff --html PATH` writes a deterministic, self-contained HTML diff report

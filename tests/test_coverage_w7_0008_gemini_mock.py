@@ -120,9 +120,14 @@ def test_gemini_full_paths(gemini_mod, monkeypatch: pytest.MonkeyPatch) -> None:
         )
         == "chat-hi"
     )
-    # trailing system-only
-    assert m.chat([{"role": "system", "content": "only"}]) == "chat-hi"
-    # second system while current_message already set is skipped
+    # trailing system-only / empty / assistant-final are rejected
+    with pytest.raises(ValueError, match="non-empty"):
+        m.chat([])
+    with pytest.raises(ValueError, match='role="user"'):
+        m.chat([{"role": "system", "content": "only"}])
+    with pytest.raises(ValueError, match='role="user"'):
+        m.chat([{"role": "assistant", "content": "only-asst"}])
+    # second system while first already captured is skipped
     assert (
         m.chat(
             [
@@ -145,8 +150,6 @@ def test_gemini_full_paths(gemini_mod, monkeypatch: pytest.MonkeyPatch) -> None:
         )
         == "chat-hi"
     )
-    # empty history edge (no user) — still sends
-    assert m.chat([{"role": "assistant", "content": "only-asst"}]) == "chat-hi"
     # unknown role falls through the role chain
     assert (
         m.chat([{"role": "tool", "content": "ignored"}, {"role": "user", "content": "u"}])

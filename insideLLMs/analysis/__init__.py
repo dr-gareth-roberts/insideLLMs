@@ -546,9 +546,86 @@ insideLLMs.models : Model interfaces and wrappers
 insideLLMs.schemas : Schema definitions and validation
 """
 
+import importlib
+from typing import Any
+
 from insideLLMs.analysis.comparison import *  # noqa: F401,F403
 from insideLLMs.analysis.evaluation import *  # noqa: F401,F403
 from insideLLMs.analysis.export import *  # noqa: F401,F403
 from insideLLMs.analysis.matched_compute import *  # noqa: F401,F403
 from insideLLMs.analysis.statistics import *  # noqa: F401,F403
-from insideLLMs.analysis.visualization import *  # noqa: F401,F403
+
+# Visualization (pandas/matplotlib/seaborn) is imported lazily so that
+# ``import insideLLMs.analysis`` / ``import insideLLMs.runtime`` do not pay the
+# heavy optional-dep cost. Documented paths remain:
+# ``insideLLMs.analysis.visualization`` and ``insideLLMs.visualization``.
+# Attribute access and star-import still expose the prior public surface.
+
+# Static prior star-import surface of analysis.visualization (no __all__ there;
+# public callables/constants only — not typing/import leftovers).
+_VISUALIZATION_EXPORTS: frozenset[str] = frozenset(
+    {
+        "MATPLOTLIB_AVAILABLE",
+        "SEABORN_AVAILABLE",
+        "PLOTLY_AVAILABLE",
+        "IPYWIDGETS_AVAILABLE",
+        "check_visualization_deps",
+        "check_plotly_deps",
+        "check_ipywidgets_deps",
+        "text_bar_chart",
+        "text_histogram",
+        "text_comparison_table",
+        "text_summary_stats",
+        "experiment_summary_text",
+        "plot_accuracy_comparison",
+        "plot_latency_distribution",
+        "plot_metric_comparison",
+        "plot_success_rate_over_time",
+        "plot_bias_results",
+        "plot_factuality_results",
+        "create_html_report",
+        "interactive_accuracy_comparison",
+        "interactive_latency_distribution",
+        "interactive_metric_radar",
+        "interactive_timeline",
+        "interactive_heatmap",
+        "interactive_scatter_comparison",
+        "interactive_sunburst",
+        "create_interactive_dashboard",
+        "create_interactive_html_report",
+        "ExperimentExplorer",
+    }
+)
+
+# Eager subpackage surfaces (from star-imports above) plus lazy visualization
+# names. Built without importing visualization so ``__all__`` stays cheap.
+__all__ = sorted(
+    {name for name in globals() if not name.startswith("_") and name != "importlib"}
+    | set(_VISUALIZATION_EXPORTS)
+)
+
+
+def _load_visualization() -> Any:
+    return importlib.import_module("insideLLMs.analysis.visualization")
+
+
+def __getattr__(name: str) -> Any:
+    if name == "visualization":
+        return _load_visualization()
+    if name not in _VISUALIZATION_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    try:
+        visualization_mod = _load_visualization()
+    except ImportError as exc:  # pragma: no cover - defensive
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
+    try:
+        return getattr(visualization_mod, name)
+    except AttributeError as exc:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
+
+
+def __dir__() -> list[str]:
+    names = set(globals())
+    names.update(_VISUALIZATION_EXPORTS)
+    names.update({"visualization", "__getattr__", "__dir__"})
+    return sorted(names)

@@ -162,14 +162,14 @@ class TestReadJsonlRecords:
         records = _read_jsonl_records(p)
         assert len(records) == 2
 
-    def test_skips_non_dict_json(self, tmp_path):
-        """Non-dict JSON values are skipped."""
+    def test_raises_on_non_dict_json(self, tmp_path):
+        """Non-dict JSON values fail loudly with a line-numbered error."""
         from insideLLMs.runtime._artifact_utils import _read_jsonl_records
 
         p = tmp_path / "records.jsonl"
         p.write_text('{"a":1}\n42\n"string"\n[1,2,3]\n{"b":2}\n', encoding="utf-8")
-        records = _read_jsonl_records(p)
-        assert len(records) == 2
+        with pytest.raises(ValueError, match="line 2"):
+            _read_jsonl_records(p)
 
     def test_invalid_json_raises(self, tmp_path):
         """Invalid JSON raises ValueError."""

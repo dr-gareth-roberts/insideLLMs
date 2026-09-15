@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from insideLLMs.config_types import RunConfig
-from insideLLMs.exceptions import RunnerExecutionError
+from insideLLMs.exceptions import RateLimitError, RunnerExecutionError
 from insideLLMs.models import DummyModel
 from insideLLMs.probes.base import Probe
 from insideLLMs.runtime.runner import AsyncProbeRunner
@@ -411,7 +411,7 @@ def test_probe_run_batch_exception_status_mapping() -> None:
             super().__init__(name="rate", category=ProbeCategory.CUSTOM)
 
         def run(self, model, data, **kwargs):
-            raise RuntimeError("rate limit 429")
+            raise RateLimitError(model_id="test")
 
     model = DummyModel()
     out = _BoomProbe().run_batch(model, ["a", "b"], max_workers=2)
@@ -420,7 +420,7 @@ def test_probe_run_batch_exception_status_mapping() -> None:
     out2 = _RateProbe().run_batch(model, ["a"], max_workers=2)
     assert out2[0].status == ResultStatus.RATE_LIMITED
 
-    # Outer future.result() exception path (611–619)
+    # Outer future.result() exception path — explicit types only (no substring)
     from concurrent import futures as cf
 
     class _Ok(Probe[str]):
@@ -434,10 +434,13 @@ def test_probe_run_batch_exception_status_mapping() -> None:
     fut_timeout = cf.Future()
     fut_timeout.set_exception(TimeoutError("pool"))
     fut_rate = cf.Future()
-    fut_rate.set_exception(RuntimeError("429 rate"))
+    fut_rate.set_exception(RateLimitError(model_id="test"))
     fut_err = cf.Future()
     fut_err.set_exception(ValueError("boom"))
-    queue = [fut_timeout, fut_rate, fut_err]
+    # Substring "rate"/"generate" must not imply rate_limited
+    fut_generate = cf.Future()
+    fut_generate.set_exception(RuntimeError("could not generate response"))
+    queue = [fut_timeout, fut_rate, fut_err, fut_generate]
 
     class _FakePool:
         def __init__(self, *a, **k):
@@ -457,10 +460,11 @@ def test_probe_run_batch_exception_status_mapping() -> None:
             "concurrent.futures.as_completed",
             lambda futs: list(futs.keys()) if isinstance(futs, dict) else list(futs),
         ):
-            mapped = probe.run_batch(model, ["a", "b", "c"], max_workers=3)
+            mapped = probe.run_batch(model, ["a", "b", "c", "d"], max_workers=4)
     assert mapped[0].status == ResultStatus.TIMEOUT
     assert mapped[1].status == ResultStatus.RATE_LIMITED
     assert mapped[2].status == ResultStatus.ERROR
+    assert mapped[3].status == ResultStatus.ERROR
 
 
 def test_experiment_tracking_wandb_mlflow_no_run_id(monkeypatch: pytest.MonkeyPatch) -> None:

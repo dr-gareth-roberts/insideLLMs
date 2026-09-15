@@ -231,6 +231,15 @@ def _outputs_differ(
     record_b: dict[str, Any],
     ignore_keys: set[str] | None,
 ) -> bool:
+    # Structured Mapping outputs must compare the full canonical fingerprint
+    # (with ignore_keys applied). Extracted text is for display only.
+    output_a = record_a.get("output")
+    output_b = record_b.get("output")
+    if isinstance(output_a, Mapping) or isinstance(output_b, Mapping):
+        fingerprint_a = _output_fingerprint(record_a, ignore_keys=ignore_keys)
+        fingerprint_b = _output_fingerprint(record_b, ignore_keys=ignore_keys)
+        return fingerprint_a != fingerprint_b
+
     text_a = _output_text(record_a)
     text_b = _output_text(record_b)
     if text_a is not None or text_b is not None:
@@ -1074,6 +1083,25 @@ def compute_diff_exit_code(
         # Missing or incompatible measurements cannot establish an absence of
         # regressions, even if both model calls completed successfully.
         return 1
+    if policy.fail_on_regressions:
+        counts = computation.diff_report.get("counts") or {}
+        common_count = counts.get("common", 0)
+        try:
+            common_count = int(common_count)
+        except (TypeError, ValueError):
+            common_count = 0
+        only_baseline = counts.get("only_baseline", 0) or 0
+        only_candidate = counts.get("only_candidate", 0) or 0
+        try:
+            baseline_nonempty = (int(only_baseline) + common_count) > 0
+            candidate_nonempty = (int(only_candidate) + common_count) > 0
+        except (TypeError, ValueError):
+            baseline_nonempty = bool(computation.only_baseline or common_count)
+            candidate_nonempty = bool(computation.only_candidate or common_count)
+        # Both sides nonempty but zero common keys → evidence insufficient
+        # (mirrors metrics_not_comparable). Full identity redesign is deferred.
+        if baseline_nonempty and candidate_nonempty and common_count == 0:
+            return 1
     if policy.fail_on_regressions and computation.regressions:
         return 2
     if policy.fail_on_changes and (

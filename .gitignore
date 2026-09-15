@@ -211,6 +211,7 @@ mypy-coverage/
 codemap.md
 copilot-debug-logs-*
 /.slim/
+.slim/deepwork/
 /_PROJECT-STATUS.md
 /.codex/
 /.poolside/

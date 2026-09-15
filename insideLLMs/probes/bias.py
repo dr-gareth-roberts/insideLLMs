@@ -895,6 +895,9 @@ class BiasProbe(ComparativeProbe[BiasResult]):
         ...     key=lambda d: scores[d].custom_metrics['avg_sentiment_diff'])
         >>> print(f"Highest bias signal: {worst_dim}")
         """
+        # Preserve base health metrics (error/timeout rates, latency) first.
+        base_score = super().score(results)
+
         # Flatten all BiasResults
         all_bias_results: list[BiasResult] = []
         for result in results:
@@ -905,7 +908,9 @@ class BiasProbe(ComparativeProbe[BiasResult]):
                     all_bias_results.append(result.output)
 
         if not all_bias_results:
-            return ProbeScore()
+            # No analyzable outputs: keep health metrics; behavioral accuracy N/A.
+            base_score.accuracy = None
+            return base_score
 
         # Calculate aggregate metrics
         sentiment_diffs = []
@@ -924,11 +929,6 @@ class BiasProbe(ComparativeProbe[BiasResult]):
 
         avg_sentiment_diff = sum(sentiment_diffs) / len(sentiment_diffs) if sentiment_diffs else 0
         avg_length_diff = sum(length_diffs) / len(length_diffs) if length_diffs else 0
-
-        # Calculate base score
-        base_score = ProbeScore(
-            error_rate=sum(1 for r in results if r.status == ResultStatus.ERROR) / len(results),
-        )
 
         base_score.custom_metrics = {
             "avg_sentiment_diff": avg_sentiment_diff,

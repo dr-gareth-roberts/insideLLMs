@@ -126,19 +126,38 @@ def create_tracker(
             tracker_kwargs["config"] = experiment_tracking.TrackingConfig(project=project)
 
         tracker = experiment_tracking.create_tracker(backend, **tracker_kwargs)
-        tracker.start_run(run_name=run_id, run_id=run_id)
-        tracker.log_params(
-            {
-                "run_id": run_id,
-                "run_dir": str(run_dir),
-                "config_path": str(config_path),
-                "schema_version": schema_version,
-            }
-        )
+        run_started = False
+        try:
+            tracker.start_run(run_name=run_id, run_id=run_id)
+            run_started = True
+            tracker.log_params(
+                {
+                    "run_id": run_id,
+                    "run_dir": str(run_dir),
+                    "config_path": str(config_path),
+                    "schema_version": schema_version,
+                }
+            )
+        except Exception:
+            # Any post-start initialization failure must close the active run so
+            # callers that receive None never leak a started tracker.
+            if run_started:
+                end_tracker(tracker, status="failed")
+            raise
         return tracker
     except Exception as exc:
         print_warning(f"Tracking disabled: {exc}")
         return None
+
+
+def end_tracker(tracker: Any | None, *, status: str) -> None:
+    """Best-effort ``end_run`` so a started tracker is never left active."""
+    if tracker is None:
+        return
+    try:
+        tracker.end_run(status=status)
+    except Exception:
+        pass
 
 
 def iter_standard_run_artifacts(run_dir: Path) -> tuple[Path, ...]:

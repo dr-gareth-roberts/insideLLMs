@@ -1,5 +1,7 @@
 """Record processing utilities for the insideLLMs CLI."""
 
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -47,16 +49,46 @@ def _write_jsonl(
     *,
     strict_serialization: bool = True,
 ) -> None:
-    """Write a list of dictionaries to a JSON Lines file."""
-    with open(output_path, "w", encoding="utf-8") as f:
-        for record in records:
+    """Write a list of dictionaries to a JSON Lines file atomically.
+
+    Serialization completes into a unique same-directory temp file before the
+    destination is published via ``os.replace``, so a mid-write failure leaves
+    any pre-existing output intact.
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fd: int | None = None
+    tmp_path: Path | None = None
+    try:
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            dir=str(output_path.parent),
+        )
+        tmp_path = Path(tmp_name)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
+            for record in records:
+                try:
+                    line = _stable_json_dumps(record, strict=strict_serialization)
+                except StrictSerializationError as exc:
+                    raise ValueError(
+                        "strict_serialization requires JSON-stable values in "
+                        "records.jsonl emission."
+                    ) from exc
+                handle.write(line + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, output_path)
+        tmp_path = None
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if tmp_path is not None:
             try:
-                line = _stable_json_dumps(record, strict=strict_serialization)
-            except StrictSerializationError as exc:
-                raise ValueError(
-                    "strict_serialization requires JSON-stable values in records.jsonl emission."
-                ) from exc
-            f.write(line + "\n")
+                tmp_path.unlink()
+            except OSError:
+                pass
 
 
 def _parse_datetime(value: Any) -> Optional[datetime]:

@@ -160,12 +160,13 @@ def test_config_to_dict_model_dump_exception() -> None:
     assert out["x"] == 1
 
 
-def test_validator_parse_obj_and_non_validation_error() -> None:
+def test_validator_model_validate_and_non_validation_error() -> None:
+    """pydantic>=2 path only: model_validate; non-ValidationError propagates."""
     from insideLLMs.schemas.validator import OutputValidator
 
     class _Model:
         @classmethod
-        def parse_obj(cls, data):
+        def model_validate(cls, data):
             return {"ok": data}
 
     class _Exploding:

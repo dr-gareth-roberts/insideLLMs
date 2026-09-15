@@ -1,0 +1,3 @@
+# OpenCode visibility: deepwork progress files stay git-local but readable
+!.slim/deepwork/
+!.slim/deepwork/**
