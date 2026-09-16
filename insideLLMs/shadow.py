@@ -29,6 +29,7 @@ from threading import Lock
 from typing import Any, Awaitable, Callable, Mapping
 from uuid import uuid4
 
+from insideLLMs._secrets import redact_query_string
 from insideLLMs._serialization import stable_json_dumps
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 
@@ -166,10 +167,11 @@ def fastapi(
             body=request_body,
         )
 
+        persisted_query = redact_query_string(query)
         input_payload: dict[str, Any] = {
             "method": method,
             "path": path,
-            "query": query,
+            "query": persisted_query,
             "body": _decode_request_body(request_body),
         }
         if include_request_headers:
@@ -227,7 +229,7 @@ def fastapi(
                                 "http": {
                                     "method": method,
                                     "path": path,
-                                    "query": query,
+                                    "query": persisted_query,
                                 },
                                 "sample_rate": sample_rate,
                             },
@@ -296,7 +298,7 @@ def fastapi(
                         "http": {
                             "method": method,
                             "path": path,
-                            "query": query,
+                            "query": persisted_query,
                             "status_code": status_code,
                         },
                         "sample_rate": sample_rate,

@@ -3495,6 +3495,12 @@
     {
       "source": "insideLLMs.shadow",
       "source_layer": "core",
+      "target": "insideLLMs._secrets",
+      "target_layer": "core"
+    },
+    {
+      "source": "insideLLMs.shadow",
+      "source_layer": "core",
       "target": "insideLLMs._serialization",
       "target_layer": "core"
     },
@@ -3688,7 +3694,7 @@
       "target_layer": "contracts"
     },
     {
-      "count": 58,
+      "count": 59,
       "source_layer": "core",
       "target_layer": "core"
     },
@@ -3866,10 +3872,10 @@
       "path": "insideLLMs/_artifact_snapshot.py"
     },
     {
-      "fan_in": 9,
+      "fan_in": 10,
       "fan_out": 0,
       "layer": "core",
-      "loc": 182,
+      "loc": 195,
       "module": "insideLLMs._secrets",
       "path": "insideLLMs/_secrets.py"
     },
@@ -4221,7 +4227,7 @@
       "fan_in": 1,
       "fan_out": 8,
       "layer": "cli",
-      "loc": 392,
+      "loc": 395,
       "module": "insideLLMs.cli.commands.report",
       "path": "insideLLMs/cli/commands/report.py"
     },
@@ -4261,7 +4267,7 @@
       "fan_in": 1,
       "fan_out": 4,
       "layer": "cli",
-      "loc": 193,
+      "loc": 212,
       "module": "insideLLMs.cli.commands.validate",
       "path": "insideLLMs/cli/commands/validate.py"
     },
@@ -5397,7 +5403,7 @@
       "fan_in": 1,
       "fan_out": 2,
       "layer": "core",
-      "loc": 2395,
+      "loc": 2406,
       "module": "insideLLMs.retry",
       "path": "insideLLMs/retry.py"
     },
@@ -5691,9 +5697,9 @@
     },
     {
       "fan_in": 1,
-      "fan_out": 2,
+      "fan_out": 3,
       "layer": "core",
-      "loc": 314,
+      "loc": 316,
       "module": "insideLLMs.shadow",
       "path": "insideLLMs/shadow.py"
     },
@@ -6176,10 +6182,10 @@
   ],
   "schema_version": 1,
   "summary": {
-    "internal_edge_count": 600,
+    "internal_edge_count": 601,
     "module_count": 249,
     "optional_import_count": 66,
-    "package_loc": 254249,
+    "package_loc": 254297,
     "static_test_references_by_subtree": {
       "insideLLMs": 17,
       "insideLLMs._artifact_snapshot": 1,
@@ -6223,9 +6229,9 @@
       "insideLLMs.resources": 8,
       "insideLLMs.results": 74,
       "insideLLMs.retry": 46,
-      "insideLLMs.runtime": 342,
+      "insideLLMs.runtime": 343,
       "insideLLMs.safety": 36,
-      "insideLLMs.schemas": 134,
+      "insideLLMs.schemas": 135,
       "insideLLMs.semantic_cache": 30,
       "insideLLMs.shadow": 11,
       "insideLLMs.signing": 3,

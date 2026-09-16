@@ -552,3 +552,153 @@ def test_token_bucket_total_requests_counts_once_per_acquire() -> None:
     assert refill_n["n"] >= 2  # loop spun more than once
     # One logical acquire → +1 total_requests even though the loop spun twice.
     assert limiter._stats.total_requests == before + 1
+
+
+@pytest.mark.parametrize("use_context", [False, True])
+@pytest.mark.parametrize("old_fails", [False, True])
+def test_circuit_reset_invalidates_inflight_outcomes_and_releases(
+    monkeypatch: pytest.MonkeyPatch,
+    use_context: bool,
+    old_fails: bool,
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    now = [100.0]
+    monkeypatch.setattr("insideLLMs.retry.time.time", lambda: now[0])
+    circuit = CircuitBreaker(
+        "generation",
+        config=CircuitBreakerConfig(
+            failure_threshold=1,
+            success_threshold=2,
+            reset_timeout=10,
+            half_open_max_calls=1,
+        ),
+    )
+
+    def fail() -> None:
+        raise RuntimeError("failure")
+
+    def half_open() -> None:
+        with pytest.raises(RuntimeError):
+            circuit.execute(fail)
+        now[0] += 11
+        assert circuit.state == CircuitState.HALF_OPEN
+
+    old_entered, old_release = threading.Event(), threading.Event()
+    new_entered, new_release = threading.Event(), threading.Event()
+
+    def hold(entered: threading.Event, release: threading.Event, fails: bool) -> None:
+        def operation() -> None:
+            entered.set()
+            assert release.wait(5)
+            if fails:
+                fail()
+
+        if use_context:
+            with circuit:
+                operation()
+        else:
+            circuit.execute(operation)
+
+    half_open()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        old = pool.submit(hold, old_entered, old_release, old_fails)
+        try:
+            assert old_entered.wait(5)
+            circuit.reset()
+            half_open()
+            new = pool.submit(hold, new_entered, new_release, False)
+            assert new_entered.wait(5)
+            old_release.set()
+            if old_fails:
+                with pytest.raises(RuntimeError):
+                    old.result(timeout=5)
+            else:
+                old.result(timeout=5)
+            assert circuit.state == CircuitState.HALF_OPEN
+            with pytest.raises(CircuitBreakerOpen):
+                circuit.execute(lambda: "must not be admitted")
+        finally:
+            old_release.set()
+            new_release.set()
+        new.result(timeout=5)
+    # The stale success must not count toward closing the new cycle.
+    assert circuit.state == CircuitState.HALF_OPEN
+    assert circuit.execute(lambda: "recovered") == "recovered"
+    assert circuit.state == CircuitState.CLOSED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("old_fails", [False, True])
+@pytest.mark.parametrize("manual_reset", [False, True])
+async def test_circuit_reset_keeps_async_context_generation_isolated(
+    monkeypatch: pytest.MonkeyPatch,
+    old_fails: bool,
+    manual_reset: bool,
+) -> None:
+    now = [100.0]
+    monkeypatch.setattr("insideLLMs.retry.time.time", lambda: now[0])
+    circuit = CircuitBreaker(
+        "async-reset",
+        config=CircuitBreakerConfig(
+            failure_threshold=1,
+            success_threshold=3,
+            reset_timeout=10,
+            half_open_max_calls=2,
+        ),
+    )
+
+    def half_open() -> None:
+        with pytest.raises(RuntimeError):
+            with circuit:
+                raise RuntimeError("trip")
+        now[0] += 11
+        assert circuit.state == CircuitState.HALF_OPEN
+
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def old_call() -> None:
+        with circuit:
+            entered.set()
+            await release.wait()
+            if old_fails:
+                raise RuntimeError("old failure")
+
+    half_open()
+    task = asyncio.create_task(old_call())
+    try:
+        await asyncio.wait_for(entered.wait(), 5)
+        if manual_reset:
+            circuit.reset()
+        half_open()
+        with circuit, circuit:
+            release.set()
+            if old_fails:
+                with pytest.raises(RuntimeError, match="old failure"):
+                    await asyncio.wait_for(task, 5)
+            else:
+                await asyncio.wait_for(task, 5)
+            assert circuit.state == CircuitState.HALF_OPEN
+            with pytest.raises(CircuitBreakerOpen):
+                with circuit:
+                    pass
+        assert circuit.state == CircuitState.HALF_OPEN
+        with circuit:
+            pass
+        assert circuit.state == CircuitState.CLOSED
+    finally:
+        release.set()
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+def test_circuit_reset_inside_nested_context_does_not_apply_old_failure() -> None:
+    circuit = CircuitBreaker("nested-reset", config=CircuitBreakerConfig(failure_threshold=1))
+    with pytest.raises(RuntimeError):
+        with circuit:
+            circuit.reset()
+            with circuit:
+                pass
+            raise RuntimeError("stale outer failure")
+    assert circuit.state == CircuitState.CLOSED

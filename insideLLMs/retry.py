@@ -1628,8 +1628,9 @@ class CircuitBreaker:
 
     Notes
     -----
-    - The circuit breaker is not thread-safe. For multi-threaded applications,
-      use appropriate synchronization.
+    - Admissions and state transitions are synchronized across threads. Context
+      manager frames are local to each thread/asyncio task. Reset and state
+      transitions invalidate outcomes and slot releases from older calls.
     - State transitions are logged using the ``insideLLMs.retry`` logger.
     - The ``reset()`` method can be used to manually close the circuit.
 
@@ -1655,11 +1656,12 @@ class CircuitBreaker:
         # In-flight gauge for HALF_OPEN probe calls (increment on admit,
         # decrement in finally). Never a one-shot latch.
         self._half_open_calls = 0
+        self._generation = 0
         # Task- and thread-local LIFO of context-manager acquisitions.
         # ContextVar (not threading.local) so overlapping asyncio tasks on the
         # same thread do not consume each other's stack frames. Tuples are
         # copy-on-write; never mutate a list returned from .get().
-        self._context_stack_var: ContextVar[tuple[bool, ...]] = ContextVar(
+        self._context_stack_var: ContextVar[tuple[tuple[int, bool], ...]] = ContextVar(
             f"circuit_breaker_ctx_stack_{id(self)}",
             default=(),
         )
@@ -1750,7 +1752,7 @@ class CircuitBreaker:
             if elapsed >= self.config.reset_timeout:
                 logger.info(f"Circuit '{self.name}' transitioning to HALF_OPEN")
                 self._state = CircuitState.HALF_OPEN
-                self._half_open_calls = 0
+                self._invalidate_inflight()
                 self._success_count = 0
 
     def _record_success(self) -> None:
@@ -1773,8 +1775,7 @@ class CircuitBreaker:
                 self._failure_count = 0
                 self._success_count = 0
                 self._last_failure_time = None
-                # In-flight gauge is decremented in finally; leave count alone
-                # here so concurrent half-open slots can still unwind cleanly.
+                self._invalidate_inflight()
         elif self._state == CircuitState.CLOSED:
             self._failure_count = 0
 
@@ -1797,27 +1798,34 @@ class CircuitBreaker:
         if self._state == CircuitState.HALF_OPEN:
             logger.info(f"Circuit '{self.name}' transitioning to OPEN (half-open failure)")
             self._state = CircuitState.OPEN
+            self._invalidate_inflight()
             self._success_count = 0
         elif self._failure_count >= self.config.failure_threshold:
             logger.warning(f"Circuit '{self.name}' transitioning to OPEN")
             self._state = CircuitState.OPEN
+            self._invalidate_inflight()
 
-    def _release_half_open_slot(self) -> None:
+    def _invalidate_inflight(self) -> None:
+        """Start a new admission generation; caller must hold the lock."""
+        self._generation += 1
+        self._half_open_calls = 0
+
+    def _release_half_open_slot(self, generation: int) -> None:
         """Decrement the half-open in-flight gauge if a slot was held."""
         with self._lock:
-            if self._half_open_calls > 0:
+            if generation == self._generation and self._half_open_calls > 0:
                 self._half_open_calls -= 1
 
-    def _push_context_acquired(self, acquired: bool) -> None:
-        """Push one acquisition flag for this task/thread context frame."""
+    def _push_context_acquired(self, generation: int, acquired: bool) -> None:
+        """Push one admission generation and acquisition flag for this task/thread context frame."""
         stack = self._context_stack_var.get()
-        self._context_stack_var.set(stack + (acquired,))
+        self._context_stack_var.set(stack + ((generation, acquired),))
 
-    def _pop_context_acquired(self) -> bool:
-        """Pop this frame's acquisition flag (copy-on-write)."""
+    def _pop_context_acquired(self) -> tuple[int, bool]:
+        """Pop this frame's admission generation and acquisition flag (copy-on-write)."""
         stack = self._context_stack_var.get()
         if not stack:
-            return False
+            return (-1, False)
         *rest, top = stack
         self._context_stack_var.set(tuple(rest))
         return top
@@ -1925,20 +1933,23 @@ class CircuitBreaker:
                     raise CircuitBreakerOpen(self.name, 0)
                 self._half_open_calls += 1
                 half_open_acquired = True
+            generation = self._generation
 
         try:
             result = func(*args, **kwargs)
             with self._lock:
-                self._record_success()
+                if generation == self._generation:
+                    self._record_success()
             return result
 
         except Exception as _:
             with self._lock:
-                self._record_failure()
+                if generation == self._generation:
+                    self._record_failure()
             raise
         finally:
             if half_open_acquired:
-                self._release_half_open_slot()
+                self._release_half_open_slot(generation)
 
     def __enter__(self) -> "CircuitBreaker":
         """Enter the circuit breaker context manager.
@@ -1985,9 +1996,10 @@ class CircuitBreaker:
                     raise CircuitBreakerOpen(self.name, 0)
                 self._half_open_calls += 1
                 half_open_acquired = True
+            generation = self._generation
 
         # Push after successful admit so a rejected enter does not leave a frame.
-        self._push_context_acquired(half_open_acquired)
+        self._push_context_acquired(generation, half_open_acquired)
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
@@ -2020,19 +2032,19 @@ class CircuitBreaker:
         ... except ConnectionError:
         ...     pass  # Circuit records this as a failure
         """
-        half_open_acquired = self._pop_context_acquired()
+        generation, half_open_acquired = self._pop_context_acquired()
         try:
             with self._lock:
-                # Half-open probe budget is only adjusted by frames that held a
-                # half-open slot. Closed-state frames still record outcomes.
-                if half_open_acquired or self._state != CircuitState.HALF_OPEN:
+                # Stale frames must neither change state nor release slots
+                # belonging to a later recovery cycle.
+                if generation == self._generation:
                     if exc_type is None:
                         self._record_success()
                     else:
                         self._record_failure()
         finally:
             if half_open_acquired:
-                self._release_half_open_slot()
+                self._release_half_open_slot(generation)
         return False
 
     def reset(self) -> None:
@@ -2070,9 +2082,8 @@ class CircuitBreaker:
             self._failure_count = 0
             self._success_count = 0
             self._last_failure_time = None
-            self._half_open_calls = 0
-        # Clear acquisition frames in the current task/thread context only.
-        self._context_stack_var.set(())
+            self._invalidate_inflight()
+        # Keep active context frames so each exit consumes its own stale token.
         logger.info(f"Circuit '{self.name}' manually reset")
 
 

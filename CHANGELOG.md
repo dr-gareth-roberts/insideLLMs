@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PR #131 review follow-up: report rollback retains and reports backups when
+  restoration fails; records validation opens the final component with
+  `O_NOFOLLOW` and reports malformed manifest `schemas` through strict/warn
+  validation. Circuit breaker reset/state transitions invalidate older in-flight
+  outcomes and slot releases. Shadow capture redacts authentication query
+  parameters in both persisted locations, while preserving the application request.
+  JSONL reader documentation now states that non-object records raise `ValueError`.
+
 - Full-codebase audit remediation (behavioral fixes, no schema contract changes):
   - Probe batch failures are classified by explicit exception type
     (`ModelTimeoutError`/`TimeoutError` → timeout, `RateLimitError` → rate_limited)

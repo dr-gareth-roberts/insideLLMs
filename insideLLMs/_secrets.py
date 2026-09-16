@@ -115,6 +115,19 @@ def _redact_param_pairs(pairs: list[tuple[str, str]]) -> tuple[list[tuple[str, s
     )
 
 
+def redact_query_string(value: str) -> str:
+    """Redact auth parameters in a raw query and any OAuth-style fragment.
+
+    Keep duplicate parameters, blank values, and non-secret queries intact.
+    """
+    components = value.split("#", 1)
+    for index, component in enumerate(components):
+        pairs, changed = _redact_param_pairs(parse_qsl(component, keep_blank_values=True))
+        if changed:
+            components[index] = urlencode(pairs)
+    return "#".join(components)
+
+
 def _redact_url(value: str) -> str:
     if "://" not in value:
         return value

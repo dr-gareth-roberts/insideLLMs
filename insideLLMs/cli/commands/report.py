@@ -356,16 +356,22 @@ def cmd_report(args: argparse.Namespace) -> int:
                 try:
                     os.replace(summary_backup, summary_path)
                     summary_backup = None
-                except OSError:
-                    pass
+                except OSError as restore_error:
+                    print_warning(
+                        f"Could not restore summary; backup retained at {summary_backup}: "
+                        f"{restore_error}"
+                    )
             elif summary_published:
                 summary_path.unlink(missing_ok=True)
             if report_backup is not None:
                 try:
                     os.replace(report_backup, report_path)
                     report_backup = None
-                except OSError:
-                    pass
+                except OSError as restore_error:
+                    print_warning(
+                        f"Could not restore report; backup retained at {report_backup}: "
+                        f"{restore_error}"
+                    )
             elif report_published:
                 report_path.unlink(missing_ok=True)
             print_error(f"Could not rebuild report: {error}")
@@ -376,11 +382,8 @@ def cmd_report(args: argparse.Namespace) -> int:
             summary_stage.unlink(missing_ok=True)
         if report_stage is not None:
             report_stage.unlink(missing_ok=True)
-        if not pair_committed:
-            if summary_backup is not None:
-                summary_backup.unlink(missing_ok=True)
-            if report_backup is not None:
-                report_backup.unlink(missing_ok=True)
+        # Unrestored backups are the recovery copies; only committed backups
+        # may be deleted, in the successful publish path above.
 
     print_success(f"Summary written to: {summary_path}")
     print_success(f"Report written to: {report_path}")

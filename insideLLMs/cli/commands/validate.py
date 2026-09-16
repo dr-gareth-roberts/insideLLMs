@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import stat
 from pathlib import Path
 
 import yaml
@@ -45,6 +46,20 @@ def _contained_records_path(run_dir: Path, records_file: object) -> Path:
     if os.path.lexists(records_path) and records_path.is_symlink():
         raise ValueError(f"records_file must not be a symlink: {records_file}")
     return records_path
+
+
+def _open_records_nofollow(path: str, flags: int) -> int:
+    """Open the final component without following a raced-in symlink."""
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_NONBLOCK"):
+        raise OSError("Records validation requires no-follow file I/O")
+    descriptor = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ValueError("records_file must be a regular file")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -100,10 +115,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
             return 1
 
         # Determine schema version: CLI override > manifest.schema_version > manifest.schemas[name]
+        manifest_schemas = manifest_obj.get("schemas", {})
+        # Let schema validation report malformed nested values in strict/warn
+        # mode, without crashing during version discovery.
+        schema_versions = manifest_schemas if isinstance(manifest_schemas, dict) else {}
         schema_version = (
             args.schema_version
             or manifest_obj.get("schema_version")
-            or manifest_obj.get("schemas", {}).get(registry.RUN_MANIFEST)
+            or schema_versions.get(registry.RUN_MANIFEST)
             or DEFAULT_SCHEMA_VERSION
         )
 
@@ -138,7 +157,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             return 0 if args.mode == "warn" else 1
 
         try:
-            with open(records_path, encoding="utf-8") as f:
+            with open(records_path, encoding="utf-8", opener=_open_records_nofollow) as f:
                 for line_no, line in enumerate(f, start=1):
                     line = line.strip()
                     if not line:

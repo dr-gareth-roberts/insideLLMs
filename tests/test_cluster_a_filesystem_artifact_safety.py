@@ -822,3 +822,121 @@ def test_statistical_html_escapes_dynamic_model_name() -> None:
 def test_statistical_report_unknown_format_raises() -> None:
     with pytest.raises(ValueError, match="Unsupported statistical report format"):
         generate_statistical_report([_minimal_experiment("m")], format="pdf")
+
+
+@pytest.mark.parametrize("failed_restore", ["summary.json", "report.html"])
+def test_report_retains_backup_when_restore_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failed_restore: str,
+) -> None:
+    _seed_report_run(tmp_path)
+    originals = {name: (tmp_path / name).read_bytes() for name in ("summary.json", "report.html")}
+    real_replace = os.replace
+
+    def replace(src: Any, dst: Any) -> None:
+        source, destination = Path(src), Path(dst)
+        if destination.name == "report.html" and ".bak" not in source.name:
+            raise OSError("publish failed")
+        if destination.name == failed_restore and ".bak" in source.name:
+            raise OSError("restore failed")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", replace)
+    assert report_command.cmd_report(Namespace(run_dir=str(tmp_path), report_title=None)) == 1
+    backups = list(tmp_path.glob(f".*.{failed_restore}.bak"))
+    assert len(backups) == 1
+    assert backups[0].read_bytes() == originals[failed_restore]
+    restored = next(name for name in originals if name != failed_restore)
+    assert (tmp_path / restored).read_bytes() == originals[restored]
+    assert not list(tmp_path.glob(f".*.{restored}.bak"))
+    captured = capsys.readouterr()
+    assert str(backups[0]) in captured.out + captured.err
+
+
+def _seed_valid_validation_run(run_dir: Path) -> None:
+    from insideLLMs.schemas.v1_0_2 import RunManifest
+
+    manifest = RunManifest(
+        run_id="review-validation",
+        created_at="2026-01-01T00:00:00Z",
+        started_at="2026-01-01T00:00:00Z",
+        completed_at="2026-01-01T00:00:00Z",
+        model={"model_id": "dummy"},
+        probe={"probe_id": "logic"},
+    )
+    (run_dir / "manifest.json").write_text(manifest.model_dump_json(), encoding="utf-8")
+    (run_dir / "records.jsonl").write_text("", encoding="utf-8")
+
+
+def test_validate_rejects_symlink_swapped_at_open(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import builtins
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _seed_valid_validation_run(run_dir)
+    assert validate_command.cmd_validate(_validate_args(run_dir)) == 0
+    records = run_dir / "records.jsonl"
+    outside = tmp_path / "outside.jsonl"
+    outside.write_text("", encoding="utf-8")
+    real_open = builtins.open
+    swapped = False
+
+    def swap_then_open(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal swapped
+        if Path(path) == records:
+            records.unlink()
+            records.symlink_to(outside)
+            swapped = True
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(validate_command, "open", swap_then_open, raising=False)
+    assert validate_command.cmd_validate(_validate_args(run_dir)) == 1
+    assert swapped
+    captured = capsys.readouterr()
+    assert "Error reading records" in captured.out + captured.err
+
+
+def test_validate_fails_closed_without_nofollow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_valid_validation_run(tmp_path)
+    monkeypatch.delattr(os, "O_NOFOLLOW")
+    assert validate_command.cmd_validate(_validate_args(tmp_path)) == 1
+
+
+@pytest.mark.parametrize("schemas", [[], None, "bad", 12])
+@pytest.mark.parametrize("mode", ["strict", "warn"])
+def test_validate_reports_malformed_nested_schemas(
+    tmp_path: Path,
+    schemas: object,
+    mode: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _seed_valid_validation_run(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest.pop("schema_version")
+    manifest["schemas"] = schemas
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert validate_command.cmd_validate(_validate_args(tmp_path, mode=mode)) == (
+        0 if mode == "warn" else 1
+    )
+    captured = capsys.readouterr()
+    assert "Manifest schema mismatch" in captured.out + captured.err
+
+
+@pytest.mark.parametrize("invalid", ["42", "[]", "null", '"text"'])
+def test_read_jsonl_records_rejects_non_objects(tmp_path: Path, invalid: str) -> None:
+    from insideLLMs.runtime._artifact_utils import _read_jsonl_records
+
+    path = tmp_path / "records.jsonl"
+    path.write_text('{"ok": true}\n' + invalid + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="expected object on line 2"):
+        _read_jsonl_records(path)

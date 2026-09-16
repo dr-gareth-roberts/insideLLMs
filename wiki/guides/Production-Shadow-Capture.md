@@ -42,6 +42,10 @@ app.middleware("http")(
 
 ## Privacy and Redaction Guidance
 
+- Authentication query parameters (including OAuth tokens and AWS signatures)
+  are automatically redacted in `input.query` and `custom.http.query`, for both
+  successful and failed requests. Ordinary query values and duplicate parameters
+  are preserved. The original request and deterministic sampling inputs are unchanged.
 - Default to `include_request_headers=False`.
 - Redact or hash sensitive request/response fields before writing.
 - Restrict access to shadow artifact directories.

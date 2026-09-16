@@ -391,12 +391,12 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     -------
     list[dict[str, Any]]
         List of parsed record dictionaries. Empty lines are skipped.
-        Non-dict JSON values are skipped.
 
     Raises
     ------
     ValueError
-        If any non-empty line contains invalid JSON.
+        If any non-empty line contains invalid JSON or a JSON value that is
+        not an object (dict).
 
     Examples
     --------
