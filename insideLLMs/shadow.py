@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,8 +29,11 @@ from threading import Lock
 from typing import Any, Awaitable, Callable, Mapping
 from uuid import uuid4
 
+from insideLLMs._secrets import redact_query_string
 from insideLLMs._serialization import stable_json_dumps
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
+
+_logger = logging.getLogger(__name__)
 
 _MIDDLEWARE_PROBE_ID = "shadow_capture"
 _MIDDLEWARE_PROBE_VERSION = "1.0.0"
@@ -163,10 +167,11 @@ def fastapi(
             body=request_body,
         )
 
+        persisted_query = redact_query_string(query)
         input_payload: dict[str, Any] = {
             "method": method,
             "path": path,
-            "query": query,
+            "query": persisted_query,
             "body": _decode_request_body(request_body),
         }
         if include_request_headers:
@@ -179,52 +184,60 @@ def fastapi(
                 completed_dt = _to_utc(now())
                 completed_at = completed_dt.isoformat()
                 latency_ms = max((completed_dt - started_dt).total_seconds() * 1000.0, 0.0)
-                writer.append(
-                    {
-                        "schema_version": DEFAULT_SCHEMA_VERSION,
-                        "run_id": effective_run_id,
-                        "started_at": started_at,
-                        "completed_at": completed_at,
-                        "model": {
-                            "model_id": model_id,
-                            "provider": model_provider,
-                            "params": {},
-                        },
-                        "probe": {
-                            "probe_id": probe_id,
-                            "probe_version": _MIDDLEWARE_PROBE_VERSION,
-                            "params": {},
-                        },
-                        "example_id": _record_example_id(
-                            method=method,
-                            path=path,
-                            query=query,
-                            started_at=started_at,
-                        ),
-                        "dataset": {
-                            "dataset_id": dataset_id,
-                            "dataset_version": None,
-                            "dataset_hash": None,
-                            "provenance": "shadow.fastapi",
-                            "params": {"sample_rate": sample_rate},
-                        },
-                        "input": input_payload,
-                        "output": None,
-                        "output_text": None,
-                        "scores": {},
-                        "primary_metric": None,
-                        "usage": {},
-                        "latency_ms": latency_ms,
-                        "status": "error",
-                        "error": str(exc),
-                        "error_type": exc.__class__.__name__,
-                        "custom": {
-                            "source": "shadow.fastapi",
-                            "http": {"method": method, "path": path, "query": query},
-                            "sample_rate": sample_rate,
-                        },
-                    }
-                )
+                try:
+                    writer.append(
+                        {
+                            "schema_version": DEFAULT_SCHEMA_VERSION,
+                            "run_id": effective_run_id,
+                            "started_at": started_at,
+                            "completed_at": completed_at,
+                            "model": {
+                                "model_id": model_id,
+                                "provider": model_provider,
+                                "params": {},
+                            },
+                            "probe": {
+                                "probe_id": probe_id,
+                                "probe_version": _MIDDLEWARE_PROBE_VERSION,
+                                "params": {},
+                            },
+                            "example_id": _record_example_id(
+                                method=method,
+                                path=path,
+                                query=query,
+                                started_at=started_at,
+                            ),
+                            "dataset": {
+                                "dataset_id": dataset_id,
+                                "dataset_version": None,
+                                "dataset_hash": None,
+                                "provenance": "shadow.fastapi",
+                                "params": {"sample_rate": sample_rate},
+                            },
+                            "input": input_payload,
+                            "output": None,
+                            "output_text": None,
+                            "scores": {},
+                            "primary_metric": None,
+                            "usage": {},
+                            "latency_ms": latency_ms,
+                            "status": "error",
+                            "error": str(exc),
+                            "error_type": exc.__class__.__name__,
+                            "custom": {
+                                "source": "shadow.fastapi",
+                                "http": {
+                                    "method": method,
+                                    "path": path,
+                                    "query": persisted_query,
+                                },
+                                "sample_rate": sample_rate,
+                            },
+                        }
+                    )
+                except Exception:
+                    # Capture is best-effort: never replace the original app error.
+                    _logger.exception("shadow capture write failed during app error")
             raise
 
         if not should_capture:
@@ -236,61 +249,65 @@ def fastapi(
         status_code = int(getattr(response, "status_code", 200))
         response_headers = _safe_mapping(getattr(response, "headers", {}))
         status = "error" if status_code >= 500 else "success"
-        writer.append(
-            {
-                "schema_version": DEFAULT_SCHEMA_VERSION,
-                "run_id": effective_run_id,
-                "started_at": started_at,
-                "completed_at": completed_at,
-                "model": {
-                    "model_id": model_id,
-                    "provider": model_provider,
-                    "params": {},
-                },
-                "probe": {
-                    "probe_id": probe_id,
-                    "probe_version": _MIDDLEWARE_PROBE_VERSION,
-                    "params": {},
-                },
-                "example_id": _record_example_id(
-                    method=method,
-                    path=path,
-                    query=query,
-                    started_at=started_at,
-                ),
-                "dataset": {
-                    "dataset_id": dataset_id,
-                    "dataset_version": None,
-                    "dataset_hash": None,
-                    "provenance": "shadow.fastapi",
-                    "params": {"sample_rate": sample_rate},
-                },
-                "input": input_payload,
-                "output": {
-                    "status_code": status_code,
-                    "content_type": response_headers.get("content-type"),
-                    "content_length": response_headers.get("content-length"),
-                },
-                "output_text": None,
-                "scores": {},
-                "primary_metric": None,
-                "usage": {},
-                "latency_ms": latency_ms,
-                "status": status,
-                "error": f"HTTP {status_code}" if status == "error" else None,
-                "error_type": "HTTPStatusError" if status == "error" else None,
-                "custom": {
-                    "source": "shadow.fastapi",
-                    "http": {
-                        "method": method,
-                        "path": path,
-                        "query": query,
-                        "status_code": status_code,
+        try:
+            writer.append(
+                {
+                    "schema_version": DEFAULT_SCHEMA_VERSION,
+                    "run_id": effective_run_id,
+                    "started_at": started_at,
+                    "completed_at": completed_at,
+                    "model": {
+                        "model_id": model_id,
+                        "provider": model_provider,
+                        "params": {},
                     },
-                    "sample_rate": sample_rate,
-                },
-            }
-        )
+                    "probe": {
+                        "probe_id": probe_id,
+                        "probe_version": _MIDDLEWARE_PROBE_VERSION,
+                        "params": {},
+                    },
+                    "example_id": _record_example_id(
+                        method=method,
+                        path=path,
+                        query=query,
+                        started_at=started_at,
+                    ),
+                    "dataset": {
+                        "dataset_id": dataset_id,
+                        "dataset_version": None,
+                        "dataset_hash": None,
+                        "provenance": "shadow.fastapi",
+                        "params": {"sample_rate": sample_rate},
+                    },
+                    "input": input_payload,
+                    "output": {
+                        "status_code": status_code,
+                        "content_type": response_headers.get("content-type"),
+                        "content_length": response_headers.get("content-length"),
+                    },
+                    "output_text": None,
+                    "scores": {},
+                    "primary_metric": None,
+                    "usage": {},
+                    "latency_ms": latency_ms,
+                    "status": status,
+                    "error": f"HTTP {status_code}" if status == "error" else None,
+                    "error_type": "HTTPStatusError" if status == "error" else None,
+                    "custom": {
+                        "source": "shadow.fastapi",
+                        "http": {
+                            "method": method,
+                            "path": path,
+                            "query": persisted_query,
+                            "status_code": status_code,
+                        },
+                        "sample_rate": sample_rate,
+                    },
+                }
+            )
+        except Exception:
+            # Capture is best-effort: successful responses must still return.
+            _logger.exception("shadow capture write failed after successful response")
         return response
 
     return middleware

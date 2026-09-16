@@ -89,6 +89,85 @@ from typing import Any, Callable, Optional
 from insideLLMs.probes.base import ScoredProbe
 from insideLLMs.types import ProbeCategory, ProbeResult, ResultStatus
 
+# Deterministically evaluable formats for InstructionFollowingProbe.
+_SUPPORTED_FORMATS = frozenset(
+    {
+        "json",
+        "numbered_list",
+        "bullet_list",
+        "single_word",
+        "single_sentence",
+        "paragraph",
+        "code",
+    }
+)
+
+# Constraint keys with deterministic evaluators (no language/tone).
+_SUPPORTED_CONSTRAINT_KEYS = frozenset(
+    {
+        "format",
+        "max_words",
+        "min_words",
+        "max_items",
+        "min_items",
+        "include_keywords",
+        "exclude_keywords",
+    }
+)
+
+_LIMIT_CONSTRAINT_TYPES = frozenset({"word_limit", "character_limit", "sentence_limit"})
+
+
+def _validate_positive_limit(limit: Any, *, context: str = "limit") -> int:
+    """Require a positive integer limit (rejects 0, negatives, bools, None)."""
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError(f"{context} must be a positive integer, got {limit!r}")
+    return limit
+
+
+def _limit_compliance_score(count: int, limit: int) -> tuple[bool, float]:
+    """Score count against an upper limit; return (compliant, score in [0, 1])."""
+    compliant = count <= limit
+    if compliant:
+        return True, 1.0
+    overage = count - limit
+    return False, max(0.0, 1.0 - (overage / limit))
+
+
+_NUMERIC_LIMIT_KEYS = frozenset({"max_words", "min_words", "max_items", "min_items"})
+
+
+def _validate_instruction_constraints(constraints: dict[str, Any]) -> None:
+    """Reject constraints without deterministic evaluators.
+
+    Raises
+    ------
+    ValueError
+        If any key is unsupported (e.g. language, tone), format is unknown,
+        or a word/item limit is not a positive integer.
+    """
+    if not constraints:
+        return
+
+    unsupported = sorted(k for k in constraints if k not in _SUPPORTED_CONSTRAINT_KEYS)
+    if unsupported:
+        supported = ", ".join(sorted(_SUPPORTED_CONSTRAINT_KEYS))
+        raise ValueError(
+            f"Unsupported constraint(s): {', '.join(unsupported)}. "
+            f"Supported constraints: {supported}. "
+            "language and tone have no deterministic evaluators and are rejected."
+        )
+
+    if "format" in constraints:
+        fmt = constraints["format"]
+        if fmt not in _SUPPORTED_FORMATS:
+            supported_fmts = ", ".join(sorted(_SUPPORTED_FORMATS))
+            raise ValueError(f"Unsupported format {fmt!r}. Supported formats: {supported_fmts}.")
+
+    for key in sorted(_NUMERIC_LIMIT_KEYS):
+        if key in constraints:
+            _validate_positive_limit(constraints[key], context=key)
+
 
 class InstructionFollowingProbe(ScoredProbe[str]):
     """Probe to test LLMs' ability to follow instructions precisely.
@@ -130,8 +209,9 @@ class InstructionFollowingProbe(ScoredProbe[str]):
     - ``min_items``: Minimum list items required
     - ``include_keywords``: List of keywords that must appear
     - ``exclude_keywords``: List of keywords that must not appear
-    - ``language``: Required response language
-    - ``tone``: Required tone (e.g., "formal", "casual")
+
+    Unsupported (rejected at validation): ``language``, ``tone``, and any
+    format outside the supported list above.
 
     Examples
     --------
@@ -345,6 +425,9 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             task = str(data)
             constraints = {}
 
+        if constraints:
+            _validate_instruction_constraints(constraints)
+
         # Build prompt with explicit constraints
         prompt_parts = [task]
 
@@ -374,8 +457,6 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             - "min_items": Minimum list items (int)
             - "include_keywords": Required keywords (list[str])
             - "exclude_keywords": Forbidden keywords (list[str])
-            - "language": Response language (str)
-            - "tone": Required tone (str)
 
         Returns
         -------
@@ -383,6 +464,11 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             Formatted constraint string with each constraint on its own line,
             prefixed with a dash for readability. Returns empty string if no
             recognized constraints are present.
+
+        Raises
+        ------
+        ValueError
+            If constraints include unsupported keys or formats.
 
         Examples
         --------
@@ -407,34 +493,16 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             - Include no more than 5 items
             - Must include these words: python, java
 
-        Example 3: Word count constraints with tone
+        Example 3: Word count constraints
 
             >>> probe = InstructionFollowingProbe()
-            >>> constraints = {
-            ...     "min_words": 50,
-            ...     "max_words": 100,
-            ...     "tone": "professional",
-            ...     "language": "English"
-            ... }
+            >>> constraints = {"min_words": 50, "max_words": 100}
             >>> result = probe._format_constraints(constraints)
             >>> print(result)
             - Use no more than 100 words
             - Use at least 50 words
-            - Respond in English
-            - Use a professional tone
-
-        Example 4: Custom format type
-
-            >>> probe = InstructionFollowingProbe()
-            >>> result = probe._format_constraints({"format": "haiku"})
-            >>> print(result)
-            - Use haiku format
-
-        Notes
-        -----
-        Unknown format types are handled gracefully by generating a generic
-        "Use {format} format" instruction.
         """
+        _validate_instruction_constraints(constraints)
         parts = []
 
         if "format" in constraints:
@@ -448,10 +516,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
                 "paragraph": "- Respond in paragraph form",
                 "code": "- Respond with code only (no explanations)",
             }
-            if fmt in format_instructions:
-                parts.append(format_instructions[fmt])
-            else:
-                parts.append(f"- Use {fmt} format")
+            parts.append(format_instructions[fmt])
 
         if "max_words" in constraints:
             parts.append(f"- Use no more than {constraints['max_words']} words")
@@ -472,12 +537,6 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         if "exclude_keywords" in constraints:
             keywords = constraints["exclude_keywords"]
             parts.append(f"- Must NOT include these words: {', '.join(keywords)}")
-
-        if "language" in constraints:
-            parts.append(f"- Respond in {constraints['language']}")
-
-        if "tone" in constraints:
-            parts.append(f"- Use a {constraints['tone']} tone")
 
         return "\n".join(parts)
 
@@ -579,6 +638,8 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         A response is considered "compliant" if the overall score is >= 0.7.
         """
         constraints = reference.get("constraints", reference) if isinstance(reference, dict) else {}
+        if constraints:
+            _validate_instruction_constraints(constraints)
 
         checks = []
         details = {}
@@ -603,20 +664,19 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             checks.append(1.0 if within_min else 0.0)
             details["within_min_words"] = within_min
 
-        # Item count checks (for lists)
+        # Item count checks (always evaluate when requested, including zero items)
         item_count = self._count_items(model_output)
-        if item_count > 0:
-            details["item_count"] = item_count
+        details["item_count"] = item_count
 
-            if "max_items" in constraints:
-                within_max = item_count <= constraints["max_items"]
-                checks.append(1.0 if within_max else 0.0)
-                details["within_max_items"] = within_max
+        if "max_items" in constraints:
+            within_max = item_count <= constraints["max_items"]
+            checks.append(1.0 if within_max else 0.0)
+            details["within_max_items"] = within_max
 
-            if "min_items" in constraints:
-                within_min = item_count >= constraints["min_items"]
-                checks.append(1.0 if within_min else 0.0)
-                details["within_min_items"] = within_min
+        if "min_items" in constraints:
+            within_min = item_count >= constraints["min_items"]
+            checks.append(1.0 if within_min else 0.0)
+            details["within_min_items"] = within_min
 
         # Keyword checks
         output_lower = model_output.lower()
@@ -678,6 +738,7 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             - "bullet_list": Lines starting with -, *, or bullet character
             - "single_word": Response contains exactly one word
             - "single_sentence": Response contains exactly one sentence
+            - "paragraph": Continuous prose without list structure
             - "code": Response contains code patterns (def, function, class, import)
 
         Returns
@@ -687,7 +748,11 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             - 1.0: Perfect format compliance
             - 0.5: Partial compliance (e.g., JSON-like but invalid)
             - 0.0-0.3: Poor compliance
-            For unknown format types, returns 1.0 (no penalty).
+
+        Raises
+        ------
+        ValueError
+            If ``expected_format`` is not a supported format.
 
         Examples
         --------
@@ -726,6 +791,12 @@ class InstructionFollowingProbe(ScoredProbe[str]):
         - Code format detection uses pattern matching for common programming
           constructs but may not catch all code formats.
         """
+        if expected_format not in _SUPPORTED_FORMATS:
+            supported_fmts = ", ".join(sorted(_SUPPORTED_FORMATS))
+            raise ValueError(
+                f"Unsupported format {expected_format!r}. Supported formats: {supported_fmts}."
+            )
+
         output = output.strip()
 
         if expected_format == "json":
@@ -764,6 +835,16 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             sentences = [s for s in sentences if s.strip()]
             return 1.0 if len(sentences) == 1 else max(0.0, 1.0 - (len(sentences) - 1) * 0.3)
 
+        elif expected_format == "paragraph":
+            if not output:
+                return 0.0
+            lines = [line for line in output.split("\n") if line.strip()]
+            list_pattern = r"^\s*(?:\d+[\.\)]|[-*•])\s+"
+            list_lines = sum(1 for line in lines if re.match(list_pattern, line))
+            if lines and list_lines / len(lines) > 0.5:
+                return 0.3
+            return 1.0 if len(output.split()) >= 5 else 0.5
+
         elif expected_format == "code":
             # Check for code indicators
             code_patterns = [
@@ -776,7 +857,8 @@ class InstructionFollowingProbe(ScoredProbe[str]):
             has_code = any(re.search(p, output) for p in code_patterns)
             return 1.0 if has_code else 0.3
 
-        return 1.0  # Unknown format, don't penalize
+        # Defensive: validated above; unreachable for normal callers.
+        raise ValueError(f"Unsupported format {expected_format!r}.")
 
     def _count_items(self, output: str) -> int:
         """Count the number of list items in the model's output.
@@ -1232,28 +1314,27 @@ class MultiStepTaskProbe(ScoredProbe[str]):
         details = {}
         step_scores = []
 
-        # Check for step indicators
-        output_lower = model_output.lower()
-        step_mentions = sum(
-            1
-            for i in range(1, len(steps) + 1)
-            if f"step {i}" in output_lower or f"{i}." in model_output
-        )
-        details["step_indicators_found"] = step_mentions
+        # Split output into per-step sections on documented "Step N" markers.
+        step_sections = self._split_step_sections(model_output, len(steps))
+        details["step_indicators_found"] = len(step_sections)
 
-        # Check expected patterns per step
+        # Check expected patterns per step (only within that step's section)
         for i, _step in enumerate(steps, 1):
             step_key = f"step_{i}"
-            if step_key in expected_patterns:
+            section = step_sections.get(i)
+            if section is None:
+                # Missing section → zero credit for this step
+                step_score = 0.0
+            elif step_key in expected_patterns:
                 patterns = expected_patterns[step_key]
                 if isinstance(patterns, str):
                     patterns = [patterns]
-
-                found = sum(1 for p in patterns if p.lower() in output_lower)
+                section_lower = section.lower()
+                found = sum(1 for p in patterns if p.lower() in section_lower)
                 step_score = found / len(patterns) if patterns else 1.0
             else:
-                # No specific pattern, check for reasonable content
-                step_score = 0.5  # Neutral
+                # No specific pattern, check for reasonable content in section
+                step_score = 0.5 if section.strip() else 0.0
 
             step_scores.append(step_score)
             details[step_key] = step_score
@@ -1280,6 +1361,37 @@ class MultiStepTaskProbe(ScoredProbe[str]):
             status=ResultStatus.SUCCESS,
             metadata=details,
         )
+
+    @staticmethod
+    def _split_step_sections(output: str, num_steps: int) -> dict[int, str]:
+        """Split multi-step output on ``Step N`` markers into per-step text.
+
+        Parameters
+        ----------
+        output :
+            Full model response.
+        num_steps :
+            Expected number of steps (unused for parsing; kept for API clarity).
+
+        Returns
+        -------
+        dict[int, str]
+            Mapping of 1-based step number to the text belonging to that step.
+            Steps without a marker are omitted (caller treats as score 0).
+        """
+        del num_steps  # parsing is marker-driven
+        pattern = re.compile(
+            r"(?:^|\n)\s*step\s+(\d+)\s*[:.\)]\s*",
+            re.IGNORECASE,
+        )
+        matches = list(pattern.finditer(output))
+        sections: dict[int, str] = {}
+        for idx, match in enumerate(matches):
+            step_num = int(match.group(1))
+            start = match.end()
+            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(output)
+            sections[step_num] = output[start:end]
+        return sections
 
 
 class ConstraintComplianceProbe(ScoredProbe[str]):
@@ -1418,9 +1530,8 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
 
         Raises
         ------
-        Note: No explicit validation is performed in __init__. Invalid
-        combinations (e.g., word_limit without a limit) will result in
-        no constraint being applied during evaluation.
+        ValueError
+            If ``limit`` is provided and is not a positive integer.
 
         Examples
         --------
@@ -1478,7 +1589,10 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         """
         super().__init__(name=name, category=ProbeCategory.CUSTOM)
         self.constraint_type = constraint_type
-        self.limit = limit
+        if limit is not None:
+            self.limit = _validate_positive_limit(limit, context="limit")
+        else:
+            self.limit = None
         self.custom_constraint = custom_constraint
         self.validator = validator
 
@@ -1631,11 +1745,11 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         or if constraint_type is "custom" but custom_constraint is None,
         an empty string is returned.
         """
-        if self.constraint_type == "word_limit" and self.limit:
+        if self.constraint_type == "word_limit" and self.limit is not None:
             return f"IMPORTANT: Your response must be {self.limit} words or fewer."
-        elif self.constraint_type == "character_limit" and self.limit:
+        elif self.constraint_type == "character_limit" and self.limit is not None:
             return f"IMPORTANT: Your response must be {self.limit} characters or fewer."
-        elif self.constraint_type == "sentence_limit" and self.limit:
+        elif self.constraint_type == "sentence_limit" and self.limit is not None:
             return f"IMPORTANT: Your response must be {self.limit} sentence(s) or fewer."
         elif self.custom_constraint:
             return f"IMPORTANT: {self.custom_constraint}"
@@ -1745,48 +1859,27 @@ class ConstraintComplianceProbe(ScoredProbe[str]):
         For example, exceeding a 50-word limit by 25 words results in:
         score = max(0.0, 1.0 - (25 / 50)) = 0.5
         """
-        limit = reference if isinstance(reference, int) else self.limit
-        details = {}
+        details: dict[str, Any] = {}
         compliant = True
         score = 1.0
 
-        if self.constraint_type == "word_limit":
-            word_count = len(model_output.split())
-            details["word_count"] = word_count
-            details["limit"] = limit
-            if limit:
-                compliant = word_count <= limit
-                # Calculate how close to limit
-                if compliant:
-                    score = 1.0
-                else:
-                    overage = word_count - limit
-                    score = max(0.0, 1.0 - (overage / limit))
+        if self.constraint_type in _LIMIT_CONSTRAINT_TYPES:
+            raw_limit = reference if isinstance(reference, int) else self.limit
+            limit = _validate_positive_limit(raw_limit, context="limit")
 
-        elif self.constraint_type == "character_limit":
-            char_count = len(model_output)
-            details["character_count"] = char_count
-            details["limit"] = limit
-            if limit:
-                compliant = char_count <= limit
-                if compliant:
-                    score = 1.0
-                else:
-                    overage = char_count - limit
-                    score = max(0.0, 1.0 - (overage / limit))
+            if self.constraint_type == "word_limit":
+                count = len(model_output.split())
+                details["word_count"] = count
+            elif self.constraint_type == "character_limit":
+                count = len(model_output)
+                details["character_count"] = count
+            else:  # sentence_limit
+                sentences = re.split(r"[.!?]+", model_output)
+                count = len([s for s in sentences if s.strip()])
+                details["sentence_count"] = count
 
-        elif self.constraint_type == "sentence_limit":
-            sentences = re.split(r"[.!?]+", model_output)
-            sentence_count = len([s for s in sentences if s.strip()])
-            details["sentence_count"] = sentence_count
             details["limit"] = limit
-            if limit:
-                compliant = sentence_count <= limit
-                if compliant:
-                    score = 1.0
-                else:
-                    overage = sentence_count - limit
-                    score = max(0.0, 1.0 - (overage / limit))
+            compliant, score = _limit_compliance_score(count, limit)
 
         elif self.validator:
             compliant = self.validator(model_output)

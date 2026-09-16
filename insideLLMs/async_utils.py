@@ -796,10 +796,15 @@ async def for_each_async(
     stop_flag = asyncio.Event()
 
     async def process_item(item: T) -> None:
+        # Check before waiting so stopped work does not queue on the semaphore.
         if stop_flag.is_set():
             return
 
         async with semaphore:
+            # Re-check after acquiring: with concurrency=1, later items can
+            # still acquire the slot after an earlier failure set the flag.
+            if stop_flag.is_set():
+                return
             try:
                 await func(item)
             except Exception as e:
@@ -957,6 +962,11 @@ class AsyncTokenBucketRateLimiter:
         - Tokens regenerate during the wait period
         - Lock ensures thread-safety within the event loop
         """
+        if tokens < 1:
+            raise ValueError("tokens must be >= 1")
+        if tokens > self.burst:
+            raise ValueError(f"tokens ({tokens}) cannot exceed burst capacity ({self.burst})")
+
         async with self._lock:
             while True:
                 now = time.monotonic()
@@ -1394,6 +1404,8 @@ class AsyncWorkerPool(Generic[T, R]):
         max_queue_size : int, optional
             Maximum queue size. 0 means unbounded. Default is 0.
         """
+        if num_workers < 1:
+            raise ValueError(f"num_workers must be >= 1, got {num_workers}")
         self.worker_func = worker_func
         self.num_workers = num_workers
         self._queue: asyncio.Queue[Optional[T]] = asyncio.Queue(max_queue_size)
@@ -2013,6 +2025,13 @@ async def first_completed(
 
     tasks = [asyncio.ensure_future(c) for c in coros]
 
+    async def _cancel_and_drain(to_cancel: Sequence[asyncio.Future]) -> None:
+        pending = [task for task in to_cancel if not task.done()]
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
     try:
         done, pending = await asyncio.wait(
             tasks,
@@ -2020,19 +2039,18 @@ async def first_completed(
         )
 
         if cancel_remaining:
-            for task in pending:
-                task.cancel()
+            await _cancel_and_drain(list(pending))
 
-        # Return result of first completed
+        # Return result of first completed (propagates its exception).
         for task in done:
             return task.result()
 
         raise RuntimeError("No task completed")  # Should never happen
 
-    except Exception as _:
-        # Cancel all tasks on error
-        for task in tasks:
-            task.cancel()
+    except BaseException:
+        # CancelledError is BaseException (not Exception). Parent cancellation
+        # must still cancel+drain children so they do not outlive the caller.
+        await _cancel_and_drain(tasks)
         raise
 
 
@@ -2264,19 +2282,26 @@ def run_async(coro: Awaitable[T]) -> T:
     Returns:
         Result of the coroutine.
 
+    Raises:
+        RuntimeError: If called from a running event loop. Nested-loop use is
+            not supported (nest_asyncio is not a dependency); close the
+            coroutine and call ``await`` from async code instead.
+
     Example:
         result = run_async(api.generate_async("Hello"))
     """
     try:
-        loop = asyncio.get_running_loop()
-        # If we're already in an async context, we can't use run_until_complete
-        import nest_asyncio
-
-        nest_asyncio.apply()
-        return loop.run_until_complete(coro)
+        asyncio.get_running_loop()
     except RuntimeError:
-        # No running loop, create a new one
+        # No running loop — safe to create one.
         return asyncio.run(coro)
+
+    # Already inside an event loop: do not nest. Close the coroutine so it
+    # is not left pending / leaked, then fail with a clear error.
+    close = getattr(coro, "close", None)
+    if callable(close):
+        close()
+    raise RuntimeError("run_async cannot be called from a running event loop; use await ...")
 
 
 # ---------------------------------------------------------------------------

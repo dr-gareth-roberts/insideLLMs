@@ -50,7 +50,12 @@ from .._output import (
 )
 from .._record_utils import _write_jsonl
 from .._report_builder import _build_basic_harness_report
-from ._run_common import create_tracker, iter_standard_run_artifacts, resolve_harness_output_dir
+from ._run_common import (
+    create_tracker,
+    end_tracker,
+    iter_standard_run_artifacts,
+    resolve_harness_output_dir,
+)
 
 _HARNESS_PROFILE_PRESETS: dict[str, dict[str, Any]] = {
     "healthcare-hipaa": {
@@ -812,37 +817,41 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
         print_key_value("Elapsed", f"{elapsed:.2f}s")
 
-        if tracker is not None:
-            try:
-                metrics: dict[str, float] = {
-                    "wall_time_seconds": float(elapsed),
-                    "record_count": float(record_count),
-                    "success_count": float(success_count),
-                    "error_count": float(error_count),
-                    "timeout_count": float(timeout_count),
-                    "experiment_count": float(len(result.get("experiments", []))),
-                }
-                tracker.log_metrics(metrics)
-
-                tracker.log_params(
-                    {
-                        "model_count": len(model_types),
-                        "probe_count": len(probe_types),
-                        "dataset_id": dataset_spec.get("dataset_id"),
-                        "dataset_version": dataset_spec.get("dataset_version"),
-                        "dataset_hash": dataset_spec.get("dataset_hash"),
-                        "dataset_provenance": dataset_spec.get("provenance"),
+        tracking_status = "failed"
+        try:
+            if tracker is not None:
+                try:
+                    metrics: dict[str, float] = {
+                        "wall_time_seconds": float(elapsed),
+                        "record_count": float(record_count),
+                        "success_count": float(success_count),
+                        "error_count": float(error_count),
+                        "timeout_count": float(timeout_count),
+                        "experiment_count": float(len(result.get("experiments", []))),
                     }
-                )
+                    tracker.log_metrics(metrics)
 
-                for artifact in iter_standard_run_artifacts(output_dir):
-                    if artifact.exists():
-                        tracker.log_artifact(str(artifact), artifact_name=artifact.name)
+                    tracker.log_params(
+                        {
+                            "model_count": len(model_types),
+                            "probe_count": len(probe_types),
+                            "dataset_id": dataset_spec.get("dataset_id"),
+                            "dataset_version": dataset_spec.get("dataset_version"),
+                            "dataset_hash": dataset_spec.get("dataset_hash"),
+                            "dataset_provenance": dataset_spec.get("provenance"),
+                        }
+                    )
 
-                tracker.end_run(status="finished" if health["healthy"] else "failed")
-                tracker = None
-            except Exception as e:
-                print_warning(f"Tracking error: {e}")
+                    for artifact in iter_standard_run_artifacts(output_dir):
+                        if artifact.exists():
+                            tracker.log_artifact(str(artifact), artifact_name=artifact.name)
+
+                    tracking_status = "finished" if health["healthy"] else "failed"
+                except Exception as e:
+                    print_warning(f"Tracking error: {e}")
+        finally:
+            end_tracker(tracker, status=tracking_status)
+            tracker = None
 
         if not args.quiet:
             print(f"\nRun written to: {output_dir}")
@@ -854,10 +863,8 @@ def cmd_harness(args: argparse.Namespace) -> int:
 
     except Exception as e:
         if tracker is not None:
-            try:
-                tracker.end_run(status="failed")
-            except (AttributeError, RuntimeError):
-                pass
+            end_tracker(tracker, status="failed")
+            tracker = None
         print_error(f"Error running harness: {e}")
         if args.verbose:
             traceback.print_exc()

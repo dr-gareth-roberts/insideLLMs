@@ -51,11 +51,32 @@ def _normalized_key(key: str) -> str:
     return re.sub(r"[^a-z0-9]", "", key.lower())
 
 
+# Auth-oriented query/fragment/header param names (conservative allowlist).
+# Avoid bare "signature" substrings that would redact innocuous keys such as
+# "signature_dish"; require the full normalized name or a known auth suffix.
+_AUTH_PARAM_KEYS = frozenset(
+    {
+        "key",
+        "sig",
+        "signature",
+        "xamzsignature",
+        "xamzsecuritytoken",
+        "xamzcredential",
+        "securitytoken",
+        "credential",
+    }
+)
+
+
 def _is_secret_key(key: str) -> bool:
     normalized = _normalized_key(key)
     # Suffix matching covers namespaced keys and common HTTP header prefixes,
     # without hiding generation options such as max_tokens or token_budget.
-    return normalized in _SECRET_KEYS or normalized.endswith(
+    # _AUTH_PARAM_KEYS ("key", "sig", ...) are auth-bearing only as URL
+    # parameters, so they are matched in _is_auth_url_param, not here.
+    if normalized in _SECRET_KEYS:
+        return True
+    return normalized.endswith(
         (
             "apikey",
             "accesstoken",
@@ -72,8 +93,39 @@ def _is_secret_key(key: str) -> bool:
             "huggingfacetoken",
             "githubtoken",
             "gitlabtoken",
+            "securitytoken",
+            "webhooksecret",
+            "secret",
+            "signature",
         )
     )
+
+
+def _is_auth_url_param(key: str) -> bool:
+    return _is_secret_key(key) or _normalized_key(key) in _AUTH_PARAM_KEYS
+
+
+def _redact_param_pairs(pairs: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], bool]:
+    has_secrets = any(_is_auth_url_param(key) for key, _ in pairs)
+    if not has_secrets:
+        return pairs, False
+    return (
+        [(key, REDACTED if _is_auth_url_param(key) else val) for key, val in pairs],
+        True,
+    )
+
+
+def redact_query_string(value: str) -> str:
+    """Redact auth parameters in a raw query and any OAuth-style fragment.
+
+    Keep duplicate parameters, blank values, and non-secret queries intact.
+    """
+    components = value.split("#", 1)
+    for index, component in enumerate(components):
+        pairs, changed = _redact_param_pairs(parse_qsl(component, keep_blank_values=True))
+        if changed:
+            components[index] = urlencode(pairs)
+    return "#".join(components)
 
 
 def _redact_url(value: str) -> str:
@@ -87,17 +139,17 @@ def _redact_url(value: str) -> str:
         changed = "@" in netloc
         if changed:
             netloc = f"{quote(REDACTED, safe='')}@{netloc.rsplit('@', 1)[1]}"
-        pairs = parse_qsl(parsed.query, keep_blank_values=True)
-
-        def is_auth_query(key: str) -> bool:
-            return _is_secret_key(key) or _normalized_key(key) in {"key", "sig", "signature"}
-
-        query_has_secrets = any(is_auth_query(key) for key, _ in pairs)
-        if query_has_secrets:
-            pairs = [(key, REDACTED if is_auth_query(key) else val) for key, val in pairs]
-        if changed or query_has_secrets:
-            query = urlencode(pairs) if query_has_secrets else parsed.query
-            return urlunsplit((parsed.scheme, netloc, parsed.path, query, parsed.fragment))
+        query_pairs, query_has_secrets = _redact_param_pairs(
+            parse_qsl(parsed.query, keep_blank_values=True)
+        )
+        # OAuth-style tokens often land in the fragment (#access_token=...).
+        fragment_pairs, fragment_has_secrets = _redact_param_pairs(
+            parse_qsl(parsed.fragment, keep_blank_values=True)
+        )
+        if changed or query_has_secrets or fragment_has_secrets:
+            query = urlencode(query_pairs) if query_has_secrets else parsed.query
+            fragment = urlencode(fragment_pairs) if fragment_has_secrets else parsed.fragment
+            return urlunsplit((parsed.scheme, netloc, parsed.path, query, fragment))
     except ValueError:
         # Invalid URLs with embedded userinfo must not evade redaction.
         if "@" in value:

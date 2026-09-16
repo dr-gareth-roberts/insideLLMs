@@ -173,9 +173,9 @@ def _build_attestations(
             "02.dataset",
             build_attestation_02_dataset(
                 subject_manifest,
-                dataset_merkle_root=dataset_merkle_root or "",
-                dataset_id=dataset_spec.get("name") if dataset_spec else None,
-                dataset_version=dataset_spec.get("version") if dataset_spec else None,
+                dataset_merkle_root=dataset_merkle_root,
+                dataset_id=dataset_spec.get("dataset_id") if dataset_spec else None,
+                dataset_version=(dataset_spec.get("dataset_version") if dataset_spec else None),
             ),
         ),
         (

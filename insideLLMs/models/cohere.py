@@ -672,43 +672,33 @@ class CohereModel(Model):
         """
         client = self._get_client()
 
-        # Convert to Cohere's chat format
-        chat_history = []
-        preamble = self.default_preamble
-        current_message = ""
+        if not messages:
+            raise ValueError("chat messages must be a non-empty sequence")
+        if messages[-1].get("role") != "user":
+            raise ValueError('chat messages must end with a user message (role="user")')
 
-        for msg in messages:
+        # Convert prior turns to Cohere's chat format; final user is current message.
+        chat_history: list[dict[str, str]] = []
+        preamble = self.default_preamble
+        pending_user: Optional[str] = None
+        current_message = str(messages[-1].get("content", ""))
+
+        for msg in messages[:-1]:
             role = msg.get("role", "user")
             content = msg.get("content", "")
 
             if role == "system":
                 preamble = content
             elif role == "user":
-                current_message = content
-                # Don't add to history yet - only add completed turns
-            elif role == "assistant" and current_message:
-                # Add completed turn to history
-                chat_history.append(
-                    {
-                        "role": "USER",
-                        "message": current_message,
-                    }
-                )
-                chat_history.append(
-                    {
-                        "role": "CHATBOT",
-                        "message": content,
-                    }
-                )
-                current_message = ""
+                pending_user = content
+            elif role == "assistant" and pending_user is not None:
+                chat_history.append({"role": "USER", "message": pending_user})
+                chat_history.append({"role": "CHATBOT", "message": content})
+                pending_user = None
 
-        # The last user message becomes the current message
-        if not current_message and messages:
-            # Find last user message
-            for msg in reversed(messages):
-                if msg.get("role") == "user":
-                    current_message = msg.get("content", "")
-                    break
+        # Unpaired prior user turn (no assistant reply) still belongs in history.
+        if pending_user is not None:
+            chat_history.append({"role": "USER", "message": pending_user})
 
         params = {
             "model": self.model_name,

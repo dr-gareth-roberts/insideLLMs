@@ -207,7 +207,7 @@ file assigns every symbol one of `stable`, `experimental`, `deprecated`, or `int
 | `load_results_json` | experimental | direct | `insideLLMs.results` | 1 |
 | `load_trace_config` | experimental | direct | `insideLLMs.trace.trace_config` | 1 |
 | `make_structural_v1_normaliser` | experimental | direct | `insideLLMs.trace.trace_config` | 0 |
-| `model_registry` | stable | direct | `insideLLMs.registry` | 2 |
+| `model_registry` | stable | direct | `insideLLMs.registry` | 3 |
 | `parse_json` | experimental | lazy | `insideLLMs.structured` | 0 |
 | `plot_accuracy_comparison` | experimental | lazy | `insideLLMs.visualization` | 0 |
 | `probe_registry` | stable | direct | `insideLLMs.registry` | 1 |

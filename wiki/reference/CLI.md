@@ -353,11 +353,21 @@ labels status as unknown. Sealed, signed, or attested run directories are
 immutable: copy the source evidence to a fresh derivative/export directory
 before rebuilding a report.
 
+If report publication fails, the command attempts to restore the previous pair.
+If a restore also fails, it retains that artifact's backup and prints its path for
+manual recovery; exit status is 1.
+
 ---
 
 ## validate
 
 Validate a legacy single-run config or validate run artifacts against schemas.
+
+Run validation checks records-file containment and opens its final path component
+with `O_NOFOLLOW`, rejecting a symlink swapped in after the path check. Platforms
+without no-follow support report a records-read error. Malformed manifest
+`schemas` values produce schema diagnostics. Strict mode exits 1; `--mode warn`
+retains its warning-only behavior for these errors.
 
 ```bash
 insidellms validate <config-or-run-dir> [options]

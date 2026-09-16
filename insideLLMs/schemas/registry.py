@@ -466,11 +466,11 @@ def semver_tuple(version: str) -> tuple[int, int, int]:
     SchemaRegistry.available_versions : Get all versions for a schema
     """
     v = normalize_semver(version)
-    parts = v.split(".")
-    try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
-    except Exception as _:
+    # Exactly three non-negative numeric components; malformed → documented fallback.
+    match = re.fullmatch(r"([0-9]+)\.([0-9]+)\.([0-9]+)", v)
+    if match is None:
         return (0, 0, 0)
+    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
 
 def _require_pydantic() -> None:
@@ -1859,6 +1859,10 @@ class SchemaRegistry:
         get_model : Get schema model for validation after migration
         normalize_semver : Version normalization used by this method
         """
+        # Normalize Pydantic model inputs to dict so custom_migration always
+        # receives a plain mapping and is never skipped for model instances.
+        if hasattr(data, "model_dump") and callable(data.model_dump):
+            data = data.model_dump()
         f = normalize_semver(from_version)
         t = normalize_semver(to_version)
         if f == t:

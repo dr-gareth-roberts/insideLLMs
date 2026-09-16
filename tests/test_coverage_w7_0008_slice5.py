@@ -370,6 +370,9 @@ def test_visualization_import_error_flags() -> None:
 
     import insideLLMs.analysis as analysis_pkg
 
+    # Visualization is imported lazily (F8); ensure it is loaded before
+    # capturing the original module object.
+    importlib.import_module("insideLLMs.analysis.visualization")
     original = sys.modules["insideLLMs.analysis.visualization"]
     shim_key = "insideLLMs.visualization"
     shim_original = sys.modules.get(shim_key)

@@ -107,6 +107,25 @@ class RuntimeDatasetConfig(BaseModel):
                     f"Unsupported {self.format} dataset settings: {sorted(unsupported)}; "
                     "use max_examples to limit execution or prepare the dataset explicitly"
                 )
+        # Reject known fields that are incompatible with the selected format so
+        # they cannot silently affect provenance / run-id fingerprints.
+        set_fields = self.model_fields_set
+        incompatible: list[str] = []
+        if self.format == "inline":
+            if "path" in set_fields and self.path is not None:
+                incompatible.append("path")
+        elif self.format in {"csv", "jsonl"}:
+            if "data" in set_fields and self.data is not None:
+                incompatible.append("data")
+        elif self.format == "hf":
+            if "path" in set_fields and self.path is not None:
+                incompatible.append("path")
+            if "data" in set_fields and self.data is not None:
+                incompatible.append("data")
+        if incompatible:
+            raise ValueError(
+                f"dataset fields incompatible with format {self.format!r}: {sorted(incompatible)}"
+            )
         if self.format in {"csv", "jsonl"} and not self.path:
             raise ValueError("dataset.path is required for file datasets")
         if self.format == "hf" and not self.name:
