@@ -607,6 +607,13 @@ def cmd_harness(args: argparse.Namespace) -> int:
             if result["budget"].get("abort_reason"):
                 manifest["custom"]["abort"] = result["budget"]["abort_reason"]
 
+        scaffold = config_snapshot.get("scaffold") if config_snapshot else None
+        if isinstance(scaffold, dict) and (scaffold.get("id") or scaffold.get("version")):
+            manifest["custom"]["scaffold"] = {
+                "id": scaffold.get("id"),
+                "version": scaffold.get("version"),
+            }
+
         import insideLLMs
 
         manifest["library_version"] = getattr(insideLLMs, "__version__", None)
