@@ -131,6 +131,21 @@ class DeterminismConfig(BaseModel):
     deterministic_artifacts: bool | None = None
 
 
+class ScaffoldConfig(BaseModel):
+    """Identity fields for an experiment scaffold.
+
+    The scaffold is an optional layer between raw model/probe/dataset and
+    a higher-level experiment orchestrator. Including scaffold identity in
+    the config causes it to appear in the resolved config snapshot, the
+    run_id fingerprint, and the ``custom.scaffold`` section of emitted
+    manifest.json and records.jsonl files.
+    """
+
+    model_config = ConfigDict(hide_input_in_errors=True, extra="forbid")
+    id: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+
+
 class RuntimeConfiguration(BaseModel):
     """Canonical experiment or harness configuration; use one component shape."""
 
@@ -144,6 +159,7 @@ class RuntimeConfiguration(BaseModel):
     runner: RuntimeRunnerConfig | None = None
     budget: BudgetPolicy | None = None
     determinism: DeterminismConfig | None = None
+    scaffold: ScaffoldConfig | None = None
     generation: dict[str, Any] | None = None
     probe_kwargs: dict[str, Any] | None = None
     run_kwargs: dict[str, Any] | None = None

@@ -477,6 +477,13 @@ class AsyncProbeRunner(_RunnerBase):
                             record["custom"]["timeout_seconds"] = float(timeout_seconds)
                         if str(result_obj.get("status") or "") == "timeout":
                             record["custom"]["timeout"] = True
+                    scaffold = config_snapshot.get("scaffold") if config_snapshot else None
+                    if isinstance(scaffold, dict) and isinstance(record.get("custom"), dict):
+                        if scaffold.get("id") or scaffold.get("version"):
+                            record["custom"]["scaffold"] = {
+                                "id": scaffold.get("id"),
+                                "version": scaffold.get("version"),
+                            }
                     if validate_output:
                         validator.validate(
                             registry.RESULT_RECORD,
@@ -778,6 +785,13 @@ class AsyncProbeRunner(_RunnerBase):
                 manifest["custom"]["budget"] = budget_ledger.snapshot()
                 if budget_ledger.snapshot().get("abort_reason"):
                     manifest["custom"]["abort"] = budget_ledger.snapshot()["abort_reason"]
+
+            scaffold = config_snapshot.get("scaffold") if config_snapshot else None
+            if isinstance(scaffold, dict) and (scaffold.get("id") or scaffold.get("version")):
+                manifest["custom"]["scaffold"] = {
+                    "id": scaffold.get("id"),
+                    "version": scaffold.get("version"),
+                }
 
             try:
                 import insideLLMs

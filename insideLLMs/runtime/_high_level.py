@@ -638,6 +638,12 @@ def run_harness_from_config(
                     "dataset_format": dataset_format,
                     "example_index": example_index,
                 }
+                scaffold = config_snapshot.get("scaffold") if config_snapshot else None
+                if isinstance(scaffold, dict) and (scaffold.get("id") or scaffold.get("version")):
+                    record_custom["scaffold"] = {
+                        "id": scaffold.get("id"),
+                        "version": scaffold.get("version"),
+                    }
                 record["custom"] = record_custom
                 records.append(record)
 

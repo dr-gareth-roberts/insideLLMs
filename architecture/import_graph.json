@@ -4129,7 +4129,7 @@
       "fan_in": 2,
       "fan_out": 13,
       "layer": "cli",
-      "loc": 875,
+      "loc": 882,
       "module": "insideLLMs.cli.commands.harness",
       "path": "insideLLMs/cli/commands/harness.py"
     },
@@ -4257,7 +4257,7 @@
       "fan_in": 5,
       "fan_out": 1,
       "layer": "core",
-      "loc": 336,
+      "loc": 352,
       "module": "insideLLMs.config_schema",
       "path": "insideLLMs/config_schema.py"
     },
@@ -5393,7 +5393,7 @@
       "fan_in": 2,
       "fan_out": 21,
       "layer": "runtime",
-      "loc": 860,
+      "loc": 874,
       "module": "insideLLMs.runtime._async_runner",
       "path": "insideLLMs/runtime/_async_runner.py"
     },
@@ -5425,7 +5425,7 @@
       "fan_in": 2,
       "fan_out": 19,
       "layer": "runtime",
-      "loc": 1051,
+      "loc": 1057,
       "module": "insideLLMs.runtime._high_level",
       "path": "insideLLMs/runtime/_high_level.py"
     },
@@ -5457,7 +5457,7 @@
       "fan_in": 2,
       "fan_out": 20,
       "layer": "runtime",
-      "loc": 902,
+      "loc": 936,
       "module": "insideLLMs.runtime._sync_runner",
       "path": "insideLLMs/runtime/_sync_runner.py"
     },
@@ -6143,7 +6143,7 @@
     "internal_edge_count": 594,
     "module_count": 249,
     "optional_import_count": 66,
-    "package_loc": 252875,
+    "package_loc": 252952,
     "static_test_references_by_subtree": {
       "insideLLMs": 17,
       "insideLLMs._artifact_snapshot": 1,
@@ -6154,7 +6154,7 @@
       "insideLLMs.attestations": 15,
       "insideLLMs.benchmark_datasets": 31,
       "insideLLMs.caching": 107,
-      "insideLLMs.cli": 357,
+      "insideLLMs.cli": 358,
       "insideLLMs.config": 78,
       "insideLLMs.config_schema": 4,
       "insideLLMs.config_types": 15,
@@ -6187,7 +6187,7 @@
       "insideLLMs.resources": 7,
       "insideLLMs.results": 73,
       "insideLLMs.retry": 42,
-      "insideLLMs.runtime": 326,
+      "insideLLMs.runtime": 327,
       "insideLLMs.safety": 36,
       "insideLLMs.schemas": 123,
       "insideLLMs.semantic_cache": 30,
