@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import os
+import stat
 from pathlib import Path
 
 import yaml
@@ -15,6 +17,49 @@ from .._output import (
     print_success,
     print_warning,
 )
+
+
+def _contained_records_path(run_dir: Path, records_file: object) -> Path:
+    """Resolve records_file under run_dir with containment and no symlink follow.
+
+    Schema v1 permits arbitrary records_file basenames/relative paths, but the
+    resolved target must remain inside the run directory. Absolute paths, parent
+    traversal, and symlink destinations are rejected.
+    """
+    if not isinstance(records_file, str) or not records_file.strip():
+        raise ValueError("records_file must be a non-empty string")
+    relative = Path(records_file)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"records_file must stay inside the run directory: {records_file}")
+    run_dir_resolved = run_dir.resolve()
+    candidate = run_dir / relative
+    # Resolve the parent only so a final-component symlink is not followed for
+    # containment; then reject the file itself if it is a symlink.
+    parent_resolved = candidate.parent.resolve()
+    try:
+        parent_resolved.relative_to(run_dir_resolved)
+    except ValueError as exc:
+        raise ValueError(
+            f"records_file must stay inside the run directory: {records_file}"
+        ) from exc
+    records_path = parent_resolved / candidate.name
+    if os.path.lexists(records_path) and records_path.is_symlink():
+        raise ValueError(f"records_file must not be a symlink: {records_file}")
+    return records_path
+
+
+def _open_records_nofollow(path: str, flags: int) -> int:
+    """Open the final component without following a raced-in symlink."""
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_NONBLOCK"):
+        raise OSError("Records validation requires no-follow file I/O")
+    descriptor = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ValueError("records_file must be a regular file")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -65,11 +110,19 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print_error(f"Could not read manifest JSON: {e}")
             return 1
 
+        if not isinstance(manifest_obj, dict):
+            print_error("manifest.json must be a JSON object")
+            return 1
+
         # Determine schema version: CLI override > manifest.schema_version > manifest.schemas[name]
+        manifest_schemas = manifest_obj.get("schemas", {})
+        # Let schema validation report malformed nested values in strict/warn
+        # mode, without crashing during version discovery.
+        schema_versions = manifest_schemas if isinstance(manifest_schemas, dict) else {}
         schema_version = (
             args.schema_version
             or manifest_obj.get("schema_version")
-            or manifest_obj.get("schemas", {}).get(registry.RUN_MANIFEST)
+            or schema_versions.get(registry.RUN_MANIFEST)
             or DEFAULT_SCHEMA_VERSION
         )
 
@@ -88,9 +141,15 @@ def cmd_validate(args: argparse.Namespace) -> int:
             if args.mode != "warn":
                 return 1
 
-        # Validate records
+        # Validate records — schema v1 permits arbitrary records_file names, but
+        # the resolved path must stay inside the run directory (no traversal or
+        # symlink escape).
         records_file = manifest_obj.get("records_file") or "records.jsonl"
-        records_path = run_dir / records_file
+        try:
+            records_path = _contained_records_path(run_dir, records_file)
+        except ValueError as e:
+            _handle_error(str(e))
+            return 0 if args.mode == "warn" else 1
         print_key_value("Records", records_path)
 
         if not records_path.exists():
@@ -98,7 +157,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             return 0 if args.mode == "warn" else 1
 
         try:
-            with open(records_path, encoding="utf-8") as f:
+            with open(records_path, encoding="utf-8", opener=_open_records_nofollow) as f:
                 for line_no, line in enumerate(f, start=1):
                     line = line.strip()
                     if not line:

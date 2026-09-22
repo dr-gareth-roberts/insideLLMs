@@ -591,13 +591,41 @@ class CodeGenerationProbe(ScoredProbe[str]):
         False
         """
         code = self.extract_code(model_output)
-        score_components = []
+        score_components: list[float] = []
         details: dict[str, Any] = {}
+
+        # Non-empty extracted code is required for any correctness credit.
+        if not code or not str(code).strip():
+            details["syntax_valid"] = False
+            details["empty_code"] = True
+            details["score"] = 0.0
+            details["label"] = "failing"
+            details["is_correct"] = False
+            details["status"] = "error"
+            return details
 
         # Check for syntax validity (basic)
         syntax_valid = self._check_syntax(code)
-        score_components.append(1.0 if syntax_valid else 0.0)
         details["syntax_valid"] = syntax_valid
+
+        # Python: invalid syntax is a hard gate — never "correct" on patterns alone.
+        if self.language == "python" and not syntax_valid:
+            if isinstance(reference, dict):
+                expected_patterns = reference.get("patterns", [])
+            elif isinstance(reference, str):
+                expected_patterns = [reference]
+            else:
+                expected_patterns = []
+            if expected_patterns:
+                pattern_matches = sum(1 for p in expected_patterns if p.lower() in code.lower())
+                details["pattern_match_score"] = pattern_matches / len(expected_patterns)
+            details["score"] = 0.0
+            details["label"] = "failing"
+            details["is_correct"] = False
+            details["status"] = "error"
+            return details
+
+        score_components.append(1.0 if syntax_valid else 0.0)
 
         # Check for expected patterns
         if isinstance(reference, dict):
@@ -627,6 +655,12 @@ class CodeGenerationProbe(ScoredProbe[str]):
 
         # Calculate overall score
         overall_score = sum(score_components) / len(score_components) if score_components else 0.5
+
+        # Non-Python: bracket/pattern heuristics alone cannot establish "correct".
+        # Declared-but-unexecuted tests/test_cases metadata is not evidence —
+        # this probe does not run tests, so non-Python stays capped at partial credit.
+        if self.language != "python":
+            overall_score = min(overall_score, 0.49)
 
         details["score"] = overall_score
         details["label"] = self._score_to_label(overall_score)
@@ -689,6 +723,10 @@ class CodeGenerationProbe(ScoredProbe[str]):
         False
         """
         if self.language == "python":
+            # Empty / whitespace-only is syntactically accepted by compile() but
+            # is not valid generated code for scoring purposes.
+            if not code or not str(code).strip():
+                return False
             try:
                 compile(code, "<string>", "exec")
                 return True

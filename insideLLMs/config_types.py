@@ -839,6 +839,7 @@ class RunConfigBuilder:
         self._dataset_info: Optional[dict[str, Any]] = None
         self._config_snapshot: Optional[dict[str, Any]] = None
         self._concurrency: int = 5
+        self._timeout: Optional[float] = None
         self._resume: bool = False
         self._use_probe_batch: bool = False
         self._batch_workers: Optional[int] = None
@@ -1142,6 +1143,23 @@ class RunConfigBuilder:
             1
         """
         self._concurrency = concurrency
+        return self
+
+    def with_timeout(self, timeout: Optional[float]) -> "RunConfigBuilder":
+        """Set per-item timeout for async probe execution.
+
+        Parameters
+        ----------
+        timeout : float or None
+            Timeout in seconds for each probe execution when using async
+            runners. ``None`` disables the timeout. Must be > 0 when set.
+
+        Returns
+        -------
+        RunConfigBuilder
+            Self, for method chaining.
+        """
+        self._timeout = timeout
         return self
 
     def with_error_handling(self, stop_on_error: bool = True) -> "RunConfigBuilder":
@@ -1743,6 +1761,7 @@ class RunConfigBuilder:
             dataset_info=self._dataset_info,
             config_snapshot=self._config_snapshot,
             concurrency=self._concurrency,
+            timeout=self._timeout,
             resume=self._resume,
             use_probe_batch=self._use_probe_batch,
             batch_workers=self._batch_workers,

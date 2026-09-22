@@ -77,7 +77,7 @@ from typing import Any, Generic, Optional, TypeVar, Union
 T = TypeVar("T")
 
 
-class ProbeCategory(Enum):
+class ProbeCategory(str, Enum):
     """Categories of probes for organizing and filtering.
 
     This enum defines the primary categories used to classify probes
@@ -134,7 +134,7 @@ class ProbeCategory(Enum):
     CUSTOM = "custom"
 
 
-class ResultStatus(Enum):
+class ResultStatus(str, Enum):
     """Status of a probe result indicating execution outcome.
 
     This enum represents the possible outcomes when running a probe

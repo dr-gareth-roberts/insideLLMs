@@ -121,7 +121,7 @@ from insideLLMs.exceptions import (
     ModelTimeoutError as InsideLLMsTimeoutError,
 )
 
-from .base import ChatMessage, Model
+from .base import ChatMessage, Model, _retry_after_seconds
 
 
 class AnthropicModel(Model):
@@ -434,7 +434,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
@@ -604,7 +604,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
@@ -750,7 +750,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(

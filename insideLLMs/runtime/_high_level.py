@@ -18,7 +18,6 @@ from insideLLMs._serialization import (
 from insideLLMs._serialization import (
     serialize_value as _serialize_value,
 )
-from insideLLMs.analysis.statistics import generate_summary_report
 from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.models.base import Model
 from insideLLMs.probes.base import Probe
@@ -59,6 +58,17 @@ from insideLLMs.types import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def generate_summary_report(*args: Any, **kwargs: Any) -> Any:
+    """Lazy proxy so importing runtime does not pull analysis.statistics eagerly.
+
+    Kept as a module attribute so tests can monkeypatch
+    ``insideLLMs.runtime._high_level.generate_summary_report``.
+    """
+    from insideLLMs.analysis.statistics import generate_summary_report as _impl
+
+    return _impl(*args, **kwargs)
 
 
 def _runner_settings_from_config(config: dict[str, Any]) -> dict[str, Any]:

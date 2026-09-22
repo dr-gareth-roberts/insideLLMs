@@ -309,6 +309,40 @@ class GeminiModel(Model):
             )
         return self._model
 
+    def _build_generation_config(self, kwargs: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """Build a generation_config dict from defaults + call kwargs.
+
+        Pops known generation parameters from ``kwargs`` so they are not
+        forwarded as top-level SDK arguments (the legacy google-generativeai
+        client expects them inside ``generation_config``).
+        """
+        generation_config: dict[str, Any] = {**self.default_generation_config}
+        if "temperature" in kwargs:
+            generation_config["temperature"] = kwargs.pop("temperature")
+        if "max_tokens" in kwargs:
+            generation_config["max_output_tokens"] = kwargs.pop("max_tokens")
+        if "max_output_tokens" in kwargs:
+            generation_config["max_output_tokens"] = kwargs.pop("max_output_tokens")
+        if "top_p" in kwargs:
+            generation_config["top_p"] = kwargs.pop("top_p")
+        if "top_k" in kwargs:
+            generation_config["top_k"] = kwargs.pop("top_k")
+        if "stop_sequences" in kwargs:
+            generation_config["stop_sequences"] = kwargs.pop("stop_sequences")
+        return generation_config if generation_config else None
+
+    @staticmethod
+    def _require_chat_user_turn(
+        messages: Sequence[ChatMessage],
+    ) -> tuple[Sequence[ChatMessage], str]:
+        """Validate chat input and split history from the final user message."""
+        if not messages:
+            raise ValueError("chat messages must be a non-empty sequence")
+        last = messages[-1]
+        if last.get("role") != "user":
+            raise ValueError('chat messages must end with a user message (role="user")')
+        return messages[:-1], str(last.get("content", ""))
+
     def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate a text response from the Gemini model for a single prompt.
 
@@ -386,22 +420,11 @@ class GeminiModel(Model):
             - Both max_tokens and max_output_tokens are accepted for convenience.
         """
         model = self._get_client()
-
-        generation_config = {**self.default_generation_config}
-        if "temperature" in kwargs:
-            generation_config["temperature"] = kwargs.pop("temperature")
-        if "max_tokens" in kwargs:
-            generation_config["max_output_tokens"] = kwargs.pop("max_tokens")
-        if "max_output_tokens" in kwargs:
-            generation_config["max_output_tokens"] = kwargs.pop("max_output_tokens")
-        if "top_p" in kwargs:
-            generation_config["top_p"] = kwargs.pop("top_p")
-        if "top_k" in kwargs:
-            generation_config["top_k"] = kwargs.pop("top_k")
+        generation_config = self._build_generation_config(kwargs)
 
         response = model.generate_content(
             prompt,
-            generation_config=generation_config if generation_config else None,
+            generation_config=generation_config,
             **kwargs,
         )
 
@@ -494,59 +517,39 @@ class GeminiModel(Model):
             - The method increments the internal call counter.
         """
         model = self._get_client()
+        prior_messages, current_message = self._require_chat_user_turn(messages)
 
-        # Convert to Gemini's chat format
-        history = []
-        current_message = None
+        # Convert prior turns to Gemini's chat history format.
+        history: list[dict[str, Any]] = []
+        system_prefix: Optional[str] = None
 
-        for msg in messages:
+        for msg in prior_messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
 
             if role == "system":
-                # Prepend system message to first user message
-                if history or current_message:
+                # First system message prefixes the first subsequent user turn
+                # (or the current message if no prior user turns exist).
+                if history or system_prefix is not None:
                     continue
-                current_message = f"[System: {content}]\n"
+                system_prefix = content
             elif role == "user":
-                if current_message:
-                    content = current_message + content
-                    current_message = None
+                if system_prefix is not None:
+                    content = f"[System: {system_prefix}]\n{content}"
+                    system_prefix = None
                 history.append({"role": "user", "parts": [content]})
             elif role == "assistant":
                 history.append({"role": "model", "parts": [content]})
 
-        # A trailing system message with no following user turn would otherwise
-        # be silently dropped; surface it as a user message instead.
-        if current_message:
-            history.append({"role": "user", "parts": [current_message]})
+        if system_prefix is not None:
+            current_message = f"[System: {system_prefix}]\n{current_message}"
 
-        # Find the last user message in history
-        last_user_msg = ""
-        last_user_idx = None
-        for idx in range(len(history) - 1, -1, -1):
-            if history[idx].get("role") == "user":
-                last_user_msg = history[idx]["parts"][0] if history[idx].get("parts") else ""
-                last_user_idx = idx
-                break
-
-        # Start or continue chat, excluding the last user message from history
-        chat_history = (
-            [msg for i, msg in enumerate(history) if i != last_user_idx]
-            if last_user_idx is not None
-            else []
-        )
-        chat = model.start_chat(history=chat_history)
-
-        generation_config = {**self.default_generation_config}
-        if "temperature" in kwargs:
-            generation_config["temperature"] = kwargs.pop("temperature")
-        if "max_tokens" in kwargs:
-            generation_config["max_output_tokens"] = kwargs.pop("max_tokens")
+        chat = model.start_chat(history=history)
+        generation_config = self._build_generation_config(kwargs)
 
         response = chat.send_message(
-            last_user_msg,
-            generation_config=generation_config if generation_config else None,
+            current_message,
+            generation_config=generation_config,
             **kwargs,
         )
 
@@ -626,16 +629,11 @@ class GeminiModel(Model):
             - Streaming is more memory-efficient for long responses.
         """
         model = self._get_client()
-
-        generation_config = {**self.default_generation_config}
-        if "temperature" in kwargs:
-            generation_config["temperature"] = kwargs.pop("temperature")
-        if "max_tokens" in kwargs:
-            generation_config["max_output_tokens"] = kwargs.pop("max_tokens")
+        generation_config = self._build_generation_config(kwargs)
 
         response = model.generate_content(
             prompt,
-            generation_config=generation_config if generation_config else None,
+            generation_config=generation_config,
             stream=True,
             **kwargs,
         )

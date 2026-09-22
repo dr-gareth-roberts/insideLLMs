@@ -341,13 +341,13 @@ def iter_jsonl_records(
     Yields
     ------
     dict[str, Any]
-        Parsed dictionary records. Empty lines and non-dictionary JSON values are
-        skipped.
+        Parsed dictionary records. Empty lines are skipped.
 
     Raises
     ------
     ValueError
-        If any non-empty line contains invalid JSON.
+        If any non-empty line contains invalid JSON, or a valid JSON value that
+        is not an object (dict).
     """
     if not path.exists():
         return
@@ -364,8 +364,12 @@ def iter_jsonl_records(
                 raise ValueError(
                     f"Invalid JSONL record: Invalid JSON on line {line_no} in {path}: {exc}"
                 ) from exc
-            if isinstance(record, dict):
-                yield record
+            if not isinstance(record, dict):
+                raise ValueError(
+                    f"Invalid JSONL record: expected object on line {line_no} in "
+                    f"{path}, got {type(record).__name__}"
+                )
+            yield record
 
 
 def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> list[dict[str, Any]]:
@@ -387,12 +391,12 @@ def _read_jsonl_records(path: Path, *, truncate_incomplete: bool = False) -> lis
     -------
     list[dict[str, Any]]
         List of parsed record dictionaries. Empty lines are skipped.
-        Non-dict JSON values are skipped.
 
     Raises
     ------
     ValueError
-        If any non-empty line contains invalid JSON.
+        If any non-empty line contains invalid JSON or a JSON value that is
+        not an object (dict).
 
     Examples
     --------

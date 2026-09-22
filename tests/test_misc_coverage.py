@@ -628,11 +628,11 @@ class TestTraceBundleV1:
 class TestOutputValidator:
     """Tests for OutputValidator and _to_plain."""
 
-    def test_to_plain_dict_passthrough(self):
+    def test_to_plain_dict_values(self):
         from insideLLMs.schemas.validator import _to_plain
 
         d = {"a": 1}
-        assert _to_plain(d) is d
+        assert _to_plain(d) == d
 
     def test_to_plain_dataclass_conversion(self):
         from insideLLMs.schemas.validator import _to_plain

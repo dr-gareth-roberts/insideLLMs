@@ -8,7 +8,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator, Literal, Optional
 
-from insideLLMs.analysis.statistics import generate_summary_report
 from insideLLMs.exceptions import RunnerExecutionError
 from insideLLMs.runtime._run_health import assess_run_health, describe_run_abort
 from insideLLMs.types import ExperimentResult
@@ -17,6 +16,13 @@ if TYPE_CHECKING:
     from insideLLMs.models.base import Model
     from insideLLMs.probes.base import Probe
     from insideLLMs.schemas import OutputValidator
+
+
+def generate_summary_report(*args: Any, **kwargs: Any) -> Any:
+    """Lazy proxy — avoids eager analysis.statistics import on runtime load."""
+    from insideLLMs.analysis.statistics import generate_summary_report as _impl
+
+    return _impl(*args, **kwargs)
 
 
 def finalize_runner_results(

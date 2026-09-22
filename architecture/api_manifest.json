@@ -3026,12 +3026,13 @@
     {
       "evidence": {
         "areas": {
-          "benchmarks": 1,
+          "benchmarks": 2,
           "examples": 1
         },
-        "path_count": 2,
+        "path_count": 3,
         "paths": [
           "benchmarks/benchmark_import.py",
+          "benchmarks/codemap.md",
           "examples/example_registry.py"
         ]
       },

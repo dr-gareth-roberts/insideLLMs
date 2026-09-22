@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-import types
 
 import pytest
 
@@ -111,11 +109,9 @@ def test_run_async_with_running_loop_branch(monkeypatch: pytest.MonkeyPatch):
         return 42
 
     class FakeRunningLoop:
-        def run_until_complete(self, task):
-            task.close()
-            return 42
+        pass
 
-    monkeypatch.setitem(sys.modules, "nest_asyncio", types.SimpleNamespace(apply=lambda: None))
     monkeypatch.setattr(asyncio, "get_running_loop", lambda: FakeRunningLoop())
 
-    assert run_async(coro()) == 42
+    with pytest.raises(RuntimeError, match="running event loop"):
+        run_async(coro())

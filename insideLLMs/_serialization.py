@@ -119,7 +119,9 @@ def serialize_value(value: Any, *, strict: bool = False, _path: tuple[str, ...] 
         seen_keys: dict[str, Any] = {}
         for k, v in value.items():
             key = _serialize_dict_key(k, strict=strict, path=_path)
-            if strict and key in seen_keys and k != seen_keys[key]:
+            # Reject collisions in all modes: lenient coercion of 1 vs "1" would
+            # otherwise silently overwrite depending on insertion order.
+            if key in seen_keys and k != seen_keys[key]:
                 raise StrictSerializationError(
                     f"Dict key collision at {_path_label(_path)}: "
                     f"{seen_keys[key]!r} and {k!r} -> {key!r}."
@@ -146,8 +148,14 @@ def serialize_value(value: Any, *, strict: bool = False, _path: tuple[str, ...] 
             )
     if isinstance(value, float):
         # Ensure emitted JSON is standards-compliant; Python's json.dumps can emit
-        # NaN/Infinity which is not valid JSON.
+        # NaN/Infinity which is not valid JSON. Strict mode must not collapse
+        # non-finite floats to null (that fingerprints identically to None and
+        # fails schema reload). Lenient mode keeps the historical null mapping.
         if not math.isfinite(value):
+            if strict:
+                raise StrictSerializationError(
+                    f"Non-finite float at {_path_label(_path)} is not allowed in strict mode."
+                )
             return None
         return value
     if value is None or isinstance(value, (str, int, bool)):

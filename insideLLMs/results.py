@@ -1874,8 +1874,13 @@ def generate_statistical_report(
         report = json.dumps(summary, indent=2, default=str, sort_keys=True)
     elif format == "html":
         report = _statistical_report_to_html(summary, confidence_level, generated_at)
-    else:  # markdown
+    elif format == "markdown":
         report = _statistical_report_to_markdown(summary, confidence_level, generated_at)
+    else:
+        raise ValueError(
+            f"Unsupported statistical report format: {format!r} "
+            "(expected 'markdown', 'html', or 'json')"
+        )
 
     if output_path:
         output_path_obj = Path(output_path)
@@ -2162,13 +2167,19 @@ def _statistical_report_to_html(
                 else "N/A"
             )
             html.append(
-                f"<tr><td>{model_name}</td><td>{n}</td><td>{sr:.1f}%</td><td>{ci_str}</td></tr>"
+                "<tr>"
+                f"<td>{_html_escape(str(model_name))}</td>"
+                f"<td>{_html_escape(str(n))}</td>"
+                f"<td>{_html_escape(f'{sr:.1f}%')}</td>"
+                f"<td>{_html_escape(ci_str)}</td>"
+                "</tr>"
             )
 
         html.extend(["</table>", "</div>"])
 
     if generated_at is not None:
-        html.append(f"<p><em>Report generated at {generated_at.isoformat()}</em></p>")
+        stamp = _html_escape(generated_at.isoformat())
+        html.append(f"<p><em>Report generated at {stamp}</em></p>")
     html.extend(["</body>", "</html>"])
 
     return "\n".join(html)

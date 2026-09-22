@@ -345,8 +345,10 @@ Tests adherence to specific instructions.
 ```json
 {
   "task": "List 5 programming languages",
-  "instruction": "Format as a numbered list",
-  "constraints": ["exactly 5 items", "numbered 1-5"]
+  "constraints": {
+    "format": "numbered_list",
+    "max_items": 5
+  }
 }
 ```
 

@@ -39,33 +39,47 @@ async def test_token_bucket_async_invalid_tokens():
         await limiter.acquire_async(tokens=0, block=False)
 
 
-def test_token_bucket_blocking_path_can_return_false_after_wait():
+def test_token_bucket_blocking_path_retries_until_tokens_available():
+    """Blocking acquire must loop under contention, not return False once."""
     limiter = TokenBucketRateLimiter(rate=1.0, capacity=1)
     limiter._tokens = 0.0
+    refill_calls = {"n": 0}
+
+    def refill_side_effect() -> None:
+        refill_calls["n"] += 1
+        # First observation empty; after wait, grant a token.
+        if refill_calls["n"] >= 2:
+            limiter._tokens = 1.0
 
     with (
-        patch.object(limiter, "_refill", return_value=None),
+        patch.object(limiter, "_refill", side_effect=refill_side_effect),
         patch("insideLLMs.rate_limiting.time.sleep", return_value=None) as sleeper,
     ):
         result = limiter.acquire(tokens=1, block=True)
 
-    assert result is False
+    assert result is True
     assert sleeper.called
 
 
 @pytest.mark.asyncio
-async def test_token_bucket_async_blocking_path_can_return_false_after_wait():
+async def test_token_bucket_async_blocking_path_retries_until_tokens_available():
     limiter = TokenBucketRateLimiter(rate=1.0, capacity=1)
     limiter._tokens = 0.0
+    refill_calls = {"n": 0}
+
+    def refill_side_effect() -> None:
+        refill_calls["n"] += 1
+        if refill_calls["n"] >= 2:
+            limiter._tokens = 1.0
 
     with (
-        patch.object(limiter, "_refill", return_value=None),
+        patch.object(limiter, "_refill", side_effect=refill_side_effect),
         patch("insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()) as sleeper,
     ):
         result = await limiter.acquire_async(tokens=1, block=True)
 
-    assert result is False
-    assert sleeper.await_count == 1
+    assert result is True
+    assert sleeper.await_count >= 1
 
 
 def test_token_bucket_get_state_reports_wait_time_when_empty():
@@ -86,31 +100,45 @@ def test_sliding_window_invalid_configuration_branches():
         SlidingWindowRateLimiter(requests_per_second=0.5, window_size_seconds=0.5)
 
 
-def test_sliding_window_blocking_path_can_return_false_after_wait():
+def test_sliding_window_blocking_path_retries_until_slot_available():
     limiter = SlidingWindowRateLimiter(requests_per_second=1.0, window_size_seconds=1.0)
     limiter._requests.append(100.0)
+    mono = {"t": 100.0}
+
+    def monotonic_side_effect() -> float:
+        return mono["t"]
+
+    def sleep_side_effect(seconds: float) -> None:
+        mono["t"] += max(seconds, 0.0) + 0.01
 
     with (
-        patch("insideLLMs.rate_limiting.time.monotonic", return_value=100.0),
-        patch("insideLLMs.rate_limiting.time.sleep", return_value=None),
+        patch("insideLLMs.rate_limiting.time.monotonic", side_effect=monotonic_side_effect),
+        patch("insideLLMs.rate_limiting.time.sleep", side_effect=sleep_side_effect),
     ):
         result = limiter.acquire(block=True)
 
-    assert result is False
+    assert result is True
 
 
 @pytest.mark.asyncio
-async def test_sliding_window_async_blocking_path_can_return_false_after_wait():
+async def test_sliding_window_async_blocking_path_retries_until_slot_available():
     limiter = SlidingWindowRateLimiter(requests_per_second=1.0, window_size_seconds=1.0)
     limiter._requests.append(200.0)
+    mono = {"t": 200.0}
+
+    def monotonic_side_effect() -> float:
+        return mono["t"]
+
+    async def sleep_side_effect(seconds: float = 0.0) -> None:
+        mono["t"] += max(seconds, 0.0) + 0.01
 
     with (
-        patch("insideLLMs.rate_limiting.time.monotonic", return_value=200.0),
-        patch("insideLLMs.rate_limiting.asyncio.sleep", new=AsyncMock()),
+        patch("insideLLMs.rate_limiting.time.monotonic", side_effect=monotonic_side_effect),
+        patch("insideLLMs.rate_limiting.asyncio.sleep", side_effect=sleep_side_effect),
     ):
         result = await limiter.acquire_async(block=True)
 
-    assert result is False
+    assert result is True
 
 
 def test_sliding_window_reset_clears_requests():
@@ -284,10 +312,10 @@ async def test_decorator_async_branches_for_rate_limit_retry_and_circuit():
         return "circuit-ok"
 
     assert await async_rate_fn() == "rate-ok"
-    # The decorator currently returns the inner coroutine object from breaker.execute_async.
-    assert await (await async_circuit_fn()) == "circuit-ok"
+    # Decorators must await the underlying coroutine once (no double-await).
+    assert await async_circuit_fn() == "circuit-ok"
     with pytest.raises(Exception, match="retry-fail"):
-        await (await async_retry_fail())
+        await async_retry_fail()
 
     assert call_counts["rate"] == 1
     assert call_counts["retry"] >= 1

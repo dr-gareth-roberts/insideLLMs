@@ -974,39 +974,34 @@ class TokenBucketRateLimiter:
             # A request larger than the bucket can never be satisfied; fail loudly
             # instead of sleeping forever and returning a misleading False.
             raise ValueError("tokens cannot exceed capacity")
-        with self._lock:
-            self._refill()
-            self._stats.total_requests += 1
 
-            if self._tokens >= tokens:
-                self._tokens -= tokens
-                self._stats.allowed_requests += 1
-                self._stats.tokens_consumed += tokens
-                return True
+        # Blocking acquisition loops until tokens are available. A single sleep
+        # is insufficient under contention: two waiters can both wake, one takes
+        # the tokens, and the other must wait again rather than return False.
+        counted = False
+        while True:
+            with self._lock:
+                self._refill()
+                # Count once per logical acquire call, not per loop spin.
+                if not counted:
+                    self._stats.total_requests += 1
+                    counted = True
 
-            if not block:
-                self._stats.throttled_requests += 1
-                return False
+                if self._tokens >= tokens:
+                    self._tokens -= tokens
+                    self._stats.allowed_requests += 1
+                    self._stats.tokens_consumed += tokens
+                    return True
 
-            # Calculate wait time
-            needed = tokens - self._tokens
-            wait_time = needed / self.rate
+                if not block:
+                    self._stats.throttled_requests += 1
+                    return False
 
-        # Wait outside lock
-        time.sleep(wait_time)
+                needed = tokens - self._tokens
+                wait_time = needed / self.rate
+                self._stats.total_wait_time_ms += wait_time * 1000
 
-        with self._lock:
-            # Mutate stats under the lock to avoid races with concurrent acquirers.
-            self._stats.total_wait_time_ms += wait_time * 1000
-            self._refill()
-            if self._tokens >= tokens:
-                self._tokens -= tokens
-                self._stats.allowed_requests += 1
-                self._stats.tokens_consumed += tokens
-                return True
-
-            self._stats.throttled_requests += 1
-            return False
+            time.sleep(wait_time)
 
     async def acquire_async(self, tokens: int = 1, block: bool = True) -> bool:
         """
@@ -1059,37 +1054,30 @@ class TokenBucketRateLimiter:
             # A request larger than the bucket can never be satisfied; fail loudly
             # instead of sleeping forever and returning a misleading False.
             raise ValueError("tokens cannot exceed capacity")
-        with self._lock:
-            self._refill()
-            self._stats.total_requests += 1
 
-            if self._tokens >= tokens:
-                self._tokens -= tokens
-                self._stats.allowed_requests += 1
-                self._stats.tokens_consumed += tokens
-                return True
+        counted = False
+        while True:
+            with self._lock:
+                self._refill()
+                if not counted:
+                    self._stats.total_requests += 1
+                    counted = True
 
-            if not block:
-                self._stats.throttled_requests += 1
-                return False
+                if self._tokens >= tokens:
+                    self._tokens -= tokens
+                    self._stats.allowed_requests += 1
+                    self._stats.tokens_consumed += tokens
+                    return True
 
-            needed = tokens - self._tokens
-            wait_time = needed / self.rate
+                if not block:
+                    self._stats.throttled_requests += 1
+                    return False
 
-        await asyncio.sleep(wait_time)
+                needed = tokens - self._tokens
+                wait_time = needed / self.rate
+                self._stats.total_wait_time_ms += wait_time * 1000
 
-        with self._lock:
-            # Mutate stats under the lock to avoid races with concurrent acquirers.
-            self._stats.total_wait_time_ms += wait_time * 1000
-            self._refill()
-            if self._tokens >= tokens:
-                self._tokens -= tokens
-                self._stats.allowed_requests += 1
-                self._stats.tokens_consumed += tokens
-                return True
-
-            self._stats.throttled_requests += 1
-            return False
+            await asyncio.sleep(wait_time)
 
     def _refill(self):
         """
@@ -1309,36 +1297,30 @@ class ThreadSafeSlidingWindowRateLimiter:
             >>> limiter.acquire(block=True)  # Waits until slot available
             True
         """
-        with self._lock:
-            self._cleanup()
-            self._stats.total_requests += 1
+        counted = False
+        while True:
+            with self._lock:
+                self._cleanup()
+                if not counted:
+                    self._stats.total_requests += 1
+                    counted = True
 
-            if len(self._requests) < self.max_requests:
-                self._requests.append(time.monotonic())
-                self._stats.allowed_requests += 1
-                return True
+                if len(self._requests) < self.max_requests:
+                    self._requests.append(time.monotonic())
+                    self._stats.allowed_requests += 1
+                    return True
 
-            if not block:
-                self._stats.throttled_requests += 1
-                return False
+                if not block:
+                    self._stats.throttled_requests += 1
+                    return False
 
-            # Calculate wait time
-            oldest = self._requests[0]
-            wait_time = self.window_size - (time.monotonic() - oldest)
+                oldest = self._requests[0]
+                wait_time = self.window_size - (time.monotonic() - oldest)
+                if wait_time <= 0:
+                    wait_time = self.window_size / max(self.max_requests, 1)
+                self._stats.total_wait_time_ms += wait_time * 1000
 
-        if wait_time > 0:
-            self._stats.total_wait_time_ms += wait_time * 1000
             time.sleep(wait_time)
-
-        with self._lock:
-            self._cleanup()
-            if len(self._requests) < self.max_requests:
-                self._requests.append(time.monotonic())
-                self._stats.allowed_requests += 1
-                return True
-
-            self._stats.throttled_requests += 1
-            return False
 
     async def acquire_async(self, block: bool = True) -> bool:
         """
@@ -1368,35 +1350,30 @@ class ThreadSafeSlidingWindowRateLimiter:
             ...     await limiter.acquire_async()
             ...     return await make_async_request()
         """
-        with self._lock:
-            self._cleanup()
-            self._stats.total_requests += 1
+        counted = False
+        while True:
+            with self._lock:
+                self._cleanup()
+                if not counted:
+                    self._stats.total_requests += 1
+                    counted = True
 
-            if len(self._requests) < self.max_requests:
-                self._requests.append(time.monotonic())
-                self._stats.allowed_requests += 1
-                return True
+                if len(self._requests) < self.max_requests:
+                    self._requests.append(time.monotonic())
+                    self._stats.allowed_requests += 1
+                    return True
 
-            if not block:
-                self._stats.throttled_requests += 1
-                return False
+                if not block:
+                    self._stats.throttled_requests += 1
+                    return False
 
-            oldest = self._requests[0]
-            wait_time = self.window_size - (time.monotonic() - oldest)
+                oldest = self._requests[0]
+                wait_time = self.window_size - (time.monotonic() - oldest)
+                if wait_time <= 0:
+                    wait_time = self.window_size / max(self.max_requests, 1)
+                self._stats.total_wait_time_ms += wait_time * 1000
 
-        if wait_time > 0:
-            self._stats.total_wait_time_ms += wait_time * 1000
             await asyncio.sleep(wait_time)
-
-        with self._lock:
-            self._cleanup()
-            if len(self._requests) < self.max_requests:
-                self._requests.append(time.monotonic())
-                self._stats.allowed_requests += 1
-                return True
-
-            self._stats.throttled_requests += 1
-            return False
 
     def _cleanup(self):
         """
@@ -1675,10 +1652,12 @@ class RetryHandler:
 
         for attempt in range(self.config.max_retries + 1):
             try:
-                if inspect.iscoroutinefunction(func):
-                    result = await func()
-                else:
-                    result = func()
+                # Callers often pass lambdas that return coroutines
+                # (e.g. decorator wrappers). iscoroutinefunction is False for
+                # those lambdas, so always call then await if awaitable.
+                result = func()
+                if inspect.isawaitable(result):
+                    result = await result
 
                 return RateLimitRetryResult(
                     success=True,
@@ -2056,10 +2035,10 @@ class RateLimitCircuitBreaker:
             raise CircuitOpenError("Circuit breaker is open")
 
         try:
-            if inspect.iscoroutinefunction(func):
-                result = await func()
-            else:
-                result = func()
+            # Callers often pass lambdas that return coroutines; await those.
+            result = func()
+            if inspect.isawaitable(result):
+                result = await result
             self.record_success()
             return result
         except Exception as _:
@@ -2297,7 +2276,9 @@ class RequestQueue:
 
             _, _, func = self._queue.pop(0)
 
-        self.rate_limiter.acquire(block=True)
+        acquired = self.rate_limiter.acquire(block=True)
+        if not acquired:
+            raise RuntimeError("rate limiter blocking acquire returned False")
 
         try:
             result = func()
@@ -2330,7 +2311,9 @@ class RequestQueue:
 
             _, _, func = self._queue.pop(0)
 
-        await self.rate_limiter.acquire_async(block=True)
+        acquired = await self.rate_limiter.acquire_async(block=True)
+        if not acquired:
+            raise RuntimeError("rate limiter blocking acquire returned False")
 
         try:
             if inspect.iscoroutinefunction(func):
@@ -2811,7 +2794,9 @@ class RateLimitedExecutor:
 
         # Acquire rate limit
         if self.rate_limiter:
-            self.rate_limiter.acquire(tokens, block=True)
+            acquired = self.rate_limiter.acquire(tokens, block=True)
+            if not acquired:
+                raise RuntimeError("rate limiter blocking acquire returned False")
 
         # Acquire concurrency slot
         if self.concurrency_limiter:
@@ -2882,7 +2867,9 @@ class RateLimitedExecutor:
             raise CircuitOpenError("Circuit breaker is open")
 
         if self.rate_limiter:
-            await self.rate_limiter.acquire_async(tokens, block=True)
+            acquired = await self.rate_limiter.acquire_async(tokens, block=True)
+            if not acquired:
+                raise RuntimeError("rate limiter blocking acquire returned False")
 
         if self.concurrency_limiter:
             await self.concurrency_limiter.acquire_async()
@@ -2966,12 +2953,14 @@ def rate_limited(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            limiter.acquire()
+            if not limiter.acquire():
+                raise RuntimeError("rate limiter blocking acquire returned False")
             return func(*args, **kwargs)
 
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            await limiter.acquire_async()
+            if not await limiter.acquire_async():
+                raise RuntimeError("rate limiter blocking acquire returned False")
             return await func(*args, **kwargs)
 
         if inspect.iscoroutinefunction(func):

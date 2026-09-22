@@ -1247,8 +1247,8 @@ class TestCohereModelMultiTurnChat:
         assert call_kwargs["temperature"] == 0.5
         assert call_kwargs["max_tokens"] == 100
 
-    def test_chat_last_user_message_fallback(self):
-        """When current_message is empty after loop, find last user message."""
+    def test_chat_rejects_non_user_final_turn(self):
+        """Chat must end with a user message; assistant-final is rejected."""
         from insideLLMs.models.cohere import CohereModel
 
         model = CohereModel(api_key="test_key")
@@ -1258,16 +1258,15 @@ class TestCohereModelMultiTurnChat:
         mock_client.chat.return_value = mock_response
         model._client = mock_client
 
-        # After user->assistant->assistant, current_message will be empty
         messages = [
             {"role": "system", "content": "Be helpful"},
             {"role": "user", "content": "First question"},
             {"role": "assistant", "content": "Answer"},
             {"role": "assistant", "content": "Continued"},
         ]
-        model.chat(messages)  # type: ignore[arg-type]
-        call_kwargs = mock_client.chat.call_args[1]
-        assert call_kwargs["message"] == "First question"
+        with pytest.raises(ValueError, match='role="user"'):
+            model.chat(messages)  # type: ignore[arg-type]
+        mock_client.chat.assert_not_called()
 
 
 class TestCohereModelStreamNonTextEvents:

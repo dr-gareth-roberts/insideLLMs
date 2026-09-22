@@ -9,7 +9,6 @@ import logging
 import platform
 import sys
 import time
-from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -38,8 +37,10 @@ from insideLLMs.runtime._artifact_utils import (
     _ensure_run_sentinel,
     _prepare_run_dir,
     _prepare_run_dir_for_resume,
+    _read_jsonl_records,
     _require_unsealed_run_directory,
     _semver_tuple,
+    _truncate_incomplete_jsonl,
     _validate_resume_record,
 )
 from insideLLMs.runtime._async_resume import (
@@ -284,6 +285,21 @@ class AsyncProbeRunner(_RunnerBase):
         )
         run_mode = getattr(config, "run_mode", "default")
 
+        # Reject unsupported combos fail-closed before any dispatch.
+        if run_mode == "ultimate" and timeout is not None:
+            raise ValueError(
+                'async run_mode="ultimate" is incompatible with timeout; '
+                "executor threads cannot be cancelled and sealing with "
+                "in-flight work is unsafe. Clear timeout or use run_mode="
+                '"default".'
+            )
+        if use_probe_batch and timeout is not None:
+            raise ValueError(
+                "use_probe_batch=True is incompatible with timeout; "
+                "the batch path cannot enforce per-item timeouts. "
+                "Disable batch mode or clear timeout."
+            )
+
         if budget_ledger is not None:
             if resume:
                 raise BudgetUnsupportedError("Budgeted resume requires durable reservations")
@@ -431,12 +447,17 @@ class AsyncProbeRunner(_RunnerBase):
         records_fp = None
         write_lock = asyncio.Lock()
         next_write_index = completed
+        # Once a record fails validation/serialization, do not retry that index
+        # on a later write_ready_records() call (e.g. the post-gather flush).
+        records_persist_failed = False
 
         async def write_ready_records() -> None:
-            nonlocal next_write_index
-            if not emit_run_artifacts or records_fp is None:
+            nonlocal next_write_index, stop_error, records_persist_failed
+            if not emit_run_artifacts or records_fp is None or records_persist_failed:
                 return
             async with write_lock:
+                if records_persist_failed:
+                    return
                 while next_write_index < len(prompt_set):
                     result_obj = results[next_write_index]
                     if result_obj is None:
@@ -449,50 +470,84 @@ class AsyncProbeRunner(_RunnerBase):
                         run_base_time,
                         next_write_index,
                     )
-                    record = _build_result_record(
-                        schema_version=schema_version,
-                        run_id=resolved_run_id,
-                        started_at=item_started_at,
-                        completed_at=item_completed_at,
-                        model=model_spec,
-                        probe=probe_spec,
-                        dataset=dataset_spec,
-                        item=prompt_set[next_write_index],
-                        output=result_obj.get("output"),
-                        scores=result_obj.get("scores"),
-                        primary_metric=result_obj.get("primary_metric"),
-                        metadata=result_obj.get("metadata"),
-                        latency_ms=result_obj.get("latency_ms"),
-                        store_messages=store_messages,
-                        index=next_write_index,
-                        status=str(result_obj.get("status") or "error"),
-                        error=error_value,
-                        error_type=error_type,
-                        strict_serialization=strict_serialization,
-                    )
-                    record_metadata = result_obj.get("metadata")
-                    if isinstance(record_metadata, dict) and isinstance(record.get("custom"), dict):
-                        timeout_seconds = record_metadata.get("timeout_seconds")
-                        if isinstance(timeout_seconds, (int, float)):
-                            record["custom"]["timeout_seconds"] = float(timeout_seconds)
-                        if str(result_obj.get("status") or "") == "timeout":
-                            record["custom"]["timeout"] = True
-                    if validate_output:
-                        validator.validate(
-                            registry.RESULT_RECORD,
-                            record,
+                    try:
+                        record = _build_result_record(
                             schema_version=schema_version,
-                            mode=validator_mode,
+                            run_id=resolved_run_id,
+                            started_at=item_started_at,
+                            completed_at=item_completed_at,
+                            model=model_spec,
+                            probe=probe_spec,
+                            dataset=dataset_spec,
+                            item=prompt_set[next_write_index],
+                            output=result_obj.get("output"),
+                            scores=result_obj.get("scores"),
+                            primary_metric=result_obj.get("primary_metric"),
+                            metadata=result_obj.get("metadata"),
+                            latency_ms=result_obj.get("latency_ms"),
+                            store_messages=store_messages,
+                            index=next_write_index,
+                            status=str(result_obj.get("status") or "error"),
+                            error=error_value,
+                            error_type=error_type,
+                            strict_serialization=strict_serialization,
                         )
-                    record_line = _stable_json_dumps(record, strict=strict_serialization) + "\n"
-                    loop = asyncio.get_running_loop()
-                    await loop.run_in_executor(
-                        None,
-                        lambda line=record_line: (
-                            records_fp.write(line),
-                            records_fp.flush(),
-                        ),
-                    )
+                        record_metadata = result_obj.get("metadata")
+                        if isinstance(record_metadata, dict) and isinstance(
+                            record.get("custom"), dict
+                        ):
+                            timeout_seconds = record_metadata.get("timeout_seconds")
+                            if isinstance(timeout_seconds, (int, float)):
+                                record["custom"]["timeout_seconds"] = float(timeout_seconds)
+                            if str(result_obj.get("status") or "") == "timeout":
+                                record["custom"]["timeout"] = True
+                        if validate_output:
+                            validator.validate(
+                                registry.RESULT_RECORD,
+                                record,
+                                schema_version=schema_version,
+                                mode=validator_mode,
+                            )
+                        record_line = _stable_json_dumps(record, strict=strict_serialization) + "\n"
+                        loop = asyncio.get_running_loop()
+                        await loop.run_in_executor(
+                            None,
+                            lambda line=record_line: (
+                                records_fp.write(line),
+                                records_fp.flush(),
+                            ),
+                        )
+                    except Exception as persist_exc:
+                        # Keep prior successful records; route through finalizer.
+                        # Do not advance next_write_index or retry this index.
+                        records_persist_failed = True
+                        idx = next_write_index
+                        item = prompt_set[idx]
+                        if stop_error is None:
+                            stop_error = RunnerExecutionError(
+                                reason="Record validation or serialization failed",
+                                model_id=model_spec.get("model_id"),
+                                probe_id=probe_spec.get("probe_id"),
+                                prompt=str(item) if not isinstance(item, str) else item,
+                                prompt_index=idx,
+                                run_id=resolved_run_id,
+                                original_error=persist_exc,
+                                suggestions=[
+                                    "Inspect the failing record against the result schema",
+                                    "Retry with validate_output=False to isolate probe output",
+                                    "Review the original error message above",
+                                ],
+                            )
+                        else:
+                            stop_error.secondary_diagnostics.append(
+                                {
+                                    "stage": "record_persistence",
+                                    "error_type": type(persist_exc).__name__,
+                                    "message": str(persist_exc),
+                                }
+                            )
+                        stop_event.set()
+                        break
                     next_write_index += 1
 
         async def run_single(index: int, item: Any) -> None:
@@ -600,10 +655,12 @@ class AsyncProbeRunner(_RunnerBase):
                     )
                     await write_ready_records()
 
-        with ExitStack() as stack:
+        try:
             if emit_run_artifacts:
                 mode = "a" if resume else "x"
-                records_fp = stack.enter_context(open(records_path, mode, encoding="utf-8"))
+                # Own the handle explicitly so a close() failure cannot skip
+                # post-close reconcile + manifest finalization (ExitStack would).
+                records_fp = open(records_path, mode, encoding="utf-8")
 
             if use_probe_batch:
                 remaining_items = prompt_set[completed:]
@@ -634,7 +691,6 @@ class AsyncProbeRunner(_RunnerBase):
                             ),
                         )
                     except Exception as exc:
-                        probe_results = []
                         stop_error = RunnerExecutionError(
                             reason="Batch execution failed",
                             model_id=model_spec.get("model_id"),
@@ -642,8 +698,27 @@ class AsyncProbeRunner(_RunnerBase):
                             run_id=resolved_run_id,
                             original_error=exc,
                         )
+                        probe_results = None
 
-                    for offset, probe_result in enumerate(probe_results):
+                    if probe_results is not None:
+                        # Materialize and validate exact cardinality before any
+                        # evaluation or persistence — never write a partial batch.
+                        probe_results = list(probe_results)
+                        expected_batch = len(remaining_items)
+                        got_batch = len(probe_results)
+                        if got_batch != expected_batch:
+                            raise RunnerExecutionError(
+                                reason=(
+                                    "Batch result cardinality mismatch: "
+                                    f"expected {expected_batch} result(s), "
+                                    f"got {got_batch}"
+                                ),
+                                model_id=model_spec.get("model_id"),
+                                probe_id=probe_spec.get("probe_id"),
+                                run_id=resolved_run_id,
+                            )
+
+                    for offset, probe_result in enumerate(probe_results or []):
                         index = completed + offset
                         probe_result = await loop.run_in_executor(
                             None,
@@ -689,13 +764,42 @@ class AsyncProbeRunner(_RunnerBase):
                                         "Review the original error message above",
                                     ],
                                 )
-                    completed += len(probe_results)
+                    completed += len(probe_results or [])
                     await write_ready_records()
             else:
                 tasks = [run_single(i, item) for i, item in enumerate(prompt_set) if i >= completed]
                 if tasks:
                     await asyncio.gather(*tasks)
                 await write_ready_records()
+        finally:
+            if records_fp is not None:
+                try:
+                    records_fp.close()
+                except Exception as close_exc:
+                    # close() is not guaranteed after a successful write/flush.
+                    # Capture the failure and continue to reconcile + finalize.
+                    records_persist_failed = True
+                    if stop_error is None:
+                        stop_error = RunnerExecutionError(
+                            reason="Record validation or serialization failed",
+                            model_id=model_spec.get("model_id"),
+                            probe_id=probe_spec.get("probe_id"),
+                            run_id=resolved_run_id,
+                            original_error=close_exc,
+                            suggestions=[
+                                "Inspect the failing record against the result schema",
+                                "Retry with validate_output=False to isolate probe output",
+                                "Review the original error message above",
+                            ],
+                        )
+                    else:
+                        stop_error.secondary_diagnostics.append(
+                            {
+                                "stage": "record_close",
+                                "error_type": type(close_exc).__name__,
+                                "message": str(close_exc),
+                            }
+                        )
 
         if stop_error is None and any(result is None for result in results):
             raise RuntimeError("Runner did not produce results for all items.")
@@ -724,10 +828,24 @@ class AsyncProbeRunner(_RunnerBase):
         if emit_run_artifacts:
             python_version = None if deterministic_artifacts else sys.version.split()[0]
             platform_info = None if deterministic_artifacts else platform.platform()
+            # next_write_index is the exclusive end of the contiguous persisted
+            # prefix on the happy path. After a write/flush abort, reconcile
+            # against the real file (drop incomplete tail) because file I/O is
+            # not transactional with the in-memory write cursor.
+            if records_persist_failed:
+                if records_path.exists():
+                    _truncate_incomplete_jsonl(records_path)
+                    artifact_results = _read_jsonl_records(records_path)
+                else:
+                    artifact_results = []
+            else:
+                artifact_results = [
+                    result for result in results[:next_write_index] if result is not None
+                ]
             status_counts = {
-                "success": sum(1 for r in final_results if r.get("status") == "success"),
-                "error": sum(1 for r in final_results if r.get("status") == "error"),
-                "timeout": sum(1 for r in final_results if r.get("status") == "timeout"),
+                "success": sum(1 for r in artifact_results if r.get("status") == "success"),
+                "error": sum(1 for r in artifact_results if r.get("status") == "error"),
+                "timeout": sum(1 for r in artifact_results if r.get("status") == "timeout"),
             }
 
             def _serialize_manifest(value: Any) -> Any:
@@ -746,7 +864,7 @@ class AsyncProbeRunner(_RunnerBase):
                 "model": model_spec,
                 "probe": probe_spec,
                 "dataset": dataset_spec,
-                "record_count": len(final_results),
+                "record_count": len(artifact_results),
                 "success_count": status_counts["success"],
                 "error_count": status_counts["error"],
                 "records_file": "records.jsonl",
@@ -759,7 +877,7 @@ class AsyncProbeRunner(_RunnerBase):
                     "status_counts": status_counts,
                     "timeout_count": status_counts["timeout"],
                     "health": assess_run_health(
-                        final_results,
+                        artifact_results,
                         expected_count=len(prompt_set),
                         run_completed=stop_error is None,
                     ),

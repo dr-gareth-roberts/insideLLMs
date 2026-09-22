@@ -55,6 +55,17 @@ Minimum policy for every deprecation:
 - Update `docs/STABILITY_MATRIX.md` if contract scope changes.
 - Add or update compatibility tests when behaviour is user-visible.
 
+### Review hardening compatibility
+
+PR #131 follow-up preserves CLI flags and artifact schema versions. `validate`
+continues to report schema/read errors as exit 1 in strict mode and warnings in
+warn mode; malformed nested `schemas` now follows that contract instead of
+raising `AttributeError`. Records reads require final-component no-follow support.
+Report rollback retains failed-to-restore backups and reports their paths for
+manual recovery. Shadow query credentials are replaced by a redaction marker in
+existing fields; callers must not depend on persisted raw authentication values.
+The focused filesystem and shadow regression suites exercise these contracts.
+
 ### Determinism scope
 
 The run → records → report → diff pipeline is deterministic for the same inputs and configuration.

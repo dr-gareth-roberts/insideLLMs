@@ -8,6 +8,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
+from insideLLMs.resources import atomic_write_text
 from insideLLMs.runtime.diff_html_report import render_diff_html
 from insideLLMs.runtime.diffing import (
     DiffGatePolicy,
@@ -32,6 +33,18 @@ from .._output import (
     print_warning,
 )
 from .._record_utils import _json_default, iter_jsonl_records
+
+
+def _write_output_file(path: Path, content: str) -> None:
+    """Write report output atomically without creating parent directories.
+
+    Unlike ``resources.atomic_write_text`` this fails with ``FileNotFoundError``
+    when the parent directory does not exist: a nonexistent output directory is
+    a setup error (exit 1), not something the CLI should silently create.
+    """
+    if not path.parent.is_dir():
+        raise FileNotFoundError(f"Output directory does not exist: {path.parent}")
+    atomic_write_text(path, content)
 
 
 def _print_judge_review(judge_report: dict[str, Any], *, limit: int) -> None:
@@ -172,7 +185,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
         if judge_report is not None:
             html_payload["judge"] = judge_report
         try:
-            Path(html_path).write_text(render_diff_html(html_payload), encoding="utf-8")
+            _write_output_file(Path(html_path), render_diff_html(html_payload))
         except OSError as e:
             print_error(f"Could not write HTML report to {html_path}: {e}")
             return 1
@@ -183,7 +196,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
             payload_obj["judge"] = judge_report
         payload = json.dumps(payload_obj, indent=2, default=_json_default, sort_keys=True)
         if output_path:
-            Path(output_path).write_text(payload, encoding="utf-8")
+            try:
+                _write_output_file(Path(output_path), payload)
+            except OSError as e:
+                print_error(f"Could not write JSON report to {output_path}: {e}")
+                return 1
         else:
             print(payload)
         return compute_diff_exit_code(computation, gate_policy)

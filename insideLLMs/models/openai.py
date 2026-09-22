@@ -61,7 +61,7 @@ from insideLLMs.exceptions import (
 )
 from insideLLMs.types import ModelInfo
 
-from .base import ChatMessage, Model
+from .base import ChatMessage, Model, _retry_after_seconds
 
 
 class OpenAIModel(Model):
@@ -362,7 +362,7 @@ class OpenAIModel(Model):
         except OpenAIRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except APITimeoutError:
             raise InsideLLMsTimeoutError(
@@ -458,7 +458,7 @@ class OpenAIModel(Model):
         except OpenAIRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except APITimeoutError:
             raise InsideLLMsTimeoutError(
@@ -556,7 +556,7 @@ class OpenAIModel(Model):
         except OpenAIRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except APITimeoutError:
             raise InsideLLMsTimeoutError(
