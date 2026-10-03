@@ -103,11 +103,7 @@ def _git_index_files(repo_root: Path) -> list[Path] | None:
         return None
     if result.returncode != 0:
         return None
-    return [
-        Path(part)
-        for part in result.stdout.decode("utf-8", "replace").split("\0")
-        if part
-    ]
+    return [Path(part) for part in result.stdout.decode("utf-8", "replace").split("\0") if part]
 
 
 def _candidate_files(repo_root: Path, *, strict: bool) -> list[Path]:
@@ -122,9 +118,7 @@ def _candidate_files(repo_root: Path, *, strict: bool) -> list[Path]:
             if rel.suffix.lower() not in suffixes:
                 continue
             absolute = repo_root / rel
-            if absolute.is_file() and not _should_skip_file(
-                absolute, repo_root, strict=strict
-            ):
+            if absolute.is_file() and not _should_skip_file(absolute, repo_root, strict=strict):
                 candidates.append(absolute)
         return sorted(candidates)
 
