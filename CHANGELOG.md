@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CLI: `insidellms benchmark` no longer crashes with
+  `'ProbeRunner' object has no attribute 'run_single'`; it uses the batch
+  runner API and reports per-record error/timeout statuses. Failure counts
+  now include records missing from an aborted batch.
+- CLI: `insidellms compare` exits 1 when every requested model fails to
+  load instead of printing an empty comparison table and exiting 0.
+- CLI: unknown flags on a subcommand now report the subcommand's own usage
+  and exit 2, instead of dumping the full top-level command list.
+- CLI: failed or unhealthy harness runs no longer print a green success
+  pipeline; artifact lines are demoted to warnings and the run is reported
+  as a partial run that is not a valid baseline.
+- Runtime: protected-directory guards in `_prepare_run_dir` run before the
+  empty-directory early return, so an empty HOME, cwd, filesystem root, or
+  run_root is refused as a run directory regardless of contents or
+  `overwrite` (previously bypassed when the directory was empty).
+- Packaging: `python -m insideLLMs` now works via a package-root
+  `__main__.py`, matching the documented invocation.
+- Makefile: `architecture` and `architecture-update` are declared phony, so
+  `make architecture` executes instead of being silently skipped when the
+  `architecture/` directory exists. `make` now prefers `.venv/bin/python`
+  when present, so `make golden-path` works without activating the venv.
+
 - PR #131 review follow-up: report rollback retains and reports backups when
   restoration fails; records validation opens the final component with
   `O_NOFOLLOW` and reports malformed manifest `schemas` through strict/warn
