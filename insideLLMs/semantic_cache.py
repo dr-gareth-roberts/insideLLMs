@@ -168,6 +168,7 @@ insideLLMs.tokens.EmbeddingUtils : Utilities for working with embeddings
 """
 
 import hashlib
+import itertools
 import json
 import math
 import threading
@@ -967,6 +968,48 @@ def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
         return dot_product / (norm1 * norm2)
 
 
+def _make_cosine_scorer(query: list[float]) -> Callable[[list[float]], float]:
+    """Build a reusable scorer that compares ``query`` against many vectors.
+
+    The query vector and its norm are computed once and captured in the returned
+    closure, so scoring N candidates does O(N) work instead of re-converting the
+    query and recomputing its norm on every call (as happens when
+    :func:`cosine_similarity` is invoked per candidate in a hot lookup loop).
+
+    Results are numerically identical to :func:`cosine_similarity`.
+    """
+    query_len = len(query)
+
+    if NUMPY_AVAILABLE:
+        q = np.array(query)
+        q_norm = np.linalg.norm(q)
+
+        def score_numpy(vec: list[float]) -> float:
+            if len(vec) != query_len or q_norm == 0:
+                return 0.0
+            b = np.array(vec)
+            norm_b = np.linalg.norm(b)
+            if norm_b == 0:
+                return 0.0
+            return float(np.dot(q, b) / (q_norm * norm_b))
+
+        return score_numpy
+
+    # Pure Python fallback
+    q_norm = math.sqrt(sum(a * a for a in query))
+
+    def score_pure_python(vec: list[float]) -> float:
+        if len(vec) != query_len or q_norm == 0:
+            return 0.0
+        dot_product = sum(a * b for a, b in zip(query, vec))
+        norm_b = math.sqrt(sum(b * b for b in vec))
+        if norm_b == 0:
+            return 0.0
+        return dot_product / (q_norm * norm_b)
+
+    return score_pure_python
+
+
 # =============================================================================
 # Redis Cache Backend
 # =============================================================================
@@ -1301,13 +1344,16 @@ class VectorCache:
             best_similarity = 0.0
             candidates_checked = 0
 
-            for key, embedding in list(self._embeddings.items())[: self.config.max_candidates]:
+            score = _make_cosine_scorer(query_embedding)
+            for key, embedding in itertools.islice(
+                self._embeddings.items(), self.config.max_candidates
+            ):
                 entry = self._entries.get(key)
                 if entry is None or entry.is_expired():
                     continue
 
                 candidates_checked += 1
-                similarity = cosine_similarity(query_embedding, embedding)
+                similarity = score(embedding)
 
                 if similarity > best_similarity and similarity >= threshold:
                     best_similarity = similarity
@@ -1365,12 +1411,13 @@ class VectorCache:
         results = []
 
         with self._lock:
+            score = _make_cosine_scorer(query_embedding)
             for key, embedding in self._embeddings.items():
                 entry = self._entries.get(key)
                 if entry is None or entry.is_expired():
                     continue
 
-                similarity = cosine_similarity(query_embedding, embedding)
+                similarity = score(embedding)
                 if similarity >= threshold:
                     results.append((entry, similarity))
 
