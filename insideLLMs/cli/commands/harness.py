@@ -478,6 +478,16 @@ def cmd_harness(args: argparse.Namespace) -> int:
             config_path=run_config_path,
         )
 
+        # Assess run health BEFORE writing artifacts so terminal output can
+        # distinguish complete, healthy runs from partial/failed ones: a
+        # failed run must not print a green success pipeline.
+        health = assess_run_health(
+            result.get("records", []),
+            expected_count=result.get("expected_count"),
+            run_completed=result.get("run_completed", True),
+        )
+        run_is_healthy = bool(health["healthy"])
+
         # Write resolved config snapshot for reproducibility.
         _atomic_write_yaml(
             output_dir / "config.resolved.yaml",
@@ -494,7 +504,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 record["run_id"] = resolved_run_id
 
         _write_jsonl(result["records"], records_path, strict_serialization=strict_serialization)
-        print_success(f"Records written to: {records_path}")
+        if run_is_healthy:
+            print_success(f"Records written to: {records_path}")
+        else:
+            print_warning(f"Records written (unhealthy run): {records_path}")
 
         # Backward compatibility: keep results.jsonl alongside records.jsonl.
         legacy_results_path = output_dir / "results.jsonl"
@@ -537,11 +550,8 @@ def cmd_harness(args: argparse.Namespace) -> int:
         success_count = sum(1 for r in result.get("records", []) if r.get("status") == "success")
         error_count = sum(1 for r in result.get("records", []) if r.get("status") == "error")
         timeout_count = sum(1 for r in result.get("records", []) if r.get("status") == "timeout")
-        health = assess_run_health(
-            result.get("records", []),
-            expected_count=result.get("expected_count"),
-            run_completed=result.get("run_completed", True),
-        )
+        # `health` was computed above, before artifact writes, so the terminal
+        # output below can reflect it.
 
         run_base_time = _deterministic_base_time(resolved_run_id)
         started_at, completed_at = _deterministic_run_times(run_base_time, record_count)
@@ -637,7 +647,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 default=_serialize_manifest,
             ),
         )
-        print_success(f"Manifest written to: {manifest_path}")
+        if run_is_healthy:
+            print_success(f"Manifest written to: {manifest_path}")
+        else:
+            print_warning(f"Manifest written (unhealthy run): {manifest_path}")
 
         summary_path = output_dir / "summary.json"
         report_path = output_dir / "report.html"
@@ -668,7 +681,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 sort_keys=True,
             ),
         )
-        print_success(f"Summary written to: {summary_path}")
+        if run_is_healthy:
+            print_success(f"Summary written to: {summary_path}")
+        else:
+            print_warning(f"Summary written (unhealthy run): {summary_path}")
 
         if getattr(args, "explain", False):
             result_cfg = result.get("config")
@@ -788,7 +804,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
                     default=_serialize_manifest,
                 ),
             )
-            print_success(f"Explain written to: {explain_path}")
+            if run_is_healthy:
+                print_success(f"Explain written to: {explain_path}")
+            else:
+                print_warning(f"Explain written (unhealthy run): {explain_path}")
 
         if not args.skip_report:
             report_title = args.report_title or result["config"].get(
@@ -813,7 +832,10 @@ def cmd_harness(args: argparse.Namespace) -> int:
                 with open(report_path, "w", encoding="utf-8") as f:
                     f.write(report_html)
 
-            print_success(f"Report written to: {report_path}")
+            if run_is_healthy:
+                print_success(f"Report written to: {report_path}")
+            else:
+                print_warning(f"Report written (unhealthy run): {report_path}")
 
         print_key_value("Elapsed", f"{elapsed:.2f}s")
 
@@ -854,8 +876,13 @@ def cmd_harness(args: argparse.Namespace) -> int:
             tracker = None
 
         if not args.quiet:
-            print(f"\nRun written to: {output_dir}")
-            print(f"Validate with: insidellms validate {output_dir}")
+            if run_is_healthy:
+                print(f"\nRun written to: {output_dir}")
+                print(f"Validate with: insidellms validate {output_dir}")
+            else:
+                print_warning("\nPARTIAL RUN WRITTEN — this run is not a valid baseline:")
+                print(f"  {output_dir}")
+                print("See the errors above; fix the run before comparing or validating.")
         if not health["healthy"]:
             print_error("Run health check failed: " + "; ".join(health["reasons"]))
             return 1
