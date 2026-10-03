@@ -34,3 +34,23 @@ def test_base_install_includes_validation_dependency() -> None:
     project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
     assert "pydantic>=2.0.0,<3" in project["dependencies"]
     assert "Development Status :: 4 - Beta" in project["classifiers"]
+
+
+def test_python_dash_m_entry_point_exists() -> None:
+    """``python -m insideLLMs`` must work like the console script.
+
+    Regression: the package root had no ``__main__.py``, so the standard
+    module invocation failed with "No module named insideLLMs.__main__"
+    while docs pointed users at ``python -m insideLLMs``.
+    """
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-m", "insideLLMs", "--version"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "insidellms" in result.stdout
