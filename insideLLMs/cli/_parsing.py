@@ -3,6 +3,7 @@
 import argparse
 import importlib.metadata
 import importlib.util
+from typing import Optional, Sequence, Tuple
 
 from insideLLMs.schemas import DEFAULT_SCHEMA_VERSION
 
@@ -48,6 +49,30 @@ def _has_module(module: str) -> bool:
         return False
 
 
+class _StrictSubParser(argparse.ArgumentParser):
+    """Subcommand parser that reports errors with its own usage line.
+
+    By default, unrecognized arguments on a subcommand propagate up to the
+    top-level parser via ``parse_known_args`` and the top level reports the
+    error with the full 20+-command usage, burying the actual mistake.
+    Rejecting extras here surfaces the subcommand's own usage instead.
+    """
+
+    def parse_known_args(
+        self,
+        args: Optional[Sequence[str]] = None,
+        namespace: Optional[argparse.Namespace] = None,
+    ) -> Tuple[argparse.Namespace, list[str]]:
+        if namespace is None:
+            namespace = argparse.Namespace()
+        parsed_namespace, extras = super().parse_known_args(args, namespace)
+        if parsed_namespace is None:  # argparse documents a Namespace return
+            parsed_namespace = argparse.Namespace()
+        if extras:
+            self.error(f"unrecognized arguments: {' '.join(extras)}")
+        return parsed_namespace, extras
+
+
 def _check_nltk_resource(path: str) -> bool:
     try:
         import nltk
@@ -66,7 +91,10 @@ def create_parser() -> argparse.ArgumentParser:
         def __init__(self, prog: str) -> None:
             super().__init__(prog, max_help_position=40, width=100)
 
-    common_parser = argparse.ArgumentParser(add_help=False)
+    # _StrictSubParser here only so the typed ``parents=[common_parser]``
+    # lists below match the subparser class used by ``add_subparsers``;
+    # the shared parser is a template and never parses by itself.
+    common_parser = _StrictSubParser(add_help=False)
     common_parser.add_argument(
         "--no-color",
         action="store_true",
@@ -116,7 +144,9 @@ def create_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {_cli_version_string()}",
     )
 
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(
+        dest="command", help="Available commands", parser_class=_StrictSubParser
+    )
 
     # =========================================================================
     # Run command
