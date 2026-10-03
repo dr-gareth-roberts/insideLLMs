@@ -257,7 +257,7 @@ def test_cli_diff_export_schema_compare(tmp_path: Path, monkeypatch: pytest.Monk
     ):
         assert export_mod.cmd_export(args) == 1
 
-    # --- compare: empty jsonl line + model init fail ---
+    # --- compare: empty jsonl line + model init fail (all models failed → exit 1) ---
     jf = tmp_path / "in.jsonl"
     jf.write_text('\n{"input": "hi"}\n', encoding="utf-8")
     args = argparse.Namespace(
@@ -272,7 +272,9 @@ def test_cli_diff_export_schema_compare(tmp_path: Path, monkeypatch: pytest.Monk
         "resolve_registered_model",
         side_effect=RuntimeError("no model"),
     ):
-        assert compare_mod.cmd_compare(args) == 0
+        # All models failed to load: the comparison must fail (exit 1), not
+        # print an empty success table.
+        assert compare_mod.cmd_compare(args) == 1
 
     # --- diff: judge verdict non-dict + interactive copy empty ---
     run_a = tmp_path / "a"

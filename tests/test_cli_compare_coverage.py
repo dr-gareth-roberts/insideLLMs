@@ -122,13 +122,34 @@ class TestCompareInputFile:
 
 class TestCompareModelErrors:
     def test_model_load_failure(self, capsys, tmp_path):
+        """When *every* requested model fails to load, compare must fail (exit 1).
+
+        It previously printed an empty comparison and exited 0, which looked
+        like success to scripts and CI.
+        """
         out = str(tmp_path / "out.json")
         rc = cmd_compare(
             _make_args(models="nonexistent_model_xyz", input="test", format="json", output=out)
         )
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "No models could be loaded" in err
+        # No bogus success artifact should be written for an all-failed run.
+        assert not Path(out).exists()
+
+    def test_partial_model_load_failure_still_compares(self, capsys, tmp_path):
+        """A run where at least one model loaded remains a valid comparison."""
+        out = str(tmp_path / "out.json")
+        rc = cmd_compare(
+            _make_args(
+                models="nonexistent_model_xyz,dummy", input="test", format="json", output=out
+            )
+        )
         assert rc == 0
         data = json.loads(Path(out).read_text())
-        assert data[0]["models"][0]["error"] == "model_init_failed"
+        statuses = {m["model"]: m["error"] for m in data[0]["models"]}
+        assert statuses["nonexistent_model_xyz"] == "model_init_failed"
+        assert statuses["dummy"] is None
 
     def test_multiple_models_with_dummy(self, capsys, tmp_path):
         out = str(tmp_path / "out.json")
