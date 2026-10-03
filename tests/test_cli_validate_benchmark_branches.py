@@ -189,13 +189,14 @@ def test_cmd_benchmark_explicit_datasets_and_html_report(tmp_path):
         def __init__(self, _model, _probe):
             self.calls = 0
 
-        def run_single(self, _inp):
+        def run(self, _inputs, *, emit_run_artifacts=False, **_kwargs):
             self.calls += 1
-            if self.calls == 1:
-                return SimpleNamespace(status="success")
-            if self.calls == 2:
-                return {"status": "success"}
-            return {"status": "error"}
+            assert emit_run_artifacts is False
+            return [
+                SimpleNamespace(status="success"),
+                {"status": "success"},
+                {"status": "error"},
+            ]
 
     fake_dataset = SimpleNamespace(sample=lambda _n, seed=42: list(examples))
 
@@ -231,11 +232,9 @@ def test_cmd_benchmark_probe_load_failure_and_runner_errors(tmp_path):
         def __init__(self, _model, _probe):
             self.calls = 0
 
-        def run_single(self, _inp):
+        def run(self, _inputs, *, emit_run_artifacts=False, **_kwargs):
             self.calls += 1
-            if self.calls == 1:
-                raise ProbeExecutionError("goodprobe", "probe failed")
-            if self.calls == 2:
+            if self.calls == 2:  # goodprobe
                 raise RuntimeError("runtime failed")
             return {"status": "success"}
 
@@ -274,11 +273,12 @@ def test_cmd_benchmark_records_failure_counts_and_messages(capsys):
         def __init__(self, _model, _probe):
             self.calls = 0
 
-        def run_single(self, _inp):
+        def run(self, _inputs, *, emit_run_artifacts=False, **_kwargs):
             self.calls += 1
-            if self.calls == 1:
-                raise ProbeExecutionError("goodprobe", "probe failed")
-            return {"status": "success"}
+            return [
+                {"status": "error", "error": "probe failed"},
+                {"status": "success"},
+            ]
 
     with (
         patch(
