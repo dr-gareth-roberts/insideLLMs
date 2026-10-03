@@ -80,7 +80,55 @@ def _should_skip_file(filepath: Path, repo_root: Path, *, strict: bool) -> bool:
     return False
 
 
+def _git_index_files(repo_root: Path) -> list[Path] | None:
+    """Return the files in the git index (i.e. what a commit would include).
+
+    Scanning the index rather than the filesystem keeps untracked scratch
+    directories (agent workspaces, vendored snapshots under ``.tmp/``) from
+    blocking commits with false positives. Newly staged files are in the
+    index, so a pre-commit run still sees everything about to be committed.
+    Returns None when git is unavailable, so callers can fall back to
+    filesystem globbing.
+    """
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z", "--cached"],
+            cwd=repo_root,
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return [
+        Path(part)
+        for part in result.stdout.decode("utf-8", "replace").split("\0")
+        if part
+    ]
+
+
 def _candidate_files(repo_root: Path, *, strict: bool) -> list[Path]:
+    suffixes = {".py", ".yaml", ".yml", ".json"}
+    if strict:
+        suffixes.add(".md")
+
+    index_files = _git_index_files(repo_root)
+    if index_files is not None:
+        candidates = []
+        for rel in index_files:
+            if rel.suffix.lower() not in suffixes:
+                continue
+            absolute = repo_root / rel
+            if absolute.is_file() and not _should_skip_file(
+                absolute, repo_root, strict=strict
+            ):
+                candidates.append(absolute)
+        return sorted(candidates)
+
+    # Fallback when git is unavailable: walk the filesystem.
     patterns = list(DEFAULT_GLOBS)
     if strict:
         patterns.extend(STRICT_EXTRA_GLOBS)
@@ -107,21 +155,33 @@ def _extract_assigned_value(line: str) -> str | None:
     return match.group(1).strip()
 
 
-def _is_placeholder_assignment(line: str) -> bool:
-    value = _extract_assigned_value(line)
-    if not value:
+def _is_placeholder_assignment(line: str, pattern: str) -> bool:
+    """True when every assignment matched by ``pattern`` holds a placeholder value.
+
+    Checking the pattern's own matches (rather than the first assignment on
+    the line) keeps a leading unrelated keyword argument from masking the
+    placeholder, e.g. ``X(model_id="gpt-4o", api_key="sk-test")``.
+    """
+    values = [
+        value
+        for match in re.finditer(pattern, line, re.IGNORECASE)
+        for value in re.findall(r'["\']([^"\']+)["\']', match.group(0))
+    ]
+    if not values:
         return False
-    lower = value.lower()
-    return any(fragment in lower for fragment in PLACEHOLDER_VALUE_FRAGMENTS)
+    return all(
+        any(fragment in value.lower() for fragment in PLACEHOLDER_VALUE_FRAGMENTS)
+        for value in values
+    )
 
 
-def _is_false_positive(line: str, pattern_name: str, *, strict: bool) -> bool:
+def _is_false_positive(line: str, pattern_name: str, *, strict: bool, pattern: str = "") -> bool:
     if strict:
         return False
     if _is_example_line(line):
         return True
     if pattern_name in {"Hardcoded API key", "Hardcoded password", "Hardcoded token"}:
-        return _is_placeholder_assignment(line)
+        return _is_placeholder_assignment(line, pattern)
     return False
 
 
@@ -154,7 +214,7 @@ def check_file(filepath: Path, *, strict: bool) -> list[tuple[int, str, str]]:
     for line_num, line in enumerate(content.splitlines(), 1):
         for pattern, name in SECRET_PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
-                if _is_false_positive(line, name, strict=strict):
+                if _is_false_positive(line, name, strict=strict, pattern=pattern):
                     continue
                 findings.append((line_num, name, _redact(line, pattern).strip()))
 

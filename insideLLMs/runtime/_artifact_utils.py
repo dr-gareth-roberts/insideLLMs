@@ -513,7 +513,9 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
 
     Policy:
     - If directory doesn't exist: create it.
-    - If directory exists and is empty: use it.
+    - If directory exists and is empty: use it — unless it is a protected
+      location (cwd, home, filesystem root, run_root itself), which is
+      refused regardless of contents or overwrite.
     - If directory exists and is non-empty: fail unless overwrite=True.
       If overwrite=True, remove and recreate.
 
@@ -539,28 +541,19 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
         if not path.is_dir():
             raise FileExistsError(f"run_dir '{path}' exists and is not a directory")
 
-        try:
-            is_empty = not any(path.iterdir())
-        except (OSError, PermissionError):
-            is_empty = False
-
-        if is_empty:
-            return
-
-        if not overwrite:
-            raise FileExistsError(
-                f"run_dir '{path}' already exists and is not empty. "
-                "Use overwrite=True (or CLI --overwrite) to replace it."
-            )
-
+        # Protected-location guards run BEFORE the early empty-directory
+        # return so protection cannot depend on directory contents: an
+        # empty HOME, cwd, filesystem root, or run_root must be refused as
+        # a run directory even when it is empty.
         resolved = path.resolve()
-
-        # Critical safety guards for overwrite.
         cwd_resolved = Path.cwd().resolve()
-        home_resolved = Path.home().resolve()
+        try:
+            home_resolved = Path.home().resolve()
+        except (OSError, RuntimeError, ValueError):
+            home_resolved = None
         if resolved == cwd_resolved:
             raise ValueError(f"Refusing to overwrite current working directory: '{resolved}'")
-        if resolved == home_resolved:
+        if home_resolved is not None and resolved == home_resolved:
             raise ValueError(f"Refusing to overwrite home directory: '{resolved}'")
 
         # Filesystem root (POSIX '/' or Windows drive root like 'C:\\').
@@ -574,6 +567,20 @@ def _prepare_run_dir(path: Path, *, overwrite: bool, run_root: Optional[Path] = 
                 run_root_resolved = run_root
             if resolved == run_root_resolved:
                 raise ValueError(f"Refusing to overwrite run_root directory itself: '{resolved}'")
+
+        try:
+            is_empty = not any(path.iterdir())
+        except (OSError, PermissionError):
+            is_empty = False
+
+        if is_empty:
+            return
+
+        if not overwrite:
+            raise FileExistsError(
+                f"run_dir '{path}' already exists and is not empty. "
+                "Use overwrite=True (or CLI --overwrite) to replace it."
+            )
 
         # Refuse very short paths (e.g. '/tmp', 'C:\\tmp') that are easy to fat-finger.
         if len(resolved.parts) <= 2:

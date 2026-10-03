@@ -377,3 +377,72 @@ def test_lazy_getattr_insidellms() -> None:
 
     with pytest.raises(AttributeError):
         getattr(insideLLMs, "TotallyMissingThingXYZ")
+
+
+class TestProtectedLocationGuardsIndependentOfContents:
+    """Regression: protected-path checks must run before the empty-directory
+    early return (empty HOME used to bypass the home-directory guard)."""
+
+    def test_empty_home_is_protected(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+        with pytest.raises(ValueError, match="home directory"):
+            art._prepare_run_dir(home, overwrite=True)
+        assert list(home.iterdir()) == []  # nothing written, nothing deleted
+
+    def test_empty_home_is_protected_without_overwrite(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+        with pytest.raises(ValueError, match="home directory"):
+            art._prepare_run_dir(home, overwrite=False)
+        assert list(home.iterdir()) == []
+
+    def test_empty_cwd_is_protected(self, tmp_path, monkeypatch):
+        cwd = tmp_path / "cwd"
+        cwd.mkdir()
+        monkeypatch.chdir(cwd)
+        with pytest.raises(ValueError, match="current working directory"):
+            art._prepare_run_dir(cwd, overwrite=True)
+        assert list(cwd.iterdir()) == []
+
+    def test_home_resolved_alias_is_protected(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        (home / "link_target").mkdir(parents=True)
+        alias = tmp_path / "alias"
+        alias.symlink_to(home, target_is_directory=True)
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+        with pytest.raises(ValueError, match="home directory"):
+            art._prepare_run_dir(alias, overwrite=True)
+
+    def test_filesystem_root_is_protected_when_empty(self, tmp_path, monkeypatch):
+        """The filesystem-root guard must not depend on directory contents.
+
+        The guard compares ``resolved`` against its own anchor. Simulate a
+        run dir that resolves to a filesystem-root-analogue path.
+        """
+        # tmp_path lives on a real volume; resolve its anchor (e.g. "/") and
+        # point Path.resolve at it for the duration of the call.
+        real_resolve = Path.resolve
+        anchor = real_resolve(tmp_path).anchor
+        rootdir = tmp_path / "rootdir"
+        rootdir.mkdir()  # exists and empty; only its resolution is the root
+
+        def fake_resolve(self, strict=False):
+            if Path(str(self)) == rootdir:
+                return Path(anchor)
+            return real_resolve(self, strict=strict)
+
+        monkeypatch.setattr(Path, "resolve", fake_resolve)
+        with pytest.raises(ValueError, match="filesystem root"):
+            art._prepare_run_dir(rootdir, overwrite=True)
+
+    def test_ordinary_empty_scratch_dirs_remain_usable(self, tmp_path):
+        """The hoisted guards must not break ordinary empty run directories."""
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        art._prepare_run_dir(scratch, overwrite=True)
+        assert scratch.is_dir()
+        art._prepare_run_dir(scratch, overwrite=False)
+        assert scratch.is_dir()
