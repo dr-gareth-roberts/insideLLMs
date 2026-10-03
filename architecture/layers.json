@@ -62,7 +62,8 @@
     {
       "name": "cli",
       "prefixes": [
-        "insideLLMs.cli"
+        "insideLLMs.cli",
+        "insideLLMs.__main__"
       ]
     },
     {

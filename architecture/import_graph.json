@@ -163,6 +163,12 @@
       "target_layer": "analysis"
     },
     {
+      "source": "insideLLMs.__main__",
+      "source_layer": "cli",
+      "target": "insideLLMs.cli",
+      "target_layer": "cli"
+    },
+    {
       "source": "insideLLMs.analysis",
       "source_layer": "analysis",
       "target": "insideLLMs.analysis.comparison",
@@ -3639,7 +3645,7 @@
       "target_layer": "analysis"
     },
     {
-      "count": 70,
+      "count": 71,
       "source_layer": "cli",
       "target_layer": "cli"
     },
@@ -3864,6 +3870,14 @@
       "path": "insideLLMs/__init__.py"
     },
     {
+      "fan_in": 0,
+      "fan_out": 1,
+      "layer": "cli",
+      "loc": 15,
+      "module": "insideLLMs.__main__",
+      "path": "insideLLMs/__main__.py"
+    },
+    {
       "fan_in": 3,
       "fan_out": 0,
       "layer": "core",
@@ -4040,7 +4054,7 @@
       "path": "insideLLMs/caching.py"
     },
     {
-      "fan_in": 1,
+      "fan_in": 2,
       "fan_out": 27,
       "layer": "cli",
       "loc": 201,
@@ -4075,7 +4089,7 @@
       "fan_in": 2,
       "fan_out": 2,
       "layer": "cli",
-      "loc": 1180,
+      "loc": 1210,
       "module": "insideLLMs.cli._parsing",
       "path": "insideLLMs/cli/_parsing.py"
     },
@@ -4123,7 +4137,7 @@
       "fan_in": 1,
       "fan_out": 6,
       "layer": "cli",
-      "loc": 176,
+      "loc": 186,
       "module": "insideLLMs.cli.commands.benchmark",
       "path": "insideLLMs/cli/commands/benchmark.py"
     },
@@ -4131,7 +4145,7 @@
       "fan_in": 1,
       "fan_out": 4,
       "layer": "cli",
-      "loc": 219,
+      "loc": 227,
       "module": "insideLLMs.cli.commands.compare",
       "path": "insideLLMs/cli/commands/compare.py"
     },
@@ -4171,7 +4185,7 @@
       "fan_in": 2,
       "fan_out": 13,
       "layer": "cli",
-      "loc": 882,
+      "loc": 909,
       "module": "insideLLMs.cli.commands.harness",
       "path": "insideLLMs/cli/commands/harness.py"
     },
@@ -5419,7 +5433,7 @@
       "fan_in": 11,
       "fan_out": 5,
       "layer": "runtime",
-      "loc": 657,
+      "loc": 664,
       "module": "insideLLMs.runtime._artifact_utils",
       "path": "insideLLMs/runtime/_artifact_utils.py"
     },
@@ -5691,7 +5705,7 @@
       "fan_in": 1,
       "fan_out": 1,
       "layer": "core",
-      "loc": 1790,
+      "loc": 1837,
       "module": "insideLLMs.semantic_cache",
       "path": "insideLLMs/semantic_cache.py"
     },
@@ -6182,10 +6196,10 @@
   ],
   "schema_version": 1,
   "summary": {
-    "internal_edge_count": 601,
-    "module_count": 249,
+    "internal_edge_count": 602,
+    "module_count": 250,
     "optional_import_count": 66,
-    "package_loc": 254297,
+    "package_loc": 254441,
     "static_test_references_by_subtree": {
       "insideLLMs": 17,
       "insideLLMs._artifact_snapshot": 1,
@@ -6196,7 +6210,7 @@
       "insideLLMs.attestations": 16,
       "insideLLMs.benchmark_datasets": 31,
       "insideLLMs.caching": 111,
-      "insideLLMs.cli": 370,
+      "insideLLMs.cli": 372,
       "insideLLMs.config": 78,
       "insideLLMs.config_schema": 5,
       "insideLLMs.config_types": 17,
@@ -6232,7 +6246,7 @@
       "insideLLMs.runtime": 343,
       "insideLLMs.safety": 36,
       "insideLLMs.schemas": 135,
-      "insideLLMs.semantic_cache": 30,
+      "insideLLMs.semantic_cache": 32,
       "insideLLMs.shadow": 11,
       "insideLLMs.signing": 3,
       "insideLLMs.streaming": 44,
