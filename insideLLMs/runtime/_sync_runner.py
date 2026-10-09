@@ -23,12 +23,6 @@ from insideLLMs._serialization import (
 )
 from insideLLMs.config_types import RunConfig
 from insideLLMs.exceptions import ProbeExecutionError, RunnerExecutionError
-from insideLLMs.probes._scoring import (
-    evaluate_batch_result,
-    evaluate_probe_result,
-    probe_input,
-    validate_scored_resume_record,
-)
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -440,7 +434,7 @@ class ProbeRunner(_RunnerBase):
                         run_id=resolved_run_id,
                         strict_serialization=strict_serialization,
                     )
-                    validate_scored_resume_record(self.probe, record)
+                    self.probe.validate_scored_resume(record)
                 completed = attempted_prefix_length(existing_records)
                 for line_index, record in enumerate(existing_records[:completed]):
                     results[line_index] = _result_dict_from_record(
@@ -482,7 +476,7 @@ class ProbeRunner(_RunnerBase):
                     try:
                         probe_results = self.probe.run_batch(
                             effective_model,
-                            [probe_input(self.probe, item) for item in remaining_items],
+                            [self.probe.prepare_input(item) for item in remaining_items],
                             max_workers=resolved_batch_workers,
                             progress_callback=batch_progress if progress_callback else None,
                             **probe_kwargs,
@@ -518,9 +512,7 @@ class ProbeRunner(_RunnerBase):
 
                     for offset, probe_result in enumerate(probe_results or []):
                         i = completed + offset
-                        probe_result = evaluate_batch_result(
-                            self.probe, probe_result, prompt_set[i]
-                        )
+                        probe_result = self.probe.score_batch_result(probe_result, prompt_set[i])
                         error_type = None
                         if isinstance(probe_result.metadata, dict):
                             error_type = probe_result.metadata.get("error_type")
@@ -663,11 +655,10 @@ class ProbeRunner(_RunnerBase):
                     try:
                         output = self.probe.run(
                             effective_model,
-                            probe_input(self.probe, item),
+                            self.probe.prepare_input(item),
                             **probe_kwargs,
                         )
-                        probe_result = evaluate_probe_result(
-                            self.probe,
+                        probe_result = self.probe.score_result(
                             ProbeResult(
                                 input=item,
                                 output=output,

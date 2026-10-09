@@ -7,9 +7,9 @@ from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from time import perf_counter
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
-from insideLLMs.inference._limits import (
+from insideLLMs.dispatch_limits import (
     ComputeMismatchError,
     DispatchEvidence,
     dispatch_scope,
@@ -206,6 +206,37 @@ class MatchedComputeCase:
     @property
     def baseline_pass_at_n(self) -> bool:
         return any(self.baseline_passed)
+
+    def baseline_score_spend(self) -> Any:
+        """Baseline quality and observed spend as the shared envelope."""
+        return self._score_spend("baseline")
+
+    def strategy_score_spend(self) -> Any:
+        """Strategy quality and observed spend as the shared envelope."""
+        return self._score_spend("strategy")
+
+    def _score_spend(self, side: str) -> Any:
+        from insideLLMs.types import score_spend_envelope
+
+        scores = getattr(self, f"{side}_scores")
+        passed = getattr(self, f"{side}_passed")
+        spend = getattr(self, f"{side}_spend")
+        score = sum(scores) / len(scores) if scores else None
+        return score_spend_envelope(
+            score=score,
+            passed=any(passed) if passed else None,
+            metric_name=side,
+            details={
+                "scores": list(scores),
+                "models": list(getattr(self, f"{side}_models")),
+                "wall_seconds": getattr(self, f"{side}_wall_seconds"),
+            },
+            calls=spend.calls,
+            input_tokens=spend.input_tokens,
+            output_tokens=spend.output_tokens,
+            elapsed_seconds=spend.elapsed_seconds,
+            cost=spend.cost,
+        )
 
     @property
     def strategy_passed_any(self) -> bool:

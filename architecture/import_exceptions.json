@@ -101,20 +101,6 @@
     {
       "expires": "2027-02-28",
       "owner": "architecture-maintainers",
-      "reason": "Move the shared model protocol into contracts before separating analysis.",
-      "source": "insideLLMs.analysis.evaluation",
-      "target": "insideLLMs.models.base"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Compute-fairness gate (#109) enforces inference dispatch limits; consolidate with the client/schemas edges under P1.1 in docs/PRIORITISATION.md.",
-      "source": "insideLLMs.analysis.matched_compute",
-      "target": "insideLLMs.inference._limits"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "architecture-maintainers",
       "reason": "Matched-compute analysis currently orchestrates the inference client directly.",
       "source": "insideLLMs.analysis.matched_compute",
       "target": "insideLLMs.inference.client"
@@ -176,30 +162,30 @@
       "target": "insideLLMs.transparency.scitt_client"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Policy verification reads attestation predicate types; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "expires": "2027-06-30",
+      "owner": "security-maintainers",
+      "reason": "Renewed from 2026-12-31. Verification still reads attestation predicates; remove when SPLIT C extracts the trust package.",
       "source": "insideLLMs.policy.verification",
       "target": "insideLLMs.attestations.statement"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Policy verification digests artifacts with crypto helpers; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "expires": "2027-06-30",
+      "owner": "security-maintainers",
+      "reason": "Renewed from 2026-12-31. Verification still digests artifacts with crypto helpers; remove when SPLIT C extracts the trust package.",
       "source": "insideLLMs.policy.verification",
       "target": "insideLLMs.crypto"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Explicit post-verification OCI publication calls the ORAS adapter; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "expires": "2027-06-30",
+      "owner": "security-maintainers",
+      "reason": "Renewed from 2026-12-31. Post-verification OCI publication still calls ORAS; remove when SPLIT C extracts the trust package.",
       "source": "insideLLMs.policy.verification",
       "target": "insideLLMs.publish.oras"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Policy verification checks cosign bundles directly; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "expires": "2027-06-30",
+      "owner": "security-maintainers",
+      "reason": "Renewed from 2026-12-31. Verification still checks cosign bundles directly; remove when SPLIT C extracts the trust package.",
       "source": "insideLLMs.policy.verification",
       "target": "insideLLMs.signing.cosign"
     },
@@ -232,13 +218,6 @@
       "target": "insideLLMs.models.base"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "The core registry seeds builtin model factories from the provider catalogue (replaced per-provider lazy imports in a0678ae) pending registry plugin separation.",
-      "source": "insideLLMs.registry",
-      "target": "insideLLMs.models.catalogue"
-    },
-    {
       "expires": "2027-02-28",
       "owner": "runtime-maintainers",
       "reason": "The core registry initializes built-in probes pending registry boundary extraction.",
@@ -258,13 +237,6 @@
       "reason": "Core result summaries delegate to analysis statistics pending facade separation.",
       "source": "insideLLMs.results",
       "target": "insideLLMs.analysis.statistics"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "The async runner scores probe results inline (a0678ae audit fix); move the scoring protocol into contracts under P1.1 in docs/PRIORITISATION.md.",
-      "source": "insideLLMs.runtime._async_runner",
-      "target": "insideLLMs.probes._scoring"
     },
     {
       "expires": "2027-02-28",
@@ -330,32 +302,11 @@
       "target": "insideLLMs.probes.base"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Interrupted-run finalisation builds a statistics summary; removed by E1 lazy analysis package in docs/superpowers/plans/2026-09-09-determinism-recovery-and-consolidation.md.",
+      "expires": "2027-06-30",
+      "owner": "runtime-maintainers",
+      "reason": "Renewed from 2026-12-31. Interrupted-run summaries still delegate to analysis; remove with the lazy analysis extraction.",
       "source": "insideLLMs.runtime._interruptions",
       "target": "insideLLMs.analysis.statistics"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Interrupted-run finalisation annotates the model protocol (TYPE_CHECKING only) pending contract extraction, as for runtime._high_level.",
-      "source": "insideLLMs.runtime._interruptions",
-      "target": "insideLLMs.models.base"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Interrupted-run finalisation annotates the probe protocol (TYPE_CHECKING only) pending contract extraction, as for runtime._high_level.",
-      "source": "insideLLMs.runtime._interruptions",
-      "target": "insideLLMs.probes.base"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "The sync runner scores probe results inline (a0678ae audit fix); move the scoring protocol into contracts under P1.1 in docs/PRIORITISATION.md.",
-      "source": "insideLLMs.runtime._sync_runner",
-      "target": "insideLLMs.probes._scoring"
     },
     {
       "expires": "2027-02-28",
@@ -379,9 +330,9 @@
       "target": "insideLLMs.crypto"
     },
     {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Ultimate-mode orchestration canonicalises payload identity directly; trust chain, SPLIT C in docs/PRIORITISATION.md.",
+      "expires": "2027-06-30",
+      "owner": "artifact-maintainers",
+      "reason": "Renewed from 2026-12-31. Ultimate-mode still canonicalises payload identity directly; remove when SPLIT C extracts the trust package.",
       "source": "insideLLMs.runtime._ultimate",
       "target": "insideLLMs.crypto.canonical"
     },
@@ -405,20 +356,6 @@
       "reason": "Ultimate-mode artifact orchestration currently invokes SCITT publication.",
       "source": "insideLLMs.runtime._ultimate",
       "target": "insideLLMs.transparency.scitt_client"
-    },
-    {
-      "expires": "2026-12-31",
-      "owner": "gareth",
-      "reason": "Budget validation special-cases the builtin judge probe and scorer; P2.2 judge path integrity in docs/PRIORITISATION.md.",
-      "source": "insideLLMs.runtime.budget",
-      "target": "insideLLMs.probes.judge"
-    },
-    {
-      "expires": "2027-02-28",
-      "owner": "runtime-maintainers",
-      "reason": "Runtime observability wraps model protocols pending contract extraction.",
-      "source": "insideLLMs.runtime.observability",
-      "target": "insideLLMs.models.base"
     },
     {
       "expires": "2027-02-28",

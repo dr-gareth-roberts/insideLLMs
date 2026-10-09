@@ -1315,7 +1315,7 @@ def register_builtins() -> None:
 
     # Metadata belongs to the catalogue, not to constructor default_kwargs.
     from insideLLMs.models import DummyModel
-    from insideLLMs.models.catalogue import PROVIDER_CATALOGUE
+    from insideLLMs.provider_catalogue import PROVIDER_CATALOGUE
 
     _builtin_model_factories.clear()
     for name, spec in PROVIDER_CATALOGUE.items():

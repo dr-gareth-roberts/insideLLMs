@@ -823,6 +823,30 @@ class Probe(ABC, Generic[T]):
         """
         return True
 
+    def prepare_input(self, item: Any) -> Any:
+        """Strip held-out references before a scored probe sees the model prompt."""
+        from insideLLMs.probes._scoring import probe_input
+
+        return probe_input(self, item)
+
+    def score_result(self, result: Any) -> Any:
+        """Apply the shared scoring contract to one probe result."""
+        from insideLLMs.probes._scoring import evaluate_probe_result
+
+        return evaluate_probe_result(self, result)
+
+    def score_batch_result(self, result: Any, item: Any) -> Any:
+        """Score one batch item through the same contract as ``score_result``."""
+        from insideLLMs.probes._scoring import evaluate_batch_result
+
+        return evaluate_batch_result(self, result, item)
+
+    def validate_scored_resume(self, record: dict[str, Any]) -> None:
+        """Reject a resume prefix that would reuse an unevaluated labelled item."""
+        from insideLLMs.probes._scoring import validate_scored_resume_record
+
+        validate_scored_resume_record(self, record)
+
     def info(self) -> dict[str, Any]:
         """Return probe metadata as a dictionary.
 

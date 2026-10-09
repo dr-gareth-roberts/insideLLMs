@@ -51,6 +51,27 @@ def test_import_scanner_honours_an_explicit_empty_package(tmp_path: Path) -> Non
     }
 
 
+def test_import_scanner_ignores_type_checking_imports(tmp_path: Path) -> None:
+    module = tmp_path / "module.py"
+    module.write_text(
+        "from typing import TYPE_CHECKING\n"
+        "import os\n"
+        "if TYPE_CHECKING:\n"
+        "    from insideLLMs.models.base import Model\n"
+        "else:\n"
+        "    from insideLLMs.types import ProbeResult\n",
+        encoding="utf-8",
+    )
+
+    imports = {reference.imported for reference in scan_imports(module, containing_package=())}
+
+    assert "insideLLMs.models.base" not in imports
+    assert "insideLLMs.models.base.Model" not in imports
+    assert "insideLLMs.types.ProbeResult" in imports
+    assert "os" in imports
+    assert "typing.TYPE_CHECKING" in imports
+
+
 def test_import_scanner_finds_literal_dynamic_imports(tmp_path: Path) -> None:
     module = tmp_path / "module.py"
     module.write_text(

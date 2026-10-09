@@ -130,6 +130,7 @@ insideLLMs.evaluation : Evaluation metrics and scoring utilities
 insideLLMs.probe : Model probing and analysis tools
 """
 
+import functools
 import hashlib
 import json
 import random
@@ -574,6 +575,7 @@ class BenchmarkDataset:
         self.name = name
         self.category = category
         self.description = description
+        self.scale: Optional[str] = None
         self._examples: list[DatasetExample] = []
         self._splits: dict[SplitType, list[int]] = {
             SplitType.TRAIN: [],
@@ -2125,7 +2127,55 @@ def list_builtin_datasets() -> list[dict[str, Any]]:
                 "num_examples": stats.total_examples,
                 "difficulties": stats.difficulties,
                 "categories": stats.categories,
-                "scale": "smoke",
+                "scale": dataset.scale,
             }
         )
     return result
+
+
+SMOKE_SCALE = "smoke"
+
+
+def label_smoke_fixture(dataset: BenchmarkDataset) -> BenchmarkDataset:
+    """Mark a builtin dataset as a smoke fixture, including every example.
+
+    Builtin datasets stay smoke fixtures until a real public-dataset loader
+    exists. Callers must not treat ``scale == "smoke"`` results as benchmark
+    evidence.
+    """
+    dataset.scale = SMOKE_SCALE
+    if "smoke" not in dataset.description.lower():
+        dataset.description = (
+            f"{dataset.description.rstrip()} "
+            "(smoke-test fixture of handwritten examples — not a real benchmark)"
+        )
+    for example in dataset._examples:
+        example.metadata["scale"] = SMOKE_SCALE
+    return dataset
+
+
+def _as_smoke_factory(factory: Callable[..., BenchmarkDataset]) -> Callable[..., BenchmarkDataset]:
+    @functools.wraps(factory)
+    def labelled(*args: Any, **kwargs: Any) -> BenchmarkDataset:
+        return label_smoke_fixture(factory(*args, **kwargs))
+
+    return labelled
+
+
+for _smoke_name in (
+    "create_reasoning_dataset",
+    "create_factual_dataset",
+    "create_math_dataset",
+    "create_commonsense_dataset",
+    "create_coding_dataset",
+    "create_safety_dataset",
+    "create_bias_evaluation_dataset",
+    "create_language_understanding_dataset",
+    "create_instruction_following_dataset",
+    "create_reading_comprehension_dataset",
+    "create_multi_step_reasoning_dataset",
+    "create_analogical_reasoning_dataset",
+    "create_world_knowledge_dataset",
+    "create_comprehensive_benchmark_suite",
+):
+    globals()[_smoke_name] = _as_smoke_factory(globals()[_smoke_name])

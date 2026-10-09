@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Builtin datasets carry `scale="smoke"` on the dataset and every example until a real public-dataset loader exists.
+- `ScoreSpendEnvelope` is the shared score and spend shape for probe results, evaluator results, and matched-compute cases.
+- Provider failures keep structured telemetry on `custom.provider_error` (type, message, status, retry, timeout, provider). Response bodies stay off the artifact. Success records are unchanged.
+
 ### Fixed
 
+- Sync and async runners share the probe scoring methods, so `stop_on_error` still persists only attempted records on both paths, and provider-error telemetry is written the same way.
+- Root lazy exports of `insideLLMs.contrib` are frozen. New contrib symbols stay on `insideLLMs.contrib`.
 - PR #131 review follow-up: report rollback retains and reports backups when
   restoration fails; records validation opens the final component with
   `O_NOFOLLOW` and reports malformed manifest `schemas` through strict/warn

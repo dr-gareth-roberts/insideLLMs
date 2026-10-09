@@ -88,6 +88,18 @@ class Spend:
     cost: float = 0.0
     evaluations: int = 0
 
+    def to_snapshot(self) -> Any:
+        """Copy this spend into the shared :class:`~insideLLMs.types.SpendSnapshot`."""
+        from insideLLMs.types import SpendSnapshot
+
+        return SpendSnapshot(
+            calls=self.calls,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
+            elapsed_seconds=self.elapsed_seconds,
+            cost=self.cost,
+        )
+
 
 class StopReason(str, Enum):
     COMPLETED = "completed"

@@ -298,7 +298,6 @@ def _validate_bound_model(model: Any, ledger: BudgetLedger) -> None:
 
 def validate_budget_runner(model: Any, probe: Any, ledger: BudgetLedger) -> None:
     """Validate explicit runner plumbing; never implicitly trust or bind objects."""
-    from insideLLMs.probes.judge import JudgeScoredProbe, JudgeScorer
     from insideLLMs.registry import get_builtin_probe_factory, probe_registry
 
     _validate_bound_model(model, ledger)
@@ -310,10 +309,18 @@ def validate_budget_runner(model: Any, probe: Any, ledger: BudgetLedger) -> None
     )
     if not canonical or any(callable(value) for value in vars(probe).values()):
         raise BudgetUnsupportedError("Budget mode rejects custom probes and callback validators")
-    if type(probe) is JudgeScoredProbe:
-        if type(probe.scorer) is not JudgeScorer:
+    if (
+        type(probe).__module__ == "insideLLMs.probes.judge"
+        and type(probe).__name__ == "JudgeScoredProbe"
+    ):
+        scorer = getattr(probe, "scorer", None)
+        scorer_type = type(scorer)
+        if (
+            scorer_type.__module__ != "insideLLMs.probes.judge"
+            or scorer_type.__name__ != "JudgeScorer"
+        ):
             raise BudgetUnsupportedError("Budget mode requires the builtin judge scorer")
-        _validate_bound_model(probe.scorer.judge_model, ledger)
+        _validate_bound_model(scorer.judge_model, ledger)
 
 
 def _bounded_request(

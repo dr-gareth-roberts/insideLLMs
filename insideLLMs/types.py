@@ -68,6 +68,8 @@ Working with specialized result types:
 ... )
 """
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -420,6 +422,131 @@ class ModelResponse:
     raw_response: Optional[Any] = None
 
 
+@dataclass(frozen=True)
+class SpendSnapshot:
+    """Resources actually consumed, shared by probes, evaluators, and matched-compute.
+
+    ``cost`` is ``None`` when the producer did not observe a price. A recorded
+    zero stays ``0.0``.
+    """
+
+    calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    elapsed_seconds: float = 0.0
+    cost: Optional[float] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-ready mapping with stable keys."""
+        return {
+            "calls": self.calls,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "elapsed_seconds": self.elapsed_seconds,
+            "cost": self.cost,
+        }
+
+
+@dataclass(frozen=True)
+class ScoreSpendEnvelope:
+    """One comparable score plus the spend that produced it.
+
+    Probes, :class:`insideLLMs.analysis.evaluation.EvaluationResult`, and
+    matched-compute cases all emit this shape. ``score`` is a finite number or
+    ``None`` when the producer has no scalar. ``passed`` is ``None`` when the
+    producer has no pass/fail decision.
+    """
+
+    score: Optional[float]
+    passed: Optional[bool]
+    metric_name: str = ""
+    details: Mapping[str, Any] = field(default_factory=dict)
+    spend: SpendSnapshot = field(default_factory=SpendSnapshot)
+
+    def __post_init__(self) -> None:
+        if self.score is not None and (
+            isinstance(self.score, bool)
+            or not isinstance(self.score, (int, float))
+            or not math.isfinite(float(self.score))
+        ):
+            raise ValueError("ScoreSpendEnvelope.score must be a finite number or None")
+        object.__setattr__(self, "score", None if self.score is None else float(self.score))
+        object.__setattr__(self, "details", dict(self.details))
+        spend = self.spend
+        if (
+            isinstance(spend.calls, bool)
+            or isinstance(spend.input_tokens, bool)
+            or isinstance(spend.output_tokens, bool)
+            or spend.calls < 0
+            or spend.input_tokens < 0
+            or spend.output_tokens < 0
+        ):
+            raise ValueError("SpendSnapshot counts must be non-negative integers")
+        if (
+            isinstance(spend.elapsed_seconds, bool)
+            or not isinstance(spend.elapsed_seconds, (int, float))
+            or not math.isfinite(float(spend.elapsed_seconds))
+            or spend.elapsed_seconds < 0
+        ):
+            raise ValueError("SpendSnapshot.elapsed_seconds must be a non-negative finite number")
+        if spend.cost is not None and (
+            isinstance(spend.cost, bool)
+            or not isinstance(spend.cost, (int, float))
+            or not math.isfinite(float(spend.cost))
+        ):
+            raise ValueError("SpendSnapshot.cost must be a finite number or None")
+        if spend.cost is not None:
+            object.__setattr__(
+                self,
+                "spend",
+                SpendSnapshot(
+                    calls=spend.calls,
+                    input_tokens=spend.input_tokens,
+                    output_tokens=spend.output_tokens,
+                    elapsed_seconds=float(spend.elapsed_seconds),
+                    cost=float(spend.cost),
+                ),
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-ready mapping with stable keys."""
+        return {
+            "score": self.score,
+            "passed": self.passed,
+            "metric_name": self.metric_name,
+            "details": dict(self.details),
+            "spend": self.spend.to_dict(),
+        }
+
+
+def score_spend_envelope(
+    *,
+    score: Optional[float],
+    passed: Optional[bool],
+    metric_name: str = "",
+    details: Optional[Mapping[str, Any]] = None,
+    calls: int = 0,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    elapsed_seconds: float = 0.0,
+    cost: Optional[float] = None,
+) -> ScoreSpendEnvelope:
+    """Build the shared score and spend envelope."""
+    return ScoreSpendEnvelope(
+        score=score,
+        passed=passed,
+        metric_name=metric_name,
+        details=dict(details or {}),
+        spend=SpendSnapshot(
+            calls=calls,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            elapsed_seconds=elapsed_seconds,
+            cost=cost,
+        ),
+    )
+
+
 @dataclass
 class ProbeResult(Generic[T]):
     """Result from running a single probe item.
@@ -528,6 +655,48 @@ class ProbeResult(Generic[T]):
         """Retain a caught exception without putting live objects in artifacts."""
         self._original_error = error
         return self
+
+    def score_spend(self) -> ScoreSpendEnvelope:
+        """Project this result onto the shared score and spend envelope.
+
+        The scalar is ``primary_metric`` when that score exists, otherwise
+        ``score``, otherwise ``accuracy``. ``passed`` follows an explicit
+        ``metadata['is_correct']`` and, failing that, an accuracy of 1.0.
+        Spend records one call on success and latency when the runner stored it.
+        """
+        metric_name = ""
+        score: Optional[float] = None
+        for candidate in (self.primary_metric, "score", "accuracy"):
+            if not candidate or candidate not in self.scores:
+                continue
+            value = self.scores[candidate]
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                continue
+            if not math.isfinite(float(value)):
+                continue
+            metric_name = candidate
+            score = float(value)
+            break
+        is_correct = self.metadata.get("is_correct") if isinstance(self.metadata, dict) else None
+        if isinstance(is_correct, bool):
+            passed: Optional[bool] = is_correct
+        elif metric_name == "accuracy" and score is not None:
+            passed = score == 1.0
+        else:
+            passed = None
+        elapsed = 0.0
+        if isinstance(self.latency_ms, (int, float)) and not isinstance(self.latency_ms, bool):
+            if math.isfinite(float(self.latency_ms)) and self.latency_ms >= 0:
+                elapsed = float(self.latency_ms) / 1000.0
+        calls = 1 if self.status == ResultStatus.SUCCESS else 0
+        return score_spend_envelope(
+            score=score,
+            passed=passed,
+            metric_name=metric_name,
+            details={"scores": dict(self.scores)},
+            calls=calls,
+            elapsed_seconds=elapsed,
+        )
 
 
 @dataclass

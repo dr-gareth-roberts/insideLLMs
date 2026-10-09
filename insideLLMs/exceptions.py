@@ -82,6 +82,7 @@ All exceptions include a ``details`` dictionary containing structured
 information about the error, useful for logging and debugging.
 """
 
+import math
 from typing import Any, Optional
 
 __all__ = [
@@ -2373,6 +2374,68 @@ def wrap_exception(
     details["original_error_type"] = type(error).__name__
     details["original_error_message"] = str(error)
     return wrapper_class(msg, details)
+
+
+_PROVIDER_DETAIL_KEYS = (
+    "model_id",
+    "status_code",
+    "retry_after_seconds",
+    "timeout_seconds",
+    "provider",
+)
+
+
+def _json_scalar(value: Any) -> bool:
+    if value is None or isinstance(value, (str, bool)):
+        return True
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return math.isfinite(value)
+    return False
+
+
+def structured_provider_error(exc: Optional[BaseException]) -> Optional[dict[str, Any]]:
+    """Return stable provider-failure telemetry, or None for other exceptions.
+
+    The record's ``error`` string stays the human message. This mapping is the
+    programmatic remainder: exception type plus status, retry, timeout, and
+    provider fields the exception actually carries. Response bodies are omitted.
+    The walk follows ``original_error`` and ``__cause__`` until it finds a
+    :class:`ModelError`.
+    """
+    current: Optional[BaseException] = exc
+    seen: set[int] = set()
+    while isinstance(current, BaseException) and id(current) not in seen and len(seen) < 4:
+        seen.add(id(current))
+        if isinstance(current, ModelError):
+            return _model_error_payload(current)
+        original = getattr(current, "original_error", None)
+        if isinstance(original, BaseException):
+            current = original
+            continue
+        cause = current.__cause__
+        current = cause if isinstance(cause, BaseException) else None
+    return None
+
+
+def _model_error_payload(exc: ModelError) -> dict[str, Any]:
+    message = getattr(exc, "message", None)
+    if not isinstance(message, str) or not message:
+        message = str(exc)
+    payload: dict[str, Any] = {"error_type": type(exc).__name__, "message": message}
+    details = getattr(exc, "details", None)
+    if isinstance(details, dict):
+        for key in _PROVIDER_DETAIL_KEYS:
+            value = details.get(key)
+            if _json_scalar(value) and value is not None:
+                payload[key] = value
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int) and not isinstance(status_code, bool):
+        payload.setdefault("status_code", status_code)
+    retry_after = getattr(exc, "retry_after", None)
+    if isinstance(retry_after, (int, float)) and not isinstance(retry_after, bool):
+        if math.isfinite(float(retry_after)):
+            payload.setdefault("retry_after_seconds", float(retry_after))
+    return payload
 
 
 def is_retryable(error: Exception) -> bool:

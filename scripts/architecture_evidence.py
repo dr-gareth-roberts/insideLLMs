@@ -115,6 +115,18 @@ def containing_package_for_path(
     return tuple(module_parts[:-1])
 
 
+def _is_type_checking_guard(test: ast.AST) -> bool:
+    """True when an ``if`` test is the typing.TYPE_CHECKING annotation guard."""
+
+    if isinstance(test, ast.Name):
+        return test.id == "TYPE_CHECKING"
+    if isinstance(test, ast.Attribute):
+        return test.attr == "TYPE_CHECKING"
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
+        return any(_is_type_checking_guard(value) for value in test.values)
+    return False
+
+
 def scan_imports(
     path: Path,
     *,
@@ -150,13 +162,10 @@ def scan_imports(
             for item in value:
                 add_dynamic_reference(item, line)
 
-    for node in ast.walk(tree):
+    def record_static_import(node: ast.Import | ast.ImportFrom) -> None:
         if isinstance(node, ast.Import):
             references.extend(ImportReference(alias.name, node.lineno) for alias in node.names)
-            continue
-        if not isinstance(node, ast.ImportFrom):
-            continue
-
+            return
         if node.level:
             levels_up = node.level - 1
             if levels_up > len(package):
@@ -174,6 +183,24 @@ def scan_imports(
         for alias in node.names:
             imported = ".".join(part for part in (base, alias.name) if part)
             references.append(ImportReference(imported, node.lineno))
+
+    class _StaticImportVisitor(ast.NodeVisitor):
+        """Collect runtime imports. ``TYPE_CHECKING`` blocks are annotations only."""
+
+        def visit_If(self, node: ast.If) -> None:
+            if _is_type_checking_guard(node.test):
+                for statement in node.orelse:
+                    self.visit(statement)
+                return
+            self.generic_visit(node)
+
+        def visit_Import(self, node: ast.Import) -> None:
+            record_static_import(node)
+
+        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+            record_static_import(node)
+
+    _StaticImportVisitor().visit(tree)
 
     # Literal dynamic imports are architecture dependencies too. Capture direct
     # import helpers and the literal maps used by lazy public facades without

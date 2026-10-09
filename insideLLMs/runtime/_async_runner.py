@@ -24,12 +24,6 @@ from insideLLMs._serialization import (
 )
 from insideLLMs.config_types import RunConfig
 from insideLLMs.exceptions import ProbeExecutionError, RunnerExecutionError
-from insideLLMs.probes._scoring import (
-    evaluate_batch_result,
-    evaluate_probe_result,
-    probe_input,
-    validate_scored_resume_record,
-)
 from insideLLMs.runtime._artifact_utils import (
     _atomic_write_text,
     _atomic_write_yaml,
@@ -414,7 +408,7 @@ class AsyncProbeRunner(_RunnerBase):
                         run_id=resolved_run_id,
                         strict_serialization=strict_serialization,
                     )
-                    validate_scored_resume_record(self.probe, record)
+                    self.probe.validate_scored_resume(record)
                 completed = attempted_prefix_length(existing_records)
                 for line_index, record in enumerate(existing_records[:completed]):
                     results[line_index] = _result_dict_from_record(
@@ -568,12 +562,10 @@ class AsyncProbeRunner(_RunnerBase):
                         def run_and_evaluate() -> ProbeResult:
                             output = self.probe.run(
                                 effective_model,
-                                probe_input(self.probe, item),
+                                self.probe.prepare_input(item),
                                 **probe_kwargs,
                             )
-                            return evaluate_probe_result(
-                                self.probe, ProbeResult(input=item, output=output)
-                            )
+                            return self.probe.score_result(ProbeResult(input=item, output=output))
 
                         return await loop.run_in_executor(
                             None,
@@ -684,7 +676,7 @@ class AsyncProbeRunner(_RunnerBase):
                             None,
                             lambda: self.probe.run_batch(
                                 effective_model,
-                                [probe_input(self.probe, item) for item in remaining_items],
+                                [self.probe.prepare_input(item) for item in remaining_items],
                                 max_workers=resolved_batch_workers,
                                 progress_callback=(batch_progress if progress_callback else None),
                                 **probe_kwargs,
@@ -723,7 +715,7 @@ class AsyncProbeRunner(_RunnerBase):
                         probe_result = await loop.run_in_executor(
                             None,
                             lambda result=probe_result, item=prompt_set[index]: (
-                                evaluate_batch_result(self.probe, result, item)
+                                self.probe.score_batch_result(result, item)
                             ),
                         )
                         error_type = None

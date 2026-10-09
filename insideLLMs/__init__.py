@@ -693,6 +693,8 @@ def __getattr__(name: str):
         "plot_accuracy_comparison": "insideLLMs.visualization",
         "create_html_report": "insideLLMs.visualization",
         "text_comparison_table": "insideLLMs.visualization",
+        # Contrib quarantine: this block is frozen. New contrib symbols stay on
+        # insideLLMs.contrib and must not be added to the root lazy API.
         # Benchmarking
         "ModelBenchmark": "insideLLMs.contrib.benchmark",
         "ProbeBenchmark": "insideLLMs.contrib.benchmark",

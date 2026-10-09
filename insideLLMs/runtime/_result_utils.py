@@ -427,6 +427,12 @@ def _result_dict_from_probe_result(
     """
     status = _normalize_status(result.status)
     metadata = redact_config_secrets(result.metadata) if isinstance(result.metadata, dict) else {}
+    if isinstance(metadata, dict):
+        from insideLLMs.exceptions import structured_provider_error
+
+        provider_error = structured_provider_error(result.original_error)
+        if provider_error is not None:
+            metadata = {**metadata, "provider_error": provider_error}
     if error_type is None:
         error_type = metadata.get("error_type")
 
@@ -859,6 +865,36 @@ def _build_result_record(
     else:
         err_type = error_type
 
+    from insideLLMs.exceptions import structured_provider_error
+
+    provider_error = structured_provider_error(error) if isinstance(error, BaseException) else None
+    if provider_error is not None:
+        message = provider_error.get("message")
+        if isinstance(message, str) and message:
+            # Artifacts keep the human message. str(ModelError) appends details,
+            # including response bodies that must not land in records.jsonl.
+            err_str = message
+    evaluation_metadata = dict(metadata) if isinstance(metadata, dict) else None
+    if provider_error is None and evaluation_metadata is not None:
+        stored = evaluation_metadata.get("provider_error")
+        if isinstance(stored, dict):
+            provider_error = stored
+    if evaluation_metadata is not None:
+        evaluation_metadata.pop("provider_error", None)
+
+    custom: dict[str, Any] = {
+        "replicate_key": replicate_key_value,
+        "record_index": index,
+        "output_fingerprint": output_fingerprint,
+        **(
+            {"evaluation": redact_config_secrets(evaluation_metadata)}
+            if evaluation_metadata and "evaluation" in evaluation_metadata
+            else {}
+        ),
+    }
+    if provider_error:
+        custom["provider_error"] = provider_error
+
     return {
         "schema_version": schema_version,
         "run_id": run_id,
@@ -883,16 +919,7 @@ def _build_result_record(
         "status": status,
         "error": err_str,
         "error_type": err_type,
-        "custom": {
-            "replicate_key": replicate_key_value,
-            "record_index": index,
-            "output_fingerprint": output_fingerprint,
-            **(
-                {"evaluation": redact_config_secrets(metadata)}
-                if metadata and "evaluation" in metadata
-                else {}
-            ),
-        },
+        "custom": custom,
     }
 
 

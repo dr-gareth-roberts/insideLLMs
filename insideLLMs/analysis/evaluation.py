@@ -168,6 +168,37 @@ class EvaluationResult:
         status = "PASS" if self.passed else "FAIL"
         return f"EvaluationResult({self.metric_name}: {self.score:.4f} [{status}])"
 
+    def to_envelope(self, spend: Any = None) -> Any:
+        """Return this result as the shared score and spend envelope.
+
+        ``spend`` accepts a :class:`insideLLMs.types.SpendSnapshot` or any
+        object with ``calls``, ``input_tokens``, ``output_tokens``,
+        ``elapsed_seconds``, and ``cost`` attributes, including inference
+        ``Spend``.
+        """
+        from insideLLMs.types import SpendSnapshot, score_spend_envelope
+
+        snapshot = spend if isinstance(spend, SpendSnapshot) else None
+        if snapshot is None and spend is not None:
+            snapshot = SpendSnapshot(
+                calls=int(getattr(spend, "calls", 0) or 0),
+                input_tokens=int(getattr(spend, "input_tokens", 0) or 0),
+                output_tokens=int(getattr(spend, "output_tokens", 0) or 0),
+                elapsed_seconds=float(getattr(spend, "elapsed_seconds", 0.0) or 0.0),
+                cost=getattr(spend, "cost", None),
+            )
+        return score_spend_envelope(
+            score=self.score,
+            passed=self.passed,
+            metric_name=self.metric_name,
+            details=self.details,
+            calls=0 if snapshot is None else snapshot.calls,
+            input_tokens=0 if snapshot is None else snapshot.input_tokens,
+            output_tokens=0 if snapshot is None else snapshot.output_tokens,
+            elapsed_seconds=0.0 if snapshot is None else snapshot.elapsed_seconds,
+            cost=None if snapshot is None else snapshot.cost,
+        )
+
 
 @dataclass
 class MultiMetricResult:
@@ -241,8 +272,15 @@ class MultiMetricResult:
         """
         return {name: r.score for name, r in self.results.items()}
 
-
-# Text Normalization Utilities
+    def to_envelope(self, spend: Any = None) -> Any:
+        """Return the overall score and spend as the shared envelope."""
+        overall = EvaluationResult(
+            score=self.overall_score,
+            passed=self.overall_passed,
+            metric_name="overall",
+            details={"scores": self.get_scores()},
+        )
+        return overall.to_envelope(spend)
 
 
 def normalize_text(
