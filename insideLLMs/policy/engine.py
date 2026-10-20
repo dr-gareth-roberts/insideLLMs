@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from insideLLMs.crypto import digest_obj
+from insideLLMs.policy._claims import check_claims_quality
 from insideLLMs.transparency.scitt_client import receipt_looks_well_formed
 
 
-def run_policy(run_dir: Path | str) -> dict[str, Any]:
+def run_policy(run_dir: Path | str, *, require_claims_pass: bool = False) -> dict[str, Any]:
     """Run artifact-completeness checks on a run directory and return a verdict.
 
     Checks for required artifacts (manifest.json, records.jsonl), core
@@ -20,10 +21,17 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
 
     Args:
         run_dir: Path to the run directory.
+        require_claims_pass: Also require complete, consistent passing results in
+            claims.json and verification.json. Defaults to structural checks only.
 
     Returns:
-        Verdict dict with keys: passed (bool), reasons (list[str]), checks (dict[str, bool]).
+        Verdict with passed, reasons and checks. When requested, structural_passed
+        and claims_quality report the independent results; passed is their
+        conjunction. The legacy assurance label describes structural provenance;
+        claims_quality is labelled metric_acceptance, not scientific validity.
     """
+    if not isinstance(require_claims_pass, bool):
+        raise ValueError("require_claims_pass must be a bool")
     run_dir = Path(run_dir)
     verdict: dict[str, Any] = {
         "passed": True,
@@ -110,5 +118,13 @@ def run_policy(run_dir: Path | str) -> dict[str, Any]:
                     verdict["passed"] = False
                     verdict["reasons"].append(f"scitt receipt {att_name} malformed")
                     verdict["checks"][f"scitt_{att_name}"] = False
+
+    if require_claims_pass:
+        verdict["structural_passed"] = verdict["passed"]
+        quality = check_claims_quality(run_dir)
+        verdict["claims_quality"] = quality
+        verdict["checks"]["claims_quality"] = quality["passed"]
+        verdict["passed"] = verdict["structural_passed"] and quality["passed"]
+        verdict["reasons"].extend(f"claims quality: {reason}" for reason in quality["reasons"])
 
     return verdict

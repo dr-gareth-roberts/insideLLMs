@@ -72,6 +72,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in claims-quality gate through `require_claims_pass=True` on `run_policy`
+  and `RunConfig`, and `insidellms attest --require-claims-pass`. It requires
+  complete, valid and passing recorded metric results, reports metric acceptance
+  separately from structural completeness, and blocks Ultimate finalisation and
+  OCI publication on failure. Claim evidence is selected into the private v2
+  payload only when enabled. Default verdicts and publication behaviour are
+  unchanged. No cryptographic or scientific assurance is added, and canonical
+  artefact schemas are unchanged. Existing seals require a fresh export when
+  evidence or gate settings differ.
 - `diff --html PATH` writes a deterministic, self-contained HTML diff report
   (summary counts, per-section tables, inline before/after) from the current
   DiffReport payload; it works with either `--format` and leaves the exit-code

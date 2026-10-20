@@ -66,6 +66,24 @@ manual recovery. Shadow query credentials are replaced by a redaction marker in
 existing fields; callers must not depend on persisted raw authentication values.
 The focused filesystem and shadow regression suites exercise these contracts.
 
+### Opt-in claims-quality compatibility
+
+`require_claims_pass=False` preserves the existing structural policy verdict,
+Ultimate payload selection and publication behaviour. The additive Python
+option and `insidellms attest --require-claims-pass` opt into recorded metric
+acceptance. Enabled verdicts additionally expose `structural_passed` and
+`claims_quality`; overall `passed` requires both. A failed opted-in policy
+raises during Ultimate finalisation even without an OCI target; `attest` exits 1.
+This does not change the separate cryptographic verification APIs or establish
+scientific validity.
+
+Opting in selects `claims.json` and `verification.json` into the v2 payload.
+Changing this setting or the evidence requires a fresh export if it conflicts
+with existing finalised artefacts. Existing signed/historical bytes are never
+rewritten. Claims compiler formats, canonical run schemas and the v2 descriptor
+format are unchanged; existing callers need no migration while the gate is
+disabled. See [Policy assurance](POLICY_ASSURANCE.md#optional-claims-quality-gate).
+
 ### Determinism scope
 
 The run → records → report → diff pipeline is deterministic for the same inputs and configuration.

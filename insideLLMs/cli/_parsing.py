@@ -1121,6 +1121,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path to the run directory (must contain manifest.json)",
     )
+    attest_parser.add_argument(
+        "--require-claims-pass",
+        action="store_true",
+        help="Require complete, passing compiled claim metrics (not scientific or cryptographic proof)",
+    )
 
     # =========================================================================
     # Sign command (Ultimate: sign attestations with Sigstore)
