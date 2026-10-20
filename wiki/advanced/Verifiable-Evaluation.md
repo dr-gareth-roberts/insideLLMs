@@ -12,6 +12,7 @@ Build provenance-oriented evaluation runs with attestations, signatures, and tra
 
 - Deterministic run artifacts (`records.jsonl`, `manifest.json`, `summary.json`, `report.html`)
 - DSSE attestation generation (`insidellms attest`)
+- Optional recorded metric acceptance (`insidellms attest --require-claims-pass`)
 - Sigstore signing (`insidellms sign`)
 - Signature verification (`insidellms verify-signatures`)
 - Optional transparency and distribution paths (SCITT receipts, OCI publish)
@@ -32,6 +33,11 @@ Build provenance-oriented evaluation runs with attestations, signatures, and tra
 
 Do not treat an unsigned envelope, a structurally checked receipt, or a TUF
 mock as verified provenance.
+
+The optional claims-quality gate is separate from both structural completeness
+and cryptographic authenticity. It checks declared thresholds against recorded
+metric values and results; it does not establish experimental or scientific
+validity. The default structural-only behaviour remains unchanged.
 
 ## Prerequisites
 
@@ -69,6 +75,41 @@ insidellms verify-signatures ./baseline --identity "EXPECTED_CERTIFICATE_IDENTIT
 Replace the value with the exact certificate identity you trust. It is not an
 issuer expression; issuer constraints and organizational authorization must be
 enforced separately.
+
+## Require passing claims
+
+Prepare a fresh, unsealed execution export with the intended `manifest.json`,
+`records.jsonl` and other execution inputs. Place the compiler's `claims.json`
+and `verification.json` for that execution in the export before finalisation:
+
+```bash
+insidellms attest ./claims-export --require-claims-pass
+```
+
+The command exits 1 if structural checks or any claim fails, or claim evidence
+is missing, empty or malformed. Inspect `policy/verdict.json`: the enabled
+verdict separates `structural_passed` from
+`claims_quality.passed` (`assurance: metric_acceptance`). It retains the
+structural provenance label and does not authenticate signatures or receipts.
+An enabled gate also blocks Ultimate OCI publication on failure.
+
+To produce the claim files using the existing compiler:
+
+```python
+from insideLLMs.contrib.claims import compile_claims
+
+compile_claims("./claims.yaml", "./claims-export")
+```
+
+This assumes a compiler-compatible `summary.json` containing
+`metrics[metric_name]["mean"]`. The compiler and gate do not adapt the runner's
+standard summary layout or reconstruct statistics from records. Compilation
+success does not imply passing claims. Direct runners accept
+`RunConfig(run_mode="ultimate", require_claims_pass=True)` with artefact output
+enabled, but do not compile evidence automatically. Use a fresh export when
+changing gate settings or evidence would conflict with an existing seal.
+See [Policy assurance](../../docs/POLICY_ASSURANCE.md#optional-claims-quality-gate)
+for validation rules, the public `run_policy` API and assurance limits.
 
 ## Expected run-directory additions
 

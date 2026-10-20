@@ -2,8 +2,9 @@
 
 Ultimate mode completes scoring and output validation, writes the execution
 manifest and successful summary, then constructs attestations 00–07, the
-structural policy verdict, and attestation 08. Only then does it finalize a
-private publication tree, its v2 identity descriptor and bundle ID. A requested
+policy verdict (structural checks plus any opted-in claims-quality gate), and
+attestation 08. Only then does it finalize a private publication tree, its v2
+identity descriptor and bundle ID. A requested
 OCI push receives this finalized tree. The subsequent stage 09 receipt is local
 publication metadata outside that payload. No scoring happens during sealing.
 
@@ -15,6 +16,16 @@ Only present inputs are included. Newly completed direct ultimate runners emit
 the already-scored summary; `insidellms attest` also supports previously
 un-attested runs without a summary, without synthesizing or rescoring one.
 Structural policy blocks a requested push if manifest or records is missing.
+
+When `require_claims_pass=True`, the selection additionally admits
+`claims.json` and `verification.json` for the metric acceptance check. Missing
+files cause a failing policy. Their exact bytes are checked in the private
+payload and included in its v2 descriptor when present. The gate neither
+compiles claims nor recomputes statistics from records or the summary. With
+the gate disabled, these files remain unselected and the existing verdict,
+selected paths and identity behaviour are unchanged. See
+[Policy assurance](POLICY_ASSURANCE.md#optional-claims-quality-gate) for the
+acceptance rules and assurance limits.
 
 Fresh generated files are:
 
@@ -88,12 +99,14 @@ takes its own defensive contained copy. No automatic retry occurs.
 
 | Result | Stage 09 outcome | Caller result |
 | --- | --- | --- |
-| No publication requested | `not_requested` | Returns `None` |
+| No publication requested and no opted-in policy failure | `not_requested` | Returns `None` |
 | Push returns a nonempty digest | `published` | Returns `None` |
 | Push returns no digest | `unknown` | Raises `PublicationError` |
 | Push times out (`TimeoutError` or `subprocess.TimeoutExpired`) | `unknown` | Raises `PublicationError`, chained to timeout |
 | Other push exception | `failed` | Raises `PublicationError`, chained to original |
-| Failed structural policy | No new stage 09 | Raises `RuntimeError`; zero pushes; verdict, 08 and payload preserved |
+| Failed structural policy with publication requested | No new stage 09 | Raises `RuntimeError`; zero pushes; verdict, 08 and payload preserved |
+| Failed combined policy with `require_claims_pass=True` | No new stage 09 | Raises `RuntimeError` even without publication; zero pushes; verdict, 08 and payload preserved |
+| Filesystem containment or input-preflight rejection | No new stage 09 | Raises before policy evaluation; zero pushes; verdict and 08 may not exist |
 | Aggregate scoring/output validation rejects | No publication payload | Existing runner interruption error; zero pushes |
 
 The stage 09 predicate records `oci_ref` (requested target, nullable),
@@ -131,6 +144,13 @@ revisit byte-identical v2 evidence, but cannot silently regenerate conflicting
 v1 or signed artifacts. Prepare a separate export containing only the intended
 execution inputs, retain the historical tree and IDs, and explicitly authorize
 any new signing workflow.
+
+Enabling the claims gate adds selected evidence and verdict fields, so its
+payload identity normally differs from a structural-only export. Changing the
+gate setting or claim evidence does not authorise rewriting an existing seal;
+use a fresh export with the intended execution inputs and claim evidence.
+The descriptor format remains version 2, and canonical run schemas and the
+separate cryptographic verification contract are unchanged.
 
 Direct sync/async runner `resume` and `overwrite` now reject directories carrying
 either identity file or any `attestations/` or `signing/` marker before model

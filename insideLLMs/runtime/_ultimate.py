@@ -72,8 +72,9 @@ def _build_attestations(
     config_snapshot: Optional[dict[str, Any]] = None,
     insidellms_version: Optional[str] = None,
     scitt_service_url: Optional[str] = None,
+    require_claims_pass: bool = False,
 ) -> None:
-    """Build roots, stages 00–08 and structural policy in the caller's private tree."""
+    """Build roots, stages 00–08 and the requested policy in a private tree."""
     run_dir = Path(run_dir)
     integrity_dir = run_dir / "integrity"
     attestations_dir = run_dir / "attestations"
@@ -230,7 +231,11 @@ def _build_attestations(
                 )
 
     # Run policy and persist verdict
-    verdict = run_policy(run_dir)
+    verdict = (
+        run_policy(run_dir, require_claims_pass=True)
+        if require_claims_pass
+        else run_policy(run_dir)
+    )
     policy_dir = run_dir / "policy"
     policy_dir.mkdir(parents=True, exist_ok=True)
     verdict_path = policy_dir / "verdict.json"
@@ -408,6 +413,7 @@ def run_ultimate_post_artifact(
     insidellms_version: Optional[str] = None,
     publish_oci_ref: Optional[str] = None,
     scitt_service_url: Optional[str] = None,
+    require_claims_pass: bool = False,
 ) -> None:
     """Finalize an immutable v2 payload before optional structural-policy publication.
 
@@ -415,14 +421,21 @@ def run_ultimate_post_artifact(
     summary. Conflicting historical evidence requires a fresh export directory.
     Failed/unknown remote writes raise PublicationError without rewriting execution
     health. Signed assurance remains the separate publish_verified_run API.
+    With require_claims_pass=True, admit compiled claims evidence and require both
+    structural completeness and recorded metric acceptance, even without a push.
     """
+    if not isinstance(require_claims_pass, bool):
+        raise ValueError("require_claims_pass must be a bool")
     run_dir = Path(run_dir)
     with (
         regular_tree_snapshot(run_dir) as original,
         tempfile.TemporaryDirectory(prefix="insidellms-payload-") as temporary,
     ):
         payload = Path(temporary)
-        for relative in _EXECUTION_INPUTS:
+        inputs = _EXECUTION_INPUTS
+        if require_claims_pass:
+            inputs += ("claims.json", "verification.json")
+        for relative in inputs:
             source = original / relative
             if source.exists():
                 if not source.is_file():
@@ -442,14 +455,18 @@ def run_ultimate_post_artifact(
             config_snapshot=config_snapshot,
             insidellms_version=insidellms_version,
             scitt_service_url=scitt_service_url,
+            require_claims_pass=require_claims_pass,
         )
         descriptor, bundle_id = payload_identity(payload)
         (payload / "integrity/bundle_identity.json").write_bytes(canonical_json_bytes(descriptor))
         (payload / "integrity/bundle_id.txt").write_text(bundle_id + "\n", encoding="utf-8")
         _install_payload(payload, run_dir, original)
         verdict = json.loads((payload / "policy/verdict.json").read_bytes())
-        if publish_oci_ref and not verdict["passed"]:
-            raise RuntimeError(
-                "Publication blocked by failed policy: " + "; ".join(verdict["reasons"])
+        if (publish_oci_ref or require_claims_pass) and not verdict["passed"]:
+            message = (
+                "Required policy checks failed"
+                if require_claims_pass
+                else "Publication blocked by failed policy"
             )
+            raise RuntimeError(message + ": " + "; ".join(verdict["reasons"]))
         _publish_payload(payload, run_dir, publish_oci_ref, bundle_id)

@@ -265,6 +265,12 @@ class RunConfig:
         If True, return an ``ExperimentResult`` object instead of raw dicts.
         The structured result provides convenient methods for analysis.
 
+    require_claims_pass : bool, default=False
+        Require structural completeness and passing recorded claim metrics when
+        ``run_mode="ultimate"`` and artifact output is enabled. The run directory
+        must contain compiled ``claims.json`` and ``verification.json`` before
+        finalization; this option does not compile claims or authenticate evidence.
+
     Attributes
     ----------
     stop_on_error : bool
@@ -445,6 +451,8 @@ class RunConfig:
     """OCI ref (e.g. ghcr.io/org/repo:tag) to push run bundle when run_mode=ultimate."""
     scitt_service_url: Optional[str] = None
     """SCITT service URL to submit critical attestations (04, 07) when run_mode=ultimate."""
+    require_claims_pass: bool = False
+    """Require recorded metric acceptance in Ultimate; does not compile claims or authenticate them."""
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -516,6 +524,14 @@ class RunConfig:
             raise ValueError(f"batch_workers must be >= 1, got {self.batch_workers}")
         if self.timeout is not None and self.timeout <= 0:
             raise ValueError(f"timeout must be > 0, got {self.timeout}")
+        if not isinstance(self.require_claims_pass, bool):
+            raise ValueError("require_claims_pass must be a bool")
+        if self.require_claims_pass and (
+            self.run_mode != "ultimate" or not self.emit_run_artifacts
+        ):
+            raise ValueError(
+                "require_claims_pass requires run_mode='ultimate' and emit_run_artifacts=True"
+            )
         if not isinstance(self.strict_serialization, bool):
             raise ValueError(
                 f"strict_serialization must be a bool, got {type(self.strict_serialization).__name__}"
@@ -548,7 +564,8 @@ class RunConfig:
             emit_run_artifacts, run_dir, run_root, run_id, overwrite,
             store_messages, strict_serialization, deterministic_artifacts,
             dataset_info, config_snapshot, concurrency, timeout, resume,
-            use_probe_batch, batch_workers, return_experiment.
+            use_probe_batch, batch_workers, return_experiment, run_mode,
+            publish_oci_ref, scitt_service_url, require_claims_pass.
 
         Returns
         -------

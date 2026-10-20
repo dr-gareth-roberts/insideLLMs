@@ -492,7 +492,7 @@ insidellms doctor --format json --capabilities
 Generate attestation artifacts for an existing run directory.
 
 ```bash
-insidellms attest <run-dir>
+insidellms attest <run-dir> [--require-claims-pass]
 ```
 
 ### Arguments
@@ -501,11 +501,37 @@ insidellms attest <run-dir>
 |----------|-------------|
 | `run-dir` | Path to run directory (must contain `manifest.json`) |
 
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--require-claims-pass` | Require structural completeness and passing, valid results for every declared claim in precompiled `claims.json` / `verification.json` | `false` |
+
 ### Examples
 
 ```bash
 insidellms attest ./baseline
+
+# Use a fresh, unsealed export containing precompiled claim evidence
+insidellms attest ./claims-export --require-claims-pass
 ```
+
+With `--require-claims-pass`, failed thresholds or missing, empty or malformed
+evidence produce exit status 1. The combined policy must pass even though this
+command does not publish. On policy rejection, the verdict, stage 08 and
+payload remain available for inspection; no new stage 09 is produced.
+Filesystem containment or input-preflight errors can reject before those
+artefacts are generated.
+Without the flag, existing structural-only behaviour is unchanged.
+
+The gate checks recorded metric acceptance. It does not compile claims,
+recompute statistics or establish scientific validity or cryptographic
+authenticity. Changing gate settings or evidence can conflict with an existing
+seal; prepare a fresh export and preserve historical artefacts. See
+[Verifiable Evaluation](../advanced/Verifiable-Evaluation.md#require-passing-claims)
+for evidence preparation and
+[Policy assurance](../../docs/POLICY_ASSURANCE.md#optional-claims-quality-gate)
+for the exact acceptance rules.
 
 ---
 

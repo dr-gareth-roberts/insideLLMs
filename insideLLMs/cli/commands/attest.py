@@ -20,7 +20,10 @@ def cmd_attest(args: argparse.Namespace) -> int:
         return 1
     print_header("Generate attestations")
     try:
-        run_ultimate_post_artifact(run_dir)
+        if getattr(args, "require_claims_pass", False):
+            run_ultimate_post_artifact(run_dir, require_claims_pass=True)
+        else:
+            run_ultimate_post_artifact(run_dir)
         print_success(f"Attestations written to {run_dir / 'attestations'}")
         return 0
     except Exception as e:

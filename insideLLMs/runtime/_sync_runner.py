@@ -308,6 +308,10 @@ class ProbeRunner(_RunnerBase):
         )
         run_mode = getattr(config, "run_mode", "default")
         timeout = getattr(config, "timeout", None)
+        if config.require_claims_pass and (run_mode != "ultimate" or not emit_run_artifacts):
+            raise ValueError(
+                "require_claims_pass requires run_mode='ultimate' and emit_run_artifacts=True"
+            )
 
         # Batch path has no per-item timeout enforcement.
         if use_probe_batch and timeout is not None:
@@ -999,6 +1003,7 @@ class ProbeRunner(_RunnerBase):
                     insidellms_version=_ver,
                     publish_oci_ref=config.publish_oci_ref,
                     scitt_service_url=config.scitt_service_url,
+                    require_claims_pass=config.require_claims_pass,
                 )
 
         success_count = sum(1 for r in final_results if r.get("status") == "success")

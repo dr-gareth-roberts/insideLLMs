@@ -11,6 +11,76 @@ independent ID reconstruction, receipt locations, and v1 migration rules.
 An ordinary ultimate run still produces unsigned drafts; structural success is
 not permission from a cryptographic trust policy.
 
+## Optional claims-quality gate
+
+`run_policy(run_dir, require_claims_pass=True)` additionally requires recorded
+metric acceptance. The default is `False`: existing structural verdicts and
+Ultimate payload selection remain unchanged, and claim results are not checked.
+These are separate assurance questions:
+
+| Question | Result or API | Scope |
+| --- | --- | --- |
+| Is the expected evidence structurally complete? | `structural_passed` when the gate is enabled | Existing completeness and receipt-shape checks |
+| Do the recorded metrics satisfy the declared thresholds? | `claims_quality`, labelled `assurance: metric_acceptance` | Complete, valid and internally consistent claim results |
+| Does signed evidence satisfy independently selected trust requirements? | `verify_policy` | Existing signature and artefact-binding checks |
+
+With the gate enabled, the top-level `passed` is the conjunction of
+`structural_passed` and `claims_quality.passed`; `checks.claims_quality` records
+the additional check. `claims_quality` includes `reasons` and per-claim `checks`.
+The top-level `assurance: structural` still describes the provenance checks;
+`signature_authenticity` and `scitt_authenticity` remain `not_checked`.
+
+The gate reads the compiler's `claims.json` and `verification.json`. It requires
+a nonempty claims list with unique, nonblank string IDs, nonblank metric names
+and exactly one result per declared claim. Each result must be an object with
+a boolean `passed`, finite numeric `metric_value` and `threshold` (booleans are not numbers here),
+and a supported operator (`>`, `>=`, `<`, `<=`, `==`). The threshold and operator
+must match the declaration, the recorded comparison must agree with `passed`,
+and every claim must pass. An absent, null or empty-string `error` is permitted;
+other `error` values reject the result. Missing or unreadable evidence, malformed
+JSON or result shapes, duplicate keys, missing/extra results and empty evidence
+fail closed.
+
+```python
+from insideLLMs.policy import run_policy
+
+verdict = run_policy("./claims-export", require_claims_pass=True)
+if not verdict["passed"]:
+    raise RuntimeError("; ".join(verdict["reasons"]))
+```
+
+For a fresh, unsealed execution export containing precompiled `claims.json`
+and `verification.json`, enforce the same requirement when generating evidence:
+
+```sh
+insidellms attest ./claims-export --require-claims-pass
+```
+
+This exits 1 on a failed combined policy, including when publication is not
+requested. The verdict, stage 08 and payload are retained for inspection; no
+new stage 09 is produced. This retention applies once policy evaluation is
+reached; filesystem containment or input-preflight errors can reject earlier.
+Ultimate admits both claim files into its private
+payload only when opted in, checks that snapshot and blocks a requested OCI
+push on failure. `RunConfig(require_claims_pass=True, run_mode="ultimate",
+emit_run_artifacts=True)` enables this requirement for both direct runners;
+other run modes, disabled artefact output and nonboolean flag values reject.
+The runners do not invoke the claims compiler automatically.
+
+`insideLLMs.contrib.claims.compile_claims(claims_yaml_path, run_dir)` can prepare
+the two files before finalisation. Its input is a compiler-compatible
+`summary.json` with `metrics[metric_name]["mean"]`; it does not automatically
+adapt the runner's standard summary layout. A successful compilation can still
+contain failed claims. The gate does not recompute statistics from the summary
+or records, establish that evidence belongs to an execution, or validate
+measurement methods, experimental design or scientific truth. It adds no
+signature or SCITT verification. Stage 07 and the separate cryptographic APIs
+retain their existing contracts; a v2 payload digest is not authentication.
+Keep historical evidence intact and use a fresh export when changing gate
+settings or claim evidence would conflict with already finalised artefacts.
+
+## Cryptographic verification and publication
+
 For post-signing verification, provision a Sigstore TrustedRoot JSON from your
 independent trust source and choose the exact signer identity and OIDC issuer.
 Do not obtain those trust decisions from the run you are verifying.
