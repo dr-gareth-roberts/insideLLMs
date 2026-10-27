@@ -38,6 +38,12 @@ mode (`run_mode: ultimate`) and the provenance commands (`attest`, `sign`,
 - **BREAKING (output)** `AnthropicModel.chat` now routes `system` messages to the
   Anthropic `system=` parameter and forwards previously-dropped kwargs
   (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
+- **BREAKING (output)** `AnthropicModel` no longer sends `temperature=0.7` by
+  default. anthropic 1.0 removed `temperature`, `top_p` and `top_k` from the
+  Messages API methods, and API version 2026-10-21 (anthropic 2.0) rejects them,
+  so every `generate`, `chat` and `stream` call on a fresh install raised
+  `TypeError`. Requests now use the API's sampling defaults unless you pass a
+  sampling parameter, which only anthropic<1.0 accepts.
 - `insidellms init` now refuses to overwrite an existing config unless
   `--overwrite` is passed.
 - Runtime validation helpers now reject unsupported validation modes instead of
