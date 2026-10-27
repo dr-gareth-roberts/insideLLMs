@@ -8,6 +8,12 @@ nav_order: 6
 
 Build provenance-oriented evaluation runs with attestations, signatures, and transparency evidence.
 
+> **Experimental in 0.3.x.** Ultimate mode (`run_mode: ultimate`) and the
+> `attest`, `sign`, `verify-signatures` and `verify-policy` commands may change in
+> minor releases (with migration notes), per the
+> [stability matrix](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/docs/STABILITY_MATRIX.md).
+> Read the trust boundaries below before relying on them.
+
 ## What this covers
 
 - Deterministic run artifacts (`records.jsonl`, `manifest.json`, `summary.json`, `report.html`)

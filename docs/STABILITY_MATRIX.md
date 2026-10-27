@@ -24,6 +24,7 @@ about what can change safely and what requires migration planning.
 | Schema validation contracts (`SchemaRegistry` names and versions) | Stable | Published schema names remain valid; versioning follows SemVer principles. | Schema bumps + compatibility notes required. |
 | Deterministic controls (`strict_serialization`, `deterministic_artifacts`) | Stable | Flag/config semantics remain consistent. | Behaviour changes require explicit docs and regression tests. |
 | Registry extension points (model/probe/dataset registration APIs) | Stable | Existing registration and lookup patterns remain supported. | API changes require migration path and updated plugin docs. |
+| Ultimate mode (`run_mode: ultimate`) and provenance commands (`attest`, `sign`, `verify-signatures`, `verify-policy`) with their outputs (attestations, signature bundles, policy verdicts) | Experimental | Usable for evaluation; the trust chain is incomplete (see the trust boundaries in `wiki/advanced/Verifiable-Evaluation.md`). | Changes in minor releases need release notes and migration notes. |
 | Python import paths in public docs (`insideLLMs.*` user-facing modules) | Experimental | Best-effort compatibility while architecture settles. | Any move/rename must include release notes and import aliases where feasible. |
 | Private/underscored modules (`insideLLMs.runtime._*`, `insideLLMs.cli._*`) | Internal | No compatibility guarantee. | Can change without notice; avoid external use. |
 
