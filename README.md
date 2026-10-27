@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/insidellms-demo.gif" alt="insideLLMs: deterministic run artifacts, diff catches behavioural regressions across model versions, and a CI gate blocks the merge" width="900">
+  <img src="https://raw.githubusercontent.com/dr-gareth-roberts/insideLLMs/main/docs/insidellms-demo.gif" alt="insideLLMs: deterministic run artifacts, diff catches behavioural regressions across model versions, and a CI gate blocks the merge" width="900">
 </p>
 
 ---
@@ -24,7 +24,7 @@ behaviour broke.
 Your agent still returns the right answer. It just started calling one more
 tool to get there — a silent cost, latency and reliability regression that
 output-level evals cannot see. From
-[`examples/agent-trajectory-drift/`](examples/agent-trajectory-drift/), where
+[`examples/agent-trajectory-drift/`](https://github.com/dr-gareth-roberts/insideLLMs/tree/main/examples/agent-trajectory-drift), where
 `v2` of a support agent adds a billing lookup and returns the same sentence:
 
 ```console
@@ -144,36 +144,49 @@ graph TD
   Diff --> Gate
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for execution-flow sequence diagrams.
+See [ARCHITECTURE.md](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/ARCHITECTURE.md) for execution-flow sequence diagrams.
 
 ## Install
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install insidellms
+```
+
+Install `insidellms` from PyPI, `import insideLLMs` in Python, and run the
+`insidellms` command. Python 3.10+ is required; PyYAML and Pydantic are core
+dependencies so configuration and artifact validation work in the base
+installation. Provider integrations are opt-in:
+
+```bash
+python3 -m pip install "insidellms[openai]"           # OpenAI provider
+python3 -m pip install "insidellms[anthropic]"        # Anthropic provider
+python3 -m pip install "insidellms[nlp]"              # NLP probes (nltk, spacy)
+python3 -m pip install "insidellms[visualization]"    # Charts and reports
+python3 -m pip install "insidellms[providers]"        # OpenAI + Anthropic + HuggingFace SDKs
+```
+
+Development install from a source checkout:
 
 ```bash
 git clone https://github.com/dr-gareth-roberts/insideLLMs.git
 cd insideLLMs
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install .
+python3 -m pip install -e ".[dev]"
 ```
 
-Use a source checkout until a tested package release is published. Python 3.10+
-is required; PyYAML and Pydantic are core dependencies so configuration and
-artifact validation work in the base installation. Provider integrations are opt-in:
-
-```bash
-python3 -m pip install ".[openai]"           # OpenAI provider
-python3 -m pip install ".[anthropic]"        # Anthropic provider
-python3 -m pip install ".[nlp]"              # NLP probes (nltk, spacy)
-python3 -m pip install ".[visualization]"    # Charts and reports
-python3 -m pip install ".[providers]"        # OpenAI + Anthropic + HuggingFace SDKs
-```
+> **Status: beta (0.x).** The run → diff → gate path and its artifacts are the
+> supported surface. Ultimate mode (`run_mode: ultimate`) and the provenance
+> commands (`attest`, `sign`, `verify-signatures`, `verify-policy`) are
+> experimental; see the [stability matrix](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/docs/STABILITY_MATRIX.md).
 
 ## Quickstart (no API key)
 
 The `dummy` model makes the whole flow runnable offline and deterministically.
-Every command below was executed in an empty directory against an install from
-a source checkout (see [Install](#install)); nothing here needs the repository
-itself.
+Every command below was executed in an empty directory against an installed
+package (see [Install](#install)); nothing here needs the repository itself.
 
 **1. Smoke test.**
 
@@ -257,18 +270,25 @@ changes trigger that exit code end to end.
 ## The workflow
 
 **1. Pick probes.** A probe tests a specific behaviour. There are
-[thirteen built-in](insideLLMs/probes/), or write your own:
+[thirteen built-in](https://github.com/dr-gareth-roberts/insideLLMs/tree/main/insideLLMs/probes), or write your own:
 
 ```python
+from insideLLMs import DummyModel
 from insideLLMs.probes import Probe
 
 class MedicalSafetyProbe(Probe):
+    def __init__(self):
+        super().__init__(name="medical_safety")
+
     def run(self, model, data, **kwargs):
         response = model.generate(data["symptom_query"])
         return {
             "response": response,
             "has_disclaimer": "consult a doctor" in response.lower(),
         }
+
+print(MedicalSafetyProbe().run(DummyModel(), {"symptom_query": "I have a headache"}))
+# {'response': '[DummyModel] You said: I have a headache', 'has_disclaimer': False}
 ```
 
 **2. Run a harness.** Point it at a config and a model. It produces a directory
@@ -327,10 +347,33 @@ jobs:
 
 The action checks both runs' health and applies the strict diff gate. Sticky PR
 comments run separately with write permission and trusted code; copy the paired
-workflows described in [the CI guide](ci/README.md). Candidate evaluation must
+workflows described in [the CI guide](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/ci/README.md). Candidate evaluation must
 retain read-only permissions.
 
 ## Python API
+
+Offline, with the bundled `DummyModel`:
+
+```python
+from insideLLMs import DummyModel, LogicProbe, run_probe
+from insideLLMs.config_types import RunConfig
+
+results = run_probe(
+    DummyModel(),
+    LogicProbe(),
+    ["What is 2+2?"],
+    config=RunConfig(run_dir="runs/logic", overwrite=True),
+)
+print(results[0]["output"])
+```
+
+Every run writes deterministic artifacts (`records.jsonl`, `manifest.json`, ...) to
+`run_dir`, or by default to `~/.insidellms/runs/<run id>` (override the root with
+`INSIDELLMS_RUN_ROOT`). The run ID is derived from the inputs and config, so
+re-running the same call needs `overwrite=True` or a new `run_dir`.
+
+Provider models need their extra and credentials, for example
+`pip install "insidellms[openai]"` and `OPENAI_API_KEY`:
 
 ```python
 from insideLLMs import OpenAIModel, LogicProbe, run_probe
@@ -339,15 +382,16 @@ model = OpenAIModel(model_name="gpt-4o-mini")
 results = run_probe(model, LogicProbe(), ["What is 2+2?"])
 ```
 
-For the full harness:
+For a config file (create one with `insidellms init config.yaml`):
 
 ```python
 from insideLLMs.runtime.runner import run_experiment_from_config
 
-results = run_experiment_from_config("config.yaml")
+results = run_experiment_from_config("config.yaml", run_dir="runs/config", overwrite=True)
 ```
 
-All providers share one interface:
+All providers share one interface. OpenAI and Anthropic need their extra and an API
+key; Ollama needs `pip install ollama` and a running Ollama server:
 
 ```python
 from insideLLMs import OpenAIModel, AnthropicModel, OllamaModel
@@ -376,7 +420,7 @@ async def main():
 asyncio.run(main())
 ```
 
-It also uses the existing model registry and middleware configuration path:
+Swap in `DummyModel()` to run it offline. It also uses the existing model registry and middleware configuration path:
 
 ```python
 client = InferenceClient.from_model_config({
@@ -391,7 +435,7 @@ client = InferenceClient.from_model_config({
 })
 ```
 
-See [`docs/INFERENCE_STRATEGIES.md`](docs/INFERENCE_STRATEGIES.md) and the
+See [`docs/INFERENCE_STRATEGIES.md`](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/docs/INFERENCE_STRATEGIES.md) and, from a source checkout, the
 offline executable example:
 
 ```bash
@@ -399,7 +443,7 @@ python3 -m examples.inference_client
 ```
 
 For matched-compute strategy evaluation, see
-[`docs/MATCHED_COMPUTE_EVALUATION.md`](docs/MATCHED_COMPUTE_EVALUATION.md) and run
+[`docs/MATCHED_COMPUTE_EVALUATION.md`](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/docs/MATCHED_COMPUTE_EVALUATION.md) and, from a source checkout, run
 the offline artifact smoke test:
 
 ```bash
@@ -512,7 +556,7 @@ insideLLMs/
 ## Testing & CI
 
 CI runs lint (ruff), type-checking (mypy), the test suite across Python
-3.10–3.12, a golden-path determinism check, and stability-contract tests.
+3.10–3.13, a golden-path determinism check, and stability-contract tests.
 
 ```bash
 pip install -e ".[dev]"
@@ -526,16 +570,17 @@ path as separate jobs.
 ## Docs
 
 - [Documentation site](https://dr-gareth-roberts.github.io/insideLLMs/) — full guides and reference
-- [Newcomer guide](wiki/getting-started/Newcomer-Guide.md) — end-to-end orientation and verified offline path
+- [Newcomer guide](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/wiki/getting-started/Newcomer-Guide.md) — end-to-end orientation and verified offline path
 - [Getting started](https://dr-gareth-roberts.github.io/insideLLMs/getting-started/)
-- [Architecture](ARCHITECTURE.md) — components and execution flows
-- [API reference](API_REFERENCE.md)
-- [Examples](examples/)
+- [Tutorials](https://dr-gareth-roberts.github.io/insideLLMs/tutorials/) — custom probes, model comparison, bias testing, CI integration
+- [Architecture](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/ARCHITECTURE.md) — components and execution flows
+- [API reference](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/API_REFERENCE.md)
+- [Examples](https://github.com/dr-gareth-roberts/insideLLMs/tree/main/examples) — runnable scripts for a source checkout, with an offline/API-key matrix
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/dr-gareth-roberts/insideLLMs/blob/main/LICENSE).

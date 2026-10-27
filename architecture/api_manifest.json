@@ -732,11 +732,13 @@
       "evidence": {
         "areas": {
           "benchmarks": 2,
+          "docs": 1,
           "examples": 2,
           "wiki": 1
         },
-        "path_count": 5,
+        "path_count": 6,
         "paths": [
+          "README.md",
           "benchmarks/benchmark_import.py",
           "benchmarks/benchmark_probes.py",
           "examples/example_benchmark_suite.py",
