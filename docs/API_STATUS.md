@@ -66,7 +66,7 @@ file assigns every symbol one of `stable`, `experimental`, `deprecated`, or `int
 | `DeploymentApp` | experimental | lazy | `insideLLMs.contrib.deployment` | 0 |
 | `DeploymentConfig` | experimental | lazy | `insideLLMs.contrib.deployment` | 0 |
 | `DiskCache` | experimental | lazy | `insideLLMs.caching` | 1 |
-| `DummyModel` | experimental | direct | `insideLLMs.models` | 5 |
+| `DummyModel` | experimental | direct | `insideLLMs.models` | 6 |
 | `EndpointConfig` | experimental | lazy | `insideLLMs.contrib.deployment` | 0 |
 | `Evaluator` | experimental | lazy | `insideLLMs.evaluation` | 0 |
 | `EvolutionConfig` | experimental | direct, lazy | `insideLLMs`<br>`insideLLMs.inference` | 0 |
