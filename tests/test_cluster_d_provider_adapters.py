@@ -106,6 +106,7 @@ class TestRetryAfterSeconds:
         assert _retry_after_seconds(Exception("x")) is None
 
     def test_openai_rate_limit_uses_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        pytest.importorskip("openai")
         import insideLLMs.models.openai as openai_mod
         from insideLLMs.exceptions import RateLimitError
 
@@ -131,6 +132,7 @@ class TestRetryAfterSeconds:
         assert exc_info.value.retry_after == 7.0
 
     def test_anthropic_rate_limit_uses_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        pytest.importorskip("anthropic")
         import insideLLMs.models.anthropic as anthropic_mod
         from insideLLMs.exceptions import RateLimitError
 
