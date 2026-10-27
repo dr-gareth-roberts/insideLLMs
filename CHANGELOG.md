@@ -7,6 +7,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-27
+
+First release published to PyPI: `pip install insidellms`, then `import insideLLMs`.
+The supported surface is the core run → diff → gate path and its artifacts. Ultimate
+mode (`run_mode: ultimate`) and the provenance commands (`attest`, `sign`,
+`verify-signatures`, `verify-policy`) are classified **Experimental** in
+`docs/STABILITY_MATRIX.md`.
+
+### Changed (breaking)
+
+- **`compose_cached_prompt(model_id=...)` is now required** (was optional,
+  defaulting to `""`). Different models sharing a stable prefix and tenant
+  produced byte-identical `cache_key`s, so a shared KV/response cache could
+  serve one model's completion for another model's request. Pass the model name
+  plus any generation parameters that change outputs, e.g.
+  `"gpt-4o-mini:temp=0"`. Callers omitting it now raise `TypeError`.
+
+### Changed (behavior — review before upgrading)
+
+> Several audit fixes alter runtime/output behavior. Most affect only previously
+> incorrect cases, but the following are behavior changes to be aware of:
+- **BREAKING** `TokenBucketRateLimiter.acquire`/`acquire_async` now raise
+  `ValueError` when `tokens > capacity` (previously slept then returned `False`).
+- **BREAKING (output)** The instruction probes now emit `status="success"` for
+  evaluated-but-non-compliant results (with compliance in `metadata["is_correct"]`)
+  instead of `status="error"`. This changes `records.jsonl` `status` values and
+  lowers `error_rate` for those probes. Records remain schema-valid and runs
+  remain deterministic (verified).
+- **BREAKING (output)** `AnthropicModel.chat` now routes `system` messages to the
+  Anthropic `system=` parameter and forwards previously-dropped kwargs
+  (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
+- `insidellms init` now refuses to overwrite an existing config unless
+  `--overwrite` is passed.
+- Runtime validation helpers now reject unsupported validation modes instead of
+  silently treating them as strict validation. Supported values are `strict`,
+  `lenient`, and `warn`.
+
+### Added
+
+- `diff --html PATH` writes a deterministic, self-contained HTML diff report
+  (summary counts, per-section tables, inline before/after) from the current
+  DiffReport payload; it works with either `--format` and leaves the exit-code
+  policy unchanged.
+- Output schema 1.0.2 carries per-item scores and primary metrics. Historical
+  1.0.0/1.0.1 contracts remain readable; migration does not invent missing scores.
+- `diff --fail-on-any-difference` gates improvements and trace/trajectory changes
+  as well as regressions. Malformed, missing, or incomparable primary scores
+  cannot pass a regression gate.
+- Clean wheel and source-distribution release smoke checks exercise all starter
+  templates and a real correct-to-incorrect scoring regression.
+- Public-API parity gate: `scripts/audit_docs.py` now fails `make docs-audit` when
+  the exact Public API Index rows differ from the package's eager `__all__` plus
+  PEP 562 lazy-import map; prose mentions no longer satisfy the gate.
+- Declared `jinja2>=3.1.5` in the `visualization` extra (required by the pandas Styler;
+  previously an undeclared transitive dependency)
+- Full CI pipeline: lint, typecheck, test (Python 3.10–3.13 matrix), determinism, and contract jobs
+- Optional dependency groups: `huggingface`, `signing`, `crypto`, `providers`
+- International PII detection support (EU, UK regions)
+- Rate limiting integration via `RunConfig`
+- Schema version compatibility checking in diff command
+
+### Changed
+
+- **Inference-harness review fixes**: beam search terminates on cyclic state
+  graphs; callback timeouts raised with no time budget armed are no longer
+  mislabelled as budget exhaustion in search/evolution/DAG/escalation (the
+  budget-armed case was only fixed later — see Fixed above); caller metadata can no longer forge spend
+  accounting; self-consistency returns a real sample output (the normalization
+  key moves to `provenance["winning_key"]`); NaN verifier scores rank last;
+  matched-compute treats declared calls as a per-example ceiling, compares
+  executors by underlying model identity, and guards zero-wall-time
+  throughput; best-of-n verifies candidates and judge orders concurrently;
+  unused `inference.protocols` module and `Decision` schema removed
+- **Trust-surface honesty (P0)**: `datasets.tuf_client.fetch_dataset` now always
+  refuses without `allow_mock=True` and labels its proof `status="mock"` /
+  `verified=False` (it previously reported mock data as `status="verified"` when
+  the `tuf` package was merely importable); `transparency.scitt_client.verify_receipt`
+  is deprecated in favour of `receipt_looks_well_formed` (structural check only —
+  no cryptographic receipt verification); `insidellms verify-signatures` now fails
+  when a run directory contains no attestations instead of reporting success
+- `HuggingFaceModel` now reports `supports_streaming=False`: its `stream()` is
+  simulated (yields the full response as one chunk), so the capability flag no
+  longer overclaims; `info().extra` gains `"streaming": "simulated"`
+- Builtin benchmark datasets (13 helpers, 87 handwritten examples total) are now
+  labelled smoke-test fixtures in descriptions, docstrings, and CLI output —
+  results on them are not benchmark evidence
+- Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
+- Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
+- Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes
+- **DEPRECATION**: `insideLLMs.visualization` module is deprecated
+  - Use `insideLLMs.analysis.visualization` instead
+  - Compatibility layer will be removed in v2.0.0
+  - See migration guide below
+
+### Deprecated
+
+- **`results.jsonl` legacy alias** (Stable artifact surface)
+  - Canonical file is `records.jsonl`; harness runs still emit `results.jsonl` as a symlink or copy for backward compatibility.
+  - **Removal planned in v0.3.0.** After removal, use `records.jsonl` only; update diff snapshot and CI scripts that reference the alias.
+  - See `docs/ARTIFACT_CONTRACT.md` (Legacy Artifact Aliases).
+
+### Removed
+
+- `sentry-sdk` mandatory dependency: never imported anywhere in the codebase, it forced a
+  telemetry SDK into every install. Core dependencies are now `pyyaml` only.
+- `tuf` from the `signing` extra: the dataset TUF client is deliberately unimplemented
+  and fail-closed (`fetch_dataset` refuses without `allow_mock=True`); the package was
+  never imported. `insidellms doctor` still probes for it via `find_spec` with its
+  standalone install hint.
+- Phantom sphinx section from `requirements-dev.txt` (referenced a nonexistent
+  `[docs]` extra; nothing in the repo builds with sphinx) and added the missing
+  `pydantic` mirror entry.
+- Tracked repo-root residue: `FIXES_APPLIED.md`, `experiment.yaml`, `test_config.yaml`,
+  `log.txt`, `trace.json`, `trace_export.json`, `fingerprint.json` (CLI/demo output
+  committed by accident; regeneration paths are now root-scoped in `.gitignore`).
+
 ### Fixed
 
 - CLI: `insidellms benchmark` no longer crashes with
@@ -96,33 +212,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     written atomically; `diff_run_dirs` forwards `fail_on_trajectory_drift`.
   - `insideLLMs.runtime` no longer eagerly imports the visualization stack
     (pandas/matplotlib/seaborn) at import time.
-
-### Added
-
-- `diff --html PATH` writes a deterministic, self-contained HTML diff report
-  (summary counts, per-section tables, inline before/after) from the current
-  DiffReport payload; it works with either `--format` and leaves the exit-code
-  policy unchanged.
-- Output schema 1.0.2 carries per-item scores and primary metrics. Historical
-  1.0.0/1.0.1 contracts remain readable; migration does not invent missing scores.
-- `diff --fail-on-any-difference` gates improvements and trace/trajectory changes
-  as well as regressions. Malformed, missing, or incomparable primary scores
-  cannot pass a regression gate.
-- Clean wheel and source-distribution release smoke checks exercise all starter
-  templates and a real correct-to-incorrect scoring regression.
-- Public-API parity gate: `scripts/audit_docs.py` now fails `make docs-audit` when
-  the exact Public API Index rows differ from the package's eager `__all__` plus
-  PEP 562 lazy-import map; prose mentions no longer satisfy the gate.
-- Declared `jinja2>=3.1.5` in the `visualization` extra (required by the pandas Styler;
-  previously an undeclared transitive dependency)
-- Full CI pipeline: lint, typecheck, test (Python 3.10/3.11/3.12 matrix), determinism, and contract jobs
-- Optional dependency groups: `huggingface`, `signing`, `crypto`, `providers`
-- International PII detection support (EU, UK regions)
-- Rate limiting integration via `RunConfig`
-- Schema version compatibility checking in diff command
-
-
-### Fixed
 
 - Async fail-fast runs no longer persist placeholder records for items the
   scheduler never dispatched, so `records.jsonl` is byte-identical between the
@@ -239,53 +328,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `InferenceClient.from_model_config` pipelines), which made matched-compute
   reports compare zeros.
 
-### Changed (breaking)
-- **`compose_cached_prompt(model_id=...)` is now required** (was optional,
-  defaulting to `""`). Different models sharing a stable prefix and tenant
-  produced byte-identical `cache_key`s, so a shared KV/response cache could
-  serve one model's completion for another model's request. Pass the model name
-  plus any generation parameters that change outputs, e.g.
-  `"gpt-4o-mini:temp=0"`. Callers omitting it now raise `TypeError`.
-
-### Deprecated
-- **`results.jsonl` legacy alias** (Stable artifact surface)
-  - Canonical file is `records.jsonl`; harness runs still emit `results.jsonl` as a symlink or copy for backward compatibility.
-  - **Removal planned in v0.3.0.** After removal, use `records.jsonl` only; update diff snapshot and CI scripts that reference the alias.
-  - See `docs/ARTIFACT_CONTRACT.md` (Legacy Artifact Aliases).
-
-### Changed
-- **Inference-harness review fixes**: beam search terminates on cyclic state
-  graphs; callback timeouts raised with no time budget armed are no longer
-  mislabelled as budget exhaustion in search/evolution/DAG/escalation (the
-  budget-armed case was only fixed later — see Fixed above); caller metadata can no longer forge spend
-  accounting; self-consistency returns a real sample output (the normalization
-  key moves to `provenance["winning_key"]`); NaN verifier scores rank last;
-  matched-compute treats declared calls as a per-example ceiling, compares
-  executors by underlying model identity, and guards zero-wall-time
-  throughput; best-of-n verifies candidates and judge orders concurrently;
-  unused `inference.protocols` module and `Decision` schema removed
-- **Trust-surface honesty (P0)**: `datasets.tuf_client.fetch_dataset` now always
-  refuses without `allow_mock=True` and labels its proof `status="mock"` /
-  `verified=False` (it previously reported mock data as `status="verified"` when
-  the `tuf` package was merely importable); `transparency.scitt_client.verify_receipt`
-  is deprecated in favour of `receipt_looks_well_formed` (structural check only —
-  no cryptographic receipt verification); `insidellms verify-signatures` now fails
-  when a run directory contains no attestations instead of reporting success
-- `HuggingFaceModel` now reports `supports_streaming=False`: its `stream()` is
-  simulated (yields the full response as one chunk), so the capability flag no
-  longer overclaims; `info().extra` gains `"streaming": "simulated"`
-- Builtin benchmark datasets (13 helpers, 87 handwritten examples total) are now
-  labelled smoke-test fixtures in descriptions, docstrings, and CLI output —
-  results on them are not benchmark evidence
-- Core dependencies slimmed: `openai`, `anthropic`, `transformers`, `huggingface-hub`, `tuf`, `oras`, `cryptography` moved to optional extras
-- Disconnected modules (~85k LOC) moved to `insideLLMs/contrib/` for clearer project scope
-- Mypy config tightened: re-enabled `name-defined`, `syntax`, `return-value` error codes
-- **DEPRECATION**: `insideLLMs.visualization` module is deprecated
-  - Use `insideLLMs.analysis.visualization` instead
-  - Compatibility layer will be removed in v2.0.0
-  - See migration guide below
-
-### Fixed
 - Removed duplicate "Verifiable Evaluation Commands" and "Schema Validation Commands" sections from README
 - Delimiter escape vulnerability in prompt injection defense
 - Async determinism with concurrent execution
@@ -307,40 +349,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `batch_generate`; `redact_pii` scrubs string dict keys; `ensure_nltk` accepts
     any iterable.
 
-### Changed (behavior — review before upgrading)
-> Several audit fixes alter runtime/output behavior. Most affect only previously
-> incorrect cases, but the following are behavior changes to be aware of:
-- **BREAKING** `TokenBucketRateLimiter.acquire`/`acquire_async` now raise
-  `ValueError` when `tokens > capacity` (previously slept then returned `False`).
-- **BREAKING (output)** The instruction probes now emit `status="success"` for
-  evaluated-but-non-compliant results (with compliance in `metadata["is_correct"]`)
-  instead of `status="error"`. This changes `records.jsonl` `status` values and
-  lowers `error_rate` for those probes. Records remain schema-valid and runs
-  remain deterministic (verified).
-- **BREAKING (output)** `AnthropicModel.chat` now routes `system` messages to the
-  Anthropic `system=` parameter and forwards previously-dropped kwargs
-  (`top_p`, `top_k`, `stop_sequences`, `system`); generated outputs may differ.
-- `insidellms init` now refuses to overwrite an existing config unless
-  `--overwrite` is passed.
-- Runtime validation helpers now reject unsupported validation modes instead of
-  silently treating them as strict validation. Supported values are `strict`,
-  `lenient`, and `warn`.
-
-### Removed
-- `sentry-sdk` mandatory dependency: never imported anywhere in the codebase, it forced a
-  telemetry SDK into every install. Core dependencies are now `pyyaml` only.
-- `tuf` from the `signing` extra: the dataset TUF client is deliberately unimplemented
-  and fail-closed (`fetch_dataset` refuses without `allow_mock=True`); the package was
-  never imported. `insidellms doctor` still probes for it via `find_spec` with its
-  standalone install hint.
-- Phantom sphinx section from `requirements-dev.txt` (referenced a nonexistent
-  `[docs]` extra; nothing in the repo builds with sphinx) and added the missing
-  `pydantic` mirror entry.
-- Tracked repo-root residue: `FIXES_APPLIED.md`, `experiment.yaml`, `test_config.yaml`,
-  `log.txt`, `trace.json`, `trace_export.json`, `fingerprint.json` (CLI/demo output
-  committed by accident; regeneration paths are now root-scoped in `.gitignore`).
-
 ### Security
+
 - Added delimiter escape sanitization to prevent injection bypass
 - Enhanced API key exposure prevention in documentation
 - Added pre-commit hook for secret detection
@@ -377,7 +387,8 @@ from insideLLMs.analysis.visualization import text_bar_chart
 ```
 
 **Timeline:**
-- v0.2.0 (current): Deprecation warnings issued, old imports still work
+- v0.2.0: Deprecation warnings issued, old imports still work
+- v0.3.0 (current): Deprecation warnings continue, old imports still work
 - Until v2.0.0: Deprecation warnings continue, both import paths keep working
 - v2.0.0: Old import path removed, must use new path
 
@@ -422,6 +433,7 @@ find . -name "*.py" -exec sed -i '' 's/from insideLLMs\.visualization import/fro
 - Basic model adapters (OpenAI, DummyModel)
 - JSONL record output format
 
-[Unreleased]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dr-gareth-roberts/insideLLMs/compare/90ab7c1093f6d00d2c680805c9c7a71a62a83789...v0.3.0
 [0.2.0]: https://github.com/dr-gareth-roberts/insideLLMs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dr-gareth-roberts/insideLLMs/releases/tag/v0.1.0

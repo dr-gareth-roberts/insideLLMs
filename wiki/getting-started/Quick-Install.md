@@ -28,7 +28,7 @@ PyYAML and Pydantic are included; validation works without development extras.
 
 ```bash
 insidellms --version
-# insidellms 0.2.0
+# insidellms 0.3.0
 
 # Offline smoke test: no API key or provider SDK required
 insidellms quicktest "What is 2 + 2?" --model dummy

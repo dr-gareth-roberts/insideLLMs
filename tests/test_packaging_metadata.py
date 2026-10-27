@@ -36,6 +36,20 @@ def test_base_install_includes_validation_dependency() -> None:
     assert "Development Status :: 4 - Beta" in project["classifiers"]
 
 
+def test_package_version_matches_pyproject_version() -> None:
+    """``insideLLMs.__version__`` must equal the version the distribution is built with.
+
+    ``release.yml`` only asserts tag == pyproject version, so a stale hard-coded
+    ``__version__`` would ship a distribution whose ``--version`` reports the
+    previous release.
+    """
+    import insideLLMs
+
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
+    assert insideLLMs.__version__ == project["version"]
+
+
 def test_python_dash_m_entry_point_exists() -> None:
     """``python -m insideLLMs`` must work like the console script.
 

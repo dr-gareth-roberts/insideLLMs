@@ -1,6 +1,6 @@
 # insideLLMs API Reference
 
-**Version:** 0.2.0  
+**Version:** 0.3.0\
 **Last Updated:** August 31, 2026
 
 This document provides comprehensive API documentation for the core public interfaces of the insideLLMs library. For guides and workflows, use the Docs Site.
@@ -3199,4 +3199,4 @@ PEP 562 lazy-import map resolved by `insideLLMs.__getattr__`. This index is gate
 ---
 
 **Last Updated:** February 26, 2026
-**Version:** 0.2.0
+**Version:** 0.3.0
