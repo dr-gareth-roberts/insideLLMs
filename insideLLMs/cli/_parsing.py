@@ -1142,7 +1142,7 @@ def create_parser() -> argparse.ArgumentParser:
     # =========================================================================
     attest_parser = subparsers.add_parser(
         "attest",
-        help="Generate attestations for a run directory (Ultimate mode)",
+        help="Generate attestations for a run directory (Ultimate mode; experimental)",
         formatter_class=CustomFormatter,
         parents=[common_parser],
     )
@@ -1157,7 +1157,7 @@ def create_parser() -> argparse.ArgumentParser:
     # =========================================================================
     sign_parser = subparsers.add_parser(
         "sign",
-        help="Sign attestations in a run directory (requires cosign)",
+        help="Sign attestations in a run directory (experimental; requires cosign)",
         formatter_class=CustomFormatter,
         parents=[common_parser],
     )
@@ -1172,7 +1172,7 @@ def create_parser() -> argparse.ArgumentParser:
     # =========================================================================
     verify_parser = subparsers.add_parser(
         "verify-signatures",
-        help="Verify attestation signatures in a run directory",
+        help="Verify attestation signatures in a run directory (experimental)",
         formatter_class=CustomFormatter,
         parents=[common_parser],
     )
@@ -1191,7 +1191,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     policy_parser = subparsers.add_parser(
         "verify-policy",
-        help="Verify required signed stages and artifact binding",
+        help="Verify required signed stages and artifact binding (experimental)",
         formatter_class=CustomFormatter,
         parents=[common_parser],
     )
