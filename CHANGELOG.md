@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `make architecture` executes instead of being silently skipped when the
   `architecture/` directory exists. `make` now prefers `.venv/bin/python`
   when present, so `make golden-path` works without activating the venv.
+- Architecture evidence: `scripts/architecture_evidence.py` counts only
+  git-tracked files as API usage, so evidence regenerated in a working
+  checkout matches CI's clean checkout. A locally generated, gitignored
+  `codemap.md` had leaked into the checked-in evidence and failed
+  `test_checked_in_architecture_evidence_is_current` on every CI test job.
 
 - PR #131 review follow-up: report rollback retains and reports backups when
   restoration fails; records validation opens the final component with
