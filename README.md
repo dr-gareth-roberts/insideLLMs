@@ -377,9 +377,15 @@ Provider models need their extra and credentials, for example
 
 ```python
 from insideLLMs import OpenAIModel, LogicProbe, run_probe
+from insideLLMs.config_types import RunConfig
 
 model = OpenAIModel(model_name="gpt-4o-mini")
-results = run_probe(model, LogicProbe(), ["What is 2+2?"])
+results = run_probe(
+    model,
+    LogicProbe(),
+    ["What is 2+2?"],
+    config=RunConfig(run_dir="runs/openai-logic", overwrite=True),
+)
 ```
 
 For a config file (create one with `insidellms init config.yaml`):
@@ -420,7 +426,8 @@ async def main():
 asyncio.run(main())
 ```
 
-Swap in `DummyModel()` to run it offline. It also uses the existing model registry and middleware configuration path:
+Swap in `DummyModel()` to run it offline. A client can also be built from a model config,
+through the model registry and middleware pipeline (`"type": "dummy"` runs it offline):
 
 ```python
 client = InferenceClient.from_model_config({
