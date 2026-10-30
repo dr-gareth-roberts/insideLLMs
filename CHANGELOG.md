@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-10-27
+## [0.3.0] - 2026-10-30
 
 First release published to PyPI: `pip install insidellms`, then `import insideLLMs`.
 The supported surface is the core run → diff → gate path and its artifacts. Ultimate
@@ -117,7 +117,7 @@ mode (`run_mode: ultimate`) and the provenance commands (`attest`, `sign`,
 ### Removed
 
 - `sentry-sdk` mandatory dependency: never imported anywhere in the codebase, it forced a
-  telemetry SDK into every install. Core dependencies are now `pyyaml` only.
+  telemetry SDK into every install. Core dependencies are now `pyyaml` and `pydantic`.
 - `tuf` from the `signing` extra: the dataset TUF client is deliberately unimplemented
   and fail-closed (`fetch_dataset` refuses without `allow_mock=True`); the package was
   never imported. `insidellms doctor` still probes for it via `find_spec` with its
