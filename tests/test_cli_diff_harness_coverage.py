@@ -2676,3 +2676,48 @@ class TestCmdHarnessLegacySymlinkFallback:
         assert rc == 0
         # results.jsonl should exist (via shutil.copyfile fallback)
         assert (run_dir_path / "results.jsonl").exists()
+
+
+class TestCmdHarnessUnhealthyRunOutput:
+    """Regression: a failed/unhealthy harness run must not print a green
+    success pipeline. It used to print ``OK Records written / Run written to``
+    for a run with zero records."""
+
+    def test_unhealthy_run_prints_no_success_lines(self, tmp_path, capsys):
+        import yaml
+
+        dataset = tmp_path / "d.jsonl"
+        dataset.write_text(
+            '{"question": "What is 2 + 2?"}\n{"question": "What is 3 + 3?"}\n',
+            encoding="utf-8",
+        )
+        config = tmp_path / "harness.yaml"
+        config.write_text(
+            yaml.safe_dump(
+                {
+                    # Fail model init deterministically: a key env var that
+                    # cannot exist in any environment.
+                    "models": [
+                        {
+                            "type": "openai",
+                            "args": {
+                                "model_name": "gpt-4o-mini",
+                                "api_key_env": "INSIDELLMS_MISSING_KEY_FOR_TESTS_XYZ",
+                            },
+                        }
+                    ],
+                    "probes": [{"type": "logic", "args": {}}],
+                    "dataset": {"format": "jsonl", "path": str(dataset)},
+                    "max_examples": 2,
+                }
+            ),
+            encoding="utf-8",
+        )
+        run_dir = tmp_path / "run"
+        args = _harness_namespace(config=str(config), run_dir=str(run_dir), skip_report=True)
+        rc = cmd_harness(args)
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "\nOK " not in captured.out
+        assert "PARTIAL RUN WRITTEN" in captured.out
+        assert "Run written to:" not in captured.out

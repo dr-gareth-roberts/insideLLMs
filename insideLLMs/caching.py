@@ -126,6 +126,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
+from insideLLMs._serialization import stable_json_dumps
 from insideLLMs.nlp.similarity import word_overlap_similarity
 from insideLLMs.types import ModelResponse
 
@@ -921,21 +922,16 @@ def generate_cache_key(
     get_cache_key : Simplified wrapper for common use cases.
     generate_model_cache_key : Specialized for model request caching.
     """
-    key_parts = [prompt]
-
-    if model:
-        key_parts.append(f"model:{model}")
-
-    if params:
-        sorted_params = json.dumps(params, sort_keys=True)
-        key_parts.append(f"params:{sorted_params}")
-
-    # Add any additional kwargs (sorted for determinism). Canonicalize each
-    # value so dict/list-valued kwargs hash by content, not by dict repr order.
-    for k, v in sorted(kwargs.items()):
-        key_parts.append(f"{k}:{json.dumps(v, sort_keys=True, default=str)}")
-
-    key_string = "|".join(key_parts)
+    # Canonical object form avoids delimiter collisions such as
+    # generate_cache_key("p|model:m") == generate_cache_key("p", model="m").
+    # Note: this invalidates keys produced by the previous pipe-joined format.
+    payload = {
+        "prompt": prompt,
+        "model": model,
+        "params": params,
+        "kwargs": dict(sorted(kwargs.items())),
+    }
+    key_string = stable_json_dumps(payload)
 
     if algorithm == "md5":
         return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
@@ -1204,9 +1200,10 @@ class InMemoryCache(BaseCacheABC[T]):
     ) -> None:
         """Set a value in the cache."""
         with self._lock:
-            # Evict if necessary
-            while len(self._cache) >= self._max_size:
-                self._evict_lru()
+            # Replacing an existing key must not evict an unrelated entry.
+            if key not in self._cache:
+                while len(self._cache) >= self._max_size:
+                    self._evict_lru()
 
             ttl = ttl if ttl is not None else self._default_ttl
             expires_at = time.time() + ttl if ttl is not None else None
@@ -1434,11 +1431,19 @@ class DiskCache(BaseCacheABC[T]):
     ) -> None:
         """Set a value in the cache."""
         conn = self._get_conn()
-        self._evict_if_needed()
+        # Replacing an existing key must not evict unrelated entries first
+        # (pre-write). Always enforce budget after write so a size-growing
+        # replacement cannot bypass the logical payload limit.
+        existing = conn.execute("SELECT 1 FROM cache WHERE key = ? LIMIT 1", (key,)).fetchone()
+        if existing is None:
+            self._evict_if_needed()
 
         ttl = ttl if ttl is not None else self._default_ttl
         expires_at = time.time() + ttl if ttl is not None else None
         metadata_json = json.dumps(metadata) if metadata else None
+        # ensure_ascii=False so multi-byte payloads store as UTF-8 octets and
+        # size enforcement measures real byte weight, not \uXXXX escapes.
+        value_json = json.dumps(value, ensure_ascii=False)
 
         conn.execute(
             """
@@ -1446,9 +1451,11 @@ class DiskCache(BaseCacheABC[T]):
             (key, value, created_at, expires_at, hit_count, last_accessed, metadata)
             VALUES (?, ?, ?, ?, 0, ?, ?)
             """,
-            (key, json.dumps(value), time.time(), expires_at, time.time(), metadata_json),
+            (key, value_json, time.time(), expires_at, time.time(), metadata_json),
         )
         conn.commit()
+        # Enforce after every write: new keys and growing replacements alike.
+        self._evict_if_needed()
 
     def delete(self, key: str) -> bool:
         """Delete a key from the cache."""
@@ -1480,12 +1487,23 @@ class DiskCache(BaseCacheABC[T]):
             hit_rate=self._stats.hit_rate,
         )
 
-    def _evict_if_needed(self) -> None:
-        """Evict entries if cache exceeds size limit."""
-        conn = self._get_conn()
-        db_size = self._path.stat().st_size if self._path.exists() else 0
+    def _logical_payload_bytes(self) -> int:
+        """Sum of stored value sizes in UTF-8 bytes (not SQLite file size).
 
-        if db_size < self._max_size_bytes:
+        SQLite ``LENGTH(text)`` counts characters; multi-byte Unicode would
+        under-count. ``LENGTH(CAST(value AS BLOB))`` is the octet length.
+        """
+        conn = self._get_conn()
+        row = conn.execute(
+            "SELECT COALESCE(SUM(LENGTH(CAST(value AS BLOB))), 0) AS total FROM cache"
+        ).fetchone()
+        return int(row["total"] if row is not None else 0)
+
+    def _evict_if_needed(self) -> None:
+        """Evict entries if logical payload size exceeds the configured limit."""
+        conn = self._get_conn()
+        # Only act when over budget; equality is at-capacity, not over.
+        if self._logical_payload_bytes() <= self._max_size_bytes:
             return
 
         # Evict expired entries first
@@ -1493,19 +1511,22 @@ class DiskCache(BaseCacheABC[T]):
             "DELETE FROM cache WHERE expires_at IS NOT NULL AND expires_at < ?",
             (time.time(),),
         )
+        conn.commit()
 
-        # If still too big, evict LRU entries
-        while self._path.stat().st_size > self._max_size_bytes * 0.8:
+        # If still over budget, evict LRU entries one at a time until under
+        # 80% of limit. Batch deletes of 100 can empty a small cache.
+        target = int(self._max_size_bytes * 0.8)
+        while self._logical_payload_bytes() > target:
             cursor = conn.execute("""
                 DELETE FROM cache WHERE key IN (
-                    SELECT key FROM cache ORDER BY last_accessed ASC LIMIT 100
+                    SELECT key FROM cache ORDER BY last_accessed ASC LIMIT 1
                 )
             """)
             if cursor.rowcount == 0:
                 break
             self._stats.evictions += cursor.rowcount
+            conn.commit()
 
-        conn.commit()
         conn.execute("VACUUM")
         conn.commit()
 
@@ -1739,9 +1760,10 @@ class StrategyCache:
     ) -> CacheEntry:
         """Set value in cache."""
         with self._lock:
-            # Evict if needed
-            while len(self._entries) >= self.config.max_size:
-                self._evict_one()
+            # Replacing an existing key must not evict an unrelated entry.
+            if key not in self._entries:
+                while len(self._entries) >= self.config.max_size:
+                    self._evict_one()
 
             ttl = ttl_seconds if ttl_seconds is not None else self.config.ttl_seconds
             expires_at = None

@@ -732,11 +732,13 @@
       "evidence": {
         "areas": {
           "benchmarks": 2,
+          "docs": 1,
           "examples": 2,
           "wiki": 1
         },
-        "path_count": 5,
+        "path_count": 6,
         "paths": [
+          "README.md",
           "benchmarks/benchmark_import.py",
           "benchmarks/benchmark_probes.py",
           "examples/example_benchmark_suite.py",
@@ -2541,13 +2543,14 @@
         "areas": {
           "examples": 1,
           "scripts": 1,
-          "tests": 1
+          "tests": 2
         },
-        "path_count": 3,
+        "path_count": 4,
         "paths": [
           "examples/suppress_deprecation_warnings.py",
           "scripts/clean_install_golden_path.sh",
-          "tests/test_audit_wave7_regressions.py"
+          "tests/test_audit_wave7_regressions.py",
+          "tests/test_packaging_metadata.py"
         ]
       },
       "export_kinds": [

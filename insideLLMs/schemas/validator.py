@@ -211,7 +211,10 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import asdict, is_dataclass
+from enum import Enum
 from typing import Any, Literal, Optional
+
+from pydantic import BaseModel, ValidationError
 
 from insideLLMs.schemas.constants import DEFAULT_SCHEMA_VERSION
 from insideLLMs.schemas.exceptions import OutputValidationError
@@ -337,8 +340,16 @@ def _to_plain(obj: Any) -> Any:
         nested dataclass instances. This may have performance implications for
         deeply nested structures.
     """
+    if isinstance(obj, BaseModel):
+        return _to_plain(obj.model_dump())
+    if isinstance(obj, Enum):
+        return obj.value
     if is_dataclass(obj) and not isinstance(obj, type):
-        return asdict(obj)
+        return _to_plain(asdict(obj))
+    if isinstance(obj, dict):
+        return {k: _to_plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_plain(v) for v in obj]
     return obj
 
 
@@ -919,19 +930,10 @@ class OutputValidator:
         model = self.registry.get_model(schema_name, schema_version)
         version = normalize_semver(schema_version)
         try:
-            if hasattr(model, "model_validate"):
-                return model.model_validate(_to_plain(data))
-            return model.parse_obj(_to_plain(data))
-        except Exception as e:
-            # Only treat pydantic ValidationError (v1/v2) as a validation failure.
-            # Unexpected errors (bugs, lookup failures) must propagate rather than
-            # be silently swallowed and return unvalidated data in warn mode.
-            try:
-                from pydantic import ValidationError as _PydanticValidationError
-            except ImportError:  # pragma: no cover - pydantic required to reach here
-                _PydanticValidationError = ()  # type: ignore[assignment]
-            if not isinstance(e, _PydanticValidationError):
-                raise
+            return model.model_validate(_to_plain(data))
+        except ValidationError as e:
+            # pydantic>=2 is a core dependency; treat ValidationError as the
+            # sole validation-failure type (no v1 compatibility branch).
             errors = [str(e)]
             if mode == "warn":
                 warnings.warn(

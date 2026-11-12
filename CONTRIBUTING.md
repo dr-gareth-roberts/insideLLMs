@@ -73,10 +73,17 @@ make docs-audit     # Docs coverage/link audit for key CLI/runtime workflows
 bash scripts/checks.sh
 ```
 
-The Makefile defaults to `python3`; if needed, you can override the interpreter:
+The Makefile prefers the project venv automatically when `.venv/bin/python`
+exists, so `make golden-path` and friends work without activating the venv;
+if needed, you can override the interpreter:
 ```bash
-make check-fast PYTHON=python
+make check-fast PYTHON=/path/to/python
 ```
+
+> **Tip:** never create a `build/` directory at the repository root. A stale
+> setuptools `build/` folder shadows the `build` PyPI package and breaks
+> `python -m build` for local distribution work. Build into a path outside
+> the checkout (or clean the folder before building).
 
 ### Testing
 

@@ -1762,3 +1762,47 @@ class TestProgressBarRender:
 
         bar.update(5)
         assert capsys.readouterr().out.count("Progress:") == 1
+
+
+class TestSubparserUsageOnUnknownArgs:
+    """Regression: an unknown flag on a subcommand must report the
+    subcommand's own usage, not the full 20+-command top-level usage."""
+
+    @pytest.mark.parametrize(
+        ("argv", "prog"),
+        [
+            (["validate", "--bogus", "config.yaml"], "insidellms validate"),
+            (["diff", "--bogus", "a", "b"], "insidellms diff"),
+            (["doctor", "--bogus"], "insidellms doctor"),
+        ],
+    )
+    def test_unknown_flag_shows_subcommand_usage(self, argv, prog, capsys):
+        import pytest as _pytest
+
+        from insideLLMs.cli import create_parser
+
+        parser = create_parser()
+        with _pytest.raises(SystemExit) as excinfo:
+            parser.parse_args(argv)
+        assert excinfo.value.code == 2
+        err = capsys.readouterr().err
+        assert f"usage: {prog}" in err  # subcommand usage, not top-level
+        assert "unrecognized arguments: --bogus" in err
+        # The top-level command list must not be part of the error output.
+        assert "{run,harness," not in err
+
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["validate", "config.yaml"],
+            ["diff", "--fail-on-changes", "a", "b"],
+            ["doctor"],
+            ["run", "config.yaml", "--run-dir", "./r"],
+        ],
+    )
+    def test_known_args_still_parse(self, argv):
+        from insideLLMs.cli import create_parser
+
+        parser = create_parser()
+        args = parser.parse_args(argv)
+        assert args.command == argv[0]

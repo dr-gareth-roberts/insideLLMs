@@ -91,10 +91,12 @@ def load_config(path: Union[str, Path]) -> ConfigDict:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
 
-    if path.suffix in (".yaml", ".yml"):
+    # Match public config.py: accept case-insensitive .yaml/.yml/.json suffixes.
+    suffix = path.suffix.lower()
+    if suffix in (".yaml", ".yml"):
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
-    elif path.suffix == ".json":
+    elif suffix == ".json":
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
     else:

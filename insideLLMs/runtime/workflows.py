@@ -91,6 +91,7 @@ def diff_run_dirs(
     fail_on_any_difference: bool = False,
     fail_on_trace_violations: bool = False,
     fail_on_trace_drift: bool = False,
+    fail_on_trajectory_drift: bool = False,
     limit: int = 25,
     output_format: Literal["text", "json"] = "text",
     output_path: Optional[str | Path] = None,
@@ -128,5 +129,6 @@ def diff_run_dirs(
         output_fingerprint_ignore=list(output_fingerprint_ignore or []),
         fail_on_trace_violations=fail_on_trace_violations,
         fail_on_trace_drift=fail_on_trace_drift,
+        fail_on_trajectory_drift=fail_on_trajectory_drift,
     )
     return cmd_diff(args)

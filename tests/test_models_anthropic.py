@@ -237,3 +237,52 @@ class TestAnthropicModelErrorHandling:
 
             with pytest.raises(InsideLLMsTimeoutError):
                 model.generate("Test prompt")
+
+
+class TestAnthropicSamplingParameters:
+    """Default requests must be valid for whichever anthropic SDK is installed.
+
+    Regression: the adapter always sent ``temperature=0.7``. anthropic 1.0 removed
+    ``temperature``, ``top_p`` and ``top_k`` from the Messages API methods, and API
+    version 2026-10-21 (anthropic 2.0) rejects them, so every call on a fresh install
+    raised ``TypeError``. The tests above mock the client, so none of them noticed.
+    """
+
+    SAMPLING_PARAMETERS = {"temperature", "top_p", "top_k"}
+
+    @staticmethod
+    def _sent_kwargs(method: str) -> dict:
+        with patch("insideLLMs.models.anthropic.anthropic.Anthropic") as MockAnthropic:
+            from insideLLMs.models.anthropic import AnthropicModel
+
+            mock_client = MagicMock()
+            mock_client.messages.create.return_value.content = [MagicMock(text="ok")]
+            mock_stream = MagicMock(text_stream=["ok"])
+            mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+            mock_stream.__exit__ = MagicMock(return_value=False)
+            mock_client.messages.stream.return_value = mock_stream
+            MockAnthropic.return_value = mock_client
+
+            model = AnthropicModel(api_key="test_key")
+            if method == "generate":
+                model.generate("Test prompt")
+            elif method == "chat":
+                model.chat([{"role": "user", "content": "Hello"}])
+            else:
+                list(model.stream("Test prompt"))
+            sdk_method = "stream" if method == "stream" else "create"
+            return getattr(mock_client.messages, sdk_method).call_args[1]
+
+    @pytest.mark.parametrize("method", ["generate", "chat", "stream"])
+    def test_default_request_sends_no_sampling_parameters(self, method):
+        assert not self.SAMPLING_PARAMETERS & set(self._sent_kwargs(method))
+
+    @pytest.mark.parametrize("method", ["generate", "chat", "stream"])
+    def test_default_request_matches_the_installed_sdk_signature(self, method):
+        import inspect
+
+        from anthropic.resources.messages import Messages
+
+        sdk_method = Messages.stream if method == "stream" else Messages.create
+        # Raises TypeError when the adapter sends a keyword this SDK does not accept.
+        inspect.signature(sdk_method).bind(None, **self._sent_kwargs(method))

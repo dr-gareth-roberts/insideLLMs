@@ -115,3 +115,64 @@ def test_shadow_fastapi_logs_error_records_before_reraising(tmp_path: Path) -> N
     assert record["run_id"] == "shadow-errors"
     assert record["status"] == "error"
     assert record["error_type"] == "RuntimeError"
+
+
+@pytest.mark.parametrize("outcome", ["success", "http_error", "exception"])
+def test_shadow_redacts_query_in_both_persisted_locations(tmp_path: Path, outcome: str) -> None:
+    from urllib.parse import parse_qs
+
+    query = "page=2&access_token=oauth-example&X-Amz-Signature=signature-example&X-Amz-Credential=credential-example&access_token=second-example&empty="
+    request = _DummyRequest(query=query)
+    path = tmp_path / "records.jsonl"
+    middleware = fastapi(output_path=path, sample_rate=1.0)
+    response = _DummyResponse(status_code=500 if outcome == "http_error" else 200)
+    app_error = RuntimeError("upstream failed")
+
+    async def call_next(received: _DummyRequest) -> _DummyResponse:
+        assert received.url.query == query
+        if outcome == "exception":
+            raise app_error
+        return response
+
+    if outcome == "exception":
+        with pytest.raises(RuntimeError) as exc:
+            asyncio.run(middleware(request, call_next))
+        assert exc.value is app_error
+    else:
+        assert asyncio.run(middleware(request, call_next)) is response
+    serialized = path.read_text()
+    for secret in ("oauth-example", "signature-example", "credential-example", "second-example"):
+        assert secret not in serialized
+    record = _load_jsonl(path)[0]
+    for stored in (record["input"]["query"], record["custom"]["http"]["query"]):
+        values = parse_qs(stored, keep_blank_values=True)
+        assert values["page"] == ["2"]
+        assert values["empty"] == [""]
+        assert values["access_token"] == ["[REDACTED]", "[REDACTED]"]
+        assert values["X-Amz-Signature"] == ["[REDACTED]"]
+        assert values["X-Amz-Credential"] == ["[REDACTED]"]
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("q=hello%20world&tag=a&tag=b&empty=", "q=hello%20world&tag=a&tag=b&empty="),
+        ("page=2#acces%73_token=fragment-example", "page=2#access_token=%5BREDACTED%5D"),
+        ("access%5Ftoken=encoded-example", "access_token=%5BREDACTED%5D"),
+    ],
+)
+def test_shadow_query_redaction_handles_encoded_keys_and_preserves_plain_queries(
+    tmp_path: Path,
+    query: str,
+    expected: str,
+) -> None:
+    middleware = fastapi(output_path=tmp_path / "records.jsonl", sample_rate=1.0)
+
+    async def call_next(request: _DummyRequest) -> _DummyResponse:
+        assert request.url.query == query
+        return _DummyResponse()
+
+    asyncio.run(middleware(_DummyRequest(query=query), call_next))
+    record = _load_jsonl(tmp_path / "records.jsonl")[0]
+    assert record["input"]["query"] == expected
+    assert record["custom"]["http"]["query"] == expected

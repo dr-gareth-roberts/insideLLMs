@@ -183,10 +183,10 @@ def _assert_jsonable(value: Any, *, where: str) -> Any:
     """
     Validate that a value is JSON-serialisable, with contextual error messages.
 
-    This function attempts to serialise the value to canonical JSON and raises
-    a descriptive ValueError if serialisation fails. It is primarily used in
-    Pydantic field validators to ensure payload and metadata fields contain
-    only JSON-compatible data.
+    Validates the *original* value with strict ``json.dumps`` (no NaN, no
+    normalising serializer). The extended serializer must not be used here:
+    it would accept sets/datetimes/NaN and can reorder set elements relative
+    to Pydantic's JSON path, breaking determinism.
 
     Parameters
     ----------
@@ -233,13 +233,17 @@ def _assert_jsonable(value: Any, *, where: str) -> Any:
 
     See Also
     --------
-    _canonical_json_bytes : The underlying serialisation function
+    _canonical_json_bytes : Canonical hashing helper (normalising; not used here)
     TraceEventStored : Uses this for payload validation
     TraceViolation : Uses this for meta validation
     """
+
+    def _raise_default(obj: Any) -> Any:
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
     try:
-        _canonical_json_bytes(value)
-    except TypeError as e:
+        json.dumps(value, allow_nan=False, default=_raise_default)
+    except (TypeError, ValueError) as e:
         raise ValueError(f"{where} must be JSON-serialisable: {e}") from e
     return value
 

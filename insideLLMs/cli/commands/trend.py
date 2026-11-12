@@ -52,6 +52,11 @@ def cmd_trend(args: argparse.Namespace) -> int:
     metric = getattr(args, "metric", "accuracy")
     trend_data = compute_trends(entries, metric=metric)
 
+    # Fail closed: a misspelled/missing metric must not pass CI gates.
+    if not trend_data:
+        print_error(f"No samples found for metric {metric!r} across {len(entries)} indexed run(s)")
+        return 1
+
     # Check thresholds
     violations: list[dict[str, Any]] = []
     threshold_arg = getattr(args, "threshold", None)

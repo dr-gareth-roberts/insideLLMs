@@ -1,6 +1,9 @@
-.PHONY: help doctest lint format format-check typecheck typecheck-strict typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit check check-fast golden-path package-smoke
+.PHONY: help doctest lint format format-check typecheck typecheck-strict typecheck-strict-runtime typecheck-report typecheck-module typecheck-coverage test test-fast test-determinism test-contract test-adapter test-performance docs-audit architecture architecture-update check check-fast golden-path package-smoke clean-install-golden-path
 
-PYTHON ?= python3
+# Prefer the project venv when it exists (so `make golden-path` works after
+# `pip install -e ".[dev]"` without activating the venv or passing PYTHON=);
+# override explicitly with e.g. `make check PYTHON=/path/to/python`.
+PYTHON ?= $(or $(wildcard .venv/bin/python),python3)
 
 help:
 	@echo "insideLLMs developer commands"

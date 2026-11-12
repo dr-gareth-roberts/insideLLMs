@@ -322,7 +322,7 @@ permissions:
   contents: read
 
 env:
-  INSIDELLMS_VERSION: "0.2.0"
+  INSIDELLMS_VERSION: "0.3.0"
 
 jobs:
   candidate:

@@ -70,6 +70,7 @@ See Also:
     - insideLLMs.registry: Model registration and discovery
 """
 
+import inspect
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator, Sequence
 from functools import wraps
@@ -88,6 +89,116 @@ from insideLLMs.validation import validate_prompt
 
 # Type variable for generic functions
 F = TypeVar("F", bound=Callable[..., Any])
+
+_PROMPT_VALIDATED_ATTR = "_insideLLMs_prompt_validated"
+
+
+def _retry_after_seconds(error: BaseException) -> Optional[float]:
+    """Extract a Retry-After delay (seconds) from a provider exception.
+
+    Checks, in order:
+    1. A ``retry_after`` attribute on the exception
+    2. ``error.response.headers["Retry-After"]`` (case-insensitive)
+
+    Returns a float when a parseable value is found, otherwise ``None``.
+    """
+    direct = getattr(error, "retry_after", None)
+    parsed = _parse_retry_after_value(direct)
+    if parsed is not None:
+        return parsed
+
+    response = getattr(error, "response", None)
+    if response is None:
+        return None
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+
+    header_value: Any = None
+    getter = getattr(headers, "get", None)
+    if callable(getter):
+        header_value = getter("Retry-After")
+        if header_value is None:
+            header_value = getter("retry-after")
+    if header_value is None and hasattr(headers, "items"):
+        try:
+            for key, value in headers.items():
+                if str(key).lower() == "retry-after":
+                    header_value = value
+                    break
+        except (TypeError, ValueError, AttributeError):
+            pass
+
+    return _parse_retry_after_value(header_value)
+
+
+def _parse_retry_after_value(value: Any) -> Optional[float]:
+    """Parse a Retry-After header/attribute value to float seconds."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return float(text)
+        except ValueError:
+            return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _wrap_prompt_method(method: F, *, is_async: bool = False) -> F:
+    """Wrap generate/stream/agenerate/astream to validate prompt once per call."""
+    if getattr(method, _PROMPT_VALIDATED_ATTR, False):
+        return method
+
+    # Async generators must stay async generators (cannot await them).
+    if inspect.isasyncgenfunction(method):
+
+        @wraps(method)
+        async def async_gen_wrapper(self: Any, prompt: str, *args: Any, **kwargs: Any) -> Any:
+            self._validate_prompt(prompt)
+            async for item in method(self, prompt, *args, **kwargs):
+                yield item
+
+        setattr(async_gen_wrapper, _PROMPT_VALIDATED_ATTR, True)
+        return async_gen_wrapper  # type: ignore[return-value]
+
+    if is_async or inspect.iscoroutinefunction(method):
+
+        @wraps(method)
+        async def async_wrapper(self: Any, prompt: str, *args: Any, **kwargs: Any) -> Any:
+            self._validate_prompt(prompt)
+            return await method(self, prompt, *args, **kwargs)
+
+        setattr(async_wrapper, _PROMPT_VALIDATED_ATTR, True)
+        return async_wrapper  # type: ignore[return-value]
+
+    # stream() is a generator; validate when stream() is called, not on iterate.
+    if inspect.isgeneratorfunction(method):
+
+        @wraps(method)
+        def stream_wrapper(self: Any, prompt: str, *args: Any, **kwargs: Any) -> Any:
+            self._validate_prompt(prompt)
+            return method(self, prompt, *args, **kwargs)
+
+        setattr(stream_wrapper, _PROMPT_VALIDATED_ATTR, True)
+        return stream_wrapper  # type: ignore[return-value]
+
+    @wraps(method)
+    def sync_wrapper(self: Any, prompt: str, *args: Any, **kwargs: Any) -> Any:
+        self._validate_prompt(prompt)
+        return method(self, prompt, *args, **kwargs)
+
+    setattr(sync_wrapper, _PROMPT_VALIDATED_ATTR, True)
+    return sync_wrapper  # type: ignore[return-value]
 
 
 class ProviderExceptionMap:
@@ -229,7 +340,7 @@ def handle_provider_errors(
                 ):
                     raise RateLimitError(
                         model_id=model_id,
-                        retry_after=getattr(e, "retry_after", None),
+                        retry_after=_retry_after_seconds(e),
                     ) from e
                 if exception_map.timeout_errors and isinstance(e, exception_map.timeout_errors):
                     raise InsideLLMsTimeoutError(
@@ -330,7 +441,7 @@ def translate_provider_error(
     if isinstance(error, exception_map.rate_limit_errors):
         return RateLimitError(
             model_id=model_id,
-            retry_after=getattr(error, "retry_after", None),
+            retry_after=_retry_after_seconds(error),
         )
     elif isinstance(error, exception_map.timeout_errors):
         return InsideLLMsTimeoutError(
@@ -792,6 +903,32 @@ class Model(ABC):
         self._call_count = 0
         self._total_tokens = 0
         self._validate_prompts = True  # Enable prompt validation by default
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Wrap public generate/stream entry points with prompt validation.
+
+        Subclasses override ``generate``/``stream`` directly; this hook installs
+        validation once at class definition so every public call validates
+        before provider dispatch (and once per call, not per retry inside the
+        method body).
+        """
+        super().__init_subclass__(**kwargs)
+        sync_methods = ("generate", "stream")
+        async_methods = ("agenerate", "astream")
+        for method_name in sync_methods:
+            if method_name not in cls.__dict__:
+                continue
+            original = cls.__dict__[method_name]
+            if not callable(original):
+                continue
+            setattr(cls, method_name, _wrap_prompt_method(original, is_async=False))
+        for method_name in async_methods:
+            if method_name not in cls.__dict__:
+                continue
+            original = cls.__dict__[method_name]
+            if not callable(original):
+                continue
+            setattr(cls, method_name, _wrap_prompt_method(original, is_async=True))
 
     def _validate_prompt(self, prompt: str, *, allow_empty: bool = False) -> None:
         """Validate a prompt before sending to the model.
@@ -1414,6 +1551,7 @@ class AsyncModel(Model):
         """
         import time
 
+        self._validate_prompt(prompt)
         start = time.perf_counter()
         content = await self.agenerate(prompt, **kwargs)
         latency_ms = (time.perf_counter() - start) * 1000
@@ -1749,6 +1887,11 @@ class ModelWrapper:
             prompt with different parameters is cached separately.
         """
         import time
+
+        # Validate once per public call (not once per retry attempt).
+        validate = getattr(self._model, "_validate_prompt", None)
+        if callable(validate):
+            validate(prompt)
 
         cache_key = f"{prompt}:{sorted(kwargs.items())}"
 

@@ -98,10 +98,10 @@ class TestInstructionFollowingProbe:
         assert "code" in result
 
     def test_format_constraints_custom_format(self):
-        """Test formatting custom format constraint."""
+        """Unsupported formats are rejected (no fail-open full credit)."""
         probe = InstructionFollowingProbe()
-        result = probe._format_constraints({"format": "xml"})
-        assert "xml" in result
+        with pytest.raises(ValueError, match="Unsupported format"):
+            probe._format_constraints({"format": "xml"})
 
     def test_format_constraints_word_limits(self):
         """Test formatting word limit constraints."""
@@ -131,16 +131,15 @@ class TestInstructionFollowingProbe:
         assert "orange" in result
 
     def test_format_constraints_language_and_tone(self):
-        """Test formatting language and tone constraints."""
+        """language/tone have no deterministic evaluators and are rejected."""
         probe = InstructionFollowingProbe()
-        result = probe._format_constraints(
-            {
-                "language": "Spanish",
-                "tone": "formal",
-            }
-        )
-        assert "Spanish" in result
-        assert "formal" in result
+        with pytest.raises(ValueError, match="Unsupported constraint"):
+            probe._format_constraints(
+                {
+                    "language": "Spanish",
+                    "tone": "formal",
+                }
+            )
 
     def test_check_format_json_valid(self):
         """Test checking valid JSON format."""
@@ -229,10 +228,10 @@ class TestInstructionFollowingProbe:
         assert result == 0.3
 
     def test_check_format_unknown(self):
-        """Test checking unknown format."""
+        """Unknown formats raise rather than awarding full credit."""
         probe = InstructionFollowingProbe()
-        result = probe._check_format("any text", "unknown_format")
-        assert result == 1.0
+        with pytest.raises(ValueError, match="Unsupported format"):
+            probe._check_format("any text", "unknown_format")
 
     def test_count_items_numbered(self):
         """Test counting numbered items."""
@@ -330,6 +329,16 @@ class TestInstructionFollowingProbe:
         # In strict mode, any violation should fail
         assert result.metadata["score"] == 0.0
 
+    def test_evaluate_single_min_items_zero_detected_fails(self):
+        """Empty/non-list output fails min_items instead of scoring 1.0."""
+        probe = InstructionFollowingProbe()
+        output = "no list here at all"
+        reference = {"constraints": {"min_items": 2}}
+        result = probe.evaluate_single(output, reference)
+        assert result.metadata["item_count"] == 0
+        assert result.metadata["within_min_items"] is False
+        assert result.metadata["score"] == 0.0
+
 
 class TestMultiStepTaskProbe:
     """Tests for MultiStepTaskProbe class."""
@@ -401,6 +410,36 @@ class TestMultiStepTaskProbe:
         result = probe.evaluate_single(output, reference)
         assert result.metadata["step_1"] == 1.0
 
+    def test_evaluate_single_step_pattern_not_scored_globally(self):
+        """Step 2 keywords in Step 1 text must not credit Step 2."""
+        probe = MultiStepTaskProbe()
+        output = "Step 1: javascript and web and data are mentioned early\nStep 2: only python here"
+        reference = {
+            "steps": ["Describe JS", "Describe Python"],
+            "expected": {
+                "step_1": ["python"],
+                "step_2": ["javascript"],
+            },
+        }
+        result = probe.evaluate_single(output, reference)
+        assert result.metadata["step_1"] == 0.0
+        assert result.metadata["step_2"] == 0.0
+
+    def test_evaluate_single_missing_step_section_scores_zero(self):
+        """Missing Step N section scores 0 for that step."""
+        probe = MultiStepTaskProbe()
+        output = "Step 1: python programming only"
+        reference = {
+            "steps": ["Define Python", "List uses"],
+            "expected": {
+                "step_1": ["python"],
+                "step_2": ["web"],
+            },
+        }
+        result = probe.evaluate_single(output, reference)
+        assert result.metadata["step_1"] == 1.0
+        assert result.metadata["step_2"] == 0.0
+
     def test_evaluate_single_non_dict_reference(self):
         """Test evaluating with non-dict reference."""
         probe = MultiStepTaskProbe()
@@ -417,6 +456,10 @@ class TestMultiStepTaskProbe:
         result = probe.evaluate_single(output, reference)
         assert "length_score" in result.metadata
         assert "word_count" in result.metadata
+        # No Step N markers → each step scores 0
+        assert result.metadata["step_1"] == 0.0
+        assert result.metadata["step_2"] == 0.0
+        assert result.metadata["step_3"] == 0.0
 
 
 class TestConstraintComplianceProbe:
@@ -427,6 +470,13 @@ class TestConstraintComplianceProbe:
         probe = ConstraintComplianceProbe()
         assert probe.name == "ConstraintComplianceProbe"
         assert probe.constraint_type == "word_limit"
+
+    def test_initialization_rejects_non_positive_limit(self):
+        """limit=0 and limit=-1 raise at construction."""
+        with pytest.raises(ValueError, match="positive integer"):
+            ConstraintComplianceProbe(constraint_type="word_limit", limit=0)
+        with pytest.raises(ValueError, match="positive integer"):
+            ConstraintComplianceProbe(constraint_type="word_limit", limit=-1)
 
     def test_initialization_with_word_limit(self):
         """Test initialization with word limit."""
@@ -605,3 +655,19 @@ class TestConstraintComplianceProbe:
         output = "one two three"  # 3 words
         result = probe.evaluate_single(output, 5)  # Override limit to 5
         assert result.metadata["limit"] == 5
+
+    def test_evaluate_single_rejects_non_positive_reference_override(self):
+        """Reference override of 0 or negative is rejected."""
+        probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=10)
+        with pytest.raises(ValueError, match="positive integer"):
+            probe.evaluate_single("one two", 0)
+        with pytest.raises(ValueError, match="positive integer"):
+            probe.evaluate_single("one two", -1)
+
+    def test_evaluate_single_limit_score_stays_in_unit_interval(self):
+        """Overage scoring stays in [0, 1] for valid positive limits."""
+        probe = ConstraintComplianceProbe(constraint_type="word_limit", limit=2)
+        output = "one two three four five six"
+        result = probe.evaluate_single(output, None)
+        assert 0.0 <= result.metadata["score"] <= 1.0
+        assert result.metadata["compliant"] is False

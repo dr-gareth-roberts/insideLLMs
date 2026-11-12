@@ -849,3 +849,35 @@ class TestEdgeCases:
         assert stats.entry_count == 10
         assert stats.hits == 5
         assert stats.misses == 3
+
+
+class TestMakeCosineScorer:
+    """Regression tests for the batched cosine scorer used by VectorCache lookups."""
+
+    @pytest.mark.parametrize("numpy_backend", [False, True])
+    def test_scorer_matches_reference(self, monkeypatch, numpy_backend):
+        """The closure scorer must match cosine_similarity on both backends."""
+        import insideLLMs.semantic_cache as cache
+
+        if numpy_backend:
+            pytest.importorskip("numpy")
+        monkeypatch.setattr(cache, "NUMPY_AVAILABLE", numpy_backend)
+        for query in ([1.0, 0.0], [0.0, 0.0], []):
+            score = cache._make_cosine_scorer(query)
+            for vector in ([1.0, 0.0], [0.0, 1.0], [-1.0, 0.0], [], [1.0]):
+                assert score(vector) == pytest.approx(cache.cosine_similarity(query, vector))
+
+    @pytest.mark.parametrize("numpy_backend", [False, True])
+    def test_scorer_precomputes_and_orders(self, monkeypatch, numpy_backend):
+        """Zero/negative/orthogonal cases and result ordering behave on both backends."""
+        import insideLLMs.semantic_cache as cache
+
+        if numpy_backend:
+            pytest.importorskip("numpy")
+        monkeypatch.setattr(cache, "NUMPY_AVAILABLE", numpy_backend)
+        score = cache._make_cosine_scorer([1.0, 0.0])
+        assert score([1.0, 0.0]) == pytest.approx(1.0)
+        assert score([0.0, 1.0]) == pytest.approx(0.0)
+        assert score([-1.0, 0.0]) == pytest.approx(-1.0)
+        assert score([0.0, 0.0]) == 0.0
+        assert score([1.0, 0.0, 0.0]) == 0.0  # mismatched length fails closed

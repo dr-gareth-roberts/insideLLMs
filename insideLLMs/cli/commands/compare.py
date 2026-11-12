@@ -97,6 +97,14 @@ def cmd_compare(args: argparse.Namespace) -> int:
                 model_instances[model_name] = None
                 print_warning(f"Could not load model '{model_name}': {e}")
 
+        if model_instances and all(m is None for m in model_instances.values()):
+            # No usable model: an empty comparison must fail, not exit 0.
+            print_error(
+                "No models could be loaded. Check `insidellms list models` for valid "
+                "names and verify provider credentials/configuration."
+            )
+            return 1
+
         results: list[dict[str, Any]] = []
         for inp in inputs:
             inp_display = inp[:50] + "..." if len(inp) > 50 else inp

@@ -185,6 +185,7 @@ Using ExitStack for complex resource management:
 from __future__ import annotations
 
 import os
+import tempfile
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import IO, Any, Iterator
@@ -424,8 +425,10 @@ def atomic_write_text(path: Path, text: str) -> None:
     Raises
     ------
     OSError
-        If the write operation fails (disk full, permissions, etc.).
-        In this case, the original file (if any) is left unchanged.
+        If the write or pre-replace durability fsync fails (disk full,
+        permissions, etc.). In this case, the original file (if any) is left
+        unchanged. Post-replace parent-directory fsync failures are best-effort
+        and do not raise once the replacement has already committed.
     TypeError
         If `text` is not a string.
 
@@ -438,14 +441,17 @@ def atomic_write_text(path: Path, text: str) -> None:
     -----
     The atomicity is achieved through the following steps:
 
-    1. Create a temporary file in the same directory as the target
-       (using a `.filename.tmp` naming pattern).
+    1. Create a unique temporary file in the same directory as the target
+       (via ``tempfile.mkstemp``).
     2. Write all content to the temporary file.
     3. Flush the file buffer to the OS.
-    4. Call `fsync()` to ensure data is written to disk. A durability failure
-       propagates before the target is replaced.
+    4. Call `fsync()` on the temp file so durability failures propagate before
+       the target is replaced.
     5. Atomically replace the target with the temporary file using
        `os.replace()`.
+    6. Best-effort parent-directory fsync on POSIX only. Failures after the
+       replacement has committed are swallowed (the new content is already
+       live).
 
     The `os.replace()` operation is atomic on POSIX systems and on
     Windows (NTFS). This means the target file will never be in a
@@ -564,13 +570,48 @@ def atomic_write_text(path: Path, text: str) -> None:
     ...     print(f"Checkpoint saved: {success}")
     Checkpoint saved: True
     """
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.parent.mkdir(parents=True, exist_ok=True)
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd: int | None = None
+    tmp_path: Path | None = None
+    try:
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=str(path.parent),
+        )
+        tmp_path = Path(tmp_name)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None  # ownership transferred to handle
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+        tmp_path = None  # consumed by replace
+        # Parent-directory fsync is best-effort durability after a committed
+        # replace. It is skipped on non-POSIX platforms and never rolls back
+        # the already-published target.
+        if os.name == "posix":
+            dir_fd: int | None = None
+            try:
+                dir_fd = os.open(str(path.parent), os.O_RDONLY)
+                os.fsync(dir_fd)
+            except OSError:
+                pass
+            finally:
+                if dir_fd is not None:
+                    try:
+                        os.close(dir_fd)
+                    except OSError:
+                        pass
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
 
 
 def atomic_write_yaml(path: Path, data: Any, serializer: Any = None) -> None:

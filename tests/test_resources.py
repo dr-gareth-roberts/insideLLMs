@@ -209,6 +209,26 @@ class TestAtomicWriteText:
         assert exc_info.value.errno == error_number
         assert file_path.read_text(encoding="utf-8") == "original"
 
+    def test_post_replace_directory_fsync_failure_keeps_new_content(self, tmp_path):
+        """Parent-dir fsync after replace is best-effort; new content stays live."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("original", encoding="utf-8")
+        calls = {"n": 0}
+        real_fsync = os.fsync
+
+        def _fsync(fd: int) -> None:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                # Pre-replace file durability fsync must still succeed.
+                return real_fsync(fd)
+            raise OSError(errno.EINVAL, "simulated directory fsync failure")
+
+        with patch("insideLLMs.resources.os.fsync", side_effect=_fsync):
+            atomic_write_text(file_path, "replacement")
+
+        assert file_path.read_text(encoding="utf-8") == "replacement"
+        assert calls["n"] >= 2
+
 
 class TestAtomicWriteYaml:
     """Tests for atomic_write_yaml function."""

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from scripts.architecture_evidence import (
     API_MANIFEST_PATH,
     IMPORT_GRAPH_PATH,
     PUBLIC_STATUSES,
     build_api_manifest,
+    collect_api_usage,
     generated_outputs,
     scan_imports,
 )
@@ -87,6 +91,35 @@ def test_checked_in_architecture_evidence_is_current() -> None:
     assert outputs[IMPORT_GRAPH_PATH] == IMPORT_GRAPH_PATH.read_text(encoding="utf-8")
     for path, expected in outputs.items():
         assert path.read_text(encoding="utf-8") == expected, f"stale generated evidence: {path}"
+
+
+def test_api_usage_counts_only_git_tracked_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Evidence generated in a working checkout must match CI's clean checkout.
+
+    Regression: a gitignored, locally generated ``benchmarks/codemap.md`` was counted
+    as a consumer of ``model_registry``, so CI's regenerated evidence never matched.
+    """
+    # Git hooks export these, which would redirect the scratch repo's git calls.
+    for variable in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+        monkeypatch.delenv(variable, raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (tmp_path / ".gitignore").write_text("codemap.md\n", encoding="utf-8")
+    (docs / "guide.md").write_text("from insideLLMs import ProbeRunner\n", encoding="utf-8")
+    (docs / "codemap.md").write_text("from insideLLMs import model_registry\n", encoding="utf-8")
+    (docs / "notes.md").write_text("from insideLLMs import DummyModel\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", ".gitignore", "docs/guide.md"], cwd=tmp_path, check=True)
+    monkeypatch.setattr("scripts.architecture_evidence.REPO_ROOT", tmp_path)
+    monkeypatch.setattr("scripts.architecture_evidence.API_STATUS_DOC_PATH", docs / "API_STATUS.md")
+
+    usage = collect_api_usage()
+
+    assert usage["ProbeRunner"]["paths"] == ["docs/guide.md"]
+    assert "model_registry" not in usage  # gitignored
+    assert "DummyModel" not in usage  # untracked
 
 
 def test_import_graph_summary_is_not_vacuous() -> None:

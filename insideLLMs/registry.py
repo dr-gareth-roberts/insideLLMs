@@ -67,103 +67,48 @@ from importlib import metadata
 from inspect import Signature, signature
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
+from insideLLMs.exceptions import (
+    AlreadyRegisteredError,
+    NotRegisteredError,
+    RegistryError,
+)
+
 T = TypeVar("T")
 FactoryType = Callable[..., T]
 
 
-class RegistrationError(Exception):
+class RegistrationError(AlreadyRegisteredError):
     """Raised when a registration operation fails.
+
+    Subclasses the canonical :class:`~insideLLMs.exceptions.AlreadyRegisteredError`
+    so callers can catch it via the :class:`~insideLLMs.exceptions.RegistryError`
+    hierarchy while keeping the public ``RegistrationError`` name and
+    message-string constructor used throughout the registry API.
 
     This exception is raised when attempting to register an item with a name
     that is already in use and the `overwrite` flag is not set to True.
-
-    Attributes:
-        args: The exception message describing the registration failure.
-
-    Examples:
-        Attempting to register a duplicate name:
-
-            >>> from insideLLMs.registry import Registry, RegistrationError
-            >>> registry = Registry("test")
-            >>> registry.register("item1", lambda: "first")
-            >>> try:
-            ...     registry.register("item1", lambda: "second")
-            ... except RegistrationError as e:
-            ...     print(f"Registration failed: {e}")
-            Registration failed: 'item1' is already registered in test registry...
-
-        Avoiding the error with overwrite=True:
-
-            >>> registry.register("item1", lambda: "second", overwrite=True)
-            >>> registry.get("item1")
-            'second'
-
-        Catching the error in plugin registration:
-
-            >>> def register_plugin(registry):
-            ...     try:
-            ...         registry.register("conflicting_name", MyPlugin)
-            ...     except RegistrationError:
-            ...         # Handle gracefully, perhaps use a different name
-            ...         registry.register("conflicting_name_v2", MyPlugin)
-
-    See Also:
-        Registry.register: The method that raises this exception.
     """
 
-    pass
+    def __init__(self, message: str = "") -> None:
+        # Preserve message-string API; bypass AlreadyRegisteredError's
+        # (name, registry_type) constructor formatting.
+        RegistryError.__init__(self, message or "Registration failed")
 
 
-class NotFoundError(Exception):
+class NotFoundError(NotRegisteredError):
     """Raised when a registered item is not found in the registry.
+
+    Subclasses the canonical :class:`~insideLLMs.exceptions.NotRegisteredError`
+    so callers can catch it via the :class:`~insideLLMs.exceptions.RegistryError`
+    hierarchy while keeping the public ``NotFoundError`` name and
+    message-string constructor used throughout the registry API.
 
     This exception is raised when attempting to retrieve, get information about,
     or unregister an item using a name that has not been registered.
-
-    Attributes:
-        args: The exception message describing what was not found and
-              listing available items.
-
-    Examples:
-        Attempting to get a non-existent item:
-
-            >>> from insideLLMs.registry import Registry, NotFoundError
-            >>> registry = Registry("models")
-            >>> registry.register("gpt4", lambda: "GPT-4 model")
-            >>> try:
-            ...     registry.get("nonexistent")
-            ... except NotFoundError as e:
-            ...     print(f"Error: {e}")
-            Error: 'nonexistent' not found in models registry. Available: gpt4
-
-        Handling missing items gracefully:
-
-            >>> def get_model_or_default(registry, name, default_name="dummy"):
-            ...     try:
-            ...         return registry.get(name)
-            ...     except NotFoundError:
-            ...         return registry.get(default_name)
-
-        Checking before retrieval to avoid the exception:
-
-            >>> if registry.is_registered("my_model"):
-            ...     model = registry.get("my_model")
-            ... else:
-            ...     print("Model not registered, using fallback")
-
-        Using the `in` operator for checking:
-
-            >>> if "my_model" in registry:
-            ...     model = registry.get("my_model")
-
-    See Also:
-        Registry.get: The retrieval method that raises this exception.
-        Registry.get_factory: Another method that raises this exception.
-        Registry.unregister: Unregistration method that raises this exception.
-        Registry.is_registered: Method to check existence without exceptions.
     """
 
-    pass
+    def __init__(self, message: str = "") -> None:
+        RegistryError.__init__(self, message or "Not found in registry")
 
 
 class Registry(Generic[T]):
@@ -1508,6 +1453,31 @@ def _call_plugin_register(fn: Callable[..., Any]) -> None:
     )
 
 
+def _snapshot_registry_state() -> dict[str, dict[str, Any]]:
+    """Capture registry name→entry maps by reference for plugin rollback.
+
+    Only the outer mapping is copied. Entry values (factories and default
+    kwargs) are kept by reference so non-deepcopyable registered objects
+    cannot abort plugin discovery during snapshotting. On failure, restore
+    drops names added by the plugin and rebinds prior entries by reference.
+    """
+    return {
+        "model": dict(model_registry._registry),
+        "probe": dict(probe_registry._registry),
+        "dataset": dict(dataset_registry._registry),
+    }
+
+
+def _restore_registry_state(snapshot: dict[str, dict[str, Any]]) -> None:
+    """Restore global registries from a prior structural snapshot."""
+    model_registry._registry.clear()
+    model_registry._registry.update(snapshot["model"])
+    probe_registry._registry.clear()
+    probe_registry._registry.update(snapshot["probe"])
+    dataset_registry._registry.clear()
+    dataset_registry._registry.update(snapshot["dataset"])
+
+
 def load_entrypoint_plugins(
     *,
     group: str = PLUGIN_ENTRYPOINT_GROUP,
@@ -1604,11 +1574,8 @@ def load_entrypoint_plugins(
         PLUGIN_ENTRYPOINT_GROUP: The default entry point group name.
     """
     if enabled is None:
-        enabled = os.environ.get("INSIDELLMS_DISABLE_PLUGINS", "").strip() not in {
-            "1",
-            "true",
-            "yes",
-        }
+        disabled = os.environ.get("INSIDELLMS_DISABLE_PLUGINS", "").strip().lower()
+        enabled = disabled not in {"1", "true", "yes"}
     if not enabled:
         return {}
 
@@ -1627,6 +1594,7 @@ def load_entrypoint_plugins(
     selected = sorted(selected, key=lambda ep: (getattr(ep, "name", ""), getattr(ep, "value", "")))
 
     for ep in selected:
+        snapshot = _snapshot_registry_state()
         try:
             fn = ep.load()
             if not callable(fn):
@@ -1639,6 +1607,7 @@ def load_entrypoint_plugins(
             _call_plugin_register(fn)
             loaded[ep.name] = ep.value
         except Exception as e:
+            _restore_registry_state(snapshot)
             warnings.warn(
                 f"Failed to load plugin {ep.name!r} ({ep.value}): {e}",
                 RuntimeWarning,

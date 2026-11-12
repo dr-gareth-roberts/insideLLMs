@@ -11,6 +11,7 @@ import argparse
 import ast
 import json
 import re
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -382,9 +383,25 @@ def _direct_export_modules(tree: ast.Module) -> dict[str, str]:
     return modules
 
 
-def _iter_area_files(path: Path) -> Iterable[Path]:
+def _tracked_paths() -> frozenset[str]:
+    """Return the paths git tracks: exactly what CI's clean checkout contains.
+
+    Usage evidence counts only these, so untracked notes and gitignored generated
+    files (for example ``codemap.md``) cannot leak into checked-in evidence.
+    """
+    listing = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    return frozenset(path for path in listing.split("\0") if path)
+
+
+def _iter_area_files(path: Path, tracked: frozenset[str]) -> Iterable[Path]:
     if path.is_file():
-        if path != API_STATUS_DOC_PATH:
+        if path != API_STATUS_DOC_PATH and path.relative_to(REPO_ROOT).as_posix() in tracked:
             yield path
         return
     if path.is_dir():
@@ -393,6 +410,7 @@ def _iter_area_files(path: Path) -> Iterable[Path]:
                 candidate != API_STATUS_DOC_PATH
                 and candidate.is_file()
                 and (candidate.suffix == ".py" or candidate.suffix in TEXT_EVIDENCE_SUFFIXES)
+                and candidate.relative_to(REPO_ROOT).as_posix() in tracked
             ):
                 yield candidate
 
@@ -444,12 +462,13 @@ def _text_root_imports(path: Path) -> set[str]:
 
 
 def collect_api_usage() -> dict[str, dict[str, object]]:
-    """Collect root-symbol usage from repository-owned consumer surfaces."""
+    """Collect root-symbol usage from git-tracked repository-owned consumer surfaces."""
 
+    tracked = _tracked_paths()
     paths_by_name: dict[str, set[str]] = defaultdict(set)
     areas_by_name: dict[str, Counter[str]] = defaultdict(Counter)
     for area, relative in EVIDENCE_AREAS:
-        for path in _iter_area_files(REPO_ROOT / relative):
+        for path in _iter_area_files(REPO_ROOT / relative, tracked):
             names = _python_root_imports(path) if path.suffix == ".py" else _text_root_imports(path)
             relative_path = path.relative_to(REPO_ROOT).as_posix()
             for name in names:

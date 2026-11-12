@@ -101,6 +101,7 @@ from typing import (
     runtime_checkable,
 )
 
+from insideLLMs.exceptions import ModelTimeoutError, RateLimitError
 from insideLLMs.types import (
     ProbeCategory,
     ProbeResult,
@@ -110,6 +111,33 @@ from insideLLMs.types import (
 
 # Type variable for probe output types
 T = TypeVar("T")
+
+
+def classify_batch_exception(exc: BaseException) -> tuple[ResultStatus, str]:
+    """Classify a batch-item failure into a ResultStatus and error message.
+
+    Explicit type checks only — no message-substring heuristics (which mislabel
+    e.g. "could not generate response" as rate-limited because of "rate").
+
+    Parameters
+    ----------
+    exc :
+        The exception raised while processing a batch item.
+
+    Returns
+    -------
+    tuple[ResultStatus, str]
+        Status and a short error string suitable for ``ProbeResult.error``.
+    """
+    error_type = type(exc).__name__
+    # ModelTimeoutError first: it is not a subclass of builtin TimeoutError.
+    if isinstance(exc, ModelTimeoutError):
+        return ResultStatus.TIMEOUT, "Request timed out"
+    if isinstance(exc, TimeoutError):
+        return ResultStatus.TIMEOUT, "Request timed out"
+    if isinstance(exc, RateLimitError):
+        return ResultStatus.RATE_LIMITED, f"{error_type}: {exc}"
+    return ResultStatus.ERROR, f"{error_type}: {exc}"
 
 
 @runtime_checkable
@@ -587,24 +615,13 @@ class Probe(ABC, Generic[T]):
                         latency_ms=latency,
                     ),
                 )
-            except TimeoutError as exc:
-                return ProbeResult(
-                    input=item,
-                    status=ResultStatus.TIMEOUT,
-                    error="Request timed out",
-                    metadata={"error_type": "TimeoutError"},
-                ).attach_original_error(exc)
             except Exception as e:
+                status, error = classify_batch_exception(e)
                 error_type = type(e).__name__
-                # Check for rate limiting
-                if "rate" in str(e).lower() or "429" in str(e):
-                    status = ResultStatus.RATE_LIMITED
-                else:
-                    status = ResultStatus.ERROR
                 return ProbeResult(
                     input=item,
                     status=status,
-                    error=f"{error_type}: {str(e)}",
+                    error=error,
                     metadata={"error_type": error_type},
                 ).attach_original_error(e)
 
@@ -622,17 +639,12 @@ class Probe(ABC, Generic[T]):
                     try:
                         results[index] = future.result()
                     except Exception as e:
+                        status, error = classify_batch_exception(e)
                         error_type = type(e).__name__
-                        if "rate" in str(e).lower() or "429" in str(e):
-                            status = ResultStatus.RATE_LIMITED
-                        elif isinstance(e, TimeoutError):
-                            status = ResultStatus.TIMEOUT
-                        else:
-                            status = ResultStatus.ERROR
                         results[index] = ProbeResult(
                             input=dataset[index],
                             status=status,
-                            error=f"{error_type}: {str(e)}",
+                            error=error,
                             metadata={"error_type": error_type},
                         ).attach_original_error(e)
                     completed += 1

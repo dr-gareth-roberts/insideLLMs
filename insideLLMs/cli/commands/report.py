@@ -274,6 +274,11 @@ def cmd_report(args: argparse.Namespace) -> int:
     report_path = run_dir / "report.html"
     summary_stage: Path | None = None
     report_stage: Path | None = None
+    summary_backup: Path | None = None
+    report_backup: Path | None = None
+    pair_committed = False
+    summary_published = False
+    report_published = False
     try:
         summary_stage = _owned_stage_path(run_dir, ".summary.json")
         report_stage = _owned_stage_path(run_dir, ".report.html")
@@ -313,16 +318,72 @@ def cmd_report(args: argparse.Namespace) -> int:
         staged_html = report_stage.read_text(encoding="utf-8")
         if "<html" not in staged_html.lower() or "</html>" not in staged_html.lower():
             raise ValueError("generated report is not a complete HTML document")
+        # Retain prior generations so a failed second publish can roll back the
+        # first and avoid mixed-generation summary/report pairs. Track absent
+        # priors so a failed second publish can delete newly created files too.
+        summary_had_prior = summary_path.exists()
+        report_had_prior = report_path.exists()
+        summary_published = False
+        report_published = False
+        if summary_had_prior:
+            summary_backup = _owned_stage_path(run_dir, ".summary.json.bak")
+            os.replace(summary_path, summary_backup)
+        if report_had_prior:
+            report_backup = _owned_stage_path(run_dir, ".report.html.bak")
+            os.replace(report_path, report_backup)
         os.replace(summary_stage, summary_path)
+        summary_stage = None
+        summary_published = True
         os.replace(report_stage, report_path)
+        report_stage = None
+        report_published = True
+        # Both artifacts are committed. Backup deletion is best-effort cleanup
+        # only — a cleanup failure must not roll back the new pair.
+        pair_committed = True
+        for bak in (summary_backup, report_backup):
+            if bak is None:
+                continue
+            try:
+                bak.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                print_warning(f"Could not remove report backup {bak.name}: {cleanup_error}")
+        summary_backup = None
+        report_backup = None
     except Exception as error:
-        print_error(f"Could not rebuild report: {error}")
-        return 1
+        # Restore the previous pair only when dual publish did not complete.
+        if not pair_committed:
+            if summary_backup is not None:
+                try:
+                    os.replace(summary_backup, summary_path)
+                    summary_backup = None
+                except OSError as restore_error:
+                    print_warning(
+                        f"Could not restore summary; backup retained at {summary_backup}: "
+                        f"{restore_error}"
+                    )
+            elif summary_published:
+                summary_path.unlink(missing_ok=True)
+            if report_backup is not None:
+                try:
+                    os.replace(report_backup, report_path)
+                    report_backup = None
+                except OSError as restore_error:
+                    print_warning(
+                        f"Could not restore report; backup retained at {report_backup}: "
+                        f"{restore_error}"
+                    )
+            elif report_published:
+                report_path.unlink(missing_ok=True)
+            print_error(f"Could not rebuild report: {error}")
+            return 1
+        print_warning(f"Report published, but post-commit cleanup failed: {error}")
     finally:
         if summary_stage is not None:
             summary_stage.unlink(missing_ok=True)
         if report_stage is not None:
             report_stage.unlink(missing_ok=True)
+        # Unrestored backups are the recovery copies; only committed backups
+        # may be deleted, in the successful publish path above.
 
     print_success(f"Summary written to: {summary_path}")
     print_success(f"Report written to: {report_path}")

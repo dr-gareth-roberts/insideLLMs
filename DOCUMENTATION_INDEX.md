@@ -456,5 +456,5 @@ If you find errors or have suggestions for improving the documentation:
 
 ---
 
-**Last Updated:** February 26, 2026  
-**Version:** 0.2.0
+**Last Updated:** February 26, 2026\
+**Version:** 0.3.0

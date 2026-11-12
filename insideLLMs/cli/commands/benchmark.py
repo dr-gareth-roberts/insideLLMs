@@ -93,34 +93,44 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 progress = ProgressBar(len(inputs), prefix=f"  {probe_name}")
 
                 probe_results = []
-                failure_count = 0
-                error_count = 0
                 failure_messages: list[str] = []
-                for i, inp in enumerate(inputs):
-                    try:
-                        result = runner.run_single(inp)
-                        probe_results.append(result)
-                    except (ProbeExecutionError, RuntimeError) as exc:
-                        failure_count += 1
-                        error_count += 1
-                        if len(failure_messages) < 3:
-                            failure_messages.append(str(exc))
-                        print_warning(f"  Example {i + 1} failed: {exc}")
-                    progress.update(i + 1)
-
+                try:
+                    # Batch execution: ProbeRunner has no per-item entry point, and
+                    # per-item failures are reported through each record's status.
+                    probe_results = list(runner.run(inputs, emit_run_artifacts=False))
+                except (ProbeExecutionError, RuntimeError) as exc:
+                    print_warning(f"  Probe run failed for {model_name}/{probe_name}: {exc}")
+                    failure_messages.append(str(exc))
+                progress.update(len(inputs))
                 progress.finish()
+
+                def _record_status(r: Any) -> Any:
+                    return r.get("status") if isinstance(r, dict) else getattr(r, "status", None)
+
+                error_count = sum(
+                    1 for r in probe_results if _record_status(r) in ("error", "timeout")
+                )
+                # Records missing entirely (batch aborted) count as failures too.
+                failure_count = error_count + (len(inputs) - len(probe_results))
+                for r in probe_results:
+                    if len(failure_messages) >= 3:
+                        break
+                    if _record_status(r) in ("error", "timeout"):
+                        message = (
+                            r.get("error") if isinstance(r, dict) else getattr(r, "error", None)
+                        )
+                        failure_messages.append(
+                            str(message)
+                            if message
+                            else f"example failed with status {_record_status(r)}"
+                        )
 
                 if error_count:
                     print_warning(
                         f"  {error_count} example(s) failed for {model_name}/{probe_name}"
                     )
 
-                success_count = sum(
-                    1
-                    for r in probe_results
-                    if getattr(r, "status", None) == "success"
-                    or (isinstance(r, dict) and r.get("status") == "success")
-                )
+                success_count = sum(1 for r in probe_results if _record_status(r) == "success")
                 results_all.append(
                     {
                         "model": model_name,

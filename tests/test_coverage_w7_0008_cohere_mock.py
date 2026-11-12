@@ -82,19 +82,18 @@ def test_cohere_full_paths(cohere_stub, monkeypatch: pytest.MonkeyPatch) -> None
         )
         == "hi"
     )
-    # recover last user after completed turn cleared current_message (708-711)
-    assert (
-        m.chat([{"role": "user", "content": "u1"}, {"role": "assistant", "content": "a1"}]) == "hi"
-    )
+    # final role must be user — completed pair alone is rejected
+    with pytest.raises(ValueError, match='role="user"'):
+        m.chat([{"role": "user", "content": "u1"}, {"role": "assistant", "content": "a1"}])
     assert m.chat([{"role": "assistant", "content": "a"}, {"role": "user", "content": "q"}]) == "hi"
     # chat without preamble
     assert m_plain.chat([{"role": "user", "content": "q"}]) == "hi"
-    # no messages -> empty current_message still calls chat
-    assert m.chat([]) == "hi"
-    # recovery loop finds no user role
-    assert (
-        m.chat([{"role": "system", "content": "s"}, {"role": "assistant", "content": "a"}]) == "hi"
-    )
+    # empty list rejected
+    with pytest.raises(ValueError, match="non-empty"):
+        m.chat([])
+    # no trailing user role rejected
+    with pytest.raises(ValueError, match='role="user"'):
+        m.chat([{"role": "system", "content": "s"}, {"role": "assistant", "content": "a"}])
 
     assert "".join(m.stream("x", temperature=0.3, max_tokens=4)) == "ab"
     # stream without default preamble

@@ -329,7 +329,7 @@ For production use, always pin to a specific version and test thoroughly
 before upgrading.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # =============================================================================
 # Core Types (Essential for all users)

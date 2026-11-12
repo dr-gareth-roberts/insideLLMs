@@ -33,15 +33,33 @@ def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
 
 
-def test_iter_jsonl_records_is_lazy_and_skips_non_dict_values(tmp_path: Path) -> None:
+def test_iter_jsonl_records_is_lazy_and_yields_objects(tmp_path: Path) -> None:
     path = tmp_path / "records.jsonl"
-    path.write_text('{"id": 1}\nnull\n[2]\n{"id": 2}\n', encoding="utf-8")
+    path.write_text('{"id": 1}\n{"id": 2}\n', encoding="utf-8")
 
     records = iter_jsonl_records(path)
 
     assert not isinstance(records, list)
     assert next(records) == {"id": 1}
     assert list(records) == [{"id": 2}]
+
+
+def test_iter_jsonl_records_raises_on_non_object_json_line(tmp_path: Path) -> None:
+    path = tmp_path / "records.jsonl"
+    path.write_text('{"id": 1}\nnull\n{"id": 2}\n', encoding="utf-8")
+
+    records = iter_jsonl_records(path)
+    assert next(records) == {"id": 1}
+    with pytest.raises(ValueError, match="line 2"):
+        next(records)
+
+
+def test_iter_jsonl_records_raises_on_array_json_line(tmp_path: Path) -> None:
+    path = tmp_path / "records.jsonl"
+    path.write_text('{"id": 1}\n[2]\n{"id": 2}\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="line 2"):
+        list(iter_jsonl_records(path))
 
 
 def test_jsonl_readers_preserve_list_compatibility_and_line_errors(tmp_path: Path) -> None:

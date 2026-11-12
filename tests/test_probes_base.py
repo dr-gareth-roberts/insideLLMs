@@ -132,10 +132,12 @@ class TestProbeRunBatch:
         assert "timed out" in results[0].error
 
     def test_run_batch_with_rate_limit(self):
-        """Test batch processing with rate limit error."""
+        """Test batch processing with RateLimitError (explicit type, not substring)."""
+        from insideLLMs.exceptions import RateLimitError
+
         probe = SimpleProbe(name="Test")
         mock_model = MagicMock()
-        mock_model.generate = MagicMock(side_effect=Exception("Rate limit exceeded (429)"))
+        mock_model.generate = MagicMock(side_effect=RateLimitError(model_id="test"))
 
         dataset = ["input1"]
         results = probe.run_batch(mock_model, dataset)

@@ -97,7 +97,9 @@ import asyncio
 import functools
 import logging
 import random
+import threading
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
@@ -1626,8 +1628,9 @@ class CircuitBreaker:
 
     Notes
     -----
-    - The circuit breaker is not thread-safe. For multi-threaded applications,
-      use appropriate synchronization.
+    - Admissions and state transitions are synchronized across threads. Context
+      manager frames are local to each thread/asyncio task. Reset and state
+      transitions invalidate outcomes and slot releases from older calls.
     - State transitions are logged using the ``insideLLMs.retry`` logger.
     - The ``reset()`` method can be used to manually close the circuit.
 
@@ -1650,7 +1653,19 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self._last_failure_time: Optional[float] = None
+        # In-flight gauge for HALF_OPEN probe calls (increment on admit,
+        # decrement in finally). Never a one-shot latch.
         self._half_open_calls = 0
+        self._generation = 0
+        # Task- and thread-local LIFO of context-manager acquisitions.
+        # ContextVar (not threading.local) so overlapping asyncio tasks on the
+        # same thread do not consume each other's stack frames. Tuples are
+        # copy-on-write; never mutate a list returned from .get().
+        self._context_stack_var: ContextVar[tuple[tuple[int, bool], ...]] = ContextVar(
+            f"circuit_breaker_ctx_stack_{id(self)}",
+            default=(),
+        )
+        self._lock = threading.RLock()
 
     @property
     def state(self) -> CircuitState:
@@ -1675,8 +1690,9 @@ class CircuitBreaker:
         >>> circuit.state
         <CircuitState.OPEN: 'open'>
         """
-        self._check_state_transition()
-        return self._state
+        with self._lock:
+            self._check_state_transition()
+            return self._state
 
     @property
     def is_closed(self) -> bool:
@@ -1729,13 +1745,15 @@ class CircuitBreaker:
         -----
         This method is called automatically by the ``state`` property
         and before executing operations to ensure state is current.
+        Caller must hold ``self._lock`` when mutating state.
         """
         if self._state == CircuitState.OPEN and self._last_failure_time is not None:
             elapsed = time.time() - self._last_failure_time
             if elapsed >= self.config.reset_timeout:
                 logger.info(f"Circuit '{self.name}' transitioning to HALF_OPEN")
                 self._state = CircuitState.HALF_OPEN
-                self._half_open_calls = 0
+                self._invalidate_inflight()
+                self._success_count = 0
 
     def _record_success(self) -> None:
         """Record a successful operation and update circuit state.
@@ -1747,7 +1765,7 @@ class CircuitBreaker:
         Notes
         -----
         Called automatically after successful operations through
-        ``execute()`` or context manager exit.
+        ``execute()`` or context manager exit. Caller must hold lock.
         """
         if self._state == CircuitState.HALF_OPEN:
             self._success_count += 1
@@ -1757,7 +1775,7 @@ class CircuitBreaker:
                 self._failure_count = 0
                 self._success_count = 0
                 self._last_failure_time = None
-                self._half_open_calls = 0
+                self._invalidate_inflight()
         elif self._state == CircuitState.CLOSED:
             self._failure_count = 0
 
@@ -1772,6 +1790,7 @@ class CircuitBreaker:
         -----
         Called automatically after failed operations through
         ``execute()`` or context manager exit with an exception.
+        Caller must hold ``self._lock``.
         """
         self._failure_count += 1
         self._last_failure_time = time.time()
@@ -1779,10 +1798,37 @@ class CircuitBreaker:
         if self._state == CircuitState.HALF_OPEN:
             logger.info(f"Circuit '{self.name}' transitioning to OPEN (half-open failure)")
             self._state = CircuitState.OPEN
+            self._invalidate_inflight()
             self._success_count = 0
         elif self._failure_count >= self.config.failure_threshold:
             logger.warning(f"Circuit '{self.name}' transitioning to OPEN")
             self._state = CircuitState.OPEN
+            self._invalidate_inflight()
+
+    def _invalidate_inflight(self) -> None:
+        """Start a new admission generation; caller must hold the lock."""
+        self._generation += 1
+        self._half_open_calls = 0
+
+    def _release_half_open_slot(self, generation: int) -> None:
+        """Decrement the half-open in-flight gauge if a slot was held."""
+        with self._lock:
+            if generation == self._generation and self._half_open_calls > 0:
+                self._half_open_calls -= 1
+
+    def _push_context_acquired(self, generation: int, acquired: bool) -> None:
+        """Push one admission generation and acquisition flag for this task/thread context frame."""
+        stack = self._context_stack_var.get()
+        self._context_stack_var.set(stack + ((generation, acquired),))
+
+    def _pop_context_acquired(self) -> tuple[int, bool]:
+        """Pop this frame's admission generation and acquisition flag (copy-on-write)."""
+        stack = self._context_stack_var.get()
+        if not stack:
+            return (-1, False)
+        *rest, top = stack
+        self._context_stack_var.set(tuple(rest))
+        return top
 
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
         """Use the circuit breaker as a decorator.
@@ -1872,27 +1918,38 @@ class CircuitBreaker:
 
         >>> result = circuit.execute(lambda: db.query("SELECT * FROM users"))
         """
-        self._check_state_transition()
+        half_open_acquired = False
+        with self._lock:
+            self._check_state_transition()
 
-        if self._state == CircuitState.OPEN:
-            time_until_reset = self.config.reset_timeout - (
-                time.time() - (self._last_failure_time or 0)
-            )
-            raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
+            if self._state == CircuitState.OPEN:
+                time_until_reset = self.config.reset_timeout - (
+                    time.time() - (self._last_failure_time or 0)
+                )
+                raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
 
-        if self._state == CircuitState.HALF_OPEN:
-            if self._half_open_calls >= self.config.half_open_max_calls:
-                raise CircuitBreakerOpen(self.name, 0)
-            self._half_open_calls += 1
+            if self._state == CircuitState.HALF_OPEN:
+                if self._half_open_calls >= self.config.half_open_max_calls:
+                    raise CircuitBreakerOpen(self.name, 0)
+                self._half_open_calls += 1
+                half_open_acquired = True
+            generation = self._generation
 
         try:
             result = func(*args, **kwargs)
-            self._record_success()
+            with self._lock:
+                if generation == self._generation:
+                    self._record_success()
             return result
 
         except Exception as _:
-            self._record_failure()
+            with self._lock:
+                if generation == self._generation:
+                    self._record_failure()
             raise
+        finally:
+            if half_open_acquired:
+                self._release_half_open_slot(generation)
 
     def __enter__(self) -> "CircuitBreaker":
         """Enter the circuit breaker context manager.
@@ -1924,19 +1981,25 @@ class CircuitBreaker:
         The context manager tracks success/failure based on whether an
         exception is raised in the context block.
         """
-        self._check_state_transition()
+        half_open_acquired = False
+        with self._lock:
+            self._check_state_transition()
 
-        if self._state == CircuitState.OPEN:
-            time_until_reset = self.config.reset_timeout - (
-                time.time() - (self._last_failure_time or 0)
-            )
-            raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
+            if self._state == CircuitState.OPEN:
+                time_until_reset = self.config.reset_timeout - (
+                    time.time() - (self._last_failure_time or 0)
+                )
+                raise CircuitBreakerOpen(self.name, max(0, time_until_reset))
 
-        if self._state == CircuitState.HALF_OPEN:
-            if self._half_open_calls >= self.config.half_open_max_calls:
-                raise CircuitBreakerOpen(self.name, 0)
-            self._half_open_calls += 1
+            if self._state == CircuitState.HALF_OPEN:
+                if self._half_open_calls >= self.config.half_open_max_calls:
+                    raise CircuitBreakerOpen(self.name, 0)
+                self._half_open_calls += 1
+                half_open_acquired = True
+            generation = self._generation
 
+        # Push after successful admit so a rejected enter does not leave a frame.
+        self._push_context_acquired(generation, half_open_acquired)
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
@@ -1969,10 +2032,19 @@ class CircuitBreaker:
         ... except ConnectionError:
         ...     pass  # Circuit records this as a failure
         """
-        if exc_type is None:
-            self._record_success()
-        else:
-            self._record_failure()
+        generation, half_open_acquired = self._pop_context_acquired()
+        try:
+            with self._lock:
+                # Stale frames must neither change state nor release slots
+                # belonging to a later recovery cycle.
+                if generation == self._generation:
+                    if exc_type is None:
+                        self._record_success()
+                    else:
+                        self._record_failure()
+        finally:
+            if half_open_acquired:
+                self._release_half_open_slot(generation)
         return False
 
     def reset(self) -> None:
@@ -2005,11 +2077,13 @@ class CircuitBreaker:
         -----
         This method logs an info message when called.
         """
-        self._state = CircuitState.CLOSED
-        self._failure_count = 0
-        self._success_count = 0
-        self._last_failure_time = None
-        self._half_open_calls = 0
+        with self._lock:
+            self._state = CircuitState.CLOSED
+            self._failure_count = 0
+            self._success_count = 0
+            self._last_failure_time = None
+            self._invalidate_inflight()
+        # Keep active context frames so each exit consumes its own stale token.
         logger.info(f"Circuit '{self.name}' manually reset")
 
 

@@ -41,8 +41,10 @@ See Also:
 
 import json
 import re
+from collections.abc import Mapping
 from typing import Any, Optional
 
+from insideLLMs.exceptions import EvaluationError
 from insideLLMs.probes.base import ScoredProbe
 from insideLLMs.types import ProbeCategory
 
@@ -145,6 +147,10 @@ class JudgeScorer:
         threshold: int = 4,
         judge_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
+        if not isinstance(threshold, int) or isinstance(threshold, bool):
+            raise ValueError(f"threshold must be an integer in [0, 5], got {threshold!r}")
+        if threshold < 0 or threshold > 5:
+            raise ValueError(f"threshold must be an integer in [0, 5], got {threshold!r}")
         self.judge_model = judge_model
         self.rubric = rubric
         self.threshold = threshold
@@ -225,8 +231,14 @@ class JudgeScorer:
                 cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
                 cleaned = re.sub(r"\s*```\s*$", "", cleaned)
             parsed = json.loads(cleaned)
+            if not isinstance(parsed, Mapping):
+                raise EvaluationError(
+                    f"Judge response JSON must be an object/mapping, got {type(parsed).__name__}"
+                )
             score = int(parsed.get("score", 0))
             reasoning = str(parsed.get("reasoning", ""))
+        except EvaluationError:
+            raise
         except (json.JSONDecodeError, ValueError, TypeError):
             # Fallback: extract score with regex
             score_match = re.search(r'"score"\s*:\s*(\d)', response)

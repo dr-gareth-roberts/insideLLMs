@@ -6,11 +6,11 @@ repos:
     hooks:
       - id: check-secrets
         name: Check for accidentally committed secrets
-        entry: python scripts/check_secrets.py
+        entry: python3 scripts/check_secrets.py
         language: system
         pass_filenames: false
         always_run: true
-        
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:

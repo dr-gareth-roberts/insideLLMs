@@ -33,7 +33,7 @@ from .._output import (
     print_warning,
 )
 from .._record_utils import _json_default
-from ._run_common import create_tracker, iter_standard_run_artifacts
+from ._run_common import create_tracker, end_tracker, iter_standard_run_artifacts
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -229,46 +229,51 @@ def cmd_run(args: argparse.Namespace) -> int:
             if len(raw_results) > 5:
                 print(colorize(f"  ... and {len(raw_results) - 5} more", Colors.DIM))
 
-        if tracker is not None:
-            try:
-                if experiment_result is not None:
-                    tracker.log_experiment_result(experiment_result)
+        tracking_status = "failed"
+        try:
+            if tracker is not None:
+                try:
+                    if experiment_result is not None:
+                        tracker.log_experiment_result(experiment_result)
 
-                metrics: dict[str, float] = {
-                    "wall_time_seconds": float(elapsed),
-                    "total_count": float(total),
-                    "success_count": float(success_count),
-                    "error_count": float(error_count),
-                    "timeout_count": float(timeout_count),
-                }
+                    metrics: dict[str, float] = {
+                        "wall_time_seconds": float(elapsed),
+                        "total_count": float(total),
+                        "success_count": float(success_count),
+                        "error_count": float(error_count),
+                        "timeout_count": float(timeout_count),
+                    }
 
-                latency_values = [
-                    float(latency_ms)
-                    for latency_ms in (
-                        r.get("latency_ms") for r in raw_results if r.get("status") == "success"
-                    )
-                    if isinstance(latency_ms, (int, float))
-                ]
-                if latency_values:
-                    metrics["avg_latency_ms"] = float(sum(latency_values) / len(latency_values))
-                    metrics["min_latency_ms"] = float(min(latency_values))
-                    metrics["max_latency_ms"] = float(max(latency_values))
+                    latency_values = [
+                        float(latency_ms)
+                        for latency_ms in (
+                            r.get("latency_ms") for r in raw_results if r.get("status") == "success"
+                        )
+                        if isinstance(latency_ms, (int, float))
+                    ]
+                    if latency_values:
+                        metrics["avg_latency_ms"] = float(sum(latency_values) / len(latency_values))
+                        metrics["min_latency_ms"] = float(min(latency_values))
+                        metrics["max_latency_ms"] = float(max(latency_values))
 
-                tracker.log_metrics(metrics)
+                    tracker.log_metrics(metrics)
 
-                for artifact in iter_standard_run_artifacts(effective_run_dir):
-                    if artifact.exists():
-                        tracker.log_artifact(str(artifact), artifact_name=artifact.name)
+                    for artifact in iter_standard_run_artifacts(effective_run_dir):
+                        if artifact.exists():
+                            tracker.log_artifact(str(artifact), artifact_name=artifact.name)
 
-                if args.output and Path(args.output).exists():
-                    tracker.log_artifact(
-                        str(Path(args.output)), artifact_name=Path(args.output).name
-                    )
+                    if args.output and Path(args.output).exists():
+                        tracker.log_artifact(
+                            str(Path(args.output)),
+                            artifact_name=Path(args.output).name,
+                        )
 
-                tracker.end_run(status="finished" if health["healthy"] else "failed")
-                tracker = None
-            except Exception as e:
-                print_warning(f"Tracking error: {e}")
+                    tracking_status = "finished" if health["healthy"] else "failed"
+                except Exception as e:
+                    print_warning(f"Tracking error: {e}")
+        finally:
+            end_tracker(tracker, status=tracking_status)
+            tracker = None
 
         # UX sugar: make it obvious where artifacts landed and how to validate.
         # Keep stdout JSON clean when --format json.
@@ -284,10 +289,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     except Exception as e:
         if "tracker" in locals() and tracker is not None:
-            try:
-                tracker.end_run(status="failed")
-            except (AttributeError, RuntimeError):
-                pass
+            end_tracker(tracker, status="failed")
+            tracker = None
         print_error(f"Error running experiment: {e}")
         if args.verbose:
             traceback.print_exc()

@@ -121,7 +121,7 @@ from insideLLMs.exceptions import (
     ModelTimeoutError as InsideLLMsTimeoutError,
 )
 
-from .base import ChatMessage, Model
+from .base import ChatMessage, Model, _retry_after_seconds
 
 
 class AnthropicModel(Model):
@@ -341,7 +341,8 @@ class AnthropicModel(Model):
             temperature : float, optional
                 Sampling temperature between 0 and 1. Higher values make
                 output more random, lower values more deterministic.
-                Default is 0.7.
+                Sent only when given; otherwise the API default applies.
+                anthropic>=1.0 no longer accepts temperature, top_p or top_k.
             top_p : float, optional
                 Nucleus sampling parameter. Alternative to temperature.
             top_k : int, optional
@@ -422,7 +423,6 @@ class AnthropicModel(Model):
             api_kwargs = dict(kwargs)
             if getattr(self, "_budget_ledger", None) is None:
                 api_kwargs.setdefault("max_tokens", 1024)
-            api_kwargs.setdefault("temperature", 0.7)
             response = self._create_message(
                 messages=[{"role": "user", "content": prompt}],
                 **api_kwargs,
@@ -434,7 +434,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
@@ -487,7 +487,8 @@ class AnthropicModel(Model):
             max_tokens : int, optional
                 Maximum number of tokens to generate. Default is 1024.
             temperature : float, optional
-                Sampling temperature between 0 and 1. Default is 0.7.
+                Sampling temperature between 0 and 1. Sent only when given
+                (anthropic<1.0 only).
             top_p : float, optional
                 Nucleus sampling parameter.
             top_k : int, optional
@@ -584,7 +585,6 @@ class AnthropicModel(Model):
             api_kwargs = dict(kwargs)
             if getattr(self, "_budget_ledger", None) is None:
                 api_kwargs.setdefault("max_tokens", 1024)
-            api_kwargs.setdefault("temperature", 0.7)
             # An explicit system= kwarg (documented in the docstring) also contributes.
             explicit_system = api_kwargs.pop("system", None)
             if explicit_system:
@@ -604,7 +604,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
@@ -650,7 +650,8 @@ class AnthropicModel(Model):
             max_tokens : int, optional
                 Maximum number of tokens to generate. Default is 1024.
             temperature : float, optional
-                Sampling temperature between 0 and 1. Default is 0.7.
+                Sampling temperature between 0 and 1. Sent only when given
+                (anthropic<1.0 only).
             top_p : float, optional
                 Nucleus sampling parameter.
             top_k : int, optional
@@ -740,7 +741,6 @@ class AnthropicModel(Model):
         try:
             api_kwargs = dict(kwargs)
             api_kwargs.setdefault("max_tokens", 1024)
-            api_kwargs.setdefault("temperature", 0.7)
             with self.client.messages.stream(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
@@ -750,7 +750,7 @@ class AnthropicModel(Model):
         except AnthropicRateLimitError as e:
             raise RateLimitError(
                 model_id=self.model_name,
-                retry_after=getattr(e, "retry_after", None),
+                retry_after=_retry_after_seconds(e),
             )
         except AnthropicTimeoutError:
             raise InsideLLMsTimeoutError(
