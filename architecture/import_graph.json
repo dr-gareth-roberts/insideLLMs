@@ -4185,7 +4185,7 @@
       "fan_in": 2,
       "fan_out": 13,
       "layer": "cli",
-      "loc": 909,
+      "loc": 916,
       "module": "insideLLMs.cli.commands.harness",
       "path": "insideLLMs/cli/commands/harness.py"
     },
@@ -4313,7 +4313,7 @@
       "fan_in": 5,
       "fan_out": 1,
       "layer": "core",
-      "loc": 355,
+      "loc": 371,
       "module": "insideLLMs.config_schema",
       "path": "insideLLMs/config_schema.py"
     },
@@ -5449,7 +5449,7 @@
       "fan_in": 2,
       "fan_out": 21,
       "layer": "runtime",
-      "loc": 978,
+      "loc": 992,
       "module": "insideLLMs.runtime._async_runner",
       "path": "insideLLMs/runtime/_async_runner.py"
     },
@@ -5481,7 +5481,7 @@
       "fan_in": 2,
       "fan_out": 19,
       "layer": "runtime",
-      "loc": 1061,
+      "loc": 1067,
       "module": "insideLLMs.runtime._high_level",
       "path": "insideLLMs/runtime/_high_level.py"
     },
@@ -5513,7 +5513,7 @@
       "fan_in": 2,
       "fan_out": 20,
       "layer": "runtime",
-      "loc": 1046,
+      "loc": 1071,
       "module": "insideLLMs.runtime._sync_runner",
       "path": "insideLLMs/runtime/_sync_runner.py"
     },
@@ -6199,7 +6199,7 @@
     "internal_edge_count": 602,
     "module_count": 250,
     "optional_import_count": 66,
-    "package_loc": 254441,
+    "package_loc": 254509,
     "static_test_references_by_subtree": {
       "insideLLMs": 18,
       "insideLLMs._artifact_snapshot": 1,
@@ -6210,7 +6210,7 @@
       "insideLLMs.attestations": 16,
       "insideLLMs.benchmark_datasets": 31,
       "insideLLMs.caching": 111,
-      "insideLLMs.cli": 372,
+      "insideLLMs.cli": 373,
       "insideLLMs.config": 78,
       "insideLLMs.config_schema": 5,
       "insideLLMs.config_types": 17,
@@ -6243,7 +6243,7 @@
       "insideLLMs.resources": 8,
       "insideLLMs.results": 74,
       "insideLLMs.retry": 46,
-      "insideLLMs.runtime": 343,
+      "insideLLMs.runtime": 344,
       "insideLLMs.safety": 36,
       "insideLLMs.schemas": 135,
       "insideLLMs.semantic_cache": 32,
